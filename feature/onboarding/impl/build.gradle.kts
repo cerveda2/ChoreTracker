@@ -1,6 +1,6 @@
 plugins {
-    id("choretracker.android.feature")
-    id("choretracker.hilt")
+    alias(libs.plugins.choretracker.android.feature)
+    alias(libs.plugins.choretracker.hilt)
 }
 
 android {
@@ -8,11 +8,11 @@ android {
 }
 
 dependencies {
-    implementation(project(":feature:onboarding:api"))
-    implementation(project(":core:common"))
-    implementation(project(":core:data-contract"))
-    implementation(project(":core:design"))
-    implementation(project(":core:model"))
+    implementation(projects.feature.onboarding.api)
+    implementation(projects.core.common)
+    implementation(projects.core.dataContract)
+    implementation(projects.core.design)
+    implementation(projects.core.model)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
 }

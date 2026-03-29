@@ -1,9 +1,9 @@
 plugins {
-    id("choretracker.kotlin.library")
+    alias(libs.plugins.choretracker.kotlin.library)
 }
 
 dependencies {
-    implementation(project(":core:data-contract"))
-    implementation(project(":core:model"))
+    implementation(projects.core.dataContract)
+    implementation(projects.core.model)
     implementation(libs.javax.inject)
 }

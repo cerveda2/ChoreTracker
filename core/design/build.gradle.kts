@@ -1,6 +1,6 @@
 plugins {
-    id("choretracker.android.library")
-    id("choretracker.android.library.compose")
+    alias(libs.plugins.choretracker.android.library)
+    alias(libs.plugins.choretracker.android.library.compose)
 }
 
 android {

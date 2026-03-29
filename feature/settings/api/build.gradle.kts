@@ -1,7 +1,7 @@
 plugins {
-    id("choretracker.kotlin.library")
+    alias(libs.plugins.choretracker.kotlin.library)
 }
 
 dependencies {
-    implementation(project(":core:model"))
+    implementation(projects.core.model)
 }

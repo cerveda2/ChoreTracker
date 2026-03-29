@@ -1,7 +1,7 @@
 plugins {
-    id("choretracker.android.library")
-    id("choretracker.hilt")
-    id("choretracker.room")
+    alias(libs.plugins.choretracker.android.library)
+    alias(libs.plugins.choretracker.hilt)
+    alias(libs.plugins.choretracker.room)
 }
 
 android {
@@ -9,8 +9,8 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:common"))
-    implementation(project(":core:model"))
+    implementation(projects.core.common)
+    implementation(projects.core.model)
     implementation(libs.kotlinx.datetime)
     testImplementation(libs.room.testing)
 }

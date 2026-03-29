@@ -1,6 +1,6 @@
 plugins {
-    id("choretracker.android.library")
-    id("choretracker.hilt")
+    alias(libs.plugins.choretracker.android.library)
+    alias(libs.plugins.choretracker.hilt)
 }
 
 android {
@@ -8,12 +8,12 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:common"))
-    implementation(project(":core:model"))
-    implementation(project(":core:data-contract"))
-    implementation(project(":core:database-room"))
-    implementation(project(":core:remote-contract"))
-    implementation(project(":core:domain"))
+    implementation(projects.core.common)
+    implementation(projects.core.model)
+    implementation(projects.core.dataContract)
+    implementation(projects.core.databaseRoom)
+    implementation(projects.core.remoteContract)
+    implementation(projects.core.domain)
     implementation(libs.kotlinx.datetime)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.lifecycle.runtime.ktx)

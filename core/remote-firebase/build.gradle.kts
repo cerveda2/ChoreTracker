@@ -1,6 +1,6 @@
 plugins {
-    id("choretracker.android.library")
-    id("choretracker.hilt")
+    alias(libs.plugins.choretracker.android.library)
+    alias(libs.plugins.choretracker.hilt)
 }
 
 android {
@@ -29,9 +29,9 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:common"))
-    implementation(project(":core:model"))
-    implementation(project(":core:remote-contract"))
+    implementation(projects.core.common)
+    implementation(projects.core.model)
+    implementation(projects.core.remoteContract)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
