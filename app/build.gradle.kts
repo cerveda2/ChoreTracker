@@ -1,6 +1,7 @@
 plugins {
     id("choretracker.android.application.compose")
     id("choretracker.hilt")
+    alias(libs.plugins.google.services)
 }
 
 android {

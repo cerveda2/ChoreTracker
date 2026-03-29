@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isUserDocument(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function householdDoc(householdId) {
+      return get(/databases/$(database)/documents/households/$(householdId));
+    }
+
+    function memberDoc(householdId, uid) {
+      return get(/databases/$(database)/documents/households/$(householdId)/members/$(uid));
+    }
+
+    function isHouseholdMember(householdId) {
+      return isSignedIn() &&
+        memberDoc(householdId, request.auth.uid).exists() &&
+        memberDoc(householdId, request.auth.uid).data.active == true;
+    }
+
+    function isHouseholdOwner(householdId) {
+      return isSignedIn() &&
+        householdDoc(householdId).exists() &&
+        householdDoc(householdId).data.ownerUserId == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isUserDocument(userId);
+    }
+
+    match /households/{householdId} {
+      allow create: if isSignedIn() && request.resource.data.ownerUserId == request.auth.uid;
+      allow read: if isHouseholdMember(householdId);
+      allow update, delete: if isHouseholdOwner(householdId);
+
+      match /members/{memberId} {
+        allow read: if isHouseholdMember(householdId);
+        allow create: if isHouseholdOwner(householdId) ||
+          (isSignedIn() && memberId == request.auth.uid);
+        allow update: if isHouseholdOwner(householdId) ||
+          (isSignedIn() && memberId == request.auth.uid);
+        allow delete: if isHouseholdOwner(householdId);
+      }
+
+      match /chores/{choreId} {
+        allow read: if isHouseholdMember(householdId);
+        allow create, update, delete: if isHouseholdOwner(householdId);
+      }
+
+      match /completions/{completionId} {
+        allow read: if isHouseholdMember(householdId);
+        allow create: if isHouseholdMember(householdId) &&
+          request.resource.data.createdByUserId == request.auth.uid;
+        allow update, delete: if isHouseholdOwner(householdId);
+      }
+
+      match /invites/{inviteId} {
+        allow read: if isHouseholdMember(householdId);
+        allow create, update, delete: if isHouseholdOwner(householdId);
+      }
+    }
+  }
+}

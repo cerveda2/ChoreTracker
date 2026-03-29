@@ -45,10 +45,9 @@ GRADLE_USER_HOME=$PWD/.gradle-user-home ./gradlew assembleDebug
 
 The app currently builds successfully with:
 
-- AGP `8.10.1`
-- Gradle `8.11.1`
-
-Those versions were chosen because Hilt is not currently compatible with AGP `9.x`.
+- AGP `9.1.0`
+- Gradle `9.3.1`
+- Kotlin `2.3.20`
 
 ## Firebase
 

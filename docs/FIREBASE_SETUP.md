@@ -25,13 +25,15 @@ In the Firebase console:
 
 1. Open `Build > Authentication`.
 2. Enable `Email/Password`.
-3. Leave Google sign-in for later unless you also want to configure Credential Manager and SHA certificates.
+3. Leave `Email link (passwordless sign-in)` disabled for now. The app currently implements classic email + password only.
+4. Leave Google sign-in for later unless you also want to configure Credential Manager and SHA certificates.
 
 ## 4. Create Firestore
 
 1. Open `Build > Firestore Database`.
 2. Create a database in Native mode.
-3. Pick a region close to your users.
+3. For Europe-based usage, prefer `eur3` unless you explicitly want a cheaper single-region deployment.
+4. Start in `production mode`.
 
 Recommended top-level structure:
 
@@ -48,6 +50,8 @@ The current app computes dashboard and statistics locally from Room. Firestore s
 
 ## 5. Security rules
 
+The repo includes a starter [`firestore.rules`](../firestore.rules). Publish those rules from the Firebase console or with the Firebase CLI.
+
 Start with strict rules:
 
 - authenticated users only
@@ -62,7 +66,27 @@ Use the Firebase Emulator Suite for local development once the real sync impleme
 - Authentication emulator
 - Firestore emulator
 
-That will let you test auth, onboarding, invite join, and sync flows without touching production data.
+This project already supports emulator hosts through Gradle properties in [`gradle.properties`](../gradle.properties):
+
+```properties
+choretracker.firebase.useEmulators=false
+choretracker.firebase.authEmulatorHost=10.0.2.2
+choretracker.firebase.authEmulatorPort=9099
+choretracker.firebase.firestoreEmulatorHost=10.0.2.2
+choretracker.firebase.firestoreEmulatorPort=8080
+```
+
+To use local emulators, set:
+
+```properties
+choretracker.firebase.useEmulators=true
+```
+
+Notes:
+
+- `10.0.2.2` is correct for the Android emulator.
+- For a physical device, replace the host with your machine's LAN IP.
+- Firebase Auth and Firestore emulator support is configured in `core:remote-firebase`.
 
 ## 7. Verify in app
 
@@ -72,6 +96,18 @@ After the file is added and auth is enabled:
 2. Use the Auth screen with email/password.
 3. Create a household.
 4. Confirm the app no longer shows the Firebase configuration warning.
+
+## 8. Optional: SHA fingerprints
+
+You do not need SHA fingerprints for the current v1 email/password flow.
+
+Add SHA-1 and SHA-256 later if you enable:
+
+- Google sign-in
+- phone auth
+- App Check providers that require them
+
+If you decide to add Google sign-in later, add both debug and release fingerprints.
 
 ## Official references
 
