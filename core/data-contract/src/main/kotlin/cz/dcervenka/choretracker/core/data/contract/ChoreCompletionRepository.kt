@@ -1,0 +1,16 @@
+package cz.dcervenka.choretracker.core.data.contract
+
+import cz.dcervenka.choretracker.core.common.EmptyResult
+import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
+import kotlinx.coroutines.flow.Flow
+
+interface ChoreCompletionRepository {
+    fun observeRecentCompletions(householdId: String, limit: Int = 10): Flow<List<RecentCompletion>>
+
+    suspend fun logCompletion(
+        householdId: String,
+        choreId: String,
+        participantMemberIds: List<String>,
+        note: String?,
+    ): EmptyResult
+}

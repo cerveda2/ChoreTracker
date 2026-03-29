@@ -1,16 +1,16 @@
 package cz.dcervenka.choretracker.core.domain
 
-import cz.dcervenka.choretracker.core.model.Chore
-import cz.dcervenka.choretracker.core.model.ChoreComparison
-import cz.dcervenka.choretracker.core.model.ChoreCompletion
-import cz.dcervenka.choretracker.core.model.ChoreStaleness
-import cz.dcervenka.choretracker.core.model.DashboardSnapshot
-import cz.dcervenka.choretracker.core.model.Household
-import cz.dcervenka.choretracker.core.model.HouseholdMember
-import cz.dcervenka.choretracker.core.model.MemberContribution
-import cz.dcervenka.choretracker.core.model.MonthlyBreakdown
-import cz.dcervenka.choretracker.core.model.RecentCompletion
-import cz.dcervenka.choretracker.core.model.StatsSnapshot
+import cz.dcervenka.choretracker.core.model.chore.Chore
+import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
+import cz.dcervenka.choretracker.core.model.household.Household
+import cz.dcervenka.choretracker.core.model.household.HouseholdMember
+import cz.dcervenka.choretracker.core.model.stats.ChoreComparison
+import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
+import cz.dcervenka.choretracker.core.model.stats.DashboardSnapshot
+import cz.dcervenka.choretracker.core.model.stats.MemberContribution
+import cz.dcervenka.choretracker.core.model.stats.MonthlyBreakdown
+import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
+import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
 import javax.inject.Inject
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate

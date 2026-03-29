@@ -1,8 +1,8 @@
 package cz.dcervenka.choretracker.core.remote.contract
 
 import cz.dcervenka.choretracker.core.common.EmptyResult
-import cz.dcervenka.choretracker.core.model.AuthState
-import cz.dcervenka.choretracker.core.model.PendingSyncOperation
+import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.sync.PendingSyncOperation
 import kotlinx.coroutines.flow.Flow
 
 interface RemoteAuthDataSource {

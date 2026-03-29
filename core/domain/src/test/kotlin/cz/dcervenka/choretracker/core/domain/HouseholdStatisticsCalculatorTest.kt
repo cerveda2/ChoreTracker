@@ -1,11 +1,11 @@
 package cz.dcervenka.choretracker.core.domain
 
 import com.google.common.truth.Truth.assertThat
-import cz.dcervenka.choretracker.core.model.Chore
-import cz.dcervenka.choretracker.core.model.ChoreCompletion
-import cz.dcervenka.choretracker.core.model.Household
-import cz.dcervenka.choretracker.core.model.HouseholdMember
-import cz.dcervenka.choretracker.core.model.HouseholdRole
+import cz.dcervenka.choretracker.core.model.chore.Chore
+import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
+import cz.dcervenka.choretracker.core.model.household.Household
+import cz.dcervenka.choretracker.core.model.household.HouseholdMember
+import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import org.junit.Test

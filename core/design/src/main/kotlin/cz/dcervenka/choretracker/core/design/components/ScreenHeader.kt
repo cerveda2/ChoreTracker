@@ -11,8 +11,8 @@ import cz.dcervenka.choretracker.core.design.LocalSpacing
 @Composable
 fun ScreenHeader(
     title: String,
-    subtitle: String? = null,
     modifier: Modifier = Modifier,
+    subtitle: String? = null,
 ) {
     val spacing = LocalSpacing.current
 

@@ -1,0 +1,67 @@
+package cz.dcervenka.choretracker.core.data.repository
+
+import cz.dcervenka.choretracker.core.common.AppResult
+import cz.dcervenka.choretracker.core.common.EmptyResult
+import cz.dcervenka.choretracker.core.data.contract.ChoreRepository
+import cz.dcervenka.choretracker.core.data.mapper.asModel
+import cz.dcervenka.choretracker.core.database.dao.ChoreDao
+import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
+import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
+import cz.dcervenka.choretracker.core.model.chore.Chore
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlin.time.Clock
+import java.util.UUID
+
+@Singleton
+class OfflineFirstChoreRepository @Inject constructor(
+    private val choreDao: ChoreDao,
+    private val pendingSyncOperationDao: PendingSyncOperationDao,
+) : ChoreRepository {
+
+    override fun observeChores(householdId: String): Flow<List<Chore>> =
+        choreDao.observeChores(householdId).map { chores -> chores.map(ChoreEntity::asModel) }
+
+    override suspend fun addChore(householdId: String, name: String): EmptyResult {
+        val choreId = UUID.randomUUID().toString()
+        choreDao.upsert(
+            ChoreEntity(
+                id = choreId,
+                householdId = householdId,
+                name = name,
+                isActive = true,
+                createdAt = Clock.System.now(),
+                deletedAt = null,
+            ),
+        )
+        pendingSyncOperationDao.upsert(
+            PendingSyncOperationEntity(
+                id = UUID.randomUUID().toString(),
+                entityType = "chore",
+                entityId = choreId,
+                operationType = "upsert",
+                payload = name,
+                createdAt = Clock.System.now(),
+            ),
+        )
+        return AppResult.Success(Unit)
+    }
+
+    override suspend fun updateChoreActive(choreId: String, isActive: Boolean): EmptyResult {
+        choreDao.updateActive(choreId, isActive, Clock.System.now())
+        pendingSyncOperationDao.upsert(
+            PendingSyncOperationEntity(
+                id = UUID.randomUUID().toString(),
+                entityType = "chore",
+                entityId = choreId,
+                operationType = if (isActive) "reactivate" else "deactivate",
+                payload = isActive.toString(),
+                createdAt = Clock.System.now(),
+            ),
+        )
+        return AppResult.Success(Unit)
+    }
+}

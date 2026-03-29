@@ -9,6 +9,7 @@ android {
 
 dependencies {
     implementation(projects.feature.stats.api)
+    implementation(projects.core.common)
     implementation(projects.core.dataContract)
     implementation(projects.core.design)
     implementation(projects.core.domain)
