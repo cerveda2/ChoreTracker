@@ -2,12 +2,11 @@ package cz.dcervenka.choretracker.feature.dashboard.impl.navigation
 
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavHostController
 import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import androidx.navigation.compose.composable
 import cz.dcervenka.choretracker.feature.dashboard.impl.screen.DashboardScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.screen.RecentCompletionDetailScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.screen.RecentCompletionsScreen

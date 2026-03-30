@@ -19,13 +19,15 @@ import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.household.Invite
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlin.time.Clock
 import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.time.Clock
+
+private const val INVITE_CODE_LENGTH = 8
 
 @Singleton
 class OfflineFirstHouseholdRepository @Inject constructor(
@@ -74,25 +76,31 @@ class OfflineFirstHouseholdRepository @Inject constructor(
 
     override suspend fun joinHousehold(code: String, currentUserDisplayName: String): AppResult<Household> {
         val invite = inviteDao.findByCode(code.trim())
-            ?: return AppResult.Error("No household invite with that code was found.")
-        val user = currentUser() ?: return AppResult.Error("Sign in or continue in preview mode first.")
-        val existing = memberDao.findByUserId(invite.householdId, user.id)
-        if (existing == null) {
-            memberDao.upsert(
-                MemberEntity(
-                    id = UUID.randomUUID().toString(),
-                    householdId = invite.householdId,
-                    userId = user.id,
-                    displayName = currentUserDisplayName.ifBlank { user.displayName },
-                    role = HouseholdRole.MEMBER.name,
-                    isCurrentUser = true,
-                ),
-            )
+        val user = currentUser()
+        return when {
+            invite == null -> AppResult.Error("No household invite with that code was found.")
+            user == null -> AppResult.Error("Sign in or continue in preview mode first.")
+            else -> {
+                val existing = memberDao.findByUserId(invite.householdId, user.id)
+                if (existing == null) {
+                    memberDao.upsert(
+                        MemberEntity(
+                            id = UUID.randomUUID().toString(),
+                            householdId = invite.householdId,
+                            userId = user.id,
+                            displayName = currentUserDisplayName.ifBlank { user.displayName },
+                            role = HouseholdRole.MEMBER.name,
+                            isCurrentUser = true,
+                        ),
+                    )
+                }
+                inviteDao.markConsumed(invite.id, Clock.System.now())
+                enqueueOperation("member", invite.householdId, "join", user.id)
+                householdDao.getHousehold(invite.householdId)
+                    ?.let { AppResult.Success(it.asModel()) }
+                    ?: AppResult.Error("The household for that invite is no longer available.")
+            }
         }
-        inviteDao.markConsumed(invite.id, Clock.System.now())
-        enqueueOperation("member", invite.householdId, "join", user.id)
-        return householdDao.getHousehold(invite.householdId)?.let { AppResult.Success(it.asModel()) }
-            ?: AppResult.Error("The household for that invite is no longer available.")
     }
 
     override suspend fun addMember(householdId: String, displayName: String): EmptyResult {
@@ -150,7 +158,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         InviteEntity(
             id = UUID.randomUUID().toString(),
             householdId = householdId,
-            code = UUID.randomUUID().toString().take(8).uppercase(),
+            code = UUID.randomUUID().toString().take(INVITE_CODE_LENGTH).uppercase(),
             createdAt = Clock.System.now(),
             consumedAt = null,
         )

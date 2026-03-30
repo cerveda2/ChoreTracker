@@ -5,11 +5,11 @@ import androidx.lifecycle.viewModelScope
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentStatsUseCase
 import cz.dcervenka.choretracker.feature.stats.impl.contract.StatsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import javax.inject.Inject
 
 @HiltViewModel
 class StatsViewModel @Inject constructor(

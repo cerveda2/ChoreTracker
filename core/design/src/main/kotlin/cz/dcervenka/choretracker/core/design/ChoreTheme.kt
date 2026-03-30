@@ -71,14 +71,19 @@ data class ChoreSpacing(
 
 @Immutable
 data class StatsPalette(
-    val chartA: Color = Color(0xFF2F5D50),
-    val chartB: Color = Color(0xFFB15A44),
-    val chartC: Color = Color(0xFFD9A441),
-    val chartD: Color = Color(0xFF647C68),
+    val chartA: Color = StatsChartAColor,
+    val chartB: Color = StatsChartBColor,
+    val chartC: Color = StatsChartCColor,
+    val chartD: Color = StatsChartDColor,
 )
 
 val LocalSpacing = staticCompositionLocalOf { ChoreSpacing() }
 val LocalStatsPalette = staticCompositionLocalOf { StatsPalette() }
+
+private val StatsChartAColor = Color(0xFF2F5D50)
+private val StatsChartBColor = Color(0xFFB15A44)
+private val StatsChartCColor = Color(0xFFD9A441)
+private val StatsChartDColor = Color(0xFF647C68)
 
 private val WarmTypography = Typography(
     displaySmall = TextStyle(fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.Bold),

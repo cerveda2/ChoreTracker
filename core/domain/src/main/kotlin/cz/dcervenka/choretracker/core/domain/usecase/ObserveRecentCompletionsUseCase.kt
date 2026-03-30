@@ -2,8 +2,8 @@ package cz.dcervenka.choretracker.core.domain.usecase
 
 import cz.dcervenka.choretracker.core.data.contract.ChoreCompletionRepository
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
-import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
 
 class ObserveRecentCompletionsUseCase @Inject constructor(
     private val choreCompletionRepository: ChoreCompletionRepository,

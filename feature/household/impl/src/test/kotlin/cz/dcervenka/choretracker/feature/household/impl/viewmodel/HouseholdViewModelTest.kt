@@ -11,11 +11,11 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseC
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInvitesUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
-import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import cz.dcervenka.choretracker.core.test.mock.sampleChore
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleInvite
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
+import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -58,7 +58,8 @@ class HouseholdViewModelTest {
     lateinit var updateChoreActiveUseCase: UpdateChoreActiveUseCase
 
     private val householdFlow = MutableStateFlow<cz.dcervenka.choretracker.core.model.household.Household?>(null)
-    private val membersFlow = MutableStateFlow(emptyList<cz.dcervenka.choretracker.core.model.household.HouseholdMember>())
+    private val membersFlow =
+        MutableStateFlow(emptyList<cz.dcervenka.choretracker.core.model.household.HouseholdMember>())
     private val invitesFlow = MutableStateFlow(emptyList<cz.dcervenka.choretracker.core.model.household.Invite>())
     private val choresFlow = MutableStateFlow(emptyList<cz.dcervenka.choretracker.core.model.chore.Chore>())
 

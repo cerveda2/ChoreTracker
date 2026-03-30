@@ -9,7 +9,11 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MemberDao {
-    @Query("SELECT * FROM members WHERE householdId = :householdId ORDER BY CASE WHEN isCurrentUser THEN 0 ELSE 1 END, displayName")
+    @Query(
+        "SELECT * FROM members " +
+            "WHERE householdId = :householdId " +
+            "ORDER BY CASE WHEN isCurrentUser THEN 0 ELSE 1 END, displayName",
+    )
     fun observeMembers(householdId: String): Flow<List<MemberEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

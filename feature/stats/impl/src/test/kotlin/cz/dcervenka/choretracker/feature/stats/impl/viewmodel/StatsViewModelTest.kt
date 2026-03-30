@@ -3,8 +3,8 @@ package cz.dcervenka.choretracker.feature.stats.impl.viewmodel
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentStatsUseCase
-import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import cz.dcervenka.choretracker.core.test.mock.sampleStatsSnapshot
+import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import io.mockk.MockKAnnotations
 import io.mockk.every
 import io.mockk.impl.annotations.MockK

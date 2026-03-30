@@ -9,12 +9,12 @@ import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.chore.Chore
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlin.time.Clock
 import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.time.Clock
 
 @Singleton
 class OfflineFirstChoreRepository @Inject constructor(

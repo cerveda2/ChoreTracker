@@ -9,12 +9,10 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignInUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignUpUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
-import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthMode
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiEffect
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiIntent
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +23,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(

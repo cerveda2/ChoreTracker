@@ -6,19 +6,19 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.AddChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateHouseholdNameUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
-import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
-import cz.dcervenka.choretracker.core.test.mock.sampleChore
 import cz.dcervenka.choretracker.core.test.mock.sampleAuthenticatedState
+import cz.dcervenka.choretracker.core.test.mock.sampleChore
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
+import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -68,7 +68,8 @@ class SettingsViewModelTest {
 
     private val authStateFlow = MutableStateFlow<AuthState>(AuthState.SignedOut)
     private val householdFlow = MutableStateFlow<cz.dcervenka.choretracker.core.model.household.Household?>(null)
-    private val membersFlow = MutableStateFlow(emptyList<cz.dcervenka.choretracker.core.model.household.HouseholdMember>())
+    private val membersFlow =
+        MutableStateFlow(emptyList<cz.dcervenka.choretracker.core.model.household.HouseholdMember>())
     private val choresFlow = MutableStateFlow(emptyList<cz.dcervenka.choretracker.core.model.chore.Chore>())
 
     @Before
@@ -85,7 +86,9 @@ class SettingsViewModelTest {
         coEvery { signOutUseCase() } returns AppResult.Success(Unit)
         coEvery { addMemberUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { addChoreUseCase(any(), any()) } returns AppResult.Success(Unit)
-        coEvery { createInviteUseCase(any()) } returns AppResult.Success(cz.dcervenka.choretracker.core.test.mock.sampleInvite())
+        coEvery {
+            createInviteUseCase(any())
+        } returns AppResult.Success(cz.dcervenka.choretracker.core.test.mock.sampleInvite())
         coEvery { updateChoreActiveUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateHouseholdNameUseCase(any(), any()) } returns AppResult.Success(Unit)
     }

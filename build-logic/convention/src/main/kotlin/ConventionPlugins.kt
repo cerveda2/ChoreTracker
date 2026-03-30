@@ -1,10 +1,10 @@
+import com.android.build.api.dsl.CommonExtension
 import io.gitlab.arturbosch.detekt.Detekt
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
-import com.android.build.api.dsl.CommonExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.configure
+import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.withType
 
 class AndroidApplicationConventionPlugin : Plugin<Project> {
@@ -122,7 +122,7 @@ class DetektConventionPlugin : Plugin<Project> {
             extensions.configure<DetektExtension> {
                 buildUponDefaultConfig = true
                 parallel = true
-                ignoreFailures = true
+                ignoreFailures = false
                 config.setFrom(rootProject.file("config/detekt/detekt.yml"))
             }
 

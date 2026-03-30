@@ -6,11 +6,11 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveStartupDestinationUs
 import cz.dcervenka.choretracker.core.model.app.StartupDestination
 import cz.dcervenka.choretracker.navigation.RootDestination
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import javax.inject.Inject
 
 @HiltViewModel
 class AppViewModel @Inject constructor(
@@ -25,8 +25,8 @@ class AppViewModel @Inject constructor(
             }
         }
         .stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = RootDestination.Auth,
-    )
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = RootDestination.Auth,
+        )
 }

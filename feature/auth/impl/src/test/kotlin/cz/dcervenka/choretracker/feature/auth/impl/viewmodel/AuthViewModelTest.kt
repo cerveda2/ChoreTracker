@@ -7,8 +7,8 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignInUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignUpUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
-import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import cz.dcervenka.choretracker.core.test.mock.sampleAuthenticatedState
+import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiIntent
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
@@ -93,21 +93,24 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun `sign up with missing email and password surfaces validation instead of calling use case`() = runTest(coroutineRule.dispatcher) {
-        val viewModel = createViewModel()
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            viewModel.uiState.collect {}
+    fun `sign up with missing email and password surfaces validation instead of calling use case`() =
+        runTest(coroutineRule.dispatcher) {
+            val viewModel = createViewModel()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                viewModel.uiState.collect {}
+            }
+
+            viewModel.dispatch(AuthUiIntent.DisplayNameChanged("David"))
+            advanceUntilIdle()
+
+            viewModel.dispatch(AuthUiIntent.SignUpClicked)
+            advanceUntilIdle()
+
+            assertThat(viewModel.uiState.value.errorMessage).isEqualTo("Email is required.")
+            coVerify(exactly = 0) {
+                signUpUseCase(any(), any(), any())
+            }
         }
-
-        viewModel.dispatch(AuthUiIntent.DisplayNameChanged("David"))
-        advanceUntilIdle()
-
-        viewModel.dispatch(AuthUiIntent.SignUpClicked)
-        advanceUntilIdle()
-
-        assertThat(viewModel.uiState.value.errorMessage).isEqualTo("Email is required.")
-        coVerify(exactly = 0) { signUpUseCase(any(), any(), any()) }
-    }
 
     @Test
     fun `sign up with missing display name is rejected before submission`() = runTest(coroutineRule.dispatcher) {

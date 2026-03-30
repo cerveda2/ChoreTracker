@@ -11,12 +11,12 @@ import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.remote.contract.RemoteAuthDataSource
 import cz.dcervenka.choretracker.core.remote.firebase.runtime.FirebaseRuntimeConfigurator
 import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.coroutines.resume
 
 @Singleton
@@ -63,46 +63,93 @@ class FirebaseAuthDataSource @Inject constructor(
     }
 
     override suspend fun signIn(email: String, password: String): EmptyResult {
-        val auth = firebaseAuth ?: return AppResult.Error("Firebase isn't configured yet.")
-        if (email.isBlank()) return AppResult.Error("Email is required.")
-        if (password.isBlank()) return AppResult.Error("Password is required.")
-        return suspendCancellableCoroutine { continuation ->
-            auth.signInWithEmailAndPassword(email, password)
-                .addOnSuccessListener { continuation.resume(AppResult.Success(Unit)) }
-                .addOnFailureListener { continuation.resume(AppResult.Error(it.message ?: "Unable to sign in.", it)) }
-        }
+        val validationError = validateCredentials(
+            email = email,
+            password = password,
+        )
+        return validationError ?: firebaseAuth?.let { auth ->
+            suspendCancellableCoroutine { continuation ->
+                auth.signInWithEmailAndPassword(email, password)
+                    .addOnSuccessListener { continuation.resume(AppResult.Success(Unit)) }
+                    .addOnFailureListener { throwable ->
+                        continuation.resume(
+                            AppResult.Error(
+                                throwable.message ?: "Unable to sign in.",
+                                throwable,
+                            ),
+                        )
+                    }
+            }
+        } ?: AppResult.Error("Firebase isn't configured yet.")
     }
 
     override suspend fun signUp(email: String, password: String, displayName: String): EmptyResult {
-        val auth = firebaseAuth ?: return AppResult.Error("Firebase isn't configured yet.")
-        if (displayName.isBlank()) return AppResult.Error("Display name is required.")
-        if (email.isBlank()) return AppResult.Error("Email is required.")
-        if (password.isBlank()) return AppResult.Error("Password is required.")
-        return suspendCancellableCoroutine { continuation ->
-            auth.createUserWithEmailAndPassword(email, password)
-                .addOnSuccessListener { result ->
-                    val user = result.user
-                    if (user == null) {
-                        continuation.resume(AppResult.Error("The Firebase account was created without a user instance."))
-                    } else {
-                        user.updateProfile(
-                            UserProfileChangeRequest.Builder()
-                                .setDisplayName(displayName)
-                                .build(),
-                        )
-                            .addOnSuccessListener { continuation.resume(AppResult.Success(Unit)) }
-                            .addOnFailureListener {
-                                continuation.resume(AppResult.Error(it.message ?: "Unable to update profile.", it))
-                            }
+        val validationError = validateSignUpInputs(
+            email = email,
+            password = password,
+            displayName = displayName,
+        )
+        return validationError ?: firebaseAuth?.let { auth ->
+            suspendCancellableCoroutine { continuation ->
+                auth.createUserWithEmailAndPassword(email, password)
+                    .addOnSuccessListener { result ->
+                        val user = result.user
+                        if (user == null) {
+                            continuation.resume(
+                                AppResult.Error(
+                                    "The Firebase account was created without a user instance.",
+                                ),
+                            )
+                        } else {
+                            user.updateProfile(
+                                UserProfileChangeRequest.Builder()
+                                    .setDisplayName(displayName)
+                                    .build(),
+                            )
+                                .addOnSuccessListener { continuation.resume(AppResult.Success(Unit)) }
+                                .addOnFailureListener { throwable ->
+                                    continuation.resume(
+                                        AppResult.Error(
+                                            throwable.message ?: "Unable to update profile.",
+                                            throwable,
+                                        ),
+                                    )
+                                }
+                        }
                     }
-                }
-                .addOnFailureListener { continuation.resume(AppResult.Error(it.message ?: "Unable to create account.", it)) }
-        }
+                    .addOnFailureListener { throwable ->
+                        continuation.resume(
+                            AppResult.Error(
+                                throwable.message ?: "Unable to create account.",
+                                throwable,
+                            ),
+                        )
+                    }
+            }
+        } ?: AppResult.Error("Firebase isn't configured yet.")
     }
 
     override suspend fun signOut(): EmptyResult {
         val auth = firebaseAuth ?: return AppResult.Success(Unit)
         auth.signOut()
         return AppResult.Success(Unit)
+    }
+
+    private fun validateCredentials(email: String, password: String): EmptyResult? = when {
+        email.isBlank() -> AppResult.Error("Email is required.")
+        password.isBlank() -> AppResult.Error("Password is required.")
+        else -> null
+    }
+
+    private fun validateSignUpInputs(
+        email: String,
+        password: String,
+        displayName: String,
+    ): EmptyResult? = when {
+        displayName.isBlank() -> AppResult.Error("Display name is required.")
+        else -> validateCredentials(
+            email = email,
+            password = password,
+        )
     }
 }

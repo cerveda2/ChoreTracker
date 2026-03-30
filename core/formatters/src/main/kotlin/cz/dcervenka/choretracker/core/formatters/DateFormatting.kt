@@ -1,12 +1,12 @@
 package cz.dcervenka.choretracker.core.formatters
 
 import android.text.format.DateFormat
+import kotlinx.datetime.LocalDate
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.time.Instant
-import kotlinx.datetime.LocalDate
 
 fun formatInstantForLocale(
     instant: Instant,
@@ -37,8 +37,12 @@ fun formatMonthLabelForLocale(
     rawLabel: String,
     locale: Locale = Locale.getDefault(),
 ): String {
-    val year = rawLabel.substringBefore('-').toIntOrNull() ?: return rawLabel
-    val month = rawLabel.substringAfter('-', "").toIntOrNull() ?: return rawLabel
+    val year = rawLabel.substringBefore('-').toIntOrNull()
+    val month = rawLabel.substringAfter('-', "").toIntOrNull()
+    if (year == null || month == null) {
+        return rawLabel
+    }
+
     val pattern = DateFormat.getBestDateTimePattern(locale, "yMMMM")
     return SimpleDateFormat(pattern, locale).format(
         Date(

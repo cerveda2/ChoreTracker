@@ -13,31 +13,34 @@ internal object FirebaseRuntimeConfigurator {
     private var configured = false
 
     fun configure(context: Context) {
-        if (configured) return
+        val shouldConfigure = !configured && FirebaseApp.getApps(context).isNotEmpty()
+        if (!shouldConfigure) {
+            return
+        }
+
         synchronized(this) {
-            if (configured) return
-            if (FirebaseApp.getApps(context).isEmpty()) return
+            if (!configured && FirebaseApp.getApps(context).isNotEmpty()) {
+                val auth = FirebaseAuth.getInstance()
+                val firestore = FirebaseFirestore.getInstance()
 
-            val auth = FirebaseAuth.getInstance()
-            val firestore = FirebaseFirestore.getInstance()
+                if (BuildConfig.USE_FIREBASE_EMULATORS) {
+                    auth.useEmulator(
+                        BuildConfig.FIREBASE_AUTH_EMULATOR_HOST,
+                        BuildConfig.FIREBASE_AUTH_EMULATOR_PORT,
+                    )
+                    firestore.useEmulator(
+                        BuildConfig.FIREBASE_FIRESTORE_EMULATOR_HOST,
+                        BuildConfig.FIREBASE_FIRESTORE_EMULATOR_PORT,
+                    )
+                }
 
-            if (BuildConfig.USE_FIREBASE_EMULATORS) {
-                auth.useEmulator(
-                    BuildConfig.FIREBASE_AUTH_EMULATOR_HOST,
-                    BuildConfig.FIREBASE_AUTH_EMULATOR_PORT,
-                )
-                firestore.useEmulator(
-                    BuildConfig.FIREBASE_FIRESTORE_EMULATOR_HOST,
-                    BuildConfig.FIREBASE_FIRESTORE_EMULATOR_PORT,
-                )
+                firestore.firestoreSettings = FirebaseFirestoreSettings.Builder(firestore.firestoreSettings)
+                    .setLocalCacheSettings(
+                        PersistentCacheSettings.newBuilder().build(),
+                    )
+                    .build()
+                configured = true
             }
-
-            firestore.firestoreSettings = FirebaseFirestoreSettings.Builder(firestore.firestoreSettings)
-                .setLocalCacheSettings(
-                    PersistentCacheSettings.newBuilder().build(),
-                )
-                .build()
-            configured = true
         }
     }
 }

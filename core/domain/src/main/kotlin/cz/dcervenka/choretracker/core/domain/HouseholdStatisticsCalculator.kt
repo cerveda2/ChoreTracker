@@ -11,13 +11,17 @@ import cz.dcervenka.choretracker.core.model.stats.MemberContribution
 import cz.dcervenka.choretracker.core.model.stats.MonthlyBreakdown
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
-import javax.inject.Inject
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
+import javax.inject.Inject
+
+private const val NEEDS_ATTENTION_THRESHOLD_DAYS = 14
+private const val SOON_THRESHOLD_DAYS = 7
+private const val MONTHLY_BREAKDOWN_LIMIT = 6
 
 class HouseholdStatisticsCalculator @Inject constructor() {
 
@@ -167,7 +171,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         }
         .entries
         .sortedByDescending { it.key }
-        .take(6)
+        .take(MONTHLY_BREAKDOWN_LIMIT)
         .map { (monthLabel, monthCompletions) ->
             MonthlyBreakdown(
                 monthLabel = monthLabel,
@@ -203,8 +207,8 @@ class HouseholdStatisticsCalculator @Inject constructor() {
                 daysSinceLastCompletion = daysSinceLastCompletion,
                 status = when {
                     daysSinceLastCompletion == null -> "Never"
-                    daysSinceLastCompletion >= 14 -> "Needs attention"
-                    daysSinceLastCompletion >= 7 -> "Soon"
+                    daysSinceLastCompletion >= NEEDS_ATTENTION_THRESHOLD_DAYS -> "Needs attention"
+                    daysSinceLastCompletion >= SOON_THRESHOLD_DAYS -> "Soon"
                     else -> "OK"
                 },
             )

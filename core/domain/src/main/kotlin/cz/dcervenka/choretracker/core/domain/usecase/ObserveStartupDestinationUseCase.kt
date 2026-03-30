@@ -4,9 +4,9 @@ import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
 import cz.dcervenka.choretracker.core.model.app.StartupDestination
 import cz.dcervenka.choretracker.core.model.auth.AuthState
-import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import javax.inject.Inject
 
 class ObserveStartupDestinationUseCase @Inject constructor(
     private val authRepository: AuthRepository,

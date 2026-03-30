@@ -14,12 +14,12 @@ import cz.dcervenka.choretracker.core.domain.HouseholdStatisticsCalculator
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.stats.DashboardSnapshot
 import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.time.Clock
 
 @Singleton

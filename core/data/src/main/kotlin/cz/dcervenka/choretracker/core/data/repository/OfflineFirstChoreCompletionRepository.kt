@@ -14,13 +14,13 @@ import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntit
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlin.time.Clock
 import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.time.Clock
 
 @Singleton
 class OfflineFirstChoreCompletionRepository @Inject constructor(

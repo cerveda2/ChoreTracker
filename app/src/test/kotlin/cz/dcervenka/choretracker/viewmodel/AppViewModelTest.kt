@@ -2,13 +2,13 @@ package cz.dcervenka.choretracker.viewmodel
 
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveStartupDestinationUseCase
-import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import cz.dcervenka.choretracker.core.model.app.StartupDestination
+import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import cz.dcervenka.choretracker.navigation.RootDestination
-import kotlinx.coroutines.flow.MutableStateFlow
 import io.mockk.MockKAnnotations
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
