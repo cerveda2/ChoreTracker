@@ -61,9 +61,11 @@ class AuthViewModel @Inject constructor(
                 current.copy(password = intent.value, errorMessage = null)
             }
             AuthUiIntent.SignInClicked -> submit { state ->
+                validateSignIn(state)?.let { return@submit it }
                 signInUseCase(state.email, state.password)
             }
             AuthUiIntent.SignUpClicked -> submit { state ->
+                validateSignUp(state)?.let { return@submit it }
                 signUpUseCase(state.email, state.password, state.displayName)
             }
             AuthUiIntent.ContinuePreviewClicked -> submit { state ->
@@ -91,5 +93,18 @@ class AuthViewModel @Inject constructor(
             }
             mutableUiState.update { current -> current.copy(isWorking = false) }
         }
+    }
+
+    private fun validateSignIn(state: AuthUiState): EmptyResult? = when {
+        state.email.isBlank() -> AppResult.Error("Email is required.")
+        state.password.isBlank() -> AppResult.Error("Password is required.")
+        else -> null
+    }
+
+    private fun validateSignUp(state: AuthUiState): EmptyResult? = when {
+        state.displayName.isBlank() -> AppResult.Error("Display name is required.")
+        state.email.isBlank() -> AppResult.Error("Email is required.")
+        state.password.isBlank() -> AppResult.Error("Password is required.")
+        else -> null
     }
 }

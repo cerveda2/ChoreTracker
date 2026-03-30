@@ -93,6 +93,42 @@ class AuthViewModelTest {
     }
 
     @Test
+    fun `sign up with missing email and password surfaces validation instead of calling use case`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+
+        viewModel.dispatch(AuthUiIntent.DisplayNameChanged("David"))
+        advanceUntilIdle()
+
+        viewModel.dispatch(AuthUiIntent.SignUpClicked)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.errorMessage).isEqualTo("Email is required.")
+        coVerify(exactly = 0) { signUpUseCase(any(), any(), any()) }
+    }
+
+    @Test
+    fun `sign up with missing display name is rejected before submission`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+
+        viewModel.dispatch(AuthUiIntent.EmailChanged("dana@example.com"))
+        advanceUntilIdle()
+        viewModel.dispatch(AuthUiIntent.PasswordChanged("password123"))
+        advanceUntilIdle()
+
+        viewModel.dispatch(AuthUiIntent.SignUpClicked)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.errorMessage).isEqualTo("Display name is required.")
+        coVerify(exactly = 0) { signUpUseCase(any(), any(), any()) }
+    }
+
+    @Test
     fun `requires configuration mirrors auth state`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {

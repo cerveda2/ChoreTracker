@@ -84,7 +84,7 @@ fun DashboardScreen(
                     Text(stringResource(R.string.dashboard_quick_log), style = MaterialTheme.typography.titleLarge)
                 }
             }
-            items(snapshot.activeChores, key = { it.id }) { chore ->
+            items(snapshot.activeChores, key = { "active-${it.id}" }) { chore ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -121,7 +121,7 @@ fun DashboardScreen(
                     Text(stringResource(R.string.dashboard_recent_completions), style = MaterialTheme.typography.titleLarge)
                 }
             }
-            items(snapshot.recentCompletions, key = { it.completionId }) { completion ->
+            items(snapshot.recentCompletions, key = { "recent-${it.completionId}" }) { completion ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -139,7 +139,7 @@ fun DashboardScreen(
                     Text(stringResource(R.string.dashboard_needs_attention), style = MaterialTheme.typography.titleLarge)
                 }
             }
-            items(snapshot.staleChores, key = { it.choreId }) { stale ->
+            items(snapshot.staleChores, key = { "stale-${it.choreId}" }) { stale ->
                 AssistChip(
                     onClick = {},
                     label = { Text(stringResource(R.string.dashboard_stale_chip, stale.choreName, stale.status)) },

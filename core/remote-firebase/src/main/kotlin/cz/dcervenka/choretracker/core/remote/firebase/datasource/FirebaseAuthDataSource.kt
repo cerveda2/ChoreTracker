@@ -64,6 +64,8 @@ class FirebaseAuthDataSource @Inject constructor(
 
     override suspend fun signIn(email: String, password: String): EmptyResult {
         val auth = firebaseAuth ?: return AppResult.Error("Firebase isn't configured yet.")
+        if (email.isBlank()) return AppResult.Error("Email is required.")
+        if (password.isBlank()) return AppResult.Error("Password is required.")
         return suspendCancellableCoroutine { continuation ->
             auth.signInWithEmailAndPassword(email, password)
                 .addOnSuccessListener { continuation.resume(AppResult.Success(Unit)) }
@@ -73,6 +75,9 @@ class FirebaseAuthDataSource @Inject constructor(
 
     override suspend fun signUp(email: String, password: String, displayName: String): EmptyResult {
         val auth = firebaseAuth ?: return AppResult.Error("Firebase isn't configured yet.")
+        if (displayName.isBlank()) return AppResult.Error("Display name is required.")
+        if (email.isBlank()) return AppResult.Error("Email is required.")
+        if (password.isBlank()) return AppResult.Error("Password is required.")
         return suspendCancellableCoroutine { continuation ->
             auth.createUserWithEmailAndPassword(email, password)
                 .addOnSuccessListener { result ->
