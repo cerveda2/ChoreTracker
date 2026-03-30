@@ -9,8 +9,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -58,7 +58,7 @@ fun AuthScreen(
                     )
                 }
             }
-            TabRow(selectedTabIndex = uiState.authMode.ordinal) {
+            PrimaryTabRow(selectedTabIndex = uiState.authMode.ordinal) {
                 AuthMode.entries.forEach { mode ->
                     Tab(
                         selected = uiState.authMode == mode,

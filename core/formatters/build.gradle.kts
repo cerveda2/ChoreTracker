@@ -16,5 +16,5 @@ dependencies {
 
     testImplementation(libs.junit4)
     testImplementation(libs.google.truth)
-    testImplementation("org.robolectric:robolectric:4.16")
+    testImplementation(libs.robolectric)
 }

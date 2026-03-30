@@ -1,6 +1,5 @@
 package cz.dcervenka.choretracker.feature.auth.impl.contract
 
-import cz.dcervenka.choretracker.core.common.UiEffect
 import cz.dcervenka.choretracker.core.common.UiIntent
 import cz.dcervenka.choretracker.core.common.UiState
 
@@ -27,8 +26,4 @@ sealed interface AuthUiIntent : UiIntent {
     data object SignInClicked : AuthUiIntent
     data object SignUpClicked : AuthUiIntent
     data object ContinuePreviewClicked : AuthUiIntent
-}
-
-sealed interface AuthUiEffect : UiEffect {
-    data class SubmissionFailed(val message: String) : AuthUiEffect
 }
