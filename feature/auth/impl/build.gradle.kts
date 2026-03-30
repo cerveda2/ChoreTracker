@@ -8,11 +8,18 @@ android {
 }
 
 dependencies {
-    implementation(projects.feature.auth.api)
     implementation(projects.core.common)
-    implementation(projects.core.dataContract)
     implementation(projects.core.design)
+    implementation(projects.core.domain)
     implementation(projects.core.model)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
+
+    testImplementation(projects.core.dataContract)
+    testImplementation(projects.core.test)
+    testImplementation(libs.junit4)
+    testImplementation(libs.google.truth)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
 }

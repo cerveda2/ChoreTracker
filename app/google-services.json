@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "428511190861",
+    "project_id": "choretracker-fb576",
+    "storage_bucket": "choretracker-fb576.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:428511190861:android:f3fb558ff2ca9d23ed2104",
+        "android_client_info": {
+          "package_name": "cz.dcervenka.choretracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBw3FLWqflZzcoS6PXCZIgmOiSdEcPKs-E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -4,7 +4,8 @@ import android.content.Context
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.firestoreSettings
+import com.google.firebase.firestore.FirebaseFirestoreSettings
+import com.google.firebase.firestore.PersistentCacheSettings
 import cz.dcervenka.choretracker.core.remote.firebase.BuildConfig
 
 internal object FirebaseRuntimeConfigurator {
@@ -31,9 +32,11 @@ internal object FirebaseRuntimeConfigurator {
                 )
             }
 
-            firestore.firestoreSettings = firestoreSettings {
-                isPersistenceEnabled = true
-            }
+            firestore.firestoreSettings = FirebaseFirestoreSettings.Builder(firestore.firestoreSettings)
+                .setLocalCacheSettings(
+                    PersistentCacheSettings.newBuilder().build(),
+                )
+                .build()
             configured = true
         }
     }

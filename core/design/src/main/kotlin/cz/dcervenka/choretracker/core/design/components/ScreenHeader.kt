@@ -6,6 +6,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 
 @Composable
@@ -31,5 +33,16 @@ fun ScreenHeader(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ScreenHeaderPreview() {
+    ChoreTrackerTheme {
+        ScreenHeader(
+            title = "Household stats",
+            subtitle = "A calm, glanceable overview of who handled what lately.",
+        )
     }
 }

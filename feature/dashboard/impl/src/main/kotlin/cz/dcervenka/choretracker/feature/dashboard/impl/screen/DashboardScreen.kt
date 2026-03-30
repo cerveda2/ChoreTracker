@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -24,7 +23,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
+import cz.dcervenka.choretracker.core.design.PreviewData
+import cz.dcervenka.choretracker.core.design.R
+import cz.dcervenka.choretracker.core.design.components.LoadingState
+import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 
 @Composable
@@ -39,9 +45,7 @@ fun DashboardScreen(
     val snapshot = uiState.snapshot
 
     if (snapshot == null) {
-        Column(modifier = Modifier.fillMaxSize().padding(spacing.large)) {
-            Text("Loading dashboard...")
-        }
+        LoadingState(message = stringResource(R.string.dashboard_loading))
     } else {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -51,7 +55,7 @@ fun DashboardScreen(
                 Column(modifier = Modifier.padding(spacing.large)) {
                     Text(snapshot.household.name, style = MaterialTheme.typography.headlineMedium)
                     Text(
-                        "Recent balance and task flow",
+                        stringResource(R.string.dashboard_recent_balance),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -69,7 +73,7 @@ fun DashboardScreen(
                             Column(modifier = Modifier.padding(spacing.medium)) {
                                 Text(contribution.displayName, style = MaterialTheme.typography.titleMedium)
                                 Text("${contribution.totalCount}", style = MaterialTheme.typography.headlineMedium)
-                                Text("last 30d: ${contribution.last30DaysCount}")
+                                Text(stringResource(R.string.dashboard_last_30d, contribution.last30DaysCount))
                             }
                         }
                     }
@@ -77,7 +81,7 @@ fun DashboardScreen(
             }
             item {
                 Column(modifier = Modifier.padding(horizontal = spacing.large)) {
-                    Text("Quick log", style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.dashboard_quick_log), style = MaterialTheme.typography.titleLarge)
                 }
             }
             items(snapshot.activeChores, key = { it.id }) { chore ->
@@ -95,24 +99,26 @@ fun DashboardScreen(
                         Column {
                             Text(chore.name, style = MaterialTheme.typography.titleMedium)
                             Text(
-                                "Tap to record who completed this.",
+                                stringResource(R.string.dashboard_record_prompt),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        Button(onClick = {
+                        PrimaryButton(
+                            text = stringResource(R.string.dashboard_log),
+                            onClick = {
                             selectedChoreId = chore.id
                             selectedMembers.clear()
                             selectedNote = ""
-                        }) {
-                            Text("Log")
-                        }
+                        },
+                            fillMaxWidth = false,
+                        )
                     }
                 }
             }
             item {
                 Column(modifier = Modifier.padding(horizontal = spacing.large)) {
-                    Text("Recent completions", style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.dashboard_recent_completions), style = MaterialTheme.typography.titleLarge)
                 }
             }
             items(snapshot.recentCompletions, key = { it.completionId }) { completion ->
@@ -130,13 +136,13 @@ fun DashboardScreen(
             }
             item {
                 Column(modifier = Modifier.padding(horizontal = spacing.large)) {
-                    Text("Needs attention", style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.dashboard_needs_attention), style = MaterialTheme.typography.titleLarge)
                 }
             }
             items(snapshot.staleChores, key = { it.choreId }) { stale ->
                 AssistChip(
                     onClick = {},
-                    label = { Text("${stale.choreName}: ${stale.status}") },
+                    label = { Text(stringResource(R.string.dashboard_stale_chip, stale.choreName, stale.status)) },
                     modifier = Modifier.padding(horizontal = spacing.large),
                 )
             }
@@ -146,10 +152,10 @@ fun DashboardScreen(
     if (selectedChoreId != null && snapshot != null) {
         AlertDialog(
             onDismissRequest = { selectedChoreId = null },
-            title = { Text("Log completion") },
+            title = { Text(stringResource(R.string.dashboard_log_completion)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
-                    Text("Who completed this chore?")
+                    Text(stringResource(R.string.dashboard_who_completed))
                     uiState.members.forEach { member ->
                         FilterChip(
                             selected = selectedMembers.contains(member.id),
@@ -166,7 +172,7 @@ fun DashboardScreen(
                     OutlinedTextField(
                         value = selectedNote,
                         onValueChange = { selectedNote = it },
-                        label = { Text("Note") },
+                        label = { Text(stringResource(R.string.dashboard_note)) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -186,14 +192,28 @@ fun DashboardScreen(
                     },
                     enabled = selectedMembers.isNotEmpty(),
                 ) {
-                    Text("Save")
+                    Text(stringResource(R.string.common_save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { selectedChoreId = null }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.common_cancel))
                 }
             },
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 1200)
+@Composable
+private fun DashboardScreenPreview() {
+    ChoreTrackerTheme {
+        DashboardScreen(
+            uiState = DashboardUiState(
+                snapshot = PreviewData.dashboardSnapshot,
+                members = PreviewData.members,
+            ),
+            onLogCompletion = { _, _, _, _ -> },
         )
     }
 }

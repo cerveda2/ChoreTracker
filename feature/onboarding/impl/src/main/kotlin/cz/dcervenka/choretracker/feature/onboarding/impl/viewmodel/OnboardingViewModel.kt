@@ -3,7 +3,8 @@ package cz.dcervenka.choretracker.feature.onboarding.impl.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cz.dcervenka.choretracker.core.common.AppResult
-import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
+import cz.dcervenka.choretracker.core.domain.usecase.CreateHouseholdUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.JoinHouseholdUseCase
 import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -16,7 +17,8 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
-    private val householdRepository: HouseholdRepository,
+    private val createHouseholdUseCase: CreateHouseholdUseCase,
+    private val joinHouseholdUseCase: JoinHouseholdUseCase,
 ) : ViewModel() {
     private val householdName = MutableStateFlow("")
     private val displayName = MutableStateFlow("")
@@ -58,7 +60,7 @@ class OnboardingViewModel @Inject constructor(
 
     fun createHousehold() {
         submit {
-            householdRepository.createHousehold(
+            createHouseholdUseCase(
                 name = householdName.value,
                 ownerDisplayName = displayName.value,
             )
@@ -67,7 +69,7 @@ class OnboardingViewModel @Inject constructor(
 
     fun joinHousehold() {
         submit {
-            householdRepository.joinHousehold(
+            joinHouseholdUseCase(
                 code = inviteCode.value,
                 currentUserDisplayName = displayName.value,
             )

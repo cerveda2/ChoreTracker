@@ -6,8 +6,3 @@ sealed interface AppResult<out T> {
 }
 
 typealias EmptyResult = AppResult<Unit>
-
-inline fun <T> AppResult<T>.getOrNull(): T? = when (this) {
-    is AppResult.Success -> value
-    is AppResult.Error -> null
-}

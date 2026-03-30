@@ -2,7 +2,8 @@ package cz.dcervenka.choretracker.feature.settings.impl.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import cz.dcervenka.choretracker.core.data.contract.AuthRepository
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,16 +16,15 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val authRepository: AuthRepository,
+    observeAuthStateUseCase: ObserveAuthStateUseCase,
+    private val signOutUseCase: SignOutUseCase,
 ) : ViewModel() {
-    val uiState: StateFlow<SettingsUiState> = authRepository.authState.map { state ->
-        SettingsUiState(
-            userLabel = when (state) {
-                is AuthState.Authenticated -> state.user.displayName
-                AuthState.RequiresConfiguration -> "Firebase setup required"
-                AuthState.SignedOut -> "Signed out"
-            },
-        )
+    val uiState: StateFlow<SettingsUiState> = observeAuthStateUseCase().map { state ->
+        when (state) {
+            is AuthState.Authenticated -> SettingsUiState(userLabel = state.user.displayName)
+            AuthState.RequiresConfiguration -> SettingsUiState(requiresConfiguration = true)
+            AuthState.SignedOut -> SettingsUiState(isSignedOut = true)
+        }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -33,7 +33,7 @@ class SettingsViewModel @Inject constructor(
 
     fun signOut() {
         viewModelScope.launch {
-            authRepository.signOut()
+            signOutUseCase()
         }
     }
 }

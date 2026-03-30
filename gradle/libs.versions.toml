@@ -20,6 +20,7 @@ espresso = "3.7.0"
 junit4 = "4.13.2"
 turbine = "1.2.1"
 truth = "1.4.5"
+mockk = "1.13.12"
 javaxInject = "1"
 compileSdk = "36"
 targetSdk = "36"
@@ -72,6 +73,7 @@ junit4 = { group = "junit", name = "junit", version.ref = "junit4" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExt" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
 google-truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 javax-inject = { group = "javax.inject", name = "javax.inject", version.ref = "javaxInject" }
 

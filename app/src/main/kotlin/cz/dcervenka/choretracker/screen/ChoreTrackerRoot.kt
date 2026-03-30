@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -18,7 +19,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
-import cz.dcervenka.choretracker.feature.auth.api.AUTH_ROUTE
+import cz.dcervenka.choretracker.feature.auth.impl.navigation.AuthDestination
 import cz.dcervenka.choretracker.feature.auth.impl.navigation.authScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.navigation.dashboardScreen
 import cz.dcervenka.choretracker.feature.household.impl.navigation.householdScreen
@@ -69,7 +70,7 @@ fun ChoreTrackerRoot(
                                     }
                                 },
                                 icon = { Icon(destination.icon, contentDescription = null) },
-                                label = { Text(destination.label) },
+                                label = { Text(stringResource(destination.labelRes)) },
                             )
                         }
                     }
@@ -78,7 +79,7 @@ fun ChoreTrackerRoot(
         ) { padding ->
             NavHost(
                 navController = navController,
-                startDestination = AUTH_ROUTE,
+                startDestination = AuthDestination.route,
                 modifier = Modifier.padding(padding),
             ) {
                 authScreen()

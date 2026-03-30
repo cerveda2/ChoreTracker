@@ -2,8 +2,14 @@ package cz.dcervenka.choretracker.feature.household.impl.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import cz.dcervenka.choretracker.core.data.contract.ChoreRepository
-import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
+import cz.dcervenka.choretracker.core.domain.usecase.AddChoreUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveInvitesUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.feature.household.impl.contract.HouseholdUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -18,19 +24,25 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class HouseholdViewModel @Inject constructor(
-    private val householdRepository: HouseholdRepository,
-    private val choreRepository: ChoreRepository,
+    observeCurrentHouseholdUseCase: ObserveCurrentHouseholdUseCase,
+    private val observeMembersUseCase: ObserveMembersUseCase,
+    private val observeInvitesUseCase: ObserveInvitesUseCase,
+    private val observeChoresUseCase: ObserveChoresUseCase,
+    private val addMemberUseCase: AddMemberUseCase,
+    private val addChoreUseCase: AddChoreUseCase,
+    private val createInviteUseCase: CreateInviteUseCase,
+    private val updateChoreActiveUseCase: UpdateChoreActiveUseCase,
 ) : ViewModel() {
     private val memberInput = MutableStateFlow("")
     private val choreInput = MutableStateFlow("")
 
-    val uiState: StateFlow<HouseholdUiState> = householdRepository.observeCurrentHousehold()
+    val uiState: StateFlow<HouseholdUiState> = observeCurrentHouseholdUseCase()
         .filterNotNull()
         .flatMapLatest { household ->
             combine(
-                householdRepository.observeMembers(household.id),
-                householdRepository.observeInvites(household.id),
-                choreRepository.observeChores(household.id),
+                observeMembersUseCase(household.id),
+                observeInvitesUseCase(household.id),
+                observeChoresUseCase(household.id),
                 memberInput,
                 choreInput,
             ) { members, invites, chores, currentMember, currentChore ->
@@ -61,7 +73,7 @@ class HouseholdViewModel @Inject constructor(
         val state = uiState.value
         val household = state.household ?: return
         viewModelScope.launch {
-            householdRepository.addMember(household.id, state.memberInput)
+            addMemberUseCase(household.id, state.memberInput)
             memberInput.value = ""
         }
     }
@@ -70,20 +82,20 @@ class HouseholdViewModel @Inject constructor(
         val state = uiState.value
         val household = state.household ?: return
         viewModelScope.launch {
-            choreRepository.addChore(household.id, state.choreInput)
+            addChoreUseCase(household.id, state.choreInput)
             choreInput.value = ""
         }
     }
 
     fun refreshInvite() {
         uiState.value.household?.let { household ->
-            viewModelScope.launch { householdRepository.createInvite(household.id) }
+            viewModelScope.launch { createInviteUseCase(household.id) }
         }
     }
 
     fun updateChoreActive(choreId: String, isActive: Boolean) {
         viewModelScope.launch {
-            choreRepository.updateChoreActive(choreId, isActive)
+            updateChoreActiveUseCase(choreId, isActive)
         }
     }
 }

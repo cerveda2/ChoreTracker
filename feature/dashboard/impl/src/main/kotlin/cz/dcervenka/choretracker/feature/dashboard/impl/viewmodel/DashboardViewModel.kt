@@ -2,9 +2,10 @@ package cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import cz.dcervenka.choretracker.core.data.contract.ChoreCompletionRepository
-import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
+import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentDashboardUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -19,15 +20,16 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     observeCurrentDashboardUseCase: ObserveCurrentDashboardUseCase,
-    householdRepository: HouseholdRepository,
-    private val choreCompletionRepository: ChoreCompletionRepository,
+    observeCurrentHouseholdUseCase: ObserveCurrentHouseholdUseCase,
+    observeMembersUseCase: ObserveMembersUseCase,
+    private val logCompletionUseCase: LogCompletionUseCase,
 ) : ViewModel() {
-    val uiState: StateFlow<DashboardUiState> = householdRepository.observeCurrentHousehold()
+    val uiState: StateFlow<DashboardUiState> = observeCurrentHouseholdUseCase()
         .filterNotNull()
         .flatMapLatest { household ->
             combine(
                 observeCurrentDashboardUseCase(),
-                householdRepository.observeMembers(household.id),
+                observeMembersUseCase(household.id),
             ) { snapshot, members ->
                 DashboardUiState(snapshot = snapshot, members = members)
             }
@@ -39,7 +41,7 @@ class DashboardViewModel @Inject constructor(
 
     fun logCompletion(householdId: String, choreId: String, participantIds: List<String>, note: String?) {
         viewModelScope.launch {
-            choreCompletionRepository.logCompletion(
+            logCompletionUseCase(
                 householdId = householdId,
                 choreId = choreId,
                 participantMemberIds = participantIds,

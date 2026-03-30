@@ -4,9 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
-import cz.dcervenka.choretracker.core.common.MviViewModel
-import cz.dcervenka.choretracker.core.common.updateState
-import cz.dcervenka.choretracker.core.data.contract.AuthRepository
+import cz.dcervenka.choretracker.core.domain.usecase.ContinueInPreviewModeUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SignInUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SignUpUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiEffect
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiIntent
@@ -21,19 +22,22 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository,
-) : ViewModel(),
-    MviViewModel<AuthUiState, AuthUiIntent, AuthUiEffect> {
+    observeAuthStateUseCase: ObserveAuthStateUseCase,
+    private val signInUseCase: SignInUseCase,
+    private val signUpUseCase: SignUpUseCase,
+    private val continueInPreviewModeUseCase: ContinueInPreviewModeUseCase,
+) : ViewModel() {
 
     private val mutableUiState = MutableStateFlow(AuthUiState())
     private val mutableEffects = MutableSharedFlow<AuthUiEffect>(extraBufferCapacity = 1)
 
-    override val uiState: StateFlow<AuthUiState> = combine(
-        authRepository.authState,
+    val uiState: StateFlow<AuthUiState> = combine(
+        observeAuthStateUseCase(),
         mutableUiState,
     ) { authState, currentState ->
         currentState.copy(requiresConfiguration = authState is AuthState.RequiresConfiguration)
@@ -43,27 +47,27 @@ class AuthViewModel @Inject constructor(
         initialValue = AuthUiState(),
     )
 
-    override val effects: Flow<AuthUiEffect> = mutableEffects.asSharedFlow()
+    val effects: Flow<AuthUiEffect> = mutableEffects.asSharedFlow()
 
-    override fun dispatch(intent: AuthUiIntent) {
+    fun dispatch(intent: AuthUiIntent) {
         when (intent) {
-            is AuthUiIntent.DisplayNameChanged -> mutableUiState.updateState {
-                copy(displayName = intent.value, errorMessage = null)
+            is AuthUiIntent.DisplayNameChanged -> mutableUiState.update { current ->
+                current.copy(displayName = intent.value, errorMessage = null)
             }
-            is AuthUiIntent.EmailChanged -> mutableUiState.updateState {
-                copy(email = intent.value, errorMessage = null)
+            is AuthUiIntent.EmailChanged -> mutableUiState.update { current ->
+                current.copy(email = intent.value, errorMessage = null)
             }
-            is AuthUiIntent.PasswordChanged -> mutableUiState.updateState {
-                copy(password = intent.value, errorMessage = null)
+            is AuthUiIntent.PasswordChanged -> mutableUiState.update { current ->
+                current.copy(password = intent.value, errorMessage = null)
             }
             AuthUiIntent.SignInClicked -> submit { state ->
-                authRepository.signIn(state.email, state.password)
+                signInUseCase(state.email, state.password)
             }
             AuthUiIntent.SignUpClicked -> submit { state ->
-                authRepository.signUp(state.email, state.password, state.displayName)
+                signUpUseCase(state.email, state.password, state.displayName)
             }
             AuthUiIntent.ContinuePreviewClicked -> submit { state ->
-                authRepository.continueInPreviewMode(
+                continueInPreviewModeUseCase(
                     state.displayName.ifBlank { "Preview User" },
                 )
             }
@@ -73,19 +77,19 @@ class AuthViewModel @Inject constructor(
     private fun submit(block: suspend (AuthUiState) -> EmptyResult) {
         viewModelScope.launch {
             val currentState = mutableUiState.value
-            mutableUiState.updateState {
-                copy(isWorking = true, errorMessage = null)
+            mutableUiState.update { current ->
+                current.copy(isWorking = true, errorMessage = null)
             }
             when (val result = block(currentState)) {
                 is AppResult.Error -> {
-                    mutableUiState.updateState {
-                        copy(errorMessage = result.message)
+                    mutableUiState.update { current ->
+                        current.copy(errorMessage = result.message)
                     }
                     mutableEffects.tryEmit(AuthUiEffect.SubmissionFailed(result.message))
                 }
                 is AppResult.Success -> Unit
             }
-            mutableUiState.updateState { copy(isWorking = false) }
+            mutableUiState.update { current -> current.copy(isWorking = false) }
         }
     }
 }

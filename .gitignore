@@ -4,7 +4,6 @@
 .idea/
 .DS_Store
 /build
-/app/google-services.json
 /docs/build
 /captures
 .externalNativeBuild

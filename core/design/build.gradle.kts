@@ -9,4 +9,6 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(projects.core.model)
+    implementation(libs.kotlinx.datetime)
 }

@@ -13,7 +13,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import cz.dcervenka.choretracker.core.design.LocalSpacing
+import androidx.compose.ui.res.stringResource
+import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
+import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.ScreenHeader
@@ -37,13 +41,13 @@ fun AuthScreen(
             verticalArrangement = Arrangement.spacedBy(spacing.medium),
         ) {
             ScreenHeader(
-                title = "ChoreTracker",
-                subtitle = "Warm, offline-first home task tracking with stats at the center.",
+                title = stringResource(R.string.auth_title),
+                subtitle = stringResource(R.string.auth_subtitle),
             )
             if (uiState.requiresConfiguration) {
                 Card {
                     Text(
-                        text = "Firebase is not configured yet. You can still explore the app in preview mode.",
+                        text = stringResource(R.string.auth_firebase_not_configured),
                         modifier = Modifier.padding(spacing.medium),
                         style = MaterialTheme.typography.bodyMedium,
                     )
@@ -55,29 +59,29 @@ fun AuthScreen(
             OutlinedTextField(
                 value = uiState.displayName,
                 onValueChange = { onIntent(AuthUiIntent.DisplayNameChanged(it)) },
-                label = { Text("Display name") },
+                label = { Text(stringResource(R.string.auth_display_name)) },
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
                 value = uiState.email,
                 onValueChange = { onIntent(AuthUiIntent.EmailChanged(it)) },
-                label = { Text("Email") },
+                label = { Text(stringResource(R.string.auth_email)) },
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
                 value = uiState.password,
                 onValueChange = { onIntent(AuthUiIntent.PasswordChanged(it)) },
-                label = { Text("Password") },
+                label = { Text(stringResource(R.string.auth_password)) },
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
             )
             PrimaryButton(
-                text = "Sign in",
+                text = stringResource(R.string.auth_sign_in),
                 onClick = { onIntent(AuthUiIntent.SignInClicked) },
                 enabled = !uiState.isWorking,
             )
             SecondaryButton(
-                text = "Create account",
+                text = stringResource(R.string.auth_create_account),
                 onClick = { onIntent(AuthUiIntent.SignUpClicked) },
                 enabled = !uiState.isWorking,
             )
@@ -85,8 +89,24 @@ fun AuthScreen(
                 onClick = { onIntent(AuthUiIntent.ContinuePreviewClicked) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Continue in preview mode")
+                Text(stringResource(R.string.auth_continue_preview))
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AuthScreenPreview() {
+    ChoreTrackerTheme {
+        AuthScreen(
+            uiState = AuthUiState(
+                displayName = "Dana",
+                email = "dana@example.com",
+                password = "password",
+                requiresConfiguration = true,
+            ),
+            onIntent = {},
+        )
     }
 }

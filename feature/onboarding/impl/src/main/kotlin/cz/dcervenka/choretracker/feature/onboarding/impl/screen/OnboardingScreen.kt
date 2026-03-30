@@ -10,7 +10,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
+import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.ScreenHeader
@@ -37,8 +41,8 @@ fun OnboardingScreen(
             verticalArrangement = Arrangement.spacedBy(spacing.medium),
         ) {
             ScreenHeader(
-                title = "Set up your household",
-                subtitle = "Create a fresh household or join one with an invite code. The local Room database is already the source of truth.",
+                title = stringResource(R.string.onboarding_title),
+                subtitle = stringResource(R.string.onboarding_subtitle),
             )
             uiState.errorMessage?.let { message ->
                 Text(message, color = MaterialTheme.colorScheme.error)
@@ -46,31 +50,50 @@ fun OnboardingScreen(
             OutlinedTextField(
                 value = uiState.displayName,
                 onValueChange = onDisplayNameChange,
-                label = { Text("Your name") },
+                label = { Text(stringResource(R.string.onboarding_your_name)) },
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
                 value = uiState.householdName,
                 onValueChange = onHouseholdNameChange,
-                label = { Text("Household name") },
+                label = { Text(stringResource(R.string.onboarding_household_name)) },
                 modifier = Modifier.fillMaxWidth(),
             )
             PrimaryButton(
-                text = "Create household",
+                text = stringResource(R.string.onboarding_create_household),
                 onClick = onCreateHousehold,
                 enabled = !uiState.isWorking,
             )
             OutlinedTextField(
                 value = uiState.inviteCode,
                 onValueChange = onInviteCodeChange,
-                label = { Text("Invite code") },
+                label = { Text(stringResource(R.string.onboarding_invite_code)) },
                 modifier = Modifier.fillMaxWidth(),
             )
             SecondaryButton(
-                text = "Join household",
+                text = stringResource(R.string.onboarding_join_household),
                 onClick = onJoinHousehold,
                 enabled = !uiState.isWorking,
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun OnboardingScreenPreview() {
+    ChoreTrackerTheme {
+        OnboardingScreen(
+            uiState = OnboardingUiState(
+                householdName = "Sunny Flat",
+                displayName = "Dana",
+                inviteCode = "HOME42",
+            ),
+            onHouseholdNameChange = {},
+            onDisplayNameChange = {},
+            onInviteCodeChange = {},
+            onCreateHousehold = {},
+            onJoinHousehold = {},
+        )
     }
 }
