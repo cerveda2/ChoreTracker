@@ -1,12 +1,17 @@
+import io.gitlab.arturbosch.detekt.Detekt
+import io.gitlab.arturbosch.detekt.extensions.DetektExtension
 import com.android.build.api.dsl.CommonExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.dependencies
+import org.gradle.kotlin.dsl.configure
+import org.gradle.kotlin.dsl.withType
 
 class AndroidApplicationConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         with(target) {
             pluginManager.apply("com.android.application")
+            pluginManager.apply("choretracker.detekt")
             configureAndroidApplication()
         }
     }
@@ -25,6 +30,7 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         with(target) {
             pluginManager.apply("com.android.library")
+            pluginManager.apply("choretracker.detekt")
             configureAndroidLibrary()
         }
     }
@@ -92,6 +98,7 @@ class KotlinLibraryConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         with(target) {
             pluginManager.apply("org.jetbrains.kotlin.jvm")
+            pluginManager.apply("choretracker.detekt")
             configureJvmLibrary()
             dependencies {
                 add("implementation", libsCatalog.findLibrary("kotlinx-coroutines-core").get())
@@ -102,6 +109,38 @@ class KotlinLibraryConventionPlugin : Plugin<Project> {
                 add("testImplementation", libsCatalog.findLibrary("mockk").get())
                 add("testImplementation", libsCatalog.findLibrary("kotlinx-coroutines-test").get())
                 add("testImplementation", libsCatalog.findLibrary("turbine").get())
+            }
+        }
+    }
+}
+
+class DetektConventionPlugin : Plugin<Project> {
+    override fun apply(target: Project) {
+        with(target) {
+            pluginManager.apply("io.gitlab.arturbosch.detekt")
+
+            extensions.configure<DetektExtension> {
+                buildUponDefaultConfig = true
+                parallel = true
+                ignoreFailures = true
+                config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+            }
+
+            dependencies {
+                add("detektPlugins", libsCatalog.findLibrary("detekt-formatting").get())
+            }
+
+            tasks.withType<Detekt>().configureEach {
+                jvmTarget = "17"
+                basePath = rootDir.absolutePath
+                include("**/*.kt")
+                exclude("**/resources/**", "**/build/**", "**/generated/**", "**/*.kts")
+                reports {
+                    html.required.set(true)
+                    xml.required.set(true)
+                    sarif.required.set(true)
+                    md.required.set(false)
+                }
             }
         }
     }

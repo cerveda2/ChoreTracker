@@ -19,6 +19,8 @@ dependencies {
     compileOnly(libs.kotlin.gradle.plugin)
     compileOnly(libs.ksp.gradle.plugin)
     compileOnly(libs.hilt.gradle.plugin)
+    compileOnly(libs.detekt.gradle.plugin)
+    compileOnly(libs.detekt.formatting)
 }
 
 tasks {
@@ -61,6 +63,10 @@ gradlePlugin {
         register("kotlinLibrary") {
             id = "choretracker.kotlin.library"
             implementationClass = "KotlinLibraryConventionPlugin"
+        }
+        register("detekt") {
+            id = "choretracker.detekt"
+            implementationClass = "DetektConventionPlugin"
         }
     }
 }

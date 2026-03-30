@@ -1,0 +1,108 @@
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+config:
+  validation: true
+  warningsAsErrors: false
+  checkExhaustiveness: false
+  excludes: ''
+
+processors:
+  active: true
+  exclude:
+    - 'DetektProgressListener'
+
+console-reports:
+  active: true
+  exclude:
+    - 'ProjectStatisticsReport'
+    - 'ComplexityReport'
+    - 'NotificationReport'
+    - 'FileBasedFindingsReport'
+
+output-reports:
+  active: true
+
+comments:
+  active: true
+  excludes: &testExcludes ['**/test/**', '**/androidTest/**', '**/*.Test.kt']
+
+complexity:
+  active: true
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 15
+    ignoreAnnotated: ['Composable']
+  LongMethod:
+    active: true
+    excludes: *testExcludes
+    threshold: 100
+    ignoreAnnotated: ['Composable']
+  LongParameterList:
+    active: true
+    functionThreshold: 10
+    constructorThreshold: 12
+    ignoreDataClasses: true
+    ignoreAnnotated: ['Composable']
+    excludes: ['**/test/**']
+  TooManyFunctions:
+    active: true
+    excludes: *testExcludes
+    thresholdInFiles: 15
+    thresholdInClasses: 15
+    thresholdInInterfaces: 15
+    thresholdInObjects: 15
+    thresholdInEnums: 15
+
+exceptions:
+  active: true
+  ReturnFromFinally:
+    active: false
+
+naming:
+  active: true
+  FunctionNaming:
+    active: true
+    functionPattern: '[a-z][a-zA-Z0-9]*'
+    ignoreAnnotated:
+      - 'Composable'
+      - 'Preview'
+  MatchingDeclarationName:
+    active: true
+    excludes:
+      - '**/*Contract.kt'
+      - '**/*Navigation.kt'
+      - '**/*Destination.kt'
+      - '**/*Route.kt'
+
+style:
+  active: true
+  MagicNumber:
+    active: true
+    excludes: *testExcludes
+    ignoreHashCodeFunction: true
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreNamedArgument: true
+    ignoreEnums: true
+    ignoreRanges: true
+    ignoreAnnotated:
+      - 'Preview'
+      - 'Composable'
+  MaxLineLength:
+    active: true
+    maxLineLength: 140
+    excludePackageStatements: true
+    excludeImportStatements: true
+    excludes: *testExcludes
+  UnusedPrivateMember:
+    active: true
+    ignoreAnnotated:
+      - 'Preview'
+
+formatting:
+  active: true
+  autoCorrect: false
+  MaximumLineLength:
+    active: false
