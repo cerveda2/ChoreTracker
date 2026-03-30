@@ -20,11 +20,8 @@ espresso = "3.7.0"
 junit4 = "4.13.2"
 turbine = "1.2.1"
 truth = "1.4.5"
-mockk = "1.13.12"
+mockk = "1.14.9"
 javaxInject = "1"
-compileSdk = "36"
-targetSdk = "36"
-minSdk = "28"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

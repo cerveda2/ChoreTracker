@@ -9,8 +9,6 @@ android {
 
     defaultConfig {
         applicationId = "cz.dcervenka.choretracker"
-        versionCode = 1
-        versionName = "1.0.0"
     }
 
     buildTypes {

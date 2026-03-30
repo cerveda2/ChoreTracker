@@ -8,7 +8,6 @@ import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.getByType
-import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.gradle.jvm.toolchain.JavaLanguageVersion
@@ -16,14 +15,11 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion
 internal val Project.libsCatalog: VersionCatalog
     get() = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
-internal fun Project.versionInt(name: String): Int =
-    libsCatalog.findVersion(name).get().requiredVersion.toInt()
-
-private fun ApplicationExtension.configureCommon(project: Project) {
-    compileSdk = project.versionInt("compileSdk")
+private fun ApplicationExtension.configureCommon() {
+    compileSdk = SdkVersion.COMPILE_SDK
 
     defaultConfig {
-        minSdk = project.versionInt("minSdk")
+        minSdk = SdkVersion.MIN_SDK
     }
 
     compileOptions {
@@ -32,11 +28,11 @@ private fun ApplicationExtension.configureCommon(project: Project) {
     }
 }
 
-private fun LibraryExtension.configureCommon(project: Project) {
-    compileSdk = project.versionInt("compileSdk")
+private fun LibraryExtension.configureCommon() {
+    compileSdk = SdkVersion.COMPILE_SDK
 
     defaultConfig {
-        minSdk = project.versionInt("minSdk")
+        minSdk = SdkVersion.MIN_SDK
     }
 
     compileOptions {
@@ -57,16 +53,19 @@ private fun Project.configureKotlinCompiler() {
 
 internal fun Project.configureAndroidLibrary() {
     extensions.configure<LibraryExtension> {
-        configureCommon(this@configureAndroidLibrary)
+        configureCommon()
     }
     configureKotlinCompiler()
 }
 
 internal fun Project.configureAndroidApplication() {
+    val appVersion = loadAppVersion()
     extensions.configure<ApplicationExtension> {
-        configureCommon(this@configureAndroidApplication)
+        configureCommon()
         defaultConfig {
-            targetSdk = versionInt("targetSdk")
+            targetSdk = SdkVersion.TARGET_SDK
+            versionCode = appVersion.versionCode
+            versionName = appVersion.versionName
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
     }
@@ -95,11 +94,5 @@ internal fun Project.configureJvmLibrary() {
         targetCompatibility = JavaVersion.VERSION_17
         toolchain.languageVersion.set(JavaLanguageVersion.of(17))
     }
-    tasks.withType(KotlinCompile::class.java).configureEach {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
-            freeCompilerArgs.add("-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi")
-            freeCompilerArgs.add("-opt-in=kotlin.time.ExperimentalTime")
-        }
-    }
+    configureKotlinCompiler()
 }
