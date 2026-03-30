@@ -5,6 +5,7 @@ import cz.dcervenka.choretracker.core.common.UiState
 data class OnboardingUiState(
     val householdName: String = "",
     val displayName: String = "",
+    val canEditDisplayName: Boolean = true,
     val inviteCode: String = "",
     val isWorking: Boolean = false,
     val errorMessage: String? = null,

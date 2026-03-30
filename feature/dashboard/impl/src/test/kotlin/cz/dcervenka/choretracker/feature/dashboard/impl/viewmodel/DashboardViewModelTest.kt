@@ -7,6 +7,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentDashboardUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveRecentCompletionsUseCase
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import cz.dcervenka.choretracker.core.test.mock.sampleDashboardSnapshot
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
@@ -38,11 +39,15 @@ class DashboardViewModelTest {
     lateinit var observeMembersUseCase: ObserveMembersUseCase
 
     @MockK
+    lateinit var observeRecentCompletionsUseCase: ObserveRecentCompletionsUseCase
+
+    @MockK
     lateinit var logCompletionUseCase: LogCompletionUseCase
 
     private val dashboardFlow = MutableStateFlow(sampleDashboardSnapshot())
     private val householdFlow = MutableStateFlow<cz.dcervenka.choretracker.core.model.household.Household?>(null)
     private val membersFlow = MutableStateFlow(emptyList<cz.dcervenka.choretracker.core.model.household.HouseholdMember>())
+    private val completionsFlow = MutableStateFlow(sampleDashboardSnapshot().recentCompletions)
 
     @Before
     fun setUp() {
@@ -53,6 +58,7 @@ class DashboardViewModelTest {
         every { observeCurrentDashboardUseCase() } returns dashboardFlow
         every { observeCurrentHouseholdUseCase() } returns householdFlow
         every { observeMembersUseCase(any()) } answers { membersFlow }
+        every { observeRecentCompletionsUseCase(any(), any()) } answers { completionsFlow }
         coEvery { logCompletionUseCase(any(), any(), any(), any()) } returns AppResult.Success(Unit)
     }
 
@@ -70,6 +76,7 @@ class DashboardViewModelTest {
             val state = awaitItem()
             assertThat(state.snapshot?.household?.id).isEqualTo("household-1")
             assertThat(state.members).hasSize(2)
+            assertThat(state.allCompletions).hasSize(1)
         }
     }
 
@@ -95,5 +102,6 @@ private fun DashboardViewModelTest.createViewModel() = DashboardViewModel(
     observeCurrentDashboardUseCase = observeCurrentDashboardUseCase,
     observeCurrentHouseholdUseCase = observeCurrentHouseholdUseCase,
     observeMembersUseCase = observeMembersUseCase,
+    observeRecentCompletionsUseCase = observeRecentCompletionsUseCase,
     logCompletionUseCase = logCompletionUseCase,
 )

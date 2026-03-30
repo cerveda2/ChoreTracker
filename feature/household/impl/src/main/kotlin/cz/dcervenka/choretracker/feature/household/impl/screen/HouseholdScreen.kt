@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -14,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
@@ -71,6 +73,10 @@ fun HouseholdScreen(
                     value = uiState.memberInput,
                     onValueChange = onMemberInputChange,
                     label = { Text(stringResource(R.string.household_new_member)) },
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words,
+                        autoCorrectEnabled = true,
+                    ),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 PrimaryButton(
@@ -100,6 +106,10 @@ fun HouseholdScreen(
                     value = uiState.choreInput,
                     onValueChange = onChoreInputChange,
                     label = { Text(stringResource(R.string.household_new_chore)) },
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words,
+                        autoCorrectEnabled = true,
+                    ),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 PrimaryButton(

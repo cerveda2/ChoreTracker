@@ -6,6 +6,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentDashboardUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveRecentCompletionsUseCase
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -22,6 +23,7 @@ class DashboardViewModel @Inject constructor(
     observeCurrentDashboardUseCase: ObserveCurrentDashboardUseCase,
     observeCurrentHouseholdUseCase: ObserveCurrentHouseholdUseCase,
     observeMembersUseCase: ObserveMembersUseCase,
+    observeRecentCompletionsUseCase: ObserveRecentCompletionsUseCase,
     private val logCompletionUseCase: LogCompletionUseCase,
 ) : ViewModel() {
     val uiState: StateFlow<DashboardUiState> = observeCurrentHouseholdUseCase()
@@ -30,8 +32,13 @@ class DashboardViewModel @Inject constructor(
             combine(
                 observeCurrentDashboardUseCase(),
                 observeMembersUseCase(household.id),
-            ) { snapshot, members ->
-                DashboardUiState(snapshot = snapshot, members = members)
+                observeRecentCompletionsUseCase(household.id, limit = Int.MAX_VALUE),
+            ) { snapshot, members, completions ->
+                DashboardUiState(
+                    snapshot = snapshot,
+                    members = members,
+                    allCompletions = completions,
+                )
             }
         }.stateIn(
             scope = viewModelScope,

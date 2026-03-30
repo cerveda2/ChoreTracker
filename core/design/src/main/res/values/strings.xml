@@ -29,11 +29,18 @@
     <string name="dashboard_record_prompt">Tap to record who completed this.</string>
     <string name="dashboard_log">Log</string>
     <string name="dashboard_recent_completions">Recent completions</string>
+    <string name="dashboard_all_completions">All completions</string>
+    <string name="dashboard_completion_detail">Completion details</string>
+    <string name="dashboard_completion_loading">Loading completion…</string>
     <string name="dashboard_needs_attention">Needs attention</string>
     <string name="dashboard_stale_chip">%1$s: %2$s</string>
+    <string name="dashboard_stale_last_done">Last done %1$s (%2$d days ago)</string>
+    <string name="dashboard_stale_never_done">This chore has not been completed yet.</string>
+    <string name="dashboard_needs_attention_empty">Everything looks up to date right now.</string>
     <string name="dashboard_log_completion">Log completion</string>
     <string name="dashboard_who_completed">Who completed this chore?</string>
     <string name="dashboard_note">Note</string>
+    <string name="dashboard_see_all">See all</string>
 
     <string name="household_title">Household</string>
     <string name="household_active_invite">Active invite: %1$s</string>
@@ -53,8 +60,15 @@
     <string name="stats_member_count">%1$s: %2$d</string>
     <string name="stats_leader">Leader: %1$s</string>
     <string name="stats_monthly_breakdown">Monthly breakdown</string>
+    <string name="stats_total_count">Total completions: %1$d</string>
 
     <string name="settings_title">Settings</string>
+    <string name="settings_profile_title">Profile</string>
+    <string name="settings_household_title">Household</string>
+    <string name="settings_household_name">Household name</string>
+    <string name="settings_save_household_name">Save household name</string>
+    <string name="settings_invite_code">Invite code: %1$s</string>
+    <string name="settings_account_actions">Account</string>
     <string name="settings_current_profile">Current profile: %1$s</string>
     <string name="settings_dynamic_color_note">Dynamic color is reserved for a later toggle. The custom Warm Utility palette is the default.</string>
     <string name="settings_sign_out">Sign out</string>
@@ -64,4 +78,5 @@
 
     <string name="common_save">Save</string>
     <string name="common_cancel">Cancel</string>
+    <string name="common_close">Close</string>
 </resources>

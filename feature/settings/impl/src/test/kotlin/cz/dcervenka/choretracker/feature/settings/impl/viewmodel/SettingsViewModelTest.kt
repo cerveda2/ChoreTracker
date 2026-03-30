@@ -2,11 +2,23 @@ package cz.dcervenka.choretracker.feature.settings.impl.viewmodel
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import cz.dcervenka.choretracker.core.common.AppResult
+import cz.dcervenka.choretracker.core.domain.usecase.AddChoreUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateHouseholdNameUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
+import cz.dcervenka.choretracker.core.test.mock.sampleChore
 import cz.dcervenka.choretracker.core.test.mock.sampleAuthenticatedState
+import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
+import cz.dcervenka.choretracker.core.test.mock.sampleMembers
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -30,20 +42,61 @@ class SettingsViewModelTest {
     @MockK
     lateinit var signOutUseCase: SignOutUseCase
 
+    @MockK
+    lateinit var observeCurrentHouseholdUseCase: ObserveCurrentHouseholdUseCase
+
+    @MockK
+    lateinit var observeMembersUseCase: ObserveMembersUseCase
+
+    @MockK
+    lateinit var observeChoresUseCase: ObserveChoresUseCase
+
+    @MockK
+    lateinit var addMemberUseCase: AddMemberUseCase
+
+    @MockK
+    lateinit var addChoreUseCase: AddChoreUseCase
+
+    @MockK
+    lateinit var createInviteUseCase: CreateInviteUseCase
+
+    @MockK
+    lateinit var updateChoreActiveUseCase: UpdateChoreActiveUseCase
+
+    @MockK
+    lateinit var updateHouseholdNameUseCase: UpdateHouseholdNameUseCase
+
     private val authStateFlow = MutableStateFlow<AuthState>(AuthState.SignedOut)
+    private val householdFlow = MutableStateFlow<cz.dcervenka.choretracker.core.model.household.Household?>(null)
+    private val membersFlow = MutableStateFlow(emptyList<cz.dcervenka.choretracker.core.model.household.HouseholdMember>())
+    private val choresFlow = MutableStateFlow(emptyList<cz.dcervenka.choretracker.core.model.chore.Chore>())
 
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
         authStateFlow.value = AuthState.SignedOut
+        householdFlow.value = null
+        membersFlow.value = emptyList()
+        choresFlow.value = emptyList()
         every { observeAuthStateUseCase() } returns authStateFlow
-        coEvery { signOutUseCase() } returns cz.dcervenka.choretracker.core.common.AppResult.Success(Unit)
+        every { observeCurrentHouseholdUseCase() } returns householdFlow
+        every { observeMembersUseCase(any()) } answers { membersFlow }
+        every { observeChoresUseCase(any()) } answers { choresFlow }
+        coEvery { signOutUseCase() } returns AppResult.Success(Unit)
+        coEvery { addMemberUseCase(any(), any()) } returns AppResult.Success(Unit)
+        coEvery { addChoreUseCase(any(), any()) } returns AppResult.Success(Unit)
+        coEvery { createInviteUseCase(any()) } returns AppResult.Success(cz.dcervenka.choretracker.core.test.mock.sampleInvite())
+        coEvery { updateChoreActiveUseCase(any(), any()) } returns AppResult.Success(Unit)
+        coEvery { updateHouseholdNameUseCase(any(), any()) } returns AppResult.Success(Unit)
     }
 
     @Test
     fun `maps authenticated user into ui state`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
         authStateFlow.value = sampleAuthenticatedState()
+        householdFlow.value = sampleHousehold()
+        membersFlow.value = sampleMembers()
+        choresFlow.value = listOf(sampleChore())
 
         viewModel.uiState.test {
             assertThat(awaitItem().userLabel).isNull()
@@ -51,6 +104,9 @@ class SettingsViewModelTest {
             val authenticated = awaitItem()
             assertThat(authenticated.userLabel).isEqualTo("Dana")
             assertThat(authenticated.isSignedOut).isFalse()
+            assertThat(authenticated.household?.name).isEqualTo("Home")
+            assertThat(authenticated.members).hasSize(2)
+            assertThat(authenticated.chores).hasSize(1)
         }
     }
 
@@ -67,5 +123,13 @@ class SettingsViewModelTest {
 
 private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
     observeAuthStateUseCase = observeAuthStateUseCase,
+    observeCurrentHouseholdUseCase = observeCurrentHouseholdUseCase,
+    observeMembersUseCase = observeMembersUseCase,
+    observeChoresUseCase = observeChoresUseCase,
     signOutUseCase = signOutUseCase,
+    addMemberUseCase = addMemberUseCase,
+    addChoreUseCase = addChoreUseCase,
+    createInviteUseCase = createInviteUseCase,
+    updateChoreActiveUseCase = updateChoreActiveUseCase,
+    updateHouseholdNameUseCase = updateHouseholdNameUseCase,
 )

@@ -5,23 +5,28 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
-import cz.dcervenka.choretracker.core.design.LocalSpacing
-import androidx.compose.ui.res.stringResource
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
+import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.ScreenHeader
-import cz.dcervenka.choretracker.core.design.components.SecondaryButton
+import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthMode
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiIntent
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiState
 
@@ -53,36 +58,76 @@ fun AuthScreen(
                     )
                 }
             }
+            TabRow(selectedTabIndex = uiState.authMode.ordinal) {
+                AuthMode.entries.forEach { mode ->
+                    Tab(
+                        selected = uiState.authMode == mode,
+                        onClick = { onIntent(AuthUiIntent.AuthModeChanged(mode)) },
+                        text = {
+                            Text(
+                                if (mode == AuthMode.SIGN_IN) {
+                                    stringResource(R.string.auth_sign_in)
+                                } else {
+                                    stringResource(R.string.auth_create_account)
+                                },
+                            )
+                        },
+                    )
+                }
+            }
             uiState.errorMessage?.let { message ->
                 Text(message, color = MaterialTheme.colorScheme.error)
             }
-            OutlinedTextField(
-                value = uiState.displayName,
-                onValueChange = { onIntent(AuthUiIntent.DisplayNameChanged(it)) },
-                label = { Text(stringResource(R.string.auth_display_name)) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (uiState.authMode == AuthMode.SIGN_UP) {
+                OutlinedTextField(
+                    value = uiState.displayName,
+                    onValueChange = { onIntent(AuthUiIntent.DisplayNameChanged(it)) },
+                    label = { Text(stringResource(R.string.auth_display_name)) },
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words,
+                        autoCorrectEnabled = true,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             OutlinedTextField(
                 value = uiState.email,
                 onValueChange = { onIntent(AuthUiIntent.EmailChanged(it)) },
                 label = { Text(stringResource(R.string.auth_email)) },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    capitalization = KeyboardCapitalization.None,
+                    autoCorrectEnabled = false,
+                ),
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
                 value = uiState.password,
                 onValueChange = { onIntent(AuthUiIntent.PasswordChanged(it)) },
                 label = { Text(stringResource(R.string.auth_password)) },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    capitalization = KeyboardCapitalization.None,
+                    autoCorrectEnabled = false,
+                ),
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
             )
             PrimaryButton(
-                text = stringResource(R.string.auth_sign_in),
-                onClick = { onIntent(AuthUiIntent.SignInClicked) },
-                enabled = !uiState.isWorking,
-            )
-            SecondaryButton(
-                text = stringResource(R.string.auth_create_account),
-                onClick = { onIntent(AuthUiIntent.SignUpClicked) },
+                text = if (uiState.authMode == AuthMode.SIGN_IN) {
+                    stringResource(R.string.auth_sign_in)
+                } else {
+                    stringResource(R.string.auth_create_account)
+                },
+                onClick = {
+                    onIntent(
+                        if (uiState.authMode == AuthMode.SIGN_IN) {
+                            AuthUiIntent.SignInClicked
+                        } else {
+                            AuthUiIntent.SignUpClicked
+                        },
+                    )
+                },
                 enabled = !uiState.isWorking,
             )
             TextButton(
@@ -101,6 +146,7 @@ private fun AuthScreenPreview() {
     ChoreTrackerTheme {
         AuthScreen(
             uiState = AuthUiState(
+                authMode = AuthMode.SIGN_UP,
                 displayName = "Dana",
                 email = "dana@example.com",
                 password = "password",

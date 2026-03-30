@@ -5,12 +5,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
@@ -47,16 +49,26 @@ fun OnboardingScreen(
             uiState.errorMessage?.let { message ->
                 Text(message, color = MaterialTheme.colorScheme.error)
             }
-            OutlinedTextField(
-                value = uiState.displayName,
-                onValueChange = onDisplayNameChange,
-                label = { Text(stringResource(R.string.onboarding_your_name)) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (uiState.canEditDisplayName) {
+                OutlinedTextField(
+                    value = uiState.displayName,
+                    onValueChange = onDisplayNameChange,
+                    label = { Text(stringResource(R.string.onboarding_your_name)) },
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words,
+                        autoCorrectEnabled = true,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             OutlinedTextField(
                 value = uiState.householdName,
                 onValueChange = onHouseholdNameChange,
                 label = { Text(stringResource(R.string.onboarding_household_name)) },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words,
+                    autoCorrectEnabled = true,
+                ),
                 modifier = Modifier.fillMaxWidth(),
             )
             PrimaryButton(

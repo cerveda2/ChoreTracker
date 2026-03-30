@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.CreateHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.JoinHouseholdUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
+import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -12,11 +14,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
+    observeAuthStateUseCase: ObserveAuthStateUseCase,
     private val createHouseholdUseCase: CreateHouseholdUseCase,
     private val joinHouseholdUseCase: JoinHouseholdUseCase,
 ) : ViewModel() {
@@ -26,7 +30,11 @@ class OnboardingViewModel @Inject constructor(
     private val isWorking = MutableStateFlow(false)
     private val errorMessage = MutableStateFlow<String?>(null)
 
-    val uiState: StateFlow<OnboardingUiState> = combine(
+    private val authDisplayName = observeAuthStateUseCase().map { state ->
+        (state as? AuthState.Authenticated)?.user?.displayName
+    }
+
+    private val formState = combine(
         householdName,
         displayName,
         inviteCode,
@@ -39,6 +47,16 @@ class OnboardingViewModel @Inject constructor(
             inviteCode = currentInvite,
             isWorking = working,
             errorMessage = error,
+        )
+    }
+
+    val uiState: StateFlow<OnboardingUiState> = combine(
+        authDisplayName,
+        formState,
+    ) { currentAuthDisplayName, currentState ->
+        currentState.copy(
+            displayName = currentAuthDisplayName ?: currentState.displayName,
+            canEditDisplayName = currentAuthDisplayName == null,
         )
     }.stateIn(
         scope = viewModelScope,

@@ -4,11 +4,15 @@ import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.CreateHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.JoinHouseholdUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
+import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.impl.annotations.MockK
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -28,9 +32,16 @@ class OnboardingViewModelTest {
     @MockK
     lateinit var joinHouseholdUseCase: JoinHouseholdUseCase
 
+    @MockK
+    lateinit var observeAuthStateUseCase: ObserveAuthStateUseCase
+
+    private val authStateFlow = MutableStateFlow<AuthState>(AuthState.SignedOut)
+
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
+        authStateFlow.value = AuthState.SignedOut
+        every { observeAuthStateUseCase() } returns authStateFlow
         coEvery { createHouseholdUseCase(any(), any()) } returns AppResult.Success(
             cz.dcervenka.choretracker.core.test.mock.sampleHousehold(),
         )
@@ -92,6 +103,7 @@ class OnboardingViewModelTest {
 }
 
 private fun OnboardingViewModelTest.createViewModel() = OnboardingViewModel(
+    observeAuthStateUseCase = observeAuthStateUseCase,
     createHouseholdUseCase = createHouseholdUseCase,
     joinHouseholdUseCase = joinHouseholdUseCase,
 )

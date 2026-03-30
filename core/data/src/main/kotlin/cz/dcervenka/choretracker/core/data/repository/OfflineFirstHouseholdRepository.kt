@@ -118,6 +118,13 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         return AppResult.Success(invite.asModel())
     }
 
+    override suspend fun updateHouseholdName(householdId: String, name: String): EmptyResult {
+        val sanitizedName = name.trim().ifBlank { "My Household" }
+        householdDao.updateName(householdId, sanitizedName)
+        enqueueOperation("household", householdId, "rename", sanitizedName)
+        return AppResult.Success(Unit)
+    }
+
     private suspend fun currentUser(): AppUser? =
         (authRepository.authState.first() as? AuthState.Authenticated)?.user
 

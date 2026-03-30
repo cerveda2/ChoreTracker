@@ -23,4 +23,7 @@ interface HouseholdDao {
 
     @Query("UPDATE households SET inviteCode = :inviteCode WHERE id = :householdId")
     suspend fun updateInviteCode(householdId: String, inviteCode: String)
+
+    @Query("UPDATE households SET name = :name WHERE id = :householdId")
+    suspend fun updateName(householdId: String, name: String)
 }

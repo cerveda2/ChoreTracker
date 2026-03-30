@@ -9,6 +9,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignInUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignUpUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthMode
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiEffect
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiIntent
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiState
@@ -51,6 +52,9 @@ class AuthViewModel @Inject constructor(
 
     fun dispatch(intent: AuthUiIntent) {
         when (intent) {
+            is AuthUiIntent.AuthModeChanged -> mutableUiState.update { current ->
+                current.copy(authMode = intent.value, errorMessage = null)
+            }
             is AuthUiIntent.DisplayNameChanged -> mutableUiState.update { current ->
                 current.copy(displayName = intent.value, errorMessage = null)
             }

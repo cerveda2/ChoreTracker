@@ -18,7 +18,9 @@ import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.PreviewData
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.LoadingState
+import cz.dcervenka.choretracker.core.design.components.ScreenHeader
 import cz.dcervenka.choretracker.core.design.components.SectionCard
+import cz.dcervenka.choretracker.core.formatters.formatMonthLabelForLocale
 import cz.dcervenka.choretracker.feature.stats.impl.contract.StatsUiState
 
 @Composable
@@ -37,13 +39,10 @@ fun StatsScreen(
         ) {
             item {
                 Column(modifier = Modifier.padding(spacing.large)) {
-                    Text(stringResource(R.string.stats_title), style = MaterialTheme.typography.headlineMedium)
-                    Text(stats.household.name, style = MaterialTheme.typography.bodyLarge)
-                }
-            }
-            item {
-                Column(modifier = Modifier.padding(horizontal = spacing.large)) {
-                    Text(stringResource(R.string.stats_per_chore_comparison), style = MaterialTheme.typography.titleLarge)
+                    ScreenHeader(
+                        title = stringResource(R.string.stats_title),
+                        subtitle = stats.household.name,
+                    )
                 }
             }
             items(stats.comparisons, key = { it.choreId }) { comparison ->
@@ -51,22 +50,27 @@ fun StatsScreen(
                     title = comparison.choreName,
                     modifier = Modifier.padding(horizontal = spacing.large),
                 ) {
+                    Text(
+                        stringResource(R.string.stats_total_count, comparison.totalCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     comparison.countsByMember.forEach { (member, count) ->
                         Text(stringResource(R.string.stats_member_count, member, count))
                     }
                     Text(stringResource(R.string.stats_leader, comparison.leaderLabel))
                 }
             }
-            item {
-                Column(modifier = Modifier.padding(horizontal = spacing.large)) {
-                    Text(stringResource(R.string.stats_monthly_breakdown), style = MaterialTheme.typography.titleLarge)
-                }
-            }
             items(stats.monthlyBreakdown, key = { it.monthLabel }) { month ->
                 SectionCard(
-                    title = month.monthLabel,
+                    title = formatMonthLabelForLocale(month.monthLabel),
                     modifier = Modifier.padding(horizontal = spacing.large),
                 ) {
+                    Text(
+                        stringResource(R.string.stats_total_count, month.totalCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     month.countsByMember.forEach { (member, count) ->
                         Text(stringResource(R.string.stats_member_count, member, count))
                     }
