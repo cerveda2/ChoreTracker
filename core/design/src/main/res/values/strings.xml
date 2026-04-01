@@ -1,7 +1,6 @@
 <resources>
     <string name="nav_home">Home</string>
     <string name="nav_stats">Stats</string>
-    <string name="nav_household">Household</string>
     <string name="nav_settings">Settings</string>
 
     <string name="auth_title">ChoreTracker</string>
@@ -13,6 +12,9 @@
     <string name="auth_sign_in">Sign in</string>
     <string name="auth_create_account">Create account</string>
     <string name="auth_continue_preview">Continue in preview mode</string>
+    <string name="auth_signing_in">Signing you in…</string>
+    <string name="auth_creating_account">Creating your account…</string>
+    <string name="auth_opening_preview">Opening preview mode…</string>
 
     <string name="onboarding_title">Set up your household</string>
     <string name="onboarding_subtitle">Create a fresh household or join one with an invite code. The local Room database is already the source of truth.</string>
@@ -24,6 +26,7 @@
 
     <string name="dashboard_loading">Loading dashboard…</string>
     <string name="dashboard_recent_balance">Recent balance and task flow</string>
+    <string name="dashboard_title">Dashboard</string>
     <string name="dashboard_last_30d">last 30d: %1$d</string>
     <string name="dashboard_quick_log">Quick log</string>
     <string name="dashboard_record_prompt">Tap to record who completed this.</string>
@@ -53,6 +56,9 @@
     <string name="household_chores">Chores</string>
     <string name="household_new_chore">New chore</string>
     <string name="household_add_chore">Add chore</string>
+    <string name="household_member_count">%1$d members</string>
+    <string name="household_chore_count">%1$d chores</string>
+    <string name="household_invite_section">Invite</string>
 
     <string name="stats_loading">Loading statistics…</string>
     <string name="stats_title">Statistics</string>
@@ -63,20 +69,36 @@
     <string name="stats_total_count">Total completions: %1$d</string>
 
     <string name="settings_title">Settings</string>
+    <string name="settings_overview">Overview</string>
     <string name="settings_profile_title">Profile</string>
     <string name="settings_household_title">Household</string>
+    <string name="settings_manage_household_title">Manage household</string>
+    <string name="settings_manage_members_title">Manage members</string>
+    <string name="settings_manage_chores_title">Manage chores</string>
+    <string name="settings_account_title">Account</string>
     <string name="settings_household_name">Household name</string>
     <string name="settings_save_household_name">Save household name</string>
     <string name="settings_invite_code">Invite code: %1$s</string>
     <string name="settings_account_actions">Account</string>
     <string name="settings_current_profile">Current profile: %1$s</string>
+    <string name="settings_profile_description">Signed in as %1$s</string>
+    <string name="settings_household_description">%1$s</string>
+    <string name="settings_members_description">%1$d active household members</string>
+    <string name="settings_chores_description">%1$d chores available for tracking</string>
+    <string name="settings_account_description">Sign out and app preferences</string>
     <string name="settings_dynamic_color_note">Dynamic color is reserved for a later toggle. The custom Warm Utility palette is the default.</string>
     <string name="settings_sign_out">Sign out</string>
     <string name="settings_loading">Loading…</string>
     <string name="settings_signed_out">Signed out</string>
     <string name="settings_firebase_required">Firebase setup required</string>
+    <string name="settings_not_configured_summary">Complete app setup first to unlock household settings.</string>
+    <string name="settings_no_household_summary">Create or join a household to manage members and chores.</string>
+    <string name="settings_profile_section">Profile &amp; status</string>
+    <string name="settings_management_section">Household management</string>
+    <string name="settings_account_section">Preferences</string>
 
     <string name="common_save">Save</string>
     <string name="common_cancel">Cancel</string>
     <string name="common_close">Close</string>
+    <string name="common_back">Back</string>
 </resources>

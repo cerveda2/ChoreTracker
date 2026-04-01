@@ -12,6 +12,12 @@ interface CompletionDao {
     @Query("SELECT * FROM completions WHERE householdId = :householdId ORDER BY createdAt DESC")
     fun observeCompletions(householdId: String): Flow<List<CompletionEntity>>
 
+    @Query("SELECT * FROM completions WHERE householdId = :householdId ORDER BY createdAt DESC")
+    suspend fun getCompletions(householdId: String): List<CompletionEntity>
+
+    @Query("SELECT * FROM completions WHERE id = :completionId LIMIT 1")
+    suspend fun getCompletion(completionId: String): CompletionEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: CompletionEntity)
 }

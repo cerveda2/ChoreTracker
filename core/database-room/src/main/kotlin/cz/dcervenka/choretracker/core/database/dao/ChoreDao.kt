@@ -13,6 +13,12 @@ interface ChoreDao {
     @Query("SELECT * FROM chores WHERE householdId = :householdId ORDER BY isActive DESC, name")
     fun observeChores(householdId: String): Flow<List<ChoreEntity>>
 
+    @Query("SELECT * FROM chores WHERE householdId = :householdId ORDER BY isActive DESC, name")
+    suspend fun getChores(householdId: String): List<ChoreEntity>
+
+    @Query("SELECT * FROM chores WHERE id = :choreId LIMIT 1")
+    suspend fun getChore(choreId: String): ChoreEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: ChoreEntity)
 

@@ -18,6 +18,15 @@ interface CompletionParticipantDao {
     )
     fun observeParticipants(householdId: String): Flow<List<CompletionParticipantEntity>>
 
+    @Query(
+        """
+        SELECT completion_participants.* FROM completion_participants
+        INNER JOIN completions ON completions.id = completion_participants.completionId
+        WHERE completions.householdId = :householdId
+        """,
+    )
+    suspend fun getParticipants(householdId: String): List<CompletionParticipantEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(entities: List<CompletionParticipantEntity>)
 }

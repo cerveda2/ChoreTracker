@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -58,11 +60,27 @@ fun AuthScreen(
                     )
                 }
             }
-            PrimaryTabRow(selectedTabIndex = uiState.authMode.ordinal) {
+            PrimaryTabRow(
+                selectedTabIndex = uiState.authMode.ordinal,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                indicator = {
+                    TabRowDefaults.SecondaryIndicator(
+                        modifier = Modifier
+                            .tabIndicatorOffset(uiState.authMode.ordinal, matchContentSize = false)
+                            .padding(horizontal = spacing.medium),
+                        height = spacing.xSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                },
+                divider = {},
+            ) {
                 AuthMode.entries.forEach { mode ->
                     Tab(
                         selected = uiState.authMode == mode,
                         onClick = { onIntent(AuthUiIntent.AuthModeChanged(mode)) },
+                        enabled = !uiState.isWorking,
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         text = {
                             Text(
                                 if (mode == AuthMode.SIGN_IN) {
@@ -73,6 +91,18 @@ fun AuthScreen(
                             )
                         },
                     )
+                }
+            }
+            if (uiState.isWorking) {
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    uiState.workingMessage?.let { message ->
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
             uiState.errorMessage?.let { message ->
@@ -129,10 +159,12 @@ fun AuthScreen(
                     )
                 },
                 enabled = !uiState.isWorking,
+                loading = uiState.isWorking,
             )
             TextButton(
                 onClick = { onIntent(AuthUiIntent.ContinuePreviewClicked) },
                 modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isWorking,
             ) {
                 Text(stringResource(R.string.auth_continue_preview))
             }

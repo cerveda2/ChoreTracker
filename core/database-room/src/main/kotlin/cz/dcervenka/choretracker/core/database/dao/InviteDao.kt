@@ -13,6 +13,9 @@ interface InviteDao {
     @Query("SELECT * FROM invites WHERE householdId = :householdId ORDER BY createdAt DESC")
     fun observeInvites(householdId: String): Flow<List<InviteEntity>>
 
+    @Query("SELECT * FROM invites WHERE householdId = :householdId ORDER BY createdAt DESC")
+    suspend fun getInvites(householdId: String): List<InviteEntity>
+
     @Query("SELECT * FROM invites WHERE code = :code LIMIT 1")
     suspend fun findByCode(code: String): InviteEntity?
 

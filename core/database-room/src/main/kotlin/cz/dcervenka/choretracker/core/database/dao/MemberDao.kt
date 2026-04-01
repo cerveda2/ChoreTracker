@@ -16,6 +16,9 @@ interface MemberDao {
     )
     fun observeMembers(householdId: String): Flow<List<MemberEntity>>
 
+    @Query("SELECT * FROM members WHERE householdId = :householdId ORDER BY displayName")
+    suspend fun getMembers(householdId: String): List<MemberEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: MemberEntity)
 

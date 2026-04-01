@@ -3,6 +3,7 @@ package cz.dcervenka.choretracker.core.data.repository
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.data.contract.ChoreRepository
+import cz.dcervenka.choretracker.core.data.contract.SyncRepository
 import cz.dcervenka.choretracker.core.data.mapper.asModel
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
@@ -20,6 +21,7 @@ import kotlin.time.Clock
 class OfflineFirstChoreRepository @Inject constructor(
     private val choreDao: ChoreDao,
     private val pendingSyncOperationDao: PendingSyncOperationDao,
+    private val syncRepository: SyncRepository,
 ) : ChoreRepository {
 
     override fun observeChores(householdId: String): Flow<List<Chore>> =
@@ -47,6 +49,7 @@ class OfflineFirstChoreRepository @Inject constructor(
                 createdAt = Clock.System.now(),
             ),
         )
+        syncRepository.syncPendingOperations()
         return AppResult.Success(Unit)
     }
 
@@ -62,6 +65,7 @@ class OfflineFirstChoreRepository @Inject constructor(
                 createdAt = Clock.System.now(),
             ),
         )
+        syncRepository.syncPendingOperations()
         return AppResult.Success(Unit)
     }
 }

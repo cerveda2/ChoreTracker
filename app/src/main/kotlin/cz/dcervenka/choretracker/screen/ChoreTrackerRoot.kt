@@ -1,15 +1,19 @@
 package cz.dcervenka.choretracker.screen
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -22,7 +26,6 @@ import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.feature.auth.impl.navigation.AuthDestination
 import cz.dcervenka.choretracker.feature.auth.impl.navigation.authScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.navigation.dashboardScreen
-import cz.dcervenka.choretracker.feature.household.impl.navigation.householdScreen
 import cz.dcervenka.choretracker.feature.onboarding.impl.navigation.onboardingScreen
 import cz.dcervenka.choretracker.feature.settings.impl.navigation.settingsScreen
 import cz.dcervenka.choretracker.feature.stats.impl.navigation.statsScreen
@@ -53,9 +56,13 @@ fun ChoreTrackerRoot(
 
     ChoreTrackerTheme {
         ChoreScaffold(
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 if (showBottomBar) {
-                    NavigationBar {
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        tonalElevation = 0.dp,
+                    ) {
                         topLevelDestinations.forEach { destination ->
                             val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
                             NavigationBarItem(
@@ -71,6 +78,13 @@ fun ChoreTrackerRoot(
                                 },
                                 icon = { Icon(destination.icon, contentDescription = null) },
                                 label = { Text(stringResource(destination.labelRes)) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    indicatorColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                                ),
                             )
                         }
                     }
@@ -86,8 +100,7 @@ fun ChoreTrackerRoot(
                 onboardingScreen()
                 dashboardScreen(navController = navController)
                 statsScreen()
-                householdScreen()
-                settingsScreen()
+                settingsScreen(navController = navController)
             }
         }
     }

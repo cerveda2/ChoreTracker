@@ -12,6 +12,9 @@ interface HouseholdDao {
     @Query("SELECT * FROM households ORDER BY createdAt DESC LIMIT 1")
     fun observeCurrentHousehold(): Flow<HouseholdEntity?>
 
+    @Query("SELECT * FROM households ORDER BY createdAt DESC LIMIT 1")
+    suspend fun getCurrentHousehold(): HouseholdEntity?
+
     @Query("SELECT * FROM households WHERE id = :householdId LIMIT 1")
     fun observeHousehold(householdId: String): Flow<HouseholdEntity?>
 

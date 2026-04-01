@@ -10,6 +10,7 @@ data class AuthUiState(
     val authMode: AuthMode = AuthMode.SIGN_IN,
     val requiresConfiguration: Boolean = false,
     val isWorking: Boolean = false,
+    val workingMessage: String? = null,
     val errorMessage: String? = null,
 ) : UiState
 

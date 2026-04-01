@@ -4,6 +4,7 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.ChoreCompletionRepository
+import cz.dcervenka.choretracker.core.data.contract.SyncRepository
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
@@ -30,6 +31,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
     private val memberDao: MemberDao,
     private val pendingSyncOperationDao: PendingSyncOperationDao,
     private val authRepository: AuthRepository,
+    private val syncRepository: SyncRepository,
 ) : ChoreCompletionRepository {
 
     override fun observeRecentCompletions(householdId: String, limit: Int): Flow<List<RecentCompletion>> =
@@ -91,6 +93,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
                 createdAt = Clock.System.now(),
             ),
         )
+        syncRepository.syncPendingOperations()
         return AppResult.Success(Unit)
     }
 }

@@ -1,8 +1,9 @@
 package cz.dcervenka.choretracker.core.remote.contract
 
+import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.auth.AuthState
-import cz.dcervenka.choretracker.core.model.sync.PendingSyncOperation
+import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
 import kotlinx.coroutines.flow.Flow
 
 interface RemoteAuthDataSource {
@@ -17,5 +18,7 @@ interface RemoteAuthDataSource {
 }
 
 interface RemoteHouseholdDataSource {
-    suspend fun pushPendingOperations(operations: List<PendingSyncOperation>): EmptyResult
+    suspend fun upsertHouseholdSnapshot(snapshot: HouseholdSnapshot, userId: String): EmptyResult
+
+    suspend fun fetchHouseholdSnapshot(userId: String): AppResult<HouseholdSnapshot?>
 }

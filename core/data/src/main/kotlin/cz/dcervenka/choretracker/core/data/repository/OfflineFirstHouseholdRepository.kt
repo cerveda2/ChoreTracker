@@ -4,6 +4,7 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
+import cz.dcervenka.choretracker.core.data.contract.SyncRepository
 import cz.dcervenka.choretracker.core.data.mapper.asModel
 import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
@@ -19,8 +20,11 @@ import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.household.Invite
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import java.util.UUID
 import javax.inject.Inject
@@ -36,10 +40,21 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     private val inviteDao: InviteDao,
     private val pendingSyncOperationDao: PendingSyncOperationDao,
     private val authRepository: AuthRepository,
+    private val syncRepository: SyncRepository,
 ) : HouseholdRepository {
 
-    override fun observeCurrentHousehold(): Flow<Household?> =
-        householdDao.observeCurrentHousehold().map { it?.asModel() }
+    override fun observeCurrentHousehold(): Flow<Household?> = authRepository.authState.flatMapLatest { authState ->
+        flow {
+            val user = (authState as? AuthState.Authenticated)?.user
+            if (user != null && !user.isPreview) {
+                syncRepository.syncPendingOperations()
+                if (householdDao.getCurrentHousehold() == null) {
+                    syncRepository.restoreHouseholdForUser(user.id)
+                }
+            }
+            emitAll(householdDao.observeCurrentHousehold().map { it?.asModel() })
+        }
+    }
 
     override fun observeMembers(householdId: String): Flow<List<HouseholdMember>> =
         memberDao.observeMembers(householdId).map { members -> members.map(MemberEntity::asModel) }
@@ -71,6 +86,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         )
         inviteDao.upsert(invite)
         enqueueOperation("household", householdId, "upsert", household.id)
+        syncRepository.syncPendingOperations()
         return AppResult.Success(household.asModel())
     }
 
@@ -96,6 +112,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                 }
                 inviteDao.markConsumed(invite.id, Clock.System.now())
                 enqueueOperation("member", invite.householdId, "join", user.id)
+                syncRepository.syncPendingOperations()
                 householdDao.getHousehold(invite.householdId)
                     ?.let { AppResult.Success(it.asModel()) }
                     ?: AppResult.Error("The household for that invite is no longer available.")
@@ -115,6 +132,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             ),
         )
         enqueueOperation("member", householdId, "upsert", displayName)
+        syncRepository.syncPendingOperations()
         return AppResult.Success(Unit)
     }
 
@@ -123,6 +141,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         householdDao.updateInviteCode(householdId, invite.code)
         inviteDao.upsert(invite)
         enqueueOperation("invite", householdId, "upsert", invite.code)
+        syncRepository.syncPendingOperations()
         return AppResult.Success(invite.asModel())
     }
 
@@ -130,6 +149,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         val sanitizedName = name.trim().ifBlank { "My Household" }
         householdDao.updateName(householdId, sanitizedName)
         enqueueOperation("household", householdId, "rename", sanitizedName)
+        syncRepository.syncPendingOperations()
         return AppResult.Success(Unit)
     }
 
