@@ -25,6 +25,7 @@ import cz.dcervenka.choretracker.core.design.PreviewData
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
+import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.ScreenHeader
 import cz.dcervenka.choretracker.core.design.components.SectionCard
@@ -191,6 +192,13 @@ fun HouseholdSettingsScreen(
                         )
                     }
                 }
+            } else {
+                item {
+                    EmptyState(
+                        title = stringResource(R.string.settings_household_empty_title),
+                        message = stringResource(R.string.settings_household_empty_message),
+                    )
+                }
             }
         }
     }
@@ -226,14 +234,21 @@ fun MembersSettingsScreen(
             }
             item {
                 SectionCard(title = stringResource(R.string.household_members)) {
-                    uiState.members.forEach { member ->
-                        Text(
-                            text = stringResource(
-                                R.string.household_member_line,
-                                member.displayName,
-                                member.role.name.lowercase(),
-                            ),
+                    if (uiState.members.isEmpty()) {
+                        EmptyState(
+                            title = stringResource(R.string.settings_members_empty_title),
+                            message = stringResource(R.string.settings_members_empty_message),
                         )
+                    } else {
+                        uiState.members.forEach { member ->
+                            Text(
+                                text = stringResource(
+                                    R.string.household_member_line,
+                                    member.displayName,
+                                    member.role.name.lowercase(),
+                                ),
+                            )
+                        }
                     }
                     OutlinedTextField(
                         value = uiState.memberInput,
@@ -286,16 +301,23 @@ fun ChoresSettingsScreen(
             }
             item {
                 SectionCard(title = stringResource(R.string.household_chores)) {
-                    uiState.chores.forEach { chore ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(text = chore.name)
-                            Switch(
-                                checked = chore.isActive,
-                                onCheckedChange = { checked -> onUpdateChoreActive(chore.id, checked) },
-                            )
+                    if (uiState.chores.isEmpty()) {
+                        EmptyState(
+                            title = stringResource(R.string.settings_chores_empty_title),
+                            message = stringResource(R.string.settings_chores_empty_message),
+                        )
+                    } else {
+                        uiState.chores.forEach { chore ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(text = chore.name)
+                                Switch(
+                                    checked = chore.isActive,
+                                    onCheckedChange = { checked -> onUpdateChoreActive(chore.id, checked) },
+                                )
+                            }
                         }
                     }
                     OutlinedTextField(

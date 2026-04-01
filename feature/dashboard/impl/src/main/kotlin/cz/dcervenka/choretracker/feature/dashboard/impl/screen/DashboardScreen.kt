@@ -35,6 +35,7 @@ import cz.dcervenka.choretracker.core.design.PreviewData
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
+import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.SectionCard
@@ -117,39 +118,53 @@ fun DashboardScreen(
                 }
                 item {
                     SectionCard(title = stringResource(R.string.dashboard_quick_log)) {
-                        Text(
-                            stringResource(R.string.dashboard_record_prompt),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(spacing.small),
-                        ) {
-                            items(quickLogChores, key = { "quick-${it.id}" }) { chore ->
-                                PrimaryButton(
-                                    text = chore.name,
-                                    onClick = {
-                                        selectedChoreId = chore.id
-                                        selectedMembers.clear()
-                                        selectedNote = ""
-                                    },
-                                    fillMaxWidth = false,
-                                )
+                        if (quickLogChores.isEmpty()) {
+                            EmptyState(
+                                title = stringResource(R.string.dashboard_quick_log_empty_title),
+                                message = stringResource(R.string.dashboard_quick_log_empty_message),
+                            )
+                        } else {
+                            Text(
+                                stringResource(R.string.dashboard_record_prompt),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(spacing.small),
+                            ) {
+                                items(quickLogChores, key = { "quick-${it.id}" }) { chore ->
+                                    PrimaryButton(
+                                        text = chore.name,
+                                        onClick = {
+                                            selectedChoreId = chore.id
+                                            selectedMembers.clear()
+                                            selectedNote = ""
+                                        },
+                                        fillMaxWidth = false,
+                                    )
+                                }
                             }
                         }
                     }
                 }
                 item {
                     SectionCard(title = stringResource(R.string.dashboard_recent_completions)) {
-                        highlightedCompletions.forEach { completion ->
-                            RecentCompletionRow(
-                                completion = completion,
-                                onClick = { onOpenCompletion(completion.completionId) },
+                        if (highlightedCompletions.isEmpty()) {
+                            EmptyState(
+                                title = stringResource(R.string.dashboard_recent_completions_empty_title),
+                                message = stringResource(R.string.dashboard_recent_completions_empty_message),
                             )
-                        }
-                        if (uiState.allCompletions.size > highlightedCompletions.size) {
-                            TextButton(onClick = onSeeAllCompletions) {
-                                Text(text = stringResource(R.string.dashboard_see_all))
+                        } else {
+                            highlightedCompletions.forEach { completion ->
+                                RecentCompletionRow(
+                                    completion = completion,
+                                    onClick = { onOpenCompletion(completion.completionId) },
+                                )
+                            }
+                            if (uiState.allCompletions.size > highlightedCompletions.size) {
+                                TextButton(onClick = onSeeAllCompletions) {
+                                    Text(text = stringResource(R.string.dashboard_see_all))
+                                }
                             }
                         }
                     }
@@ -284,14 +299,23 @@ fun RecentCompletionsScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(spacing.medium),
         ) {
-            items(completions, key = { it.completionId }) { completion ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onOpenCompletion(completion.completionId) },
-                ) {
-                    Column(modifier = Modifier.padding(spacing.medium)) {
-                        RecentCompletionContent(completion = completion)
+            if (completions.isEmpty()) {
+                item {
+                    EmptyState(
+                        title = stringResource(R.string.dashboard_recent_completions_empty_title),
+                        message = stringResource(R.string.dashboard_recent_completions_empty_message),
+                    )
+                }
+            } else {
+                items(completions, key = { it.completionId }) { completion ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenCompletion(completion.completionId) },
+                    ) {
+                        Column(modifier = Modifier.padding(spacing.medium)) {
+                            RecentCompletionContent(completion = completion)
+                        }
                     }
                 }
             }

@@ -30,9 +30,13 @@
     <string name="dashboard_last_30d">last 30d: %1$d</string>
     <string name="dashboard_quick_log">Quick log</string>
     <string name="dashboard_record_prompt">Tap to record who completed this.</string>
+    <string name="dashboard_quick_log_empty_title">No active chores yet</string>
+    <string name="dashboard_quick_log_empty_message">Add a few chores in Settings to start logging completions from the dashboard.</string>
     <string name="dashboard_log">Log</string>
     <string name="dashboard_recent_completions">Recent completions</string>
     <string name="dashboard_all_completions">All completions</string>
+    <string name="dashboard_recent_completions_empty_title">No completions yet</string>
+    <string name="dashboard_recent_completions_empty_message">Once someone logs a chore, it will appear here with the latest activity first.</string>
     <string name="dashboard_completion_detail">Completion details</string>
     <string name="dashboard_completion_loading">Loading completion…</string>
     <string name="dashboard_needs_attention">Needs attention</string>
@@ -62,6 +66,8 @@
 
     <string name="stats_loading">Loading statistics…</string>
     <string name="stats_title">Statistics</string>
+    <string name="stats_empty_title">Not enough data yet</string>
+    <string name="stats_empty_message">Statistics will appear after a few chores have been completed in your household.</string>
     <string name="stats_per_chore_comparison">Per chore comparison</string>
     <string name="stats_member_count">%1$s: %2$d</string>
     <string name="stats_leader">Leader: %1$s</string>
@@ -86,6 +92,12 @@
     <string name="settings_members_description">%1$d active household members</string>
     <string name="settings_chores_description">%1$d chores available for tracking</string>
     <string name="settings_account_description">Sign out and app preferences</string>
+    <string name="settings_household_empty_title">No household selected</string>
+    <string name="settings_household_empty_message">Create or join a household during onboarding to manage its name and invite code here.</string>
+    <string name="settings_members_empty_title">No members yet</string>
+    <string name="settings_members_empty_message">Invite or add household members so chores can be assigned and tracked together.</string>
+    <string name="settings_chores_empty_title">No chores yet</string>
+    <string name="settings_chores_empty_message">Create your first chore to unlock quick logging, recent activity, and household statistics.</string>
     <string name="settings_dynamic_color_note">Dynamic color is reserved for a later toggle. The custom Warm Utility palette is the default.</string>
     <string name="settings_sign_out">Sign out</string>
     <string name="settings_loading">Loading…</string>

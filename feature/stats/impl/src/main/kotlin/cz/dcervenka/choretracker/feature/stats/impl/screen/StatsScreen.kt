@@ -16,6 +16,7 @@ import cz.dcervenka.choretracker.core.design.PreviewData
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
+import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.SectionCard
 import cz.dcervenka.choretracker.core.formatters.formatMonthLabelForLocale
@@ -53,28 +54,37 @@ fun StatsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                items(stats.comparisons, key = { it.choreId }) { comparison ->
-                    SectionCard(title = comparison.choreName) {
-                        Text(
-                            stringResource(R.string.stats_total_count, comparison.totalCount),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                if (stats.comparisons.isEmpty() && stats.monthlyBreakdown.isEmpty()) {
+                    item {
+                        EmptyState(
+                            title = stringResource(R.string.stats_empty_title),
+                            message = stringResource(R.string.stats_empty_message),
                         )
-                        comparison.countsByMember.forEach { (member, count) ->
-                            Text(stringResource(R.string.stats_member_count, member, count))
-                        }
-                        Text(stringResource(R.string.stats_leader, comparison.leaderLabel))
                     }
-                }
-                items(stats.monthlyBreakdown, key = { it.monthLabel }) { month ->
-                    SectionCard(title = formatMonthLabelForLocale(month.monthLabel)) {
-                        Text(
-                            stringResource(R.string.stats_total_count, month.totalCount),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        month.countsByMember.forEach { (member, count) ->
-                            Text(stringResource(R.string.stats_member_count, member, count))
+                } else {
+                    items(stats.comparisons, key = { it.choreId }) { comparison ->
+                        SectionCard(title = comparison.choreName) {
+                            Text(
+                                stringResource(R.string.stats_total_count, comparison.totalCount),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            comparison.countsByMember.forEach { (member, count) ->
+                                Text(stringResource(R.string.stats_member_count, member, count))
+                            }
+                            Text(stringResource(R.string.stats_leader, comparison.leaderLabel))
+                        }
+                    }
+                    items(stats.monthlyBreakdown, key = { it.monthLabel }) { month ->
+                        SectionCard(title = formatMonthLabelForLocale(month.monthLabel)) {
+                            Text(
+                                stringResource(R.string.stats_total_count, month.totalCount),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            month.countsByMember.forEach { (member, count) ->
+                                Text(stringResource(R.string.stats_member_count, member, count))
+                            }
                         }
                     }
                 }
