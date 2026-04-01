@@ -37,9 +37,13 @@ class AppViewModelTest {
     @Test
     fun `maps startup destination flow into root destination`() = runTest(coroutineRule.dispatcher) {
         val viewModel = AppViewModel(observeStartupDestinationUseCase = observeStartupDestinationUseCase)
+
+        assertThat(viewModel.rootDestination.value).isEqualTo(RootDestination.Loading)
+
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.rootDestination.collect {}
         }
+        advanceUntilIdle()
 
         assertThat(viewModel.rootDestination.value).isEqualTo(RootDestination.Auth)
 
