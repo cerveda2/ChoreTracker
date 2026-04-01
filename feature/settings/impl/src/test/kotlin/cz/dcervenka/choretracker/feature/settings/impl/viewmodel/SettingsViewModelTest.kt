@@ -6,6 +6,7 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.AddChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
@@ -61,6 +62,9 @@ class SettingsViewModelTest {
     lateinit var createInviteUseCase: CreateInviteUseCase
 
     @MockK
+    lateinit var deleteChoreUseCase: DeleteChoreUseCase
+
+    @MockK
     lateinit var updateChoreActiveUseCase: UpdateChoreActiveUseCase
 
     @MockK
@@ -89,6 +93,7 @@ class SettingsViewModelTest {
         coEvery {
             createInviteUseCase(any())
         } returns AppResult.Success(cz.dcervenka.choretracker.core.test.mock.sampleInvite())
+        coEvery { deleteChoreUseCase(any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreActiveUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateHouseholdNameUseCase(any(), any()) } returns AppResult.Success(Unit)
     }
@@ -125,14 +130,15 @@ class SettingsViewModelTest {
 }
 
 private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
-    observeAuthStateUseCase = observeAuthStateUseCase,
-    observeCurrentHouseholdUseCase = observeCurrentHouseholdUseCase,
-    observeMembersUseCase = observeMembersUseCase,
-    observeChoresUseCase = observeChoresUseCase,
-    signOutUseCase = signOutUseCase,
-    addMemberUseCase = addMemberUseCase,
-    addChoreUseCase = addChoreUseCase,
-    createInviteUseCase = createInviteUseCase,
-    updateChoreActiveUseCase = updateChoreActiveUseCase,
-    updateHouseholdNameUseCase = updateHouseholdNameUseCase,
+    observeAuthStateUseCase,
+    observeCurrentHouseholdUseCase,
+    observeMembersUseCase,
+    observeChoresUseCase,
+    signOutUseCase,
+    addMemberUseCase,
+    addChoreUseCase,
+    createInviteUseCase,
+    deleteChoreUseCase,
+    updateChoreActiveUseCase,
+    updateHouseholdNameUseCase,
 )
