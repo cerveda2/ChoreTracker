@@ -71,7 +71,7 @@ fun DashboardScreen(
         ) { innerPadding ->
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                contentPadding = PaddingValues(
                     start = spacing.large,
                     top = innerPadding.calculateTopPadding() + spacing.large,
                     end = spacing.large,

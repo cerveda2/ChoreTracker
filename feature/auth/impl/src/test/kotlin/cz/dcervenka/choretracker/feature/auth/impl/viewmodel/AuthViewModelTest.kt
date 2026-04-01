@@ -1,7 +1,9 @@
 package cz.dcervenka.choretracker.feature.auth.impl.viewmodel
 
+import android.app.Application
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
+import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.domain.usecase.ContinueInPreviewModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignInUseCase
@@ -33,6 +35,9 @@ class AuthViewModelTest {
     lateinit var observeAuthStateUseCase: ObserveAuthStateUseCase
 
     @MockK
+    lateinit var application: Application
+
+    @MockK
     lateinit var signInUseCase: SignInUseCase
 
     @MockK
@@ -48,6 +53,9 @@ class AuthViewModelTest {
         MockKAnnotations.init(this)
         authStateFlow.value = sampleAuthenticatedState()
         every { observeAuthStateUseCase() } returns authStateFlow
+        every { application.getString(R.string.auth_signing_in) } returns "Signing in"
+        every { application.getString(R.string.auth_creating_account) } returns "Creating account"
+        every { application.getString(R.string.auth_opening_preview) } returns "Opening preview"
         coEvery { signInUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { signUpUseCase(any(), any(), any()) } returns AppResult.Success(Unit)
         coEvery { continueInPreviewModeUseCase(any()) } returns AppResult.Success(Unit)
@@ -148,6 +156,7 @@ class AuthViewModelTest {
 }
 
 private fun AuthViewModelTest.createViewModel() = AuthViewModel(
+    application = application,
     observeAuthStateUseCase = observeAuthStateUseCase,
     signInUseCase = signInUseCase,
     signUpUseCase = signUpUseCase,
