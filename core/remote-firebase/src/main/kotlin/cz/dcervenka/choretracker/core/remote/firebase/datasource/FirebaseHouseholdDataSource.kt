@@ -46,7 +46,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
 
     override suspend fun upsertHouseholdSnapshot(snapshot: HouseholdSnapshot, userId: String): EmptyResult {
         val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
-        return try {
+        return runCatching {
             val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(snapshot.household.id)
             val batch = db.batch()
 
@@ -138,61 +138,67 @@ class FirebaseHouseholdDataSource @Inject constructor(
             awaitTask(batch.commit())
             batchUserFallback(db, userId = userId, householdId = snapshot.household.id)
             AppResult.Success(Unit)
-        } catch (throwable: Throwable) {
+        }.getOrElse { error ->
             AppResult.Error(
-                throwable.message ?: "Unable to sync household data.",
-                throwable,
+                error.message ?: "Unable to sync household data.",
+                error,
             )
         }
     }
 
     override suspend fun fetchHouseholdSnapshot(userId: String): AppResult<HouseholdSnapshot?> {
         val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
-        return try {
-            val householdId = resolveHouseholdId(db, userId) ?: return AppResult.Success(null)
-            val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
-            val householdDoc = awaitTask(householdRef.get())
-            if (!householdDoc.exists()) {
-                return AppResult.Success(null)
+        return runCatching {
+            val householdId = resolveHouseholdId(db, userId)
+            if (householdId == null) {
+                AppResult.Success(null)
+            } else {
+                val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
+                val householdDoc = awaitTask(householdRef.get())
+                if (!householdDoc.exists()) {
+                    AppResult.Success(null)
+                } else {
+                    val members = awaitTask(householdRef.collection(MEMBERS_COLLECTION).get()).documents
+                        .map { it.asMember(currentUserId = userId, householdId = householdId) }
+                    val chores = awaitTask(householdRef.collection(CHORES_COLLECTION).get()).documents
+                        .map { it.asChore(householdId) }
+                    val completions = awaitTask(householdRef.collection(COMPLETIONS_COLLECTION).get()).documents
+                        .map { it.asCompletion(householdId) }
+                    val invites = awaitTask(householdRef.collection(INVITES_COLLECTION).get()).documents
+                        .map { it.asInvite(householdId) }
+
+                    AppResult.Success(
+                        HouseholdSnapshot(
+                            household = householdDoc.asHousehold(householdId),
+                            members = members,
+                            chores = chores,
+                            completions = completions,
+                            invites = invites,
+                        ),
+                    )
+                }
             }
-
-            val members = awaitTask(householdRef.collection(MEMBERS_COLLECTION).get()).documents
-                .map { it.asMember(currentUserId = userId, householdId = householdId) }
-            val chores = awaitTask(householdRef.collection(CHORES_COLLECTION).get()).documents
-                .map { it.asChore(householdId) }
-            val completions = awaitTask(householdRef.collection(COMPLETIONS_COLLECTION).get()).documents
-                .map { it.asCompletion(householdId) }
-            val invites = awaitTask(householdRef.collection(INVITES_COLLECTION).get()).documents
-                .map { it.asInvite(householdId) }
-
-            AppResult.Success(
-                HouseholdSnapshot(
-                    household = householdDoc.asHousehold(householdId),
-                    members = members,
-                    chores = chores,
-                    completions = completions,
-                    invites = invites,
-                ),
-            )
-        } catch (throwable: Throwable) {
+        }.getOrElse { error ->
             AppResult.Error(
-                throwable.message ?: "Unable to load household data.",
-                throwable,
+                error.message ?: "Unable to load household data.",
+                error,
             )
         }
     }
 
     private suspend fun resolveHouseholdId(db: FirebaseFirestore, userId: String): String? {
-        val userDoc = awaitTask(db.collection(USERS_COLLECTION).document(userId).get())
-        userDoc.getString("householdId")?.let { return it }
+        val directHouseholdId = awaitTask(db.collection(USERS_COLLECTION).document(userId).get())
+            .getString("householdId")
+        if (directHouseholdId != null) {
+            return directHouseholdId
+        }
 
-        val memberMatch = awaitTask(
+        return awaitTask(
             db.collectionGroup(MEMBERS_COLLECTION)
                 .whereEqualTo("userId", userId)
                 .limit(1)
                 .get(),
-        )
-        return memberMatch.documents.firstOrNull()?.getString("householdId")
+        ).documents.firstOrNull()?.getString("householdId")
     }
 
     private suspend fun batchUserFallback(

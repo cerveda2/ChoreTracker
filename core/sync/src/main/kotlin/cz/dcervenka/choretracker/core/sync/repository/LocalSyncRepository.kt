@@ -11,10 +11,20 @@ import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
+import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
+import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntity
+import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
+import cz.dcervenka.choretracker.core.database.entity.InviteEntity
+import cz.dcervenka.choretracker.core.database.entity.MemberEntity
+import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
+import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
+import cz.dcervenka.choretracker.core.model.household.Invite
 import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import kotlinx.coroutines.flow.first
@@ -36,34 +46,38 @@ class LocalSyncRepository @Inject constructor(
 
     override suspend fun syncPendingOperations(): EmptyResult {
         val authenticatedUser = (authRepository.authState.first() as? AuthState.Authenticated)?.user
-            ?: return AppResult.Success(Unit)
-        if (authenticatedUser.isPreview) return AppResult.Success(Unit)
-
-        val operations = pendingSyncOperationDao.getAll()
-        if (operations.isEmpty()) return AppResult.Success(Unit)
-
-        val operationIdsByHouseholdId = linkedMapOf<String, MutableList<String>>()
-        operations.forEach { operation ->
-            val householdId = resolveHouseholdId(operation) ?: return@forEach
-            operationIdsByHouseholdId.getOrPut(householdId) { mutableListOf() }
-                .add(operation.id)
+        val shouldSkipSync = authenticatedUser == null || authenticatedUser.isPreview
+        if (shouldSkipSync) {
+            return AppResult.Success(Unit)
         }
 
-        for ((householdId, operationIds) in operationIdsByHouseholdId) {
-            val snapshot = buildSnapshot(householdId) ?: continue
-            when (val result = remoteHouseholdDataSource.upsertHouseholdSnapshot(snapshot, authenticatedUser.id)) {
-                is AppResult.Error -> {
-                    return AppResult.Error(
-                        result.message,
-                        result.cause,
-                    )
-                }
-                is AppResult.Success -> operationIds.forEach { operationId ->
-                    pendingSyncOperationDao.delete(operationId)
+        val operations = pendingSyncOperationDao.getAll()
+        val operationIdsByHouseholdId = linkedMapOf<String, MutableList<String>>().apply {
+            operations.forEach { operation ->
+                resolveHouseholdId(operation)?.let { householdId ->
+                    getOrPut(householdId) { mutableListOf() }.add(operation.id)
                 }
             }
         }
-        return AppResult.Success(Unit)
+
+        val syncError = if (operations.isEmpty()) {
+            null
+        } else {
+            operationIdsByHouseholdId.entries.firstNotNullOfOrNull { (householdId, operationIds) ->
+                val snapshot = buildSnapshot(householdId) ?: return@firstNotNullOfOrNull null
+                when (val result = remoteHouseholdDataSource.upsertHouseholdSnapshot(snapshot, authenticatedUser.id)) {
+                    is AppResult.Error -> AppResult.Error(result.message, result.cause)
+                    is AppResult.Success -> {
+                        operationIds.forEach { operationId ->
+                            pendingSyncOperationDao.delete(operationId)
+                        }
+                        null
+                    }
+                }
+            }
+        }
+
+        return syncError ?: AppResult.Success(Unit)
     }
 
     override suspend fun restoreHouseholdForUser(userId: String): AppResult<Boolean> = when (
@@ -73,7 +87,7 @@ class LocalSyncRepository @Inject constructor(
         is AppResult.Success -> {
             val snapshot = result.value ?: return AppResult.Success(false)
             householdDao.upsert(
-                cz.dcervenka.choretracker.core.database.entity.HouseholdEntity(
+                HouseholdEntity(
                     id = snapshot.household.id,
                     name = snapshot.household.name,
                     ownerUserId = snapshot.household.ownerUserId,
@@ -83,7 +97,7 @@ class LocalSyncRepository @Inject constructor(
             )
             snapshot.members.forEach { member ->
                 memberDao.upsert(
-                    cz.dcervenka.choretracker.core.database.entity.MemberEntity(
+                    MemberEntity(
                         id = member.id,
                         householdId = member.householdId,
                         userId = member.userId,
@@ -95,7 +109,7 @@ class LocalSyncRepository @Inject constructor(
             }
             snapshot.chores.forEach { chore ->
                 choreDao.upsert(
-                    cz.dcervenka.choretracker.core.database.entity.ChoreEntity(
+                    ChoreEntity(
                         id = chore.id,
                         householdId = chore.householdId,
                         name = chore.name,
@@ -107,7 +121,7 @@ class LocalSyncRepository @Inject constructor(
             }
             snapshot.completions.forEach { completion ->
                 completionDao.upsert(
-                    cz.dcervenka.choretracker.core.database.entity.CompletionEntity(
+                    CompletionEntity(
                         id = completion.id,
                         householdId = completion.householdId,
                         choreId = completion.choreId,
@@ -118,7 +132,7 @@ class LocalSyncRepository @Inject constructor(
                 )
                 completionParticipantDao.insertAll(
                     completion.participantMemberIds.map { memberId ->
-                        cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntity(
+                        CompletionParticipantEntity(
                             completionId = completion.id,
                             memberId = memberId,
                         )
@@ -127,7 +141,7 @@ class LocalSyncRepository @Inject constructor(
             }
             snapshot.invites.forEach { invite ->
                 inviteDao.upsert(
-                    cz.dcervenka.choretracker.core.database.entity.InviteEntity(
+                    InviteEntity(
                         id = invite.id,
                         householdId = invite.householdId,
                         code = invite.code,
@@ -141,7 +155,7 @@ class LocalSyncRepository @Inject constructor(
     }
 
     private suspend fun resolveHouseholdId(
-        operation: cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity,
+        operation: PendingSyncOperationEntity,
     ): String? = when (operation.entityType) {
         "household", "member", "invite" -> operation.entityId
         "chore" -> choreDao.getChore(operation.entityId)?.householdId
@@ -176,7 +190,7 @@ class LocalSyncRepository @Inject constructor(
             )
         }
         return HouseholdSnapshot(
-            household = cz.dcervenka.choretracker.core.model.household.Household(
+            household = Household(
                 id = household.id,
                 name = household.name,
                 ownerUserId = household.ownerUserId,
@@ -185,7 +199,7 @@ class LocalSyncRepository @Inject constructor(
             ),
             members = members,
             chores = choreDao.getChores(householdId).map { chore ->
-                cz.dcervenka.choretracker.core.model.chore.Chore(
+                Chore(
                     id = chore.id,
                     householdId = chore.householdId,
                     name = chore.name,
@@ -196,7 +210,7 @@ class LocalSyncRepository @Inject constructor(
             },
             completions = completions,
             invites = inviteDao.getInvites(householdId).map { invite ->
-                cz.dcervenka.choretracker.core.model.household.Invite(
+                Invite(
                     id = invite.id,
                     householdId = invite.householdId,
                     code = invite.code,

@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
@@ -167,7 +166,7 @@ fun HouseholdSettingsScreen(
                         OutlinedTextField(
                             value = uiState.householdNameInput,
                             onValueChange = onHouseholdNameChange,
-                            label = { Text(stringResource(R.string.settings_household_name)) },
+                            label = { Text(text = stringResource(R.string.settings_household_name)) },
                             keyboardOptions = KeyboardOptions(
                                 capitalization = KeyboardCapitalization.Words,
                                 autoCorrectEnabled = true,
@@ -229,7 +228,7 @@ fun MembersSettingsScreen(
                 SectionCard(title = stringResource(R.string.household_members)) {
                     uiState.members.forEach { member ->
                         Text(
-                            stringResource(
+                            text = stringResource(
                                 R.string.household_member_line,
                                 member.displayName,
                                 member.role.name.lowercase(),
@@ -239,7 +238,7 @@ fun MembersSettingsScreen(
                     OutlinedTextField(
                         value = uiState.memberInput,
                         onValueChange = onMemberInputChange,
-                        label = { Text(stringResource(R.string.household_new_member)) },
+                        label = { Text(text = stringResource(R.string.household_new_member)) },
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Words,
                             autoCorrectEnabled = true,
@@ -292,7 +291,7 @@ fun ChoresSettingsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Text(chore.name)
+                            Text(text = chore.name)
                             Switch(
                                 checked = chore.isActive,
                                 onCheckedChange = { checked -> onUpdateChoreActive(chore.id, checked) },
@@ -302,7 +301,7 @@ fun ChoresSettingsScreen(
                     OutlinedTextField(
                         value = uiState.choreInput,
                         onValueChange = onChoreInputChange,
-                        label = { Text(stringResource(R.string.household_new_chore)) },
+                        label = { Text(text = stringResource(R.string.household_new_chore)) },
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Words,
                             autoCorrectEnabled = true,

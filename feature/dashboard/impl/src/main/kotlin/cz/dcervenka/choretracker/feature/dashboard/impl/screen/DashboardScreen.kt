@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -90,13 +91,22 @@ fun DashboardScreen(
                         ) {
                             items(snapshot.memberContributions, key = { it.memberId }) { contribution ->
                                 Card {
-                                    androidx.compose.foundation.layout.Column(
+                                    Column(
                                         modifier = Modifier.padding(spacing.medium),
                                     ) {
-                                        Text(contribution.displayName, style = MaterialTheme.typography.titleMedium)
-                                        Text("${contribution.totalCount}", style = MaterialTheme.typography.headlineSmall)
                                         Text(
-                                            stringResource(R.string.dashboard_last_30d, contribution.last30DaysCount),
+                                            text = contribution.displayName,
+                                            style = MaterialTheme.typography.titleMedium
+                                        )
+                                        Text(
+                                            text = "${contribution.totalCount}",
+                                            style = MaterialTheme.typography.headlineSmall,
+                                        )
+                                        Text(
+                                            text = stringResource(
+                                                R.string.dashboard_last_30d,
+                                                contribution.last30DaysCount,
+                                            ),
                                             style = MaterialTheme.typography.bodySmall,
                                         )
                                     }
@@ -139,7 +149,7 @@ fun DashboardScreen(
                         }
                         if (uiState.allCompletions.size > highlightedCompletions.size) {
                             TextButton(onClick = onSeeAllCompletions) {
-                                Text(stringResource(R.string.dashboard_see_all))
+                                Text(text = stringResource(R.string.dashboard_see_all))
                             }
                         }
                     }
@@ -148,17 +158,20 @@ fun DashboardScreen(
                     SectionCard(title = stringResource(R.string.dashboard_needs_attention)) {
                         if (staleItems.isEmpty()) {
                             Text(
-                                stringResource(R.string.dashboard_needs_attention_empty),
+                                text = stringResource(R.string.dashboard_needs_attention_empty),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         } else {
                             staleItems.forEach { stale ->
-                                androidx.compose.foundation.layout.Column(
+                                Column(
                                     verticalArrangement = Arrangement.spacedBy(spacing.xSmall),
                                 ) {
-                                    Text(stale.choreName, style = MaterialTheme.typography.titleMedium)
                                     Text(
-                                        when {
+                                        text = stale.choreName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                    )
+                                    Text(
+                                        text = when {
                                             stale.lastCompletedDate == null ->
                                                 stringResource(R.string.dashboard_stale_never_done)
                                             else -> stringResource(
@@ -184,10 +197,10 @@ fun DashboardScreen(
     if (selectedChoreId != null && snapshot != null) {
         AlertDialog(
             onDismissRequest = { selectedChoreId = null },
-            title = { Text(stringResource(R.string.dashboard_log_completion)) },
+            title = { Text(text = stringResource(R.string.dashboard_log_completion)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
-                    Text(stringResource(R.string.dashboard_who_completed))
+                    Text(text = stringResource(R.string.dashboard_who_completed))
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(spacing.small),
                         verticalArrangement = Arrangement.spacedBy(spacing.small),
@@ -202,14 +215,14 @@ fun DashboardScreen(
                                         selectedMembers.add(member.id)
                                     }
                                 },
-                                label = { Text(member.displayName) },
+                                label = { Text(text = member.displayName) },
                             )
                         }
                     }
                     OutlinedTextField(
                         value = selectedNote,
                         onValueChange = { selectedNote = it },
-                        label = { Text(stringResource(R.string.dashboard_note)) },
+                        label = { Text(text = stringResource(R.string.dashboard_note)) },
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Sentences,
                             autoCorrectEnabled = true,
@@ -233,12 +246,12 @@ fun DashboardScreen(
                     },
                     enabled = selectedMembers.isNotEmpty(),
                 ) {
-                    Text(stringResource(R.string.common_save))
+                    Text(text = stringResource(R.string.common_save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { selectedChoreId = null }) {
-                    Text(stringResource(R.string.common_cancel))
+                    Text(text = stringResource(R.string.common_cancel))
                 }
             },
         )
@@ -263,7 +276,7 @@ fun RecentCompletionsScreen(
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            contentPadding = PaddingValues(
                 start = spacing.large,
                 top = innerPadding.calculateTopPadding() + spacing.large,
                 end = spacing.large,
@@ -277,7 +290,7 @@ fun RecentCompletionsScreen(
                         .fillMaxWidth()
                         .clickable { onOpenCompletion(completion.completionId) },
                 ) {
-                    androidx.compose.foundation.layout.Column(modifier = Modifier.padding(spacing.medium)) {
+                    Column(modifier = Modifier.padding(spacing.medium)) {
                         RecentCompletionContent(completion = completion)
                     }
                 }
@@ -306,7 +319,7 @@ fun RecentCompletionDetailScreen(
             )
         },
     ) { innerPadding ->
-        androidx.compose.foundation.layout.Column(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
@@ -333,7 +346,7 @@ private fun RecentCompletionRow(
             .fillMaxWidth()
             .clickable(onClick = onClick),
     ) {
-        androidx.compose.foundation.layout.Column(modifier = Modifier.padding(LocalSpacing.current.medium)) {
+        Column(modifier = Modifier.padding(LocalSpacing.current.medium)) {
             RecentCompletionContent(completion = completion)
         }
     }
@@ -344,14 +357,19 @@ private fun RecentCompletionContent(
     completion: RecentCompletion,
     dateSkeleton: String = "yMMMd",
 ) {
-    Text(completion.choreName, style = MaterialTheme.typography.titleMedium)
     Text(
-        formatInstantForLocale(completion.completedAt, dateSkeleton),
+        text = completion.choreName,
+        style = MaterialTheme.typography.titleMedium,
+    )
+    Text(
+        text = formatInstantForLocale(completion.completedAt, dateSkeleton),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    Text(completion.participantNames.joinToString())
-    completion.note?.takeIf(String::isNotBlank)?.let { Text(it) }
+    Text(text = completion.participantNames.joinToString())
+    completion.note?.takeIf(String::isNotBlank)?.let { note ->
+        Text(text = note)
+    }
 }
 
 private fun List<Chore>.sortedForQuickLog(completions: List<RecentCompletion>): List<Chore> {

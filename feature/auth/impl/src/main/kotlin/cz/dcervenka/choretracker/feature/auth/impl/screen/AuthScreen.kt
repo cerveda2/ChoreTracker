@@ -83,7 +83,7 @@ fun AuthScreen(
                         unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         text = {
                             Text(
-                                if (mode == AuthMode.SIGN_IN) {
+                                text = if (mode == AuthMode.SIGN_IN) {
                                     stringResource(R.string.auth_sign_in)
                                 } else {
                                     stringResource(R.string.auth_create_account)
@@ -106,13 +106,16 @@ fun AuthScreen(
                 }
             }
             uiState.errorMessage?.let { message ->
-                Text(message, color = MaterialTheme.colorScheme.error)
+                Text(
+                    text = message,
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
             if (uiState.authMode == AuthMode.SIGN_UP) {
                 OutlinedTextField(
                     value = uiState.displayName,
                     onValueChange = { onIntent(AuthUiIntent.DisplayNameChanged(it)) },
-                    label = { Text(stringResource(R.string.auth_display_name)) },
+                    label = { Text(text = stringResource(R.string.auth_display_name)) },
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Words,
                         autoCorrectEnabled = true,
@@ -123,7 +126,7 @@ fun AuthScreen(
             OutlinedTextField(
                 value = uiState.email,
                 onValueChange = { onIntent(AuthUiIntent.EmailChanged(it)) },
-                label = { Text(stringResource(R.string.auth_email)) },
+                label = { Text(text = stringResource(R.string.auth_email)) },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
                     capitalization = KeyboardCapitalization.None,
@@ -134,7 +137,7 @@ fun AuthScreen(
             OutlinedTextField(
                 value = uiState.password,
                 onValueChange = { onIntent(AuthUiIntent.PasswordChanged(it)) },
-                label = { Text(stringResource(R.string.auth_password)) },
+                label = { Text(text = stringResource(R.string.auth_password)) },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
                     capitalization = KeyboardCapitalization.None,
@@ -166,7 +169,7 @@ fun AuthScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !uiState.isWorking,
             ) {
-                Text(stringResource(R.string.auth_continue_preview))
+                Text(text = stringResource(R.string.auth_continue_preview))
             }
         }
     }
