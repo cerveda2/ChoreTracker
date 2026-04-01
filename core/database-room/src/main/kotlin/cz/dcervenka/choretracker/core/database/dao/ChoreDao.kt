@@ -24,8 +24,15 @@ interface ChoreDao {
 
     @Query(
         "UPDATE chores " +
-            "SET isActive = :isActive, deletedAt = CASE WHEN :isActive THEN NULL ELSE :deletedAt END " +
+            "SET isActive = 0, deletedAt = :deletedAt " +
             "WHERE id = :choreId",
     )
-    suspend fun updateActive(choreId: String, isActive: Boolean, deletedAt: Instant?)
+    suspend fun markDeleted(choreId: String, deletedAt: Instant)
+
+    @Query(
+        "UPDATE chores " +
+            "SET isActive = :isActive " +
+            "WHERE id = :choreId",
+    )
+    suspend fun updateActive(choreId: String, isActive: Boolean)
 }

@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
@@ -390,9 +391,16 @@ private fun RecentCompletionContent(
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    Text(text = completion.participantNames.joinToString())
+    Text(
+        text = completion.participantNames.joinToString(),
+        style = MaterialTheme.typography.labelLarge,
+    )
     completion.note?.takeIf(String::isNotBlank)?.let { note ->
-        Text(text = note)
+        Text(
+            text = note,
+            style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

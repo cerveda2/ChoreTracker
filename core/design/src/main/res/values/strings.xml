@@ -60,6 +60,9 @@
     <string name="household_chores">Chores</string>
     <string name="household_new_chore">New chore</string>
     <string name="household_add_chore">Add chore</string>
+    <string name="household_delete_chore">Delete chore</string>
+    <string name="household_delete_chore_title">Delete this chore?</string>
+    <string name="household_delete_chore_message">This removes the chore from active planning while keeping existing completion history readable.</string>
     <string name="household_member_count">%1$d members</string>
     <string name="household_chore_count">%1$d chores</string>
     <string name="household_invite_section">Invite</string>
@@ -113,4 +116,5 @@
     <string name="common_cancel">Cancel</string>
     <string name="common_close">Close</string>
     <string name="common_back">Back</string>
+    <string name="common_delete">Delete</string>
 </resources>

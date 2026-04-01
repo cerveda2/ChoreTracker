@@ -48,94 +48,29 @@ class FirebaseHouseholdDataSource @Inject constructor(
         val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
         return runCatching {
             val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(snapshot.household.id)
-            val batch = db.batch()
-
-            batch.set(
-                householdRef,
-                mapOf(
-                    "id" to snapshot.household.id,
-                    "name" to snapshot.household.name,
-                    "ownerUserId" to snapshot.household.ownerUserId,
-                    "inviteCode" to snapshot.household.inviteCode,
-                    "createdAt" to snapshot.household.createdAt.asTimestamp(),
+            awaitTask(
+                householdRef.set(
+                    mapOf(
+                        "id" to snapshot.household.id,
+                        "name" to snapshot.household.name,
+                        "ownerUserId" to snapshot.household.ownerUserId,
+                        "inviteCode" to snapshot.household.inviteCode,
+                        "createdAt" to snapshot.household.createdAt.asTimestamp(),
+                    ),
+                    SetOptions.merge(),
                 ),
-                SetOptions.merge(),
             )
 
-            snapshot.members.forEach { member ->
-                val memberDocumentId = member.userId ?: member.id
-                batch.set(
-                    householdRef.collection(MEMBERS_COLLECTION).document(memberDocumentId),
-                    mapOf(
-                        "id" to member.id,
-                        "householdId" to member.householdId,
-                        "userId" to member.userId,
-                        "displayName" to member.displayName,
-                        "role" to member.role.name,
-                        "active" to true,
-                    ),
-                    SetOptions.merge(),
-                )
-                member.userId?.let { memberUserId ->
-                    batch.set(
-                        db.collection(USERS_COLLECTION).document(memberUserId),
-                        mapOf(
-                            "userId" to memberUserId,
-                            "householdId" to snapshot.household.id,
-                            "displayName" to member.displayName,
-                            "updatedAt" to Timestamp.now(),
-                        ),
-                        SetOptions.merge(),
-                    )
-                }
-            }
-
-            snapshot.chores.forEach { chore ->
-                batch.set(
-                    householdRef.collection(CHORES_COLLECTION).document(chore.id),
-                    mapOf(
-                        "id" to chore.id,
-                        "householdId" to chore.householdId,
-                        "name" to chore.name,
-                        "isActive" to chore.isActive,
-                        "createdAt" to chore.createdAt.asTimestamp(),
-                        "deletedAt" to chore.deletedAt?.asTimestamp(),
-                    ),
-                    SetOptions.merge(),
-                )
-            }
-
-            snapshot.completions.forEach { completion ->
-                batch.set(
-                    householdRef.collection(COMPLETIONS_COLLECTION).document(completion.id),
-                    mapOf(
-                        "id" to completion.id,
-                        "householdId" to completion.householdId,
-                        "choreId" to completion.choreId,
-                        "createdAt" to completion.createdAt.asTimestamp(),
-                        "createdByUserId" to completion.createdByUserId,
-                        "note" to completion.note,
-                        "participantMemberIds" to completion.participantMemberIds,
-                    ),
-                    SetOptions.merge(),
-                )
-            }
-
-            snapshot.invites.forEach { invite ->
-                batch.set(
-                    householdRef.collection(INVITES_COLLECTION).document(invite.id),
-                    mapOf(
-                        "id" to invite.id,
-                        "householdId" to invite.householdId,
-                        "code" to invite.code,
-                        "createdAt" to invite.createdAt.asTimestamp(),
-                        "consumedAt" to invite.consumedAt?.asTimestamp(),
-                    ),
-                    SetOptions.merge(),
-                )
-            }
-
-            awaitTask(batch.commit())
+            upsertMembershipData(
+                db = db,
+                householdRef = householdRef,
+                snapshot = snapshot,
+            )
+            upsertHouseholdContent(
+                db = db,
+                householdRef = householdRef,
+                snapshot = snapshot,
+            )
             batchUserFallback(db, userId = userId, householdId = snapshot.household.id)
             AppResult.Success(Unit)
         }.getOrElse { error ->
@@ -143,6 +78,105 @@ class FirebaseHouseholdDataSource @Inject constructor(
                 error.message ?: "Unable to sync household data.",
                 error,
             )
+        }
+    }
+
+    private suspend fun upsertMembershipData(
+        db: FirebaseFirestore,
+        householdRef: com.google.firebase.firestore.DocumentReference,
+        snapshot: HouseholdSnapshot,
+    ) {
+        if (snapshot.members.isEmpty()) return
+
+        val membershipBatch = db.batch()
+        snapshot.members.forEach { member ->
+            val memberDocumentId = member.userId ?: member.id
+            membershipBatch.set(
+                householdRef.collection(MEMBERS_COLLECTION).document(memberDocumentId),
+                mapOf(
+                    "id" to member.id,
+                    "householdId" to member.householdId,
+                    "userId" to member.userId,
+                    "displayName" to member.displayName,
+                    "role" to member.role.name,
+                    "active" to true,
+                ),
+                SetOptions.merge(),
+            )
+            member.userId?.let { memberUserId ->
+                membershipBatch.set(
+                    db.collection(USERS_COLLECTION).document(memberUserId),
+                    mapOf(
+                        "userId" to memberUserId,
+                        "householdId" to snapshot.household.id,
+                        "displayName" to member.displayName,
+                        "updatedAt" to Timestamp.now(),
+                    ),
+                    SetOptions.merge(),
+                )
+            }
+        }
+        awaitTask(membershipBatch.commit())
+    }
+
+    private suspend fun upsertHouseholdContent(
+        db: FirebaseFirestore,
+        householdRef: com.google.firebase.firestore.DocumentReference,
+        snapshot: HouseholdSnapshot,
+    ) {
+        val contentBatch = db.batch()
+        var hasWrites = false
+
+        snapshot.chores.forEach { chore ->
+            hasWrites = true
+            contentBatch.set(
+                householdRef.collection(CHORES_COLLECTION).document(chore.id),
+                mapOf(
+                    "id" to chore.id,
+                    "householdId" to chore.householdId,
+                    "name" to chore.name,
+                    "isActive" to chore.isActive,
+                    "createdAt" to chore.createdAt.asTimestamp(),
+                    "deletedAt" to chore.deletedAt?.asTimestamp(),
+                ),
+                SetOptions.merge(),
+            )
+        }
+
+        snapshot.completions.forEach { completion ->
+            hasWrites = true
+            contentBatch.set(
+                householdRef.collection(COMPLETIONS_COLLECTION).document(completion.id),
+                mapOf(
+                    "id" to completion.id,
+                    "householdId" to completion.householdId,
+                    "choreId" to completion.choreId,
+                    "createdAt" to completion.createdAt.asTimestamp(),
+                    "createdByUserId" to completion.createdByUserId,
+                    "note" to completion.note,
+                    "participantMemberIds" to completion.participantMemberIds,
+                ),
+                SetOptions.merge(),
+            )
+        }
+
+        snapshot.invites.forEach { invite ->
+            hasWrites = true
+            contentBatch.set(
+                householdRef.collection(INVITES_COLLECTION).document(invite.id),
+                mapOf(
+                    "id" to invite.id,
+                    "householdId" to invite.householdId,
+                    "code" to invite.code,
+                    "createdAt" to invite.createdAt.asTimestamp(),
+                    "consumedAt" to invite.consumedAt?.asTimestamp(),
+                ),
+                SetOptions.merge(),
+            )
+        }
+
+        if (hasWrites) {
+            awaitTask(contentBatch.commit())
         }
     }
 

@@ -9,5 +9,7 @@ interface ChoreRepository {
 
     suspend fun addChore(householdId: String, name: String): EmptyResult
 
+    suspend fun deleteChore(choreId: String): EmptyResult
+
     suspend fun updateChoreActive(choreId: String, isActive: Boolean): EmptyResult
 }

@@ -62,6 +62,7 @@ fun NavGraphBuilder.settingsScreen(
             onBack = { navController.popBackStack() },
             onChoreInputChange = viewModel::onChoreInputChange,
             onAddChore = viewModel::addChore,
+            onDeleteChore = viewModel::deleteChore,
             onUpdateChoreActive = viewModel::updateChoreActive,
         )
     }

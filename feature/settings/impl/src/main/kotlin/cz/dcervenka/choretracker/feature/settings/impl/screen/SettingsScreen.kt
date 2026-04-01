@@ -8,13 +8,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -276,9 +287,12 @@ fun ChoresSettingsScreen(
     onBack: () -> Unit,
     onChoreInputChange: (String) -> Unit,
     onAddChore: () -> Unit,
+    onDeleteChore: (String) -> Unit,
     onUpdateChoreActive: (String, Boolean) -> Unit,
 ) {
     val spacing = LocalSpacing.current
+    var pendingDeleteChoreId by remember { mutableStateOf<String?>(null) }
+    val pendingDeleteChore = uiState.chores.firstOrNull { it.id == pendingDeleteChoreId }
 
     ChoreScaffold(
         topBar = {
@@ -310,13 +324,27 @@ fun ChoresSettingsScreen(
                         uiState.chores.forEach { chore ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                Text(text = chore.name)
-                                Switch(
-                                    checked = chore.isActive,
-                                    onCheckedChange = { checked -> onUpdateChoreActive(chore.id, checked) },
+                                Text(
+                                    text = chore.name,
+                                    modifier = Modifier.fillMaxWidth(0.6f),
                                 )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Switch(
+                                        checked = chore.isActive,
+                                        onCheckedChange = { checked -> onUpdateChoreActive(chore.id, checked) },
+                                    )
+                                    IconButton(onClick = { pendingDeleteChoreId = chore.id }) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Close,
+                                            contentDescription = stringResource(R.string.household_delete_chore),
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -337,6 +365,29 @@ fun ChoresSettingsScreen(
                 }
             }
         }
+    }
+
+    if (pendingDeleteChore != null) {
+        AlertDialog(
+            onDismissRequest = { pendingDeleteChoreId = null },
+            title = { Text(stringResource(R.string.household_delete_chore_title)) },
+            text = { Text(stringResource(R.string.household_delete_chore_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteChore(pendingDeleteChore.id)
+                        pendingDeleteChoreId = null
+                    },
+                ) {
+                    Text(stringResource(R.string.common_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteChoreId = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+        )
     }
 }
 

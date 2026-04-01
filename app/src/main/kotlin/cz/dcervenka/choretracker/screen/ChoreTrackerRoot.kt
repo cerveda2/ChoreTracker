@@ -23,12 +23,14 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
+import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.feature.auth.impl.navigation.AuthDestination
 import cz.dcervenka.choretracker.feature.auth.impl.navigation.authScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.navigation.dashboardScreen
 import cz.dcervenka.choretracker.feature.onboarding.impl.navigation.onboardingScreen
 import cz.dcervenka.choretracker.feature.settings.impl.navigation.settingsScreen
 import cz.dcervenka.choretracker.feature.stats.impl.navigation.statsScreen
+import cz.dcervenka.choretracker.navigation.RootDestination
 import cz.dcervenka.choretracker.navigation.topLevelDestinations
 import cz.dcervenka.choretracker.viewmodel.AppViewModel
 
@@ -45,6 +47,7 @@ fun ChoreTrackerRoot(
     }
 
     LaunchedEffect(rootDestination) {
+        if (rootDestination == RootDestination.Loading) return@LaunchedEffect
         navController.navigate(rootDestination.route) {
             popUpTo(navController.graph.findStartDestination().id) {
                 saveState = false
@@ -58,7 +61,7 @@ fun ChoreTrackerRoot(
         ChoreScaffold(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
-                if (showBottomBar) {
+                if (showBottomBar && rootDestination != RootDestination.Loading) {
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.background,
                         tonalElevation = 0.dp,
@@ -91,16 +94,23 @@ fun ChoreTrackerRoot(
                 }
             },
         ) { padding ->
-            NavHost(
-                navController = navController,
-                startDestination = AuthDestination.route,
-                modifier = Modifier.padding(padding),
-            ) {
-                authScreen()
-                onboardingScreen()
-                dashboardScreen(navController = navController)
-                statsScreen()
-                settingsScreen(navController = navController)
+            if (rootDestination == RootDestination.Loading) {
+                LoadingState(
+                    message = "Loading app…",
+                    modifier = Modifier.padding(padding),
+                )
+            } else {
+                NavHost(
+                    navController = navController,
+                    startDestination = AuthDestination.route,
+                    modifier = Modifier.padding(padding),
+                ) {
+                    authScreen()
+                    onboardingScreen()
+                    dashboardScreen(navController = navController)
+                    statsScreen()
+                    settingsScreen(navController = navController)
+                }
             }
         }
     }

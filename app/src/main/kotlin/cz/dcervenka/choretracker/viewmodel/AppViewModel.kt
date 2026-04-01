@@ -27,6 +27,6 @@ class AppViewModel @Inject constructor(
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = RootDestination.Auth,
+            initialValue = RootDestination.Loading,
         )
 }

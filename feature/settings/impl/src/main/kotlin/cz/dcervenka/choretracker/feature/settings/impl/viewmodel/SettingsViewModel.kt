@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import cz.dcervenka.choretracker.core.domain.usecase.AddChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
@@ -34,6 +35,7 @@ class SettingsViewModel @Inject constructor(
     private val addMemberUseCase: AddMemberUseCase,
     private val addChoreUseCase: AddChoreUseCase,
     private val createInviteUseCase: CreateInviteUseCase,
+    private val deleteChoreUseCase: DeleteChoreUseCase,
     private val updateChoreActiveUseCase: UpdateChoreActiveUseCase,
     private val updateHouseholdNameUseCase: UpdateHouseholdNameUseCase,
 ) : ViewModel() {
@@ -69,7 +71,7 @@ class SettingsViewModel @Inject constructor(
                     SettingsUiState(
                         household = household,
                         members = members,
-                        chores = chores,
+                        chores = chores.filter { it.deletedAt == null },
                         householdNameInput = currentHouseholdName,
                         memberInput = currentMember,
                         choreInput = currentChore,
@@ -144,6 +146,12 @@ class SettingsViewModel @Inject constructor(
     fun updateChoreActive(choreId: String, isActive: Boolean) {
         viewModelScope.launch {
             updateChoreActiveUseCase(choreId, isActive)
+        }
+    }
+
+    fun deleteChore(choreId: String) {
+        viewModelScope.launch {
+            deleteChoreUseCase(choreId)
         }
     }
 }

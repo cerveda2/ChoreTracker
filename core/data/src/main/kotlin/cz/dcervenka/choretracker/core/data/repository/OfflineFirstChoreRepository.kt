@@ -53,8 +53,24 @@ class OfflineFirstChoreRepository @Inject constructor(
         return AppResult.Success(Unit)
     }
 
+    override suspend fun deleteChore(choreId: String): EmptyResult {
+        choreDao.markDeleted(choreId, Clock.System.now())
+        pendingSyncOperationDao.upsert(
+            PendingSyncOperationEntity(
+                id = UUID.randomUUID().toString(),
+                entityType = "chore",
+                entityId = choreId,
+                operationType = "delete",
+                payload = choreId,
+                createdAt = Clock.System.now(),
+            ),
+        )
+        syncRepository.syncPendingOperations()
+        return AppResult.Success(Unit)
+    }
+
     override suspend fun updateChoreActive(choreId: String, isActive: Boolean): EmptyResult {
-        choreDao.updateActive(choreId, isActive, Clock.System.now())
+        choreDao.updateActive(choreId, isActive)
         pendingSyncOperationDao.upsert(
             PendingSyncOperationEntity(
                 id = UUID.randomUUID().toString(),
