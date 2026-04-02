@@ -96,7 +96,7 @@ fun ChoreTrackerRoot(
         ) { padding ->
             if (rootDestination == RootDestination.Loading) {
                 LoadingState(
-                    message = "Loading app…",
+                    message = stringResource(cz.dcervenka.choretracker.core.design.R.string.common_loading_app),
                     modifier = Modifier.padding(padding),
                 )
             } else {

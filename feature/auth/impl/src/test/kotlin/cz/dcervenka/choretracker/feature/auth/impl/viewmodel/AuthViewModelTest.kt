@@ -56,6 +56,9 @@ class AuthViewModelTest {
         every { application.getString(R.string.auth_signing_in) } returns "Signing in"
         every { application.getString(R.string.auth_creating_account) } returns "Creating account"
         every { application.getString(R.string.auth_opening_preview) } returns "Opening preview"
+        every { application.getString(R.string.auth_validation_email_required) } returns "Email is required."
+        every { application.getString(R.string.auth_validation_password_required) } returns "Password is required."
+        every { application.getString(R.string.auth_validation_display_name_required) } returns "Display name is required."
         coEvery { signInUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { signUpUseCase(any(), any(), any()) } returns AppResult.Success(Unit)
         coEvery { continueInPreviewModeUseCase(any()) } returns AppResult.Success(Unit)

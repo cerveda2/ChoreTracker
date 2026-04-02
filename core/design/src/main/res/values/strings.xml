@@ -15,6 +15,14 @@
     <string name="auth_signing_in">Signing you in…</string>
     <string name="auth_creating_account">Creating your account…</string>
     <string name="auth_opening_preview">Opening preview mode…</string>
+    <string name="auth_validation_email_required">Email is required.</string>
+    <string name="auth_validation_password_required">Password is required.</string>
+    <string name="auth_validation_display_name_required">Display name is required.</string>
+    <string name="auth_firebase_not_ready">Firebase isn\'t configured yet.</string>
+    <string name="auth_sign_in_failed">Unable to sign in.</string>
+    <string name="auth_sign_up_failed">Unable to create account.</string>
+    <string name="auth_profile_update_failed">Unable to update profile.</string>
+    <string name="auth_missing_created_user">The Firebase account was created without a user instance.</string>
 
     <string name="onboarding_title">Set up your household</string>
     <string name="onboarding_subtitle">Create a fresh household or join one with an invite code. The local Room database is already the source of truth.</string>
@@ -101,7 +109,7 @@
     <string name="settings_members_empty_message">Invite or add household members so chores can be assigned and tracked together.</string>
     <string name="settings_chores_empty_title">No chores yet</string>
     <string name="settings_chores_empty_message">Create your first chore to unlock quick logging, recent activity, and household statistics.</string>
-    <string name="settings_dynamic_color_note">Dynamic color is reserved for a later toggle. The custom Warm Utility palette is the default.</string>
+    <string name="settings_theme_note">Warm Utility is the current app theme.</string>
     <string name="settings_sign_out">Sign out</string>
     <string name="settings_loading">Loading…</string>
     <string name="settings_signed_out">Signed out</string>
@@ -117,4 +125,5 @@
     <string name="common_close">Close</string>
     <string name="common_back">Back</string>
     <string name="common_delete">Delete</string>
+    <string name="common_loading_app">Loading app…</string>
 </resources>

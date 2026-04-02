@@ -122,15 +122,17 @@ class AuthViewModel @Inject constructor(
     }
 
     private fun validateSignIn(state: AuthUiState): EmptyResult? = when {
-        state.email.isBlank() -> AppResult.Error("Email is required.")
-        state.password.isBlank() -> AppResult.Error("Password is required.")
+        state.email.isBlank() -> AppResult.Error(application.getString(R.string.auth_validation_email_required))
+        state.password.isBlank() -> AppResult.Error(application.getString(R.string.auth_validation_password_required))
         else -> null
     }
 
     private fun validateSignUp(state: AuthUiState): EmptyResult? = when {
-        state.displayName.isBlank() -> AppResult.Error("Display name is required.")
-        state.email.isBlank() -> AppResult.Error("Email is required.")
-        state.password.isBlank() -> AppResult.Error("Password is required.")
+        state.displayName.isBlank() -> AppResult.Error(
+            application.getString(R.string.auth_validation_display_name_required)
+        )
+        state.email.isBlank() -> AppResult.Error(application.getString(R.string.auth_validation_email_required))
+        state.password.isBlank() -> AppResult.Error(application.getString(R.string.auth_validation_password_required))
         else -> null
     }
 

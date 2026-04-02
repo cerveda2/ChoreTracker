@@ -426,7 +426,7 @@ fun AccountSettingsScreen(
             item {
                 SectionCard(title = stringResource(R.string.settings_account_actions)) {
                     Text(
-                        text = stringResource(R.string.settings_dynamic_color_note),
+                        text = stringResource(R.string.settings_theme_note),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     PrimaryButton(
