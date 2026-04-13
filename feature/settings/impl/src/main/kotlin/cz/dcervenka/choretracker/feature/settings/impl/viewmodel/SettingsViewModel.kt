@@ -13,6 +13,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateHouseholdNameUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
@@ -39,6 +40,7 @@ class SettingsViewModel @Inject constructor(
     private val deleteChoreUseCase: DeleteChoreUseCase,
     private val updateChoreActiveUseCase: UpdateChoreActiveUseCase,
     private val updateChoreFrequencyUseCase: UpdateChoreFrequencyUseCase,
+    private val updateChoreNameUseCase: UpdateChoreNameUseCase,
     private val updateHouseholdNameUseCase: UpdateHouseholdNameUseCase,
 ) : ViewModel() {
     private val householdNameInput = MutableStateFlow("")
@@ -160,6 +162,12 @@ class SettingsViewModel @Inject constructor(
     fun updateChoreFrequency(choreId: String, frequencyDays: Int?) {
         viewModelScope.launch {
             updateChoreFrequencyUseCase(choreId, frequencyDays)
+        }
+    }
+
+    fun updateChoreName(choreId: String, name: String) {
+        viewModelScope.launch {
+            updateChoreNameUseCase(choreId, name)
         }
     }
 }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -292,12 +293,15 @@ fun ChoresSettingsScreen(
     onDeleteChore: (String) -> Unit,
     onUpdateChoreActive: (String, Boolean) -> Unit,
     onUpdateChoreFrequency: (String, Int?) -> Unit,
+    onRenameChoreName: (String, String) -> Unit,
 ) {
     val spacing = LocalSpacing.current
     var pendingDeleteChoreId by remember { mutableStateOf<String?>(null) }
     val pendingDeleteChore = uiState.chores.firstOrNull { it.id == pendingDeleteChoreId }
     var pendingFrequencyChoreId by remember { mutableStateOf<String?>(null) }
     val pendingFrequencyChore = uiState.chores.firstOrNull { it.id == pendingFrequencyChoreId }
+    var pendingRenameChoreId by remember { mutableStateOf<String?>(null) }
+    val pendingRenameChore = uiState.chores.firstOrNull { it.id == pendingRenameChoreId }
 
     ChoreScaffold(
         topBar = {
@@ -343,6 +347,14 @@ fun ChoresSettingsScreen(
                                     }
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = { pendingRenameChoreId = chore.id }) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Edit,
+                                            contentDescription = stringResource(
+                                                R.string.settings_chore_rename_title,
+                                            ),
+                                        )
+                                    }
                                     IconButton(onClick = { pendingFrequencyChoreId = chore.id }) {
                                         Icon(
                                             imageVector = Icons.Outlined.Schedule,
@@ -401,6 +413,44 @@ fun ChoresSettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { pendingDeleteChoreId = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+        )
+    }
+
+    if (pendingRenameChore != null) {
+        var nameInput by remember(pendingRenameChore.id) { mutableStateOf(pendingRenameChore.name) }
+        AlertDialog(
+            onDismissRequest = { pendingRenameChoreId = null },
+            title = { Text(stringResource(R.string.settings_chore_rename_title)) },
+            text = {
+                OutlinedTextField(
+                    value = nameInput,
+                    onValueChange = { nameInput = it },
+                    label = { Text(stringResource(R.string.settings_chore_rename_hint)) },
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words,
+                        autoCorrectEnabled = true,
+                    ),
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val trimmed = nameInput.trim()
+                        if (trimmed.isNotEmpty()) {
+                            onRenameChoreName(pendingRenameChore.id, trimmed)
+                        }
+                        pendingRenameChoreId = null
+                    },
+                ) {
+                    Text(stringResource(R.string.common_save))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRenameChoreId = null }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             },
