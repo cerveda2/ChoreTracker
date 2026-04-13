@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -46,6 +48,43 @@ fun OnboardingScreen(
                 title = stringResource(R.string.onboarding_title),
                 subtitle = stringResource(R.string.onboarding_subtitle),
             )
+            if (uiState.isRestoringRemoteHousehold || uiState.restoreErrorMessage != null) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (uiState.restoreErrorMessage != null) {
+                            MaterialTheme.colorScheme.errorContainer
+                        } else {
+                            MaterialTheme.colorScheme.secondaryContainer
+                        },
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(spacing.medium),
+                        verticalArrangement = Arrangement.spacedBy(spacing.xSmall),
+                    ) {
+                        Text(
+                            text = stringResource(
+                                if (uiState.restoreErrorMessage != null) {
+                                    R.string.onboarding_restore_failed_title
+                                } else {
+                                    R.string.onboarding_restoring_title
+                                },
+                            ),
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            text = if (uiState.restoreErrorMessage != null) {
+                                stringResource(R.string.onboarding_restore_failed_message)
+                            } else {
+                                stringResource(R.string.onboarding_restoring_message)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+            }
             uiState.errorMessage?.let { message ->
                 Text(message, color = MaterialTheme.colorScheme.error)
             }

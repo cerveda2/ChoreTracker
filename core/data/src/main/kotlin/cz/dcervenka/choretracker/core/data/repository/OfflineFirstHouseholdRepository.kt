@@ -18,9 +18,11 @@ import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
+import cz.dcervenka.choretracker.core.model.household.HouseholdRestoreStatus
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.household.Invite
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -43,18 +45,37 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     private val syncRepository: SyncRepository,
 ) : HouseholdRepository {
 
+    private val restoreStatus = MutableStateFlow(HouseholdRestoreStatus())
+
     override fun observeCurrentHousehold(): Flow<Household?> = authRepository.authState.flatMapLatest { authState ->
         flow {
             val user = (authState as? AuthState.Authenticated)?.user
             if (user != null && !user.isPreview) {
                 syncRepository.syncPendingOperations()
                 if (householdDao.getCurrentHousehold() == null) {
-                    syncRepository.restoreHouseholdForUser(user.id)
+                    restoreStatus.value = HouseholdRestoreStatus(isRestoring = true)
+                    when (val restoreResult = syncRepository.restoreHouseholdForUser(user.id)) {
+                        is AppResult.Error -> {
+                            restoreStatus.value = HouseholdRestoreStatus(
+                                isRestoring = false,
+                                errorMessage = restoreResult.message,
+                            )
+                        }
+                        is AppResult.Success -> {
+                            restoreStatus.value = HouseholdRestoreStatus()
+                        }
+                    }
+                } else {
+                    restoreStatus.value = HouseholdRestoreStatus()
                 }
+            } else {
+                restoreStatus.value = HouseholdRestoreStatus()
             }
             emitAll(householdDao.observeCurrentHousehold().map { it?.asModel() })
         }
     }
+
+    override fun observeRestoreStatus(): Flow<HouseholdRestoreStatus> = restoreStatus
 
     override fun observeMembers(householdId: String): Flow<List<HouseholdMember>> =
         memberDao.observeMembers(householdId).map { members -> members.map(MemberEntity::asModel) }

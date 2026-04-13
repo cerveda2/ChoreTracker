@@ -26,6 +26,10 @@
 
     <string name="onboarding_title">Set up your household</string>
     <string name="onboarding_subtitle">Create a fresh household or join one with an invite code. The local Room database is already the source of truth.</string>
+    <string name="onboarding_restoring_title">Checking your existing household</string>
+    <string name="onboarding_restoring_message">We\'re trying to restore your household from the cloud.</string>
+    <string name="onboarding_restore_failed_title">We couldn\'t restore your household</string>
+    <string name="onboarding_restore_failed_message">This account may already belong to a household, but we couldn\'t load it from Firestore. Creating a new household could duplicate your data.</string>
     <string name="onboarding_your_name">Your name</string>
     <string name="onboarding_household_name">Household name</string>
     <string name="onboarding_create_household">Create household</string>
@@ -35,6 +39,11 @@
     <string name="dashboard_loading">Loading dashboard…</string>
     <string name="dashboard_recent_balance">Recent balance and task flow</string>
     <string name="dashboard_title">Dashboard</string>
+    <string name="dashboard_sync_failed_title">Remote sync needs attention</string>
+    <string name="dashboard_sync_failed_permissions">We couldn\'t upload your latest changes because the server rejected the request. Your changes are still saved on this device.</string>
+    <string name="dashboard_sync_failed_generic">We couldn\'t upload your latest changes. Your changes are still saved on this device and we\'ll keep trying.</string>
+    <string name="dashboard_sync_pending_title">Changes waiting to upload</string>
+    <string name="dashboard_sync_pending_message">We still need to upload %1$d local change(s) to your household.</string>
     <string name="dashboard_last_30d">last 30d: %1$d</string>
     <string name="dashboard_quick_log">Quick log</string>
     <string name="dashboard_record_prompt">Tap to record who completed this.</string>
@@ -126,4 +135,5 @@
     <string name="common_back">Back</string>
     <string name="common_delete">Delete</string>
     <string name="common_loading_app">Loading app…</string>
+    <string name="common_retry">Retry</string>
 </resources>

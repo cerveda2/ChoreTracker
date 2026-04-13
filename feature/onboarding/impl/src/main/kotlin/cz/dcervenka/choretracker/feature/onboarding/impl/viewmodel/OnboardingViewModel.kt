@@ -6,6 +6,7 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.CreateHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.JoinHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveHouseholdRestoreStatusUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +22,7 @@ import javax.inject.Inject
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     observeAuthStateUseCase: ObserveAuthStateUseCase,
+    observeHouseholdRestoreStatusUseCase: ObserveHouseholdRestoreStatusUseCase,
     private val createHouseholdUseCase: CreateHouseholdUseCase,
     private val joinHouseholdUseCase: JoinHouseholdUseCase,
 ) : ViewModel() {
@@ -33,6 +35,7 @@ class OnboardingViewModel @Inject constructor(
     private val authDisplayName = observeAuthStateUseCase().map { state ->
         (state as? AuthState.Authenticated)?.user?.displayName
     }
+    private val restoreStatus = observeHouseholdRestoreStatusUseCase()
 
     private val formState = combine(
         householdName,
@@ -52,11 +55,14 @@ class OnboardingViewModel @Inject constructor(
 
     val uiState: StateFlow<OnboardingUiState> = combine(
         authDisplayName,
+        restoreStatus,
         formState,
-    ) { currentAuthDisplayName, currentState ->
+    ) { currentAuthDisplayName, currentRestoreStatus, currentState ->
         currentState.copy(
             displayName = currentAuthDisplayName ?: currentState.displayName,
             canEditDisplayName = currentAuthDisplayName == null,
+            restoreErrorMessage = currentRestoreStatus.errorMessage,
+            isRestoringRemoteHousehold = currentRestoreStatus.isRestoring,
         )
     }.stateIn(
         scope = viewModelScope,

@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -44,12 +45,14 @@ import cz.dcervenka.choretracker.core.formatters.formatInstantForLocale
 import cz.dcervenka.choretracker.core.formatters.formatLocalDateForLocale
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
+import cz.dcervenka.choretracker.core.model.sync.SyncState
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 
 @Composable
 fun DashboardScreen(
     uiState: DashboardUiState,
     onLogCompletion: (householdId: String, choreId: String, participantIds: List<String>, note: String?) -> Unit,
+    onRetrySync: () -> Unit,
     onSeeAllCompletions: () -> Unit,
     onOpenCompletion: (String) -> Unit,
 ) {
@@ -81,6 +84,16 @@ fun DashboardScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(spacing.medium),
             ) {
+                uiState.syncState
+                    ?.takeIf { it.pendingOperations > 0 || !it.lastErrorMessage.isNullOrBlank() }
+                    ?.let { syncState ->
+                        item {
+                            RemoteSyncBanner(
+                                syncState = syncState,
+                                onRetrySync = onRetrySync,
+                            )
+                        }
+                    }
                 item {
                     SectionCard(title = snapshot.household.name) {
                         Text(
@@ -275,6 +288,56 @@ fun DashboardScreen(
 }
 
 @Composable
+private fun RemoteSyncBanner(
+    syncState: SyncState,
+    onRetrySync: () -> Unit,
+) {
+    val isError = !syncState.lastErrorMessage.isNullOrBlank()
+    val containerColor = if (isError) {
+        MaterialTheme.colorScheme.errorContainer
+    } else {
+        MaterialTheme.colorScheme.secondaryContainer
+    }
+    val contentColor = if (isError) {
+        MaterialTheme.colorScheme.onErrorContainer
+    } else {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    }
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(LocalSpacing.current.medium),
+            verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.xSmall),
+        ) {
+            Text(
+                text = stringResource(
+                    id = if (isError) {
+                        R.string.dashboard_sync_failed_title
+                    } else {
+                        R.string.dashboard_sync_pending_title
+                    },
+                ),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = syncBannerMessage(syncState),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (syncState.pendingOperations > 0) {
+                TextButton(onClick = onRetrySync) {
+                    Text(text = stringResource(R.string.common_retry))
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun RecentCompletionsScreen(
     completions: List<RecentCompletion>,
     onBack: () -> Unit,
@@ -412,6 +475,21 @@ private fun List<Chore>.sortedForQuickLog(completions: List<RecentCompletion>): 
     )
 }
 
+@Composable
+private fun syncBannerMessage(syncState: SyncState): String {
+    val errorMessage = syncState.lastErrorMessage.orEmpty()
+    return when {
+        errorMessage.contains("Missing or insufficient permissions", ignoreCase = true) ->
+            stringResource(R.string.dashboard_sync_failed_permissions)
+        errorMessage.isNotBlank() ->
+            stringResource(R.string.dashboard_sync_failed_generic)
+        else -> stringResource(
+            R.string.dashboard_sync_pending_message,
+            syncState.pendingOperations,
+        )
+    }
+}
+
 @Preview(showBackground = true, heightDp = 1200)
 @Composable
 private fun DashboardScreenPreview() {
@@ -423,6 +501,7 @@ private fun DashboardScreenPreview() {
                 allCompletions = PreviewData.dashboardSnapshot.recentCompletions,
             ),
             onLogCompletion = { _, _, _, _ -> },
+            onRetrySync = {},
             onSeeAllCompletions = {},
             onOpenCompletion = {},
         )

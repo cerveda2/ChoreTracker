@@ -21,14 +21,26 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/households/$(householdId)/members/$(uid));
     }
 
+    function userDocExists(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    function householdDocExists(householdId) {
+      return exists(/databases/$(database)/documents/households/$(householdId));
+    }
+
+    function memberDocExists(householdId, uid) {
+      return exists(/databases/$(database)/documents/households/$(householdId)/members/$(uid));
+    }
+
     function isHouseholdMember(householdId) {
       return isSignedIn() && (
         (
-          memberDoc(householdId, request.auth.uid).exists() &&
+          memberDocExists(householdId, request.auth.uid) &&
           memberDoc(householdId, request.auth.uid).data.active == true
         ) ||
         (
-          userDoc(request.auth.uid).exists() &&
+          userDocExists(request.auth.uid) &&
           userDoc(request.auth.uid).data.householdId == householdId
         )
       );
@@ -36,12 +48,35 @@ service cloud.firestore {
 
     function isHouseholdOwner(householdId) {
       return isSignedIn() &&
-        householdDoc(householdId).exists() &&
+        householdDocExists(householdId) &&
         householdDoc(householdId).data.ownerUserId == request.auth.uid;
     }
 
+    function isSelfMemberWrite(householdId, memberId) {
+      return isSignedIn() &&
+        memberId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.householdId == householdId;
+    }
+
+    function isOwnMembershipRecord() {
+      return isSignedIn() &&
+        resource.data.userId == request.auth.uid;
+    }
+
+    function canManageUserDocument(userId) {
+      return isUserDocument(userId) ||
+        (
+          isSignedIn() &&
+          request.resource.data.userId == userId &&
+          request.resource.data.householdId != null &&
+          isHouseholdOwner(request.resource.data.householdId)
+        );
+    }
+
     match /users/{userId} {
-      allow read, write: if isUserDocument(userId);
+      allow read, delete: if isUserDocument(userId);
+      allow create, update: if canManageUserDocument(userId);
     }
 
     match /households/{householdId} {
@@ -50,11 +85,11 @@ service cloud.firestore {
       allow update, delete: if isHouseholdOwner(householdId);
 
       match /members/{memberId} {
-        allow read: if isHouseholdMember(householdId);
+        allow read: if isHouseholdMember(householdId) || isOwnMembershipRecord();
         allow create: if isHouseholdOwner(householdId) ||
-          (isSignedIn() && memberId == request.auth.uid);
+          isSelfMemberWrite(householdId, memberId);
         allow update: if isHouseholdOwner(householdId) ||
-          (isSignedIn() && memberId == request.auth.uid);
+          isSelfMemberWrite(householdId, memberId);
         allow delete: if isHouseholdOwner(householdId);
       }
 

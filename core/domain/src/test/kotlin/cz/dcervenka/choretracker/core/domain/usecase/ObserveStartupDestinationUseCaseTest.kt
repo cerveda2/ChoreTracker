@@ -5,6 +5,7 @@ import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
 import cz.dcervenka.choretracker.core.model.app.StartupDestination
+import cz.dcervenka.choretracker.core.model.household.HouseholdRestoreStatus
 import cz.dcervenka.choretracker.core.test.mock.sampleAuthenticatedState
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import io.mockk.MockKAnnotations
@@ -38,6 +39,7 @@ class ObserveStartupDestinationUseCaseTest {
         householdFlow.value = null
         every { authRepository.authState } returns authStateFlow
         every { householdRepository.observeCurrentHousehold() } returns householdFlow
+        every { householdRepository.observeRestoreStatus() } returns MutableStateFlow(HouseholdRestoreStatus())
         useCase = ObserveStartupDestinationUseCase(
             authRepository = authRepository,
             householdRepository = householdRepository,

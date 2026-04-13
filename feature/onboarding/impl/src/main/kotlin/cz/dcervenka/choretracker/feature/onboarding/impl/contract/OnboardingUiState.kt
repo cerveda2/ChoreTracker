@@ -7,6 +7,8 @@ data class OnboardingUiState(
     val displayName: String = "",
     val canEditDisplayName: Boolean = true,
     val inviteCode: String = "",
+    val restoreErrorMessage: String? = null,
+    val isRestoringRemoteHousehold: Boolean = false,
     val isWorking: Boolean = false,
     val errorMessage: String? = null,
 ) : UiState

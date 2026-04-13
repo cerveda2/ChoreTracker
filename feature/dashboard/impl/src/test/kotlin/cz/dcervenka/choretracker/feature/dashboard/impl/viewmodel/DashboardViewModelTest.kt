@@ -8,6 +8,9 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentDashboardUseC
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveRecentCompletionsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
+import cz.dcervenka.choretracker.core.model.sync.SyncState
 import cz.dcervenka.choretracker.core.test.mock.sampleDashboardSnapshot
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
@@ -42,13 +45,20 @@ class DashboardViewModelTest {
     lateinit var observeRecentCompletionsUseCase: ObserveRecentCompletionsUseCase
 
     @MockK
+    lateinit var observeSyncStateUseCase: ObserveSyncStateUseCase
+
+    @MockK
     lateinit var logCompletionUseCase: LogCompletionUseCase
+
+    @MockK
+    lateinit var retryPendingSyncUseCase: RetryPendingSyncUseCase
 
     private val dashboardFlow = MutableStateFlow(sampleDashboardSnapshot())
     private val householdFlow = MutableStateFlow<cz.dcervenka.choretracker.core.model.household.Household?>(null)
     private val membersFlow =
         MutableStateFlow(emptyList<cz.dcervenka.choretracker.core.model.household.HouseholdMember>())
     private val completionsFlow = MutableStateFlow(sampleDashboardSnapshot().recentCompletions)
+    private val syncStateFlow = MutableStateFlow<SyncState?>(null)
 
     @Before
     fun setUp() {
@@ -60,7 +70,9 @@ class DashboardViewModelTest {
         every { observeCurrentHouseholdUseCase() } returns householdFlow
         every { observeMembersUseCase(any()) } answers { membersFlow }
         every { observeRecentCompletionsUseCase(any(), any()) } answers { completionsFlow }
+        every { observeSyncStateUseCase(any()) } answers { syncStateFlow }
         coEvery { logCompletionUseCase(any(), any(), any(), any()) } returns AppResult.Success(Unit)
+        coEvery { retryPendingSyncUseCase() } returns AppResult.Success(Unit)
     }
 
     @Test
@@ -82,6 +94,28 @@ class DashboardViewModelTest {
     }
 
     @Test
+    fun `ui state exposes sync status for dashboard banner`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            assertThat(awaitItem().syncState).isNull()
+
+            householdFlow.value = sampleHousehold()
+            syncStateFlow.value = SyncState(
+                householdId = "household-1",
+                lastSyncedAt = null,
+                lastSyncAttemptAt = kotlin.time.Instant.parse("2026-04-10T05:24:20Z"),
+                pendingOperations = 2,
+                lastErrorMessage = "Missing or insufficient permissions.",
+            )
+
+            val state = awaitItem()
+            assertThat(state.syncState?.pendingOperations).isEqualTo(2)
+            assertThat(state.syncState?.lastErrorMessage).contains("permissions")
+        }
+    }
+
+    @Test
     fun `log completion delegates to use case`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
 
@@ -97,6 +131,16 @@ class DashboardViewModelTest {
             logCompletionUseCase("household-1", "chore-1", listOf("member-1", "member-2"), "Done together")
         }
     }
+
+    @Test
+    fun `retry sync delegates to use case`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.retrySync()
+        advanceUntilIdle()
+
+        coVerify { retryPendingSyncUseCase() }
+    }
 }
 
 private fun DashboardViewModelTest.createViewModel() = DashboardViewModel(
@@ -104,5 +148,7 @@ private fun DashboardViewModelTest.createViewModel() = DashboardViewModel(
     observeCurrentHouseholdUseCase = observeCurrentHouseholdUseCase,
     observeMembersUseCase = observeMembersUseCase,
     observeRecentCompletionsUseCase = observeRecentCompletionsUseCase,
+    observeSyncStateUseCase = observeSyncStateUseCase,
     logCompletionUseCase = logCompletionUseCase,
+    retryPendingSyncUseCase = retryPendingSyncUseCase,
 )

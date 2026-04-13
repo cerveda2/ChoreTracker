@@ -5,7 +5,9 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.CreateHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.JoinHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveHouseholdRestoreStatusUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.household.HouseholdRestoreStatus
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
@@ -35,13 +37,18 @@ class OnboardingViewModelTest {
     @MockK
     lateinit var observeAuthStateUseCase: ObserveAuthStateUseCase
 
+    @MockK
+    lateinit var observeHouseholdRestoreStatusUseCase: ObserveHouseholdRestoreStatusUseCase
+
     private val authStateFlow = MutableStateFlow<AuthState>(AuthState.SignedOut)
+    private val restoreStatusFlow = MutableStateFlow(HouseholdRestoreStatus())
 
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
         authStateFlow.value = AuthState.SignedOut
         every { observeAuthStateUseCase() } returns authStateFlow
+        every { observeHouseholdRestoreStatusUseCase() } returns restoreStatusFlow
         coEvery { createHouseholdUseCase(any(), any()) } returns AppResult.Success(
             cz.dcervenka.choretracker.core.test.mock.sampleHousehold(),
         )
@@ -100,10 +107,26 @@ class OnboardingViewModelTest {
         assertThat(viewModel.uiState.value.isWorking).isFalse()
         assertThat(viewModel.uiState.value.errorMessage).isEqualTo("Invite code is invalid")
     }
+
+    @Test
+    fun `restore error is exposed in onboarding state`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+
+        restoreStatusFlow.value = HouseholdRestoreStatus(
+            errorMessage = "Missing or insufficient permissions.",
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.restoreErrorMessage).contains("permissions")
+    }
 }
 
 private fun OnboardingViewModelTest.createViewModel() = OnboardingViewModel(
     observeAuthStateUseCase = observeAuthStateUseCase,
+    observeHouseholdRestoreStatusUseCase = observeHouseholdRestoreStatusUseCase,
     createHouseholdUseCase = createHouseholdUseCase,
     joinHouseholdUseCase = joinHouseholdUseCase,
 )

@@ -4,11 +4,13 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
+import cz.dcervenka.choretracker.core.model.household.HouseholdRestoreStatus
 import cz.dcervenka.choretracker.core.model.household.Invite
 import kotlinx.coroutines.flow.Flow
 
 interface HouseholdRepository {
     fun observeCurrentHousehold(): Flow<Household?>
+    fun observeRestoreStatus(): Flow<HouseholdRestoreStatus>
 
     fun observeMembers(householdId: String): Flow<List<HouseholdMember>>
 

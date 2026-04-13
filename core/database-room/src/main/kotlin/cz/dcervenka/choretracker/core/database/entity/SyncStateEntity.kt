@@ -8,5 +8,7 @@ import kotlin.time.Instant
 data class SyncStateEntity(
     @PrimaryKey val householdId: String,
     val lastSyncedAt: Instant?,
+    val lastSyncAttemptAt: Instant?,
     val pendingOperations: Int,
+    val lastErrorMessage: String?,
 )

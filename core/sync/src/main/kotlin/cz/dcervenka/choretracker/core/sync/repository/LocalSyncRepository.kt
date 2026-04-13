@@ -11,6 +11,7 @@ import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntity
@@ -18,6 +19,7 @@ import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
 import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
+import cz.dcervenka.choretracker.core.database.entity.SyncStateEntity
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
@@ -26,10 +28,14 @@ import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.household.Invite
 import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
+import cz.dcervenka.choretracker.core.model.sync.SyncState
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Clock
 
 @Singleton
 class LocalSyncRepository @Inject constructor(
@@ -41,8 +47,22 @@ class LocalSyncRepository @Inject constructor(
     private val completionParticipantDao: CompletionParticipantDao,
     private val inviteDao: InviteDao,
     private val pendingSyncOperationDao: PendingSyncOperationDao,
+    private val syncStateDao: SyncStateDao,
     private val remoteHouseholdDataSource: RemoteHouseholdDataSource,
 ) : SyncRepository {
+
+    override fun observeSyncState(householdId: String): Flow<SyncState?> =
+        syncStateDao.observeSyncState(householdId).map { state ->
+            state?.let {
+                SyncState(
+                    householdId = it.householdId,
+                    lastSyncedAt = it.lastSyncedAt,
+                    lastSyncAttemptAt = it.lastSyncAttemptAt,
+                    pendingOperations = it.pendingOperations,
+                    lastErrorMessage = it.lastErrorMessage,
+                )
+            }
+        }
 
     override suspend fun syncPendingOperations(): EmptyResult {
         val authenticatedUser = (authRepository.authState.first() as? AuthState.Authenticated)?.user
@@ -65,12 +85,33 @@ class LocalSyncRepository @Inject constructor(
         } else {
             operationIdsByHouseholdId.entries.firstNotNullOfOrNull { (householdId, operationIds) ->
                 val snapshot = buildSnapshot(householdId) ?: return@firstNotNullOfOrNull null
+                val now = Clock.System.now()
                 when (val result = remoteHouseholdDataSource.upsertHouseholdSnapshot(snapshot, authenticatedUser.id)) {
-                    is AppResult.Error -> AppResult.Error(result.message, result.cause)
+                    is AppResult.Error -> {
+                        syncStateDao.upsert(
+                            SyncStateEntity(
+                                householdId = householdId,
+                                lastSyncedAt = null,
+                                lastSyncAttemptAt = now,
+                                pendingOperations = operationIds.size,
+                                lastErrorMessage = result.message,
+                            ),
+                        )
+                        AppResult.Error(result.message, result.cause)
+                    }
                     is AppResult.Success -> {
                         operationIds.forEach { operationId ->
                             pendingSyncOperationDao.delete(operationId)
                         }
+                        syncStateDao.upsert(
+                            SyncStateEntity(
+                                householdId = householdId,
+                                lastSyncedAt = now,
+                                lastSyncAttemptAt = now,
+                                pendingOperations = 0,
+                                lastErrorMessage = null,
+                            ),
+                        )
                         null
                     }
                 }
