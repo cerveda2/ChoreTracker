@@ -13,6 +13,8 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseC
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateHouseholdNameUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.test.mock.sampleAuthenticatedState
@@ -68,6 +70,12 @@ class SettingsViewModelTest {
     lateinit var updateChoreActiveUseCase: UpdateChoreActiveUseCase
 
     @MockK
+    lateinit var updateChoreFrequencyUseCase: UpdateChoreFrequencyUseCase
+
+    @MockK
+    lateinit var updateChoreNameUseCase: UpdateChoreNameUseCase
+
+    @MockK
     lateinit var updateHouseholdNameUseCase: UpdateHouseholdNameUseCase
 
     private val authStateFlow = MutableStateFlow<AuthState>(AuthState.SignedOut)
@@ -95,6 +103,8 @@ class SettingsViewModelTest {
         } returns AppResult.Success(cz.dcervenka.choretracker.core.test.mock.sampleInvite())
         coEvery { deleteChoreUseCase(any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreActiveUseCase(any(), any()) } returns AppResult.Success(Unit)
+        coEvery { updateChoreFrequencyUseCase(any(), any()) } returns AppResult.Success(Unit)
+        coEvery { updateChoreNameUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateHouseholdNameUseCase(any(), any()) } returns AppResult.Success(Unit)
     }
 
@@ -127,6 +137,26 @@ class SettingsViewModelTest {
 
         coVerify { signOutUseCase() }
     }
+
+    @Test
+    fun `updateChoreName delegates to use case`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.updateChoreName("chore-1", "Dishes")
+        advanceUntilIdle()
+
+        coVerify { updateChoreNameUseCase("chore-1", "Dishes") }
+    }
+
+    @Test
+    fun `updateChoreFrequency delegates to use case`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.updateChoreFrequency("chore-1", 7)
+        advanceUntilIdle()
+
+        coVerify { updateChoreFrequencyUseCase("chore-1", 7) }
+    }
 }
 
 private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
@@ -140,5 +170,7 @@ private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
     createInviteUseCase,
     deleteChoreUseCase,
     updateChoreActiveUseCase,
+    updateChoreFrequencyUseCase,
+    updateChoreNameUseCase,
     updateHouseholdNameUseCase,
 )
