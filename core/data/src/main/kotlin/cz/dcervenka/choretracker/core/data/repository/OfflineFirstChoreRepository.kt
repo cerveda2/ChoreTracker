@@ -84,4 +84,36 @@ class OfflineFirstChoreRepository @Inject constructor(
         syncRepository.syncPendingOperations()
         return AppResult.Success(Unit)
     }
+
+    override suspend fun updateChoreName(choreId: String, name: String): EmptyResult {
+        choreDao.updateName(choreId, name.trim())
+        pendingSyncOperationDao.upsert(
+            PendingSyncOperationEntity(
+                id = UUID.randomUUID().toString(),
+                entityType = "chore",
+                entityId = choreId,
+                operationType = "rename",
+                payload = name.trim(),
+                createdAt = Clock.System.now(),
+            ),
+        )
+        syncRepository.syncPendingOperations()
+        return AppResult.Success(Unit)
+    }
+
+    override suspend fun updateChoreFrequencyDays(choreId: String, frequencyDays: Int?): EmptyResult {
+        choreDao.updateFrequencyDays(choreId, frequencyDays)
+        pendingSyncOperationDao.upsert(
+            PendingSyncOperationEntity(
+                id = UUID.randomUUID().toString(),
+                entityType = "chore",
+                entityId = choreId,
+                operationType = "update_frequency",
+                payload = frequencyDays?.toString().orEmpty(),
+                createdAt = Clock.System.now(),
+            ),
+        )
+        syncRepository.syncPendingOperations()
+        return AppResult.Success(Unit)
+    }
 }

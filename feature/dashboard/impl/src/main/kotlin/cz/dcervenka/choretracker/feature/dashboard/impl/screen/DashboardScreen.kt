@@ -44,6 +44,7 @@ import cz.dcervenka.choretracker.core.design.components.SectionCard
 import cz.dcervenka.choretracker.core.formatters.formatInstantForLocale
 import cz.dcervenka.choretracker.core.formatters.formatLocalDateForLocale
 import cz.dcervenka.choretracker.core.model.chore.Chore
+import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.core.model.sync.SyncState
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
@@ -67,7 +68,7 @@ fun DashboardScreen(
     } else {
         val quickLogChores = snapshot.activeChores.sortedForQuickLog(uiState.allCompletions).take(8)
         val highlightedCompletions = uiState.allCompletions.take(3)
-        val staleItems = snapshot.staleChores.filter { it.status != "OK" }
+        val staleItems = snapshot.staleChores.filter { it.status != ChoreStatus.OK }
 
         ChoreScaffold(
             topBar = {

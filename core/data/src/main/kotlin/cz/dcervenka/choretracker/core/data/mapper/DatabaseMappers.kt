@@ -37,6 +37,7 @@ internal fun ChoreEntity.asModel(): Chore = Chore(
     isActive = isActive,
     createdAt = createdAt,
     deletedAt = deletedAt,
+    frequencyDays = frequencyDays,
 )
 
 internal fun InviteEntity.asModel(): Invite = Invite(

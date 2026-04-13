@@ -12,4 +12,5 @@ data class ChoreEntity(
     val isActive: Boolean,
     val createdAt: Instant,
     val deletedAt: Instant?,
+    val frequencyDays: Int? = null,
 )

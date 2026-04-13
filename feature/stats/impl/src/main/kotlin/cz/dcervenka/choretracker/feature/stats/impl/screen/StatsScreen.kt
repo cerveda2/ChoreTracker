@@ -20,6 +20,7 @@ import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.SectionCard
 import cz.dcervenka.choretracker.core.formatters.formatMonthLabelForLocale
+import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
 import cz.dcervenka.choretracker.feature.stats.impl.contract.StatsUiState
 
 @Composable
@@ -72,7 +73,12 @@ fun StatsScreen(
                             comparison.countsByMember.forEach { (member, count) ->
                                 Text(stringResource(R.string.stats_member_count, member, count))
                             }
-                            Text(stringResource(R.string.stats_leader, comparison.leaderLabel))
+                            val leaderText = when (val leader = comparison.leader) {
+                                ChoreLeaderResult.NoData -> stringResource(R.string.stats_leader_no_data)
+                                ChoreLeaderResult.Tie -> stringResource(R.string.stats_leader_tie)
+                                is ChoreLeaderResult.Leader -> leader.displayName
+                            }
+                            Text(stringResource(R.string.stats_leader, leaderText))
                         }
                     }
                     items(stats.monthlyBreakdown, key = { it.monthLabel }) { month ->

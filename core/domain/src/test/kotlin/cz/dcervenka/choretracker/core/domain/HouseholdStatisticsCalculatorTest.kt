@@ -6,6 +6,8 @@ import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
+import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
+import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import org.junit.Test
@@ -110,9 +112,9 @@ class HouseholdStatisticsCalculatorTest {
         assertThat(dashboard.recentCompletions.first().participantNames).containsExactly("Alice", "Bob").inOrder()
 
         val staleness = dashboard.staleChores.associateBy { it.choreName }
-        assertThat(staleness["Dishes"]?.status).isEqualTo("OK")
-        assertThat(staleness["Vacuum"]?.status).isEqualTo("Needs attention")
-        assertThat(staleness["Dusting"]?.status).isEqualTo("Never")
+        assertThat(staleness["Dishes"]?.status).isEqualTo(ChoreStatus.OK)
+        assertThat(staleness["Vacuum"]?.status).isEqualTo(ChoreStatus.NEEDS_ATTENTION)
+        assertThat(staleness["Dusting"]?.status).isEqualTo(ChoreStatus.NEVER)
     }
 
     @Test
@@ -148,14 +150,85 @@ class HouseholdStatisticsCalculatorTest {
         )
 
         val comparisons = stats.comparisons.associateBy { it.choreName }
-        assertThat(comparisons["Dishes"]?.leaderLabel).isEqualTo("Tie")
-        assertThat(comparisons["Vacuum"]?.leaderLabel).isEqualTo("Bob")
-        assertThat(comparisons["Dusting"]?.leaderLabel).isEqualTo("No data")
+        assertThat(comparisons["Dishes"]?.leader).isEqualTo(ChoreLeaderResult.Tie)
+        assertThat(comparisons["Vacuum"]?.leader).isEqualTo(ChoreLeaderResult.Leader("Bob"))
+        assertThat(comparisons["Dusting"]?.leader).isEqualTo(ChoreLeaderResult.NoData)
 
         assertThat(stats.monthlyBreakdown.map { it.monthLabel }).containsExactly("2026-03", "2026-02").inOrder()
         assertThat(stats.monthlyBreakdown.first().countsByMember["Alice"]).isEqualTo(1)
         assertThat(stats.monthlyBreakdown.first().countsByMember["Bob"]).isEqualTo(1)
         assertThat(stats.monthlyBreakdown.first().totalCount).isEqualTo(2)
+    }
+
+    @Test
+    fun `staleness uses per-chore frequency when set`() {
+        val choresWithFrequency = listOf(
+            Chore(
+                id = "chore-laundry",
+                householdId = household.id,
+                name = "Laundry",
+                isActive = true,
+                createdAt = Instant.parse("2026-01-01T09:00:00Z"),
+                frequencyDays = 3,
+            ),
+            Chore(
+                id = "chore-oven",
+                householdId = household.id,
+                name = "Oven",
+                isActive = true,
+                createdAt = Instant.parse("2026-01-01T09:00:00Z"),
+                frequencyDays = 60,
+            ),
+        )
+        val completions = listOf(
+            completion(
+                id = "c1",
+                choreId = "chore-laundry",
+                createdAt = "2026-03-27T12:00:00Z", // 2 days ago → 2/3 = 66% >= 80% → "Soon"
+                participantMemberIds = listOf("member-alice"),
+            ),
+            completion(
+                id = "c2",
+                choreId = "chore-oven",
+                createdAt = "2026-03-15T12:00:00Z", // 14 days ago → 14/60 = 23% < 80% → "OK"
+                participantMemberIds = listOf("member-alice"),
+            ),
+        )
+
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members,
+            chores = choresWithFrequency,
+            completions = completions,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        val staleness = dashboard.staleChores.associateBy { it.choreName }
+        assertThat(staleness["Laundry"]?.status).isEqualTo(ChoreStatus.SOON)
+        assertThat(staleness["Laundry"]?.frequencyDays).isEqualTo(3)
+        assertThat(staleness["Oven"]?.status).isEqualTo(ChoreStatus.OK)
+        assertThat(staleness["Oven"]?.frequencyDays).isEqualTo(60)
+
+        // laundry last done 2 days ago, frequency 3 days → overdue test: 4 days ago
+        val overdueCompletions = listOf(
+            completion(
+                id = "c3",
+                choreId = "chore-laundry",
+                createdAt = "2026-03-25T12:00:00Z", // 4 days ago > 3 day frequency → "Needs attention"
+                participantMemberIds = listOf("member-alice"),
+            ),
+        )
+        val dashboard2 = calculator.dashboardSnapshot(
+            household = household,
+            members = members,
+            chores = choresWithFrequency,
+            completions = overdueCompletions,
+            timeZone = timeZone,
+            today = today,
+        )
+        assertThat(dashboard2.staleChores.first { it.choreName == "Laundry" }.status)
+            .isEqualTo(ChoreStatus.NEEDS_ATTENTION)
     }
 
     private fun completion(

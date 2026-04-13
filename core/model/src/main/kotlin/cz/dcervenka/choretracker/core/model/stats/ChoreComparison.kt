@@ -4,6 +4,6 @@ data class ChoreComparison(
     val choreId: String,
     val choreName: String,
     val countsByMember: Map<String, Int>,
-    val leaderLabel: String,
+    val leader: ChoreLeaderResult,
     val totalCount: Int,
 )

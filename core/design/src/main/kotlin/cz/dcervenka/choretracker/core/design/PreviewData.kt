@@ -6,7 +6,9 @@ import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.household.Invite
 import cz.dcervenka.choretracker.core.model.stats.ChoreComparison
+import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
+import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import cz.dcervenka.choretracker.core.model.stats.DashboardSnapshot
 import cz.dcervenka.choretracker.core.model.stats.MemberContribution
 import cz.dcervenka.choretracker.core.model.stats.MonthlyBreakdown
@@ -116,14 +118,16 @@ object PreviewData {
                 choreName = "Laundry",
                 lastCompletedDate = LocalDate.parse("2026-03-22"),
                 daysSinceLastCompletion = 7,
-                status = "Soon",
+                frequencyDays = 3,
+                status = ChoreStatus.SOON,
             ),
             ChoreStaleness(
                 choreId = "chore-3",
                 choreName = "Plants",
                 lastCompletedDate = LocalDate.parse("2026-03-10"),
                 daysSinceLastCompletion = 19,
-                status = "Overdue",
+                frequencyDays = 10,
+                status = ChoreStatus.NEEDS_ATTENTION,
             ),
         ),
     )
@@ -135,14 +139,14 @@ object PreviewData {
                 choreId = "chore-1",
                 choreName = "Kitchen cleanup",
                 countsByMember = mapOf("Dana" to 14, "Alex" to 11),
-                leaderLabel = "Dana",
+                leader = ChoreLeaderResult.Leader("Dana"),
                 totalCount = 25,
             ),
             ChoreComparison(
                 choreId = "chore-2",
                 choreName = "Laundry",
                 countsByMember = mapOf("Dana" to 8, "Alex" to 10),
-                leaderLabel = "Alex",
+                leader = ChoreLeaderResult.Leader("Alex"),
                 totalCount = 18,
             ),
         ),

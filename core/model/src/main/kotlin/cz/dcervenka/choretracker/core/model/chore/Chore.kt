@@ -9,4 +9,5 @@ data class Chore(
     val isActive: Boolean,
     val createdAt: Instant,
     val deletedAt: Instant? = null,
+    val frequencyDays: Int? = null,
 )

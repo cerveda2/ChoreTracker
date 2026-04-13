@@ -5,7 +5,9 @@ import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.stats.ChoreComparison
+import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
+import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import cz.dcervenka.choretracker.core.model.stats.DashboardSnapshot
 import cz.dcervenka.choretracker.core.model.stats.MemberContribution
 import cz.dcervenka.choretracker.core.model.stats.MonthlyBreakdown
@@ -18,9 +20,11 @@ import kotlinx.datetime.daysUntil
 import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
-private const val NEEDS_ATTENTION_THRESHOLD_DAYS = 14
-private const val SOON_THRESHOLD_DAYS = 7
+private const val DEFAULT_NEEDS_ATTENTION_THRESHOLD_DAYS = 14
+private const val DEFAULT_SOON_THRESHOLD_DAYS = 7
+private const val SOON_THRESHOLD_RATIO = 0.8
 private const val MONTHLY_BREAKDOWN_LIMIT = 6
 
 class HouseholdStatisticsCalculator @Inject constructor() {
@@ -146,16 +150,19 @@ class HouseholdStatisticsCalculator @Inject constructor() {
                 }
             }
             val topCount = countsByMember.values.maxOrNull() ?: 0
-            val leaderLabel = when {
-                choreCompletions.isEmpty() || topCount == 0 -> "No data"
-                countsByMember.values.count { it == topCount } > 1 -> "Tie"
-                else -> countsByMember.maxByOrNull { it.value }?.key ?: "No data"
+            val leader: ChoreLeaderResult = when {
+                choreCompletions.isEmpty() || topCount == 0 -> ChoreLeaderResult.NoData
+                countsByMember.values.count { it == topCount } > 1 -> ChoreLeaderResult.Tie
+                else -> countsByMember.maxByOrNull { it.value }
+                    ?.key
+                    ?.let(ChoreLeaderResult::Leader)
+                    ?: ChoreLeaderResult.NoData
             }
             ChoreComparison(
                 choreId = chore.id,
                 choreName = chore.name,
                 countsByMember = countsByMember,
-                leaderLabel = leaderLabel,
+                leader = leader,
                 totalCount = choreCompletions.size,
             )
         }
@@ -205,12 +212,30 @@ class HouseholdStatisticsCalculator @Inject constructor() {
                 choreName = chore.name,
                 lastCompletedDate = lastCompletionDate,
                 daysSinceLastCompletion = daysSinceLastCompletion,
-                status = when {
-                    daysSinceLastCompletion == null -> "Never"
-                    daysSinceLastCompletion >= NEEDS_ATTENTION_THRESHOLD_DAYS -> "Needs attention"
-                    daysSinceLastCompletion >= SOON_THRESHOLD_DAYS -> "Soon"
-                    else -> "OK"
-                },
+                frequencyDays = chore.frequencyDays,
+                status = computeStatus(
+                    daysSinceLastCompletion = daysSinceLastCompletion,
+                    frequencyDays = chore.frequencyDays,
+                ),
             )
         }
+
+    private fun computeStatus(daysSinceLastCompletion: Int?, frequencyDays: Int?): ChoreStatus {
+        if (daysSinceLastCompletion == null) return ChoreStatus.NEVER
+        val attentionThreshold = if (frequencyDays != null && frequencyDays > 0) {
+            frequencyDays
+        } else {
+            DEFAULT_NEEDS_ATTENTION_THRESHOLD_DAYS
+        }
+        val soonThreshold = if (frequencyDays != null && frequencyDays > 0) {
+            (frequencyDays * SOON_THRESHOLD_RATIO).roundToInt()
+        } else {
+            DEFAULT_SOON_THRESHOLD_DAYS
+        }
+        return when {
+            daysSinceLastCompletion >= attentionThreshold -> ChoreStatus.NEEDS_ATTENTION
+            daysSinceLastCompletion >= soonThreshold -> ChoreStatus.SOON
+            else -> ChoreStatus.OK
+        }
+    }
 }

@@ -7,5 +7,6 @@ data class ChoreStaleness(
     val choreName: String,
     val lastCompletedDate: LocalDate?,
     val daysSinceLastCompletion: Int?,
-    val status: String,
+    val frequencyDays: Int?,
+    val status: ChoreStatus,
 )

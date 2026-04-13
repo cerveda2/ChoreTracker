@@ -44,7 +44,7 @@ complexity:
     functionThreshold: 10
     constructorThreshold: 12
     ignoreDataClasses: true
-    ignoreAnnotated: ['Composable']
+    ignoreAnnotated: ['Composable', 'HiltViewModel']
     excludes: ['**/test/**']
   TooManyFunctions:
     active: true

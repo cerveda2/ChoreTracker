@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
@@ -29,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
@@ -289,10 +291,13 @@ fun ChoresSettingsScreen(
     onAddChore: () -> Unit,
     onDeleteChore: (String) -> Unit,
     onUpdateChoreActive: (String, Boolean) -> Unit,
+    onUpdateChoreFrequency: (String, Int?) -> Unit,
 ) {
     val spacing = LocalSpacing.current
     var pendingDeleteChoreId by remember { mutableStateOf<String?>(null) }
     val pendingDeleteChore = uiState.chores.firstOrNull { it.id == pendingDeleteChoreId }
+    var pendingFrequencyChoreId by remember { mutableStateOf<String?>(null) }
+    val pendingFrequencyChore = uiState.chores.firstOrNull { it.id == pendingFrequencyChoreId }
 
     ChoreScaffold(
         topBar = {
@@ -327,13 +332,25 @@ fun ChoresSettingsScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                Text(
-                                    text = chore.name,
-                                    modifier = Modifier.fillMaxWidth(0.6f),
-                                )
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(text = chore.name)
+                                    chore.frequencyDays?.let { days ->
+                                        Text(
+                                            text = stringResource(R.string.settings_chore_frequency_every_n_days, days),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = { pendingFrequencyChoreId = chore.id }) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Schedule,
+                                            contentDescription = stringResource(
+                                                R.string.settings_chore_set_frequency_title,
+                                            ),
+                                        )
+                                    }
                                     Switch(
                                         checked = chore.isActive,
                                         onCheckedChange = { checked -> onUpdateChoreActive(chore.id, checked) },
@@ -385,6 +402,51 @@ fun ChoresSettingsScreen(
             dismissButton = {
                 TextButton(onClick = { pendingDeleteChoreId = null }) {
                     Text(stringResource(R.string.common_cancel))
+                }
+            },
+        )
+    }
+
+    if (pendingFrequencyChore != null) {
+        var frequencyInput by remember(pendingFrequencyChore.id) {
+            mutableStateOf(pendingFrequencyChore.frequencyDays?.toString() ?: "")
+        }
+        AlertDialog(
+            onDismissRequest = { pendingFrequencyChoreId = null },
+            title = { Text(stringResource(R.string.settings_chore_set_frequency_title)) },
+            text = {
+                OutlinedTextField(
+                    value = frequencyInput,
+                    onValueChange = { frequencyInput = it.filter { c -> c.isDigit() } },
+                    label = { Text(stringResource(R.string.settings_chore_set_frequency_hint)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val days = frequencyInput.toIntOrNull()?.takeIf { it > 0 }
+                        onUpdateChoreFrequency(pendingFrequencyChore.id, days)
+                        pendingFrequencyChoreId = null
+                    },
+                ) {
+                    Text(stringResource(R.string.common_save))
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(
+                        onClick = {
+                            onUpdateChoreFrequency(pendingFrequencyChore.id, null)
+                            pendingFrequencyChoreId = null
+                        },
+                    ) {
+                        Text(stringResource(R.string.settings_chore_clear_frequency))
+                    }
+                    TextButton(onClick = { pendingFrequencyChoreId = null }) {
+                        Text(stringResource(R.string.common_cancel))
+                    }
                 }
             },
         )

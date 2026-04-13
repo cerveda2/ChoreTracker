@@ -91,6 +91,8 @@
     <string name="stats_per_chore_comparison">Per chore comparison</string>
     <string name="stats_member_count">%1$s: %2$d</string>
     <string name="stats_leader">Leader: %1$s</string>
+    <string name="stats_leader_no_data">No data</string>
+    <string name="stats_leader_tie">Tie</string>
     <string name="stats_monthly_breakdown">Monthly breakdown</string>
     <string name="stats_total_count">Total completions: %1$d</string>
 
@@ -128,6 +130,12 @@
     <string name="settings_profile_section">Profile &amp; status</string>
     <string name="settings_management_section">Household management</string>
     <string name="settings_account_section">Preferences</string>
+
+    <string name="settings_chore_frequency_every_n_days">Every %1$d days</string>
+    <string name="settings_chore_frequency_not_set">No frequency</string>
+    <string name="settings_chore_set_frequency_title">Set frequency</string>
+    <string name="settings_chore_set_frequency_hint">Days between completions</string>
+    <string name="settings_chore_clear_frequency">Clear</string>
 
     <string name="common_save">Save</string>
     <string name="common_cancel">Cancel</string>

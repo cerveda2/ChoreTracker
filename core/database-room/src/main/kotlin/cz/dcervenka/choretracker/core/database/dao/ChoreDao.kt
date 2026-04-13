@@ -35,4 +35,18 @@ interface ChoreDao {
             "WHERE id = :choreId",
     )
     suspend fun updateActive(choreId: String, isActive: Boolean)
+
+    @Query(
+        "UPDATE chores " +
+            "SET name = :name " +
+            "WHERE id = :choreId",
+    )
+    suspend fun updateName(choreId: String, name: String)
+
+    @Query(
+        "UPDATE chores " +
+            "SET frequencyDays = :frequencyDays " +
+            "WHERE id = :choreId",
+    )
+    suspend fun updateFrequencyDays(choreId: String, frequencyDays: Int?)
 }

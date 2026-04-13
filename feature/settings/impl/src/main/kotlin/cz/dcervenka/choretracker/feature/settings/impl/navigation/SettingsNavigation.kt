@@ -64,6 +64,7 @@ fun NavGraphBuilder.settingsScreen(
             onAddChore = viewModel::addChore,
             onDeleteChore = viewModel::deleteChore,
             onUpdateChoreActive = viewModel::updateChoreActive,
+            onUpdateChoreFrequency = viewModel::updateChoreFrequency,
         )
     }
 

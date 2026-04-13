@@ -138,6 +138,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     "isActive" to chore.isActive,
                     "createdAt" to chore.createdAt.asTimestamp(),
                     "deletedAt" to chore.deletedAt?.asTimestamp(),
+                    "frequencyDays" to chore.frequencyDays,
                 ),
                 SetOptions.merge(),
             )
@@ -278,6 +279,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
         isActive = getBoolean("isActive") ?: true,
         createdAt = getTimestamp("createdAt").asInstant(),
         deletedAt = getTimestamp("deletedAt")?.asInstant(),
+        frequencyDays = getLong("frequencyDays")?.toInt(),
     )
 
     private fun DocumentSnapshot.asCompletion(householdId: String): ChoreCompletion = ChoreCompletion(
