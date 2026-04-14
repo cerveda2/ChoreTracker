@@ -53,13 +53,20 @@ class DashboardViewModel @Inject constructor(
             initialValue = DashboardUiState(),
         )
 
-    fun logCompletion(householdId: String, choreId: String, participantIds: List<String>, note: String?) {
+    fun logCompletion(
+        householdId: String,
+        choreId: String,
+        participantIds: List<String>,
+        note: String?,
+        completedAt: kotlin.time.Instant? = null,
+    ) {
         viewModelScope.launch {
             logCompletionUseCase(
                 householdId = householdId,
                 choreId = choreId,
                 participantMemberIds = participantIds,
                 note = note,
+                completedAt = completedAt,
             )
         }
     }

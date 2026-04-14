@@ -23,6 +23,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 @Singleton
 class OfflineFirstChoreCompletionRepository @Inject constructor(
@@ -62,8 +63,12 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
         choreId: String,
         participantMemberIds: List<String>,
         note: String?,
+        completedAt: Instant?,
     ): EmptyResult {
-        Timber.d("logCompletion: choreId=$choreId participants=${participantMemberIds.size} hasNote=${note != null}")
+        Timber.d(
+            "logCompletion: choreId=$choreId participants=${participantMemberIds.size} " +
+                "hasNote=${note != null} completedAt=$completedAt",
+        )
         val currentUserId = (authRepository.authState.first() as? AuthState.Authenticated)?.user?.id
             ?: return AppResult.Error("Sign in or continue in preview mode first.").also {
                 Timber.w("logCompletion failed: user not authenticated")
@@ -74,7 +79,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
                 id = completionId,
                 householdId = householdId,
                 choreId = choreId,
-                createdAt = Clock.System.now(),
+                createdAt = completedAt ?: Clock.System.now(),
                 createdByUserId = currentUserId,
                 note = note?.takeIf(String::isNotBlank),
             ),

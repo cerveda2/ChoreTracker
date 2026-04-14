@@ -3,6 +3,7 @@ package cz.dcervenka.choretracker.core.data.contract
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import kotlinx.coroutines.flow.Flow
+import kotlin.time.Instant
 
 interface ChoreCompletionRepository {
     fun observeRecentCompletions(householdId: String, limit: Int = 10): Flow<List<RecentCompletion>>
@@ -12,5 +13,6 @@ interface ChoreCompletionRepository {
         choreId: String,
         participantMemberIds: List<String>,
         note: String?,
+        completedAt: Instant? = null,
     ): EmptyResult
 }

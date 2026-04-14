@@ -15,11 +15,15 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -52,7 +56,13 @@ import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiStat
 @Composable
 fun DashboardScreen(
     uiState: DashboardUiState,
-    onLogCompletion: (householdId: String, choreId: String, participantIds: List<String>, note: String?) -> Unit,
+    onLogCompletion: (
+        householdId: String,
+        choreId: String,
+        participantIds: List<String>,
+        note: String?,
+        completedAt: kotlin.time.Instant?,
+    ) -> Unit,
     onRetrySync: () -> Unit,
     onSeeAllCompletions: () -> Unit,
     onOpenCompletion: (String) -> Unit,
@@ -61,6 +71,13 @@ fun DashboardScreen(
     var selectedChoreId by remember { mutableStateOf<String?>(null) }
     var selectedNote by remember { mutableStateOf("") }
     val selectedMembers = remember { mutableStateListOf<String>() }
+    val currentUserId = uiState.members.firstOrNull { it.isCurrentUser }?.id
+    val openLogDialog: (choreId: String) -> Unit = { choreId ->
+        selectedChoreId = choreId
+        selectedMembers.clear()
+        if (currentUserId != null) selectedMembers.add(currentUserId)
+        selectedNote = ""
+    }
     val snapshot = uiState.snapshot
 
     if (snapshot == null) {
@@ -167,11 +184,7 @@ fun DashboardScreen(
                                     PrimaryButton(
                                         text = chore.name,
                                         subtitle = subtitle,
-                                        onClick = {
-                                            selectedChoreId = chore.id
-                                            selectedMembers.clear()
-                                            selectedNote = ""
-                                        },
+                                        onClick = { openLogDialog(chore.id) },
                                         fillMaxWidth = false,
                                     )
                                 }
@@ -210,28 +223,35 @@ fun DashboardScreen(
                             )
                         } else {
                             staleItems.forEach { stale ->
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(spacing.xSmall),
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { openLogDialog(stale.choreId) },
                                 ) {
-                                    Text(
-                                        text = stale.choreName,
-                                        style = MaterialTheme.typography.titleMedium,
-                                    )
-                                    Text(
-                                        text = when {
-                                            stale.lastCompletedDate == null ->
-                                                stringResource(R.string.dashboard_stale_never_done)
-                                            else -> stringResource(
-                                                R.string.dashboard_stale_last_done,
-                                                formatLocalDateForLocale(
-                                                    date = stale.lastCompletedDate!!,
-                                                    skeleton = "yMMMd",
-                                                ),
-                                                stale.daysSinceLastCompletion ?: 0,
-                                            )
-                                        },
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
+                                    Column(
+                                        modifier = Modifier.padding(spacing.medium),
+                                        verticalArrangement = Arrangement.spacedBy(spacing.xSmall),
+                                    ) {
+                                        Text(
+                                            text = stale.choreName,
+                                            style = MaterialTheme.typography.titleMedium,
+                                        )
+                                        Text(
+                                            text = when {
+                                                stale.lastCompletedDate == null ->
+                                                    stringResource(R.string.dashboard_stale_never_done)
+                                                else -> stringResource(
+                                                    R.string.dashboard_stale_last_done,
+                                                    formatLocalDateForLocale(
+                                                        date = stale.lastCompletedDate!!,
+                                                        skeleton = "yMMMd",
+                                                    ),
+                                                    stale.daysSinceLastCompletion ?: 0,
+                                                )
+                                            },
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -242,67 +262,133 @@ fun DashboardScreen(
     }
 
     if (selectedChoreId != null && snapshot != null) {
-        AlertDialog(
-            onDismissRequest = { selectedChoreId = null },
-            title = { Text(text = stringResource(R.string.dashboard_log_completion)) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
-                    Text(text = stringResource(R.string.dashboard_who_completed))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(spacing.small),
-                        verticalArrangement = Arrangement.spacedBy(spacing.small),
-                    ) {
-                        uiState.members.forEach { member ->
-                            FilterChip(
-                                selected = selectedMembers.contains(member.id),
-                                onClick = {
-                                    if (selectedMembers.contains(member.id)) {
-                                        selectedMembers.remove(member.id)
-                                    } else {
-                                        selectedMembers.add(member.id)
-                                    }
-                                },
-                                label = { Text(text = member.displayName) },
-                            )
-                        }
-                    }
-                    OutlinedTextField(
-                        value = selectedNote,
-                        onValueChange = { selectedNote = it },
-                        label = { Text(text = stringResource(R.string.dashboard_note)) },
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Sentences,
-                            autoCorrectEnabled = true,
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+        LogCompletionDialog(
+            uiState = uiState,
+            selectedMembers = selectedMembers,
+            selectedNote = selectedNote,
+            onNoteChange = { selectedNote = it },
+            onDismiss = { selectedChoreId = null },
+            onConfirm = { completedAt ->
+                onLogCompletion(
+                    snapshot.household.id,
+                    selectedChoreId!!,
+                    selectedMembers.toList(),
+                    selectedNote,
+                    completedAt,
+                )
+                selectedChoreId = null
             },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LogCompletionDialog(
+    uiState: DashboardUiState,
+    selectedMembers: androidx.compose.runtime.snapshots.SnapshotStateList<String>,
+    selectedNote: String,
+    onNoteChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: (kotlin.time.Instant?) -> Unit,
+) {
+    val spacing = LocalSpacing.current
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = kotlin.time.Clock.System.now()
+            .toEpochMilliseconds(),
+    )
+    val selectedDateMillis = datePickerState.selectedDateMillis
+    val completedAt = selectedDateMillis
+        ?.takeIf { it != midnightUtcToday() }
+        ?.let { kotlin.time.Instant.fromEpochMilliseconds(it) }
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        selectedChoreId?.let { choreId ->
-                            onLogCompletion(
-                                snapshot.household.id,
-                                choreId,
-                                selectedMembers.toList(),
-                                selectedNote,
-                            )
-                        }
-                        selectedChoreId = null
-                    },
-                    enabled = selectedMembers.isNotEmpty(),
-                ) {
+                TextButton(onClick = { showDatePicker = false }) {
                     Text(text = stringResource(R.string.common_save))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { selectedChoreId = null }) {
+                TextButton(onClick = { showDatePicker = false }) {
                     Text(text = stringResource(R.string.common_cancel))
                 }
             },
-        )
+        ) {
+            DatePicker(state = datePickerState)
+        }
     }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(R.string.dashboard_log_completion)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                Text(text = stringResource(R.string.dashboard_who_completed))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(spacing.small),
+                    verticalArrangement = Arrangement.spacedBy(spacing.small),
+                ) {
+                    uiState.members.forEach { member ->
+                        FilterChip(
+                            selected = selectedMembers.contains(member.id),
+                            onClick = {
+                                if (selectedMembers.contains(member.id)) {
+                                    selectedMembers.remove(member.id)
+                                } else {
+                                    selectedMembers.add(member.id)
+                                }
+                            },
+                            label = { Text(text = member.displayName) },
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = selectedNote,
+                    onValueChange = onNoteChange,
+                    label = { Text(text = stringResource(R.string.dashboard_note)) },
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        autoCorrectEnabled = true,
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                TextButton(
+                    onClick = { showDatePicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    val dateLabel = if (completedAt != null) {
+                        formatInstantForLocale(completedAt, "yMMMd")
+                    } else {
+                        stringResource(R.string.dashboard_log_date_today)
+                    }
+                    Text(text = stringResource(R.string.dashboard_log_date, dateLabel))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(completedAt) },
+                enabled = selectedMembers.isNotEmpty(),
+            ) {
+                Text(text = stringResource(R.string.common_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.common_cancel))
+            }
+        },
+    )
+}
+
+private const val MILLIS_PER_DAY = 86_400_000L
+
+private fun midnightUtcToday(): Long {
+    val ms = kotlin.time.Clock.System.now().toEpochMilliseconds()
+    return ms - (ms % MILLIS_PER_DAY)
 }
 
 @Composable
@@ -518,7 +604,7 @@ private fun DashboardScreenPreview() {
                 members = PreviewData.members,
                 allCompletions = PreviewData.dashboardSnapshot.recentCompletions,
             ),
-            onLogCompletion = { _, _, _, _ -> },
+            onLogCompletion = { _, _, _, _, _ -> },
             onRetrySync = {},
             onSeeAllCompletions = {},
             onOpenCompletion = {},
