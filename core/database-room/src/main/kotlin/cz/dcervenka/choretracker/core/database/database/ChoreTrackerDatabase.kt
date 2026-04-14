@@ -32,7 +32,7 @@ import cz.dcervenka.choretracker.core.database.entity.SyncStateEntity
         PendingSyncOperationEntity::class,
         SyncStateEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 @TypeConverters(InstantConverters::class)

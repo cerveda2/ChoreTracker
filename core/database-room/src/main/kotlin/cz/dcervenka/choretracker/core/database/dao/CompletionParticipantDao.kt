@@ -14,6 +14,7 @@ interface CompletionParticipantDao {
         SELECT completion_participants.* FROM completion_participants
         INNER JOIN completions ON completions.id = completion_participants.completionId
         WHERE completions.householdId = :householdId
+        ORDER BY completion_participants.completionId, completion_participants.memberId
         """,
     )
     fun observeParticipants(householdId: String): Flow<List<CompletionParticipantEntity>>
@@ -23,6 +24,7 @@ interface CompletionParticipantDao {
         SELECT completion_participants.* FROM completion_participants
         INNER JOIN completions ON completions.id = completion_participants.completionId
         WHERE completions.householdId = :householdId
+        ORDER BY completion_participants.completionId, completion_participants.memberId
         """,
     )
     suspend fun getParticipants(householdId: String): List<CompletionParticipantEntity>

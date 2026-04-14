@@ -45,8 +45,9 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
         ) { completions, chores, members, participants ->
             val choreMap = chores.associateBy { it.id }
             val memberMap = members.associateBy { it.id }
+            val participantsByCompletion = participants.groupBy { it.completionId }
             completions.take(limit).map { completion ->
-                val participantNames = participants.filter { it.completionId == completion.id }
+                val participantNames = participantsByCompletion[completion.id].orEmpty()
                     .mapNotNull { participant -> memberMap[participant.memberId]?.displayName }
                 RecentCompletion(
                     completionId = completion.id,
