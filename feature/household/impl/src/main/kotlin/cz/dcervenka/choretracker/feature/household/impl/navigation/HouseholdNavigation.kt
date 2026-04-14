@@ -14,12 +14,7 @@ fun NavGraphBuilder.householdScreen() {
 
         HouseholdScreen(
             uiState = uiState.value,
-            onMemberInputChange = viewModel::onMemberInputChange,
-            onChoreInputChange = viewModel::onChoreInputChange,
-            onAddMember = viewModel::addMember,
-            onAddChore = viewModel::addChore,
             onRefreshInvite = viewModel::refreshInvite,
-            onUpdateChoreActive = viewModel::updateChoreActive,
         )
     }
 }

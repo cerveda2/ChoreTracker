@@ -11,6 +11,4 @@ data class HouseholdUiState(
     val members: List<HouseholdMember> = emptyList(),
     val chores: List<Chore> = emptyList(),
     val invites: List<Invite> = emptyList(),
-    val memberInput: String = "",
-    val choreInput: String = "",
 ) : UiState

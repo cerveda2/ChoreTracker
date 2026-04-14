@@ -3,14 +3,11 @@ package cz.dcervenka.choretracker.feature.household.impl.viewmodel
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
-import cz.dcervenka.choretracker.core.domain.usecase.AddChoreUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInvitesUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.test.mock.sampleChore
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleInvite
@@ -46,16 +43,7 @@ class HouseholdViewModelTest {
     lateinit var observeChoresUseCase: ObserveChoresUseCase
 
     @MockK
-    lateinit var addMemberUseCase: AddMemberUseCase
-
-    @MockK
-    lateinit var addChoreUseCase: AddChoreUseCase
-
-    @MockK
     lateinit var createInviteUseCase: CreateInviteUseCase
-
-    @MockK
-    lateinit var updateChoreActiveUseCase: UpdateChoreActiveUseCase
 
     private val householdFlow = MutableStateFlow<cz.dcervenka.choretracker.core.model.household.Household?>(null)
     private val membersFlow =
@@ -74,14 +62,11 @@ class HouseholdViewModelTest {
         every { observeMembersUseCase(any()) } returns membersFlow
         every { observeInvitesUseCase(any()) } returns invitesFlow
         every { observeChoresUseCase(any()) } returns choresFlow
-        coEvery { addMemberUseCase(any(), any()) } returns AppResult.Success(Unit)
-        coEvery { addChoreUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { createInviteUseCase(any()) } returns AppResult.Success(sampleInvite())
-        coEvery { updateChoreActiveUseCase(any(), any()) } returns AppResult.Success(Unit)
     }
 
     @Test
-    fun `ui state combines household data and input changes`() = runTest(coroutineRule.dispatcher) {
+    fun `ui state combines household data`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
 
         viewModel.uiState.test {
@@ -95,30 +80,22 @@ class HouseholdViewModelTest {
             assertThat(loadedState.members).hasSize(2)
             assertThat(loadedState.invites).hasSize(1)
             assertThat(loadedState.chores).hasSize(1)
-
-            viewModel.onMemberInputChange("Chris")
-            assertThat(awaitItem().memberInput).isEqualTo("Chris")
         }
     }
 
     @Test
-    fun `add member delegates to use case and clears input`() = runTest(coroutineRule.dispatcher) {
+    fun `refreshInvite delegates to use case`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
         householdFlow.value = sampleHousehold()
 
         viewModel.uiState.test {
             awaitItem()
-            val loadedState = awaitItem()
-            assertThat(loadedState.household?.id).isEqualTo("household-1")
+            awaitItem()
 
-            viewModel.onMemberInputChange("Chris")
-            assertThat(awaitItem().memberInput).isEqualTo("Chris")
-
-            viewModel.addMember()
+            viewModel.refreshInvite()
             advanceUntilIdle()
 
-            coVerify { addMemberUseCase("household-1", "Chris") }
-            assertThat(awaitItem().memberInput).isEmpty()
+            coVerify { createInviteUseCase("household-1") }
         }
     }
 }
@@ -128,8 +105,5 @@ private fun HouseholdViewModelTest.createViewModel() = HouseholdViewModel(
     observeMembersUseCase = observeMembersUseCase,
     observeInvitesUseCase = observeInvitesUseCase,
     observeChoresUseCase = observeChoresUseCase,
-    addMemberUseCase = addMemberUseCase,
-    addChoreUseCase = addChoreUseCase,
     createInviteUseCase = createInviteUseCase,
-    updateChoreActiveUseCase = updateChoreActiveUseCase,
 )
