@@ -1,5 +1,6 @@
 package cz.dcervenka.choretracker.core.design.components
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
@@ -23,6 +24,7 @@ fun PrimaryButton(
     enabled: Boolean = true,
     loading: Boolean = false,
     fillMaxWidth: Boolean = true,
+    subtitle: String? = null,
 ) {
     Button(
         onClick = onClick,
@@ -39,7 +41,16 @@ fun PrimaryButton(
                 color = MaterialTheme.colorScheme.onPrimary,
             )
         } else {
-            Text(text = text, style = MaterialTheme.typography.labelLarge)
+            Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                Text(text = text, style = MaterialTheme.typography.labelLarge)
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+                    )
+                }
+            }
         }
     }
 }

@@ -67,6 +67,7 @@ fun DashboardScreen(
         LoadingState(message = stringResource(R.string.dashboard_loading))
     } else {
         val quickLogChores = snapshot.activeChores.sortedForQuickLog(uiState.allCompletions).take(8)
+        val stalenessByChoreId = snapshot.staleChores.associateBy { it.choreId }
         val highlightedCompletions = uiState.allCompletions.take(3)
         val staleItems = snapshot.staleChores.filter { it.status != ChoreStatus.OK }
 
@@ -156,8 +157,16 @@ fun DashboardScreen(
                                 horizontalArrangement = Arrangement.spacedBy(spacing.small),
                             ) {
                                 items(quickLogChores, key = { "quick-${it.id}" }) { chore ->
+                                    val staleness = stalenessByChoreId[chore.id]
+                                    val days = staleness?.daysSinceLastCompletion
+                                    val subtitle = if (days != null) {
+                                        stringResource(R.string.dashboard_days_ago, days)
+                                    } else {
+                                        stringResource(R.string.dashboard_never_done)
+                                    }
                                     PrimaryButton(
                                         text = chore.name,
+                                        subtitle = subtitle,
                                         onClick = {
                                             selectedChoreId = chore.id
                                             selectedMembers.clear()
