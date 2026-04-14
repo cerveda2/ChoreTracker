@@ -9,6 +9,7 @@ import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import cz.dcervenka.choretracker.core.model.stats.DashboardSnapshot
+import cz.dcervenka.choretracker.core.model.stats.HouseholdSummary
 import cz.dcervenka.choretracker.core.model.stats.MemberContribution
 import cz.dcervenka.choretracker.core.model.stats.MonthlyBreakdown
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
@@ -37,28 +38,32 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         timeZone: TimeZone = TimeZone.currentSystemDefault(),
         today: LocalDate,
         recentLimit: Int = 8,
-    ): DashboardSnapshot = DashboardSnapshot(
-        household = household,
-        memberContributions = buildContributions(
+    ): DashboardSnapshot {
+        val contributions = buildContributions(
             members = members,
             completions = completions,
             timeZone = timeZone,
             today = today,
-        ),
-        activeChores = chores.filter { it.isActive && it.deletedAt == null }.sortedBy(Chore::name),
-        recentCompletions = buildRecent(
-            chores = chores,
-            members = members,
-            completions = completions,
-            recentLimit = recentLimit,
-        ),
-        staleChores = buildStaleness(
-            chores = chores,
-            completions = completions,
-            timeZone = timeZone,
-            today = today,
-        ),
-    )
+        )
+        return DashboardSnapshot(
+            household = household,
+            summary = buildSummary(contributions),
+            memberContributions = contributions,
+            activeChores = chores.filter { it.isActive && it.deletedAt == null }.sortedBy(Chore::name),
+            recentCompletions = buildRecent(
+                chores = chores,
+                members = members,
+                completions = completions,
+                recentLimit = recentLimit,
+            ),
+            staleChores = buildStaleness(
+                chores = chores,
+                completions = completions,
+                timeZone = timeZone,
+                today = today,
+            ),
+        )
+    }
 
     fun statsSnapshot(
         household: Household,
@@ -67,25 +72,35 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         completions: List<ChoreCompletion>,
         timeZone: TimeZone = TimeZone.currentSystemDefault(),
         today: LocalDate,
-    ): StatsSnapshot = StatsSnapshot(
-        household = household,
-        comparisons = buildComparisons(
-            chores = chores,
+    ): StatsSnapshot {
+        val contributions = buildContributions(
             members = members,
-            completions = completions,
-        ),
-        monthlyBreakdown = buildMonthlyBreakdown(
-            members = members,
-            completions = completions,
-            timeZone = timeZone,
-        ),
-        staleChores = buildStaleness(
-            chores = chores,
             completions = completions,
             timeZone = timeZone,
             today = today,
-        ),
-    )
+        )
+        return StatsSnapshot(
+            household = household,
+            summary = buildSummary(contributions),
+            memberContributions = contributions,
+            comparisons = buildComparisons(
+                chores = chores,
+                members = members,
+                completions = completions,
+            ),
+            monthlyBreakdown = buildMonthlyBreakdown(
+                members = members,
+                completions = completions,
+                timeZone = timeZone,
+            ),
+            staleChores = buildStaleness(
+                chores = chores,
+                completions = completions,
+                timeZone = timeZone,
+                today = today,
+            ),
+        )
+    }
 
     private fun buildRecent(
         chores: List<Chore>,
@@ -116,6 +131,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         today: LocalDate,
     ): List<MemberContribution> {
         val thirtyDaysAgo = today.minus(DatePeriod(days = 30))
+        val totalAcrossAll = completions.sumOf { it.participantMemberIds.size }
         return members.map { member ->
             val memberCompletions = completions.filter { completion ->
                 member.id in completion.participantMemberIds
@@ -131,9 +147,19 @@ class HouseholdStatisticsCalculator @Inject constructor() {
                     val date = completion.createdAt.toLocalDateTime(timeZone).date
                     date.year == today.year && date.month == today.month
                 },
+                sharePercent = if (totalAcrossAll > 0) {
+                    (memberCompletions.size * 100) / totalAcrossAll
+                } else {
+                    0
+                },
             )
         }
     }
+
+    private fun buildSummary(contributions: List<MemberContribution>): HouseholdSummary = HouseholdSummary(
+        totalCompletions = contributions.sumOf { it.totalCount },
+        topContributor = contributions.maxByOrNull { it.totalCount }?.takeIf { it.totalCount > 0 },
+    )
 
     private fun buildComparisons(
         chores: List<Chore>,

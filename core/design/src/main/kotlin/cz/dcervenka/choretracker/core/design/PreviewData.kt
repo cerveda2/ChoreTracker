@@ -10,6 +10,7 @@ import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import cz.dcervenka.choretracker.core.model.stats.DashboardSnapshot
+import cz.dcervenka.choretracker.core.model.stats.HouseholdSummary
 import cz.dcervenka.choretracker.core.model.stats.MemberContribution
 import cz.dcervenka.choretracker.core.model.stats.MonthlyBreakdown
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
@@ -77,24 +78,32 @@ object PreviewData {
         createdAt = now,
     )
 
+    private val previewContributions = listOf(
+        MemberContribution(
+            memberId = "member-1",
+            displayName = "Dana",
+            totalCount = 28,
+            last30DaysCount = 12,
+            currentMonthCount = 7,
+            sharePercent = 57,
+        ),
+        MemberContribution(
+            memberId = "member-2",
+            displayName = "Alex",
+            totalCount = 21,
+            last30DaysCount = 10,
+            currentMonthCount = 6,
+            sharePercent = 43,
+        ),
+    )
+
     val dashboardSnapshot = DashboardSnapshot(
         household = household,
-        memberContributions = listOf(
-            MemberContribution(
-                memberId = "member-1",
-                displayName = "Dana",
-                totalCount = 28,
-                last30DaysCount = 12,
-                currentMonthCount = 7,
-            ),
-            MemberContribution(
-                memberId = "member-2",
-                displayName = "Alex",
-                totalCount = 21,
-                last30DaysCount = 10,
-                currentMonthCount = 6,
-            ),
+        summary = HouseholdSummary(
+            totalCompletions = 49,
+            topContributor = previewContributions.first(),
         ),
+        memberContributions = previewContributions,
         activeChores = chores.filter { it.isActive },
         recentCompletions = listOf(
             RecentCompletion(
@@ -134,6 +143,11 @@ object PreviewData {
 
     val statsSnapshot = StatsSnapshot(
         household = household,
+        summary = HouseholdSummary(
+            totalCompletions = 49,
+            topContributor = previewContributions.first(),
+        ),
+        memberContributions = previewContributions,
         comparisons = listOf(
             ChoreComparison(
                 choreId = "chore-1",

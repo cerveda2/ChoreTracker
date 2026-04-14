@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.household.Invite
 import cz.dcervenka.choretracker.core.model.stats.DashboardSnapshot
+import cz.dcervenka.choretracker.core.model.stats.HouseholdSummary
 import cz.dcervenka.choretracker.core.model.stats.MemberContribution
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
@@ -64,17 +65,19 @@ fun sampleChore() = Chore(
     createdAt = Instant.parse("2026-01-03T10:00:00Z"),
 )
 
+private val sampleContribution = MemberContribution(
+    memberId = "member-1",
+    displayName = "Dana",
+    totalCount = 5,
+    last30DaysCount = 3,
+    currentMonthCount = 2,
+    sharePercent = 100,
+)
+
 fun sampleDashboardSnapshot() = DashboardSnapshot(
     household = sampleHousehold(),
-    memberContributions = listOf(
-        MemberContribution(
-            memberId = "member-1",
-            displayName = "Dana",
-            totalCount = 5,
-            last30DaysCount = 3,
-            currentMonthCount = 2,
-        ),
-    ),
+    summary = HouseholdSummary(totalCompletions = 5, topContributor = sampleContribution),
+    memberContributions = listOf(sampleContribution),
     activeChores = emptyList(),
     recentCompletions = listOf(
         RecentCompletion(
@@ -90,6 +93,8 @@ fun sampleDashboardSnapshot() = DashboardSnapshot(
 
 fun sampleStatsSnapshot() = StatsSnapshot(
     household = sampleHousehold(),
+    summary = HouseholdSummary(totalCompletions = 0, topContributor = null),
+    memberContributions = emptyList(),
     comparisons = emptyList(),
     monthlyBreakdown = emptyList(),
     staleChores = emptyList(),

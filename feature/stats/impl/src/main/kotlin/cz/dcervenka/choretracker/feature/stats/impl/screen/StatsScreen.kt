@@ -21,6 +21,7 @@ import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.SectionCard
 import cz.dcervenka.choretracker.core.formatters.formatMonthLabelForLocale
 import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
+import cz.dcervenka.choretracker.core.model.stats.HouseholdSummary
 import cz.dcervenka.choretracker.feature.stats.impl.contract.StatsUiState
 
 @Composable
@@ -54,6 +55,9 @@ fun StatsScreen(
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+                item {
+                    SummaryCard(summary = stats.summary)
                 }
                 if (stats.comparisons.isEmpty() && stats.monthlyBreakdown.isEmpty()) {
                     item {
@@ -94,6 +98,35 @@ fun StatsScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryCard(summary: HouseholdSummary) {
+    SectionCard(title = stringResource(R.string.stats_title)) {
+        if (summary.totalCompletions == 0) {
+            Text(
+                text = stringResource(R.string.stats_summary_no_data),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Text(
+                text = stringResource(R.string.stats_summary_total, summary.totalCompletions),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            summary.topContributor?.let { top ->
+                Text(
+                    text = stringResource(
+                        R.string.stats_summary_top_contributor,
+                        top.displayName,
+                        top.sharePercent,
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
             }
         }
     }

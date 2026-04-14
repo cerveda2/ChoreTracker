@@ -45,6 +45,10 @@
     <string name="dashboard_sync_pending_title">Changes waiting to upload</string>
     <string name="dashboard_sync_pending_message">We still need to upload %1$d local change(s) to your household.</string>
     <string name="dashboard_last_30d">last 30d: %1$d</string>
+    <string name="dashboard_share_percent">%1$d%%</string>
+    <string name="stats_summary_total">%1$d total completions</string>
+    <string name="stats_summary_top_contributor">Top contributor: %1$s (%2$d%%)</string>
+    <string name="stats_summary_no_data">No completions yet</string>
     <string name="dashboard_quick_log">Quick log</string>
     <string name="dashboard_record_prompt">Tap to record who completed this.</string>
     <string name="dashboard_quick_log_empty_title">No active chores yet</string>

@@ -6,4 +6,5 @@ data class MemberContribution(
     val totalCount: Int,
     val last30DaysCount: Int,
     val currentMonthCount: Int,
+    val sharePercent: Int,
 )

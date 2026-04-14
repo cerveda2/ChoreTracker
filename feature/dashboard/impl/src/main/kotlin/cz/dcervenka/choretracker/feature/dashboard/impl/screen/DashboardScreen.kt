@@ -120,6 +120,14 @@ fun DashboardScreen(
                                         )
                                         Text(
                                             text = stringResource(
+                                                R.string.dashboard_share_percent,
+                                                contribution.sharePercent,
+                                            ),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                        Text(
+                                            text = stringResource(
                                                 R.string.dashboard_last_30d,
                                                 contribution.last30DaysCount,
                                             ),

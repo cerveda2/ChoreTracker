@@ -105,9 +105,13 @@ class HouseholdStatisticsCalculatorTest {
         assertThat(contributions["Alice"]?.totalCount).isEqualTo(2)
         assertThat(contributions["Alice"]?.last30DaysCount).isEqualTo(2)
         assertThat(contributions["Alice"]?.currentMonthCount).isEqualTo(2)
+        assertThat(contributions["Alice"]?.sharePercent).isEqualTo(50)
         assertThat(contributions["Bob"]?.totalCount).isEqualTo(2)
         assertThat(contributions["Bob"]?.last30DaysCount).isEqualTo(2)
         assertThat(contributions["Bob"]?.currentMonthCount).isEqualTo(2)
+        assertThat(contributions["Bob"]?.sharePercent).isEqualTo(50)
+        assertThat(dashboard.summary.totalCompletions).isEqualTo(4)
+        assertThat(dashboard.summary.topContributor?.displayName).isAnyOf("Alice", "Bob")
 
         assertThat(dashboard.recentCompletions.first().participantNames).containsExactly("Alice", "Bob").inOrder()
 
@@ -158,6 +162,14 @@ class HouseholdStatisticsCalculatorTest {
         assertThat(stats.monthlyBreakdown.first().countsByMember["Alice"]).isEqualTo(1)
         assertThat(stats.monthlyBreakdown.first().countsByMember["Bob"]).isEqualTo(1)
         assertThat(stats.monthlyBreakdown.first().totalCount).isEqualTo(2)
+
+        // 3 completions, Alice has 1, Bob has 2 → 33% and 66%
+        val contributions = stats.summary
+        assertThat(contributions.totalCompletions).isEqualTo(3)
+        assertThat(contributions.topContributor?.displayName).isEqualTo("Bob")
+        val contribByName = stats.memberContributions.associateBy { it.displayName }
+        assertThat(contribByName["Alice"]?.sharePercent).isEqualTo(33)
+        assertThat(contribByName["Bob"]?.sharePercent).isEqualTo(66)
     }
 
     @Test
