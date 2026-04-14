@@ -33,6 +33,7 @@ import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Clock
@@ -72,6 +73,7 @@ class LocalSyncRepository @Inject constructor(
         }
 
         val operations = pendingSyncOperationDao.getAll()
+        Timber.d("syncPendingOperations: ${operations.size} pending operations")
         val operationIdsByHouseholdId = linkedMapOf<String, MutableList<String>>().apply {
             operations.forEach { operation ->
                 resolveHouseholdId(operation)?.let { householdId ->
@@ -88,6 +90,7 @@ class LocalSyncRepository @Inject constructor(
                 val now = Clock.System.now()
                 when (val result = remoteHouseholdDataSource.upsertHouseholdSnapshot(snapshot, authenticatedUser.id)) {
                     is AppResult.Error -> {
+                        Timber.e("syncPendingOperations: sync failed for household=$householdId - ${result.message}")
                         syncStateDao.upsert(
                             SyncStateEntity(
                                 householdId = householdId,
@@ -100,6 +103,9 @@ class LocalSyncRepository @Inject constructor(
                         AppResult.Error(result.message, result.cause)
                     }
                     is AppResult.Success -> {
+                        Timber.d(
+                            "syncPendingOperations: synced ${operationIds.size} operations for household=$householdId",
+                        )
                         operationIds.forEach { operationId ->
                             pendingSyncOperationDao.delete(operationId)
                         }
@@ -121,77 +127,87 @@ class LocalSyncRepository @Inject constructor(
         return syncError ?: AppResult.Success(Unit)
     }
 
-    override suspend fun restoreHouseholdForUser(userId: String): AppResult<Boolean> = when (
-        val result = remoteHouseholdDataSource.fetchHouseholdSnapshot(userId)
-    ) {
-        is AppResult.Error -> AppResult.Error(result.message, result.cause)
-        is AppResult.Success -> {
-            val snapshot = result.value ?: return AppResult.Success(false)
-            householdDao.upsert(
-                HouseholdEntity(
-                    id = snapshot.household.id,
-                    name = snapshot.household.name,
-                    ownerUserId = snapshot.household.ownerUserId,
-                    inviteCode = snapshot.household.inviteCode,
-                    createdAt = snapshot.household.createdAt,
-                ),
-            )
-            snapshot.members.forEach { member ->
-                memberDao.upsert(
-                    MemberEntity(
-                        id = member.id,
-                        householdId = member.householdId,
-                        userId = member.userId,
-                        displayName = member.displayName,
-                        role = member.role.name,
-                        isCurrentUser = member.isCurrentUser,
+    override suspend fun restoreHouseholdForUser(userId: String): AppResult<Boolean> {
+        Timber.d("restoreHouseholdForUser: userId=$userId")
+        return when (val result = remoteHouseholdDataSource.fetchHouseholdSnapshot(userId)) {
+            is AppResult.Error -> {
+                Timber.e("restoreHouseholdForUser: fetch failed - ${result.message}")
+                AppResult.Error(result.message, result.cause)
+            }
+            is AppResult.Success -> {
+                val snapshot = result.value ?: return AppResult.Success(false).also {
+                    Timber.d("restoreHouseholdForUser: no remote snapshot found")
+                }
+                householdDao.upsert(
+                    HouseholdEntity(
+                        id = snapshot.household.id,
+                        name = snapshot.household.name,
+                        ownerUserId = snapshot.household.ownerUserId,
+                        inviteCode = snapshot.household.inviteCode,
+                        createdAt = snapshot.household.createdAt,
                     ),
                 )
-            }
-            snapshot.chores.forEach { chore ->
-                choreDao.upsert(
-                    ChoreEntity(
-                        id = chore.id,
-                        householdId = chore.householdId,
-                        name = chore.name,
-                        isActive = chore.isActive,
-                        createdAt = chore.createdAt,
-                        deletedAt = chore.deletedAt,
-                    ),
+                snapshot.members.forEach { member ->
+                    memberDao.upsert(
+                        MemberEntity(
+                            id = member.id,
+                            householdId = member.householdId,
+                            userId = member.userId,
+                            displayName = member.displayName,
+                            role = member.role.name,
+                            isCurrentUser = member.isCurrentUser,
+                        ),
+                    )
+                }
+                snapshot.chores.forEach { chore ->
+                    choreDao.upsert(
+                        ChoreEntity(
+                            id = chore.id,
+                            householdId = chore.householdId,
+                            name = chore.name,
+                            isActive = chore.isActive,
+                            createdAt = chore.createdAt,
+                            deletedAt = chore.deletedAt,
+                        ),
+                    )
+                }
+                snapshot.completions.forEach { completion ->
+                    completionDao.upsert(
+                        CompletionEntity(
+                            id = completion.id,
+                            householdId = completion.householdId,
+                            choreId = completion.choreId,
+                            createdAt = completion.createdAt,
+                            createdByUserId = completion.createdByUserId,
+                            note = completion.note,
+                        ),
+                    )
+                    completionParticipantDao.insertAll(
+                        completion.participantMemberIds.map { memberId ->
+                            CompletionParticipantEntity(
+                                completionId = completion.id,
+                                memberId = memberId,
+                            )
+                        },
+                    )
+                }
+                snapshot.invites.forEach { invite ->
+                    inviteDao.upsert(
+                        InviteEntity(
+                            id = invite.id,
+                            householdId = invite.householdId,
+                            code = invite.code,
+                            createdAt = invite.createdAt,
+                            consumedAt = invite.consumedAt,
+                        ),
+                    )
+                }
+                Timber.d(
+                    "restoreHouseholdForUser: restored household=${snapshot.household.id} " +
+                        "members=${snapshot.members.size} chores=${snapshot.chores.size} completions=${snapshot.completions.size}",
                 )
+                AppResult.Success(true)
             }
-            snapshot.completions.forEach { completion ->
-                completionDao.upsert(
-                    CompletionEntity(
-                        id = completion.id,
-                        householdId = completion.householdId,
-                        choreId = completion.choreId,
-                        createdAt = completion.createdAt,
-                        createdByUserId = completion.createdByUserId,
-                        note = completion.note,
-                    ),
-                )
-                completionParticipantDao.insertAll(
-                    completion.participantMemberIds.map { memberId ->
-                        CompletionParticipantEntity(
-                            completionId = completion.id,
-                            memberId = memberId,
-                        )
-                    },
-                )
-            }
-            snapshot.invites.forEach { invite ->
-                inviteDao.upsert(
-                    InviteEntity(
-                        id = invite.id,
-                        householdId = invite.householdId,
-                        code = invite.code,
-                        createdAt = invite.createdAt,
-                        consumedAt = invite.consumedAt,
-                    ),
-                )
-            }
-            AppResult.Success(true)
         }
     }
 

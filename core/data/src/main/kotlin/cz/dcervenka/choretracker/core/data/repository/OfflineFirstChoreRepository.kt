@@ -12,6 +12,7 @@ import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,6 +29,7 @@ class OfflineFirstChoreRepository @Inject constructor(
         choreDao.observeChores(householdId).map { chores -> chores.map(ChoreEntity::asModel) }
 
     override suspend fun addChore(householdId: String, name: String): EmptyResult {
+        Timber.d("addChore: householdId=$householdId name=$name")
         val choreId = UUID.randomUUID().toString()
         choreDao.upsert(
             ChoreEntity(
@@ -54,6 +56,7 @@ class OfflineFirstChoreRepository @Inject constructor(
     }
 
     override suspend fun deleteChore(choreId: String): EmptyResult {
+        Timber.d("deleteChore: choreId=$choreId")
         choreDao.markDeleted(choreId, Clock.System.now())
         pendingSyncOperationDao.upsert(
             PendingSyncOperationEntity(
@@ -70,6 +73,7 @@ class OfflineFirstChoreRepository @Inject constructor(
     }
 
     override suspend fun updateChoreActive(choreId: String, isActive: Boolean): EmptyResult {
+        Timber.d("updateChoreActive: choreId=$choreId isActive=$isActive")
         choreDao.updateActive(choreId, isActive)
         pendingSyncOperationDao.upsert(
             PendingSyncOperationEntity(
@@ -86,6 +90,7 @@ class OfflineFirstChoreRepository @Inject constructor(
     }
 
     override suspend fun updateChoreName(choreId: String, name: String): EmptyResult {
+        Timber.d("updateChoreName: choreId=$choreId name=$name")
         choreDao.updateName(choreId, name.trim())
         pendingSyncOperationDao.upsert(
             PendingSyncOperationEntity(
@@ -102,6 +107,7 @@ class OfflineFirstChoreRepository @Inject constructor(
     }
 
     override suspend fun updateChoreFrequencyDays(choreId: String, frequencyDays: Int?): EmptyResult {
+        Timber.d("updateChoreFrequencyDays: choreId=$choreId frequencyDays=$frequencyDays")
         choreDao.updateFrequencyDays(choreId, frequencyDays)
         pendingSyncOperationDao.upsert(
             PendingSyncOperationEntity(

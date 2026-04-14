@@ -7,6 +7,10 @@ plugins {
 android {
     namespace = "cz.dcervenka.choretracker"
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId = "cz.dcervenka.choretracker"
     }
@@ -44,6 +48,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.timber)
     testImplementation(projects.core.common)
     testImplementation(projects.core.test)
     testImplementation(libs.junit4)

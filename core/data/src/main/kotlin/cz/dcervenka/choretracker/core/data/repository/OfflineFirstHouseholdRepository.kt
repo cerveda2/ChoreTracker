@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -53,15 +54,18 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             if (user != null && !user.isPreview) {
                 syncRepository.syncPendingOperations()
                 if (householdDao.getCurrentHousehold() == null) {
+                    Timber.d("observeCurrentHousehold: no local household, restoring for user=${user.id}")
                     restoreStatus.value = HouseholdRestoreStatus(isRestoring = true)
                     when (val restoreResult = syncRepository.restoreHouseholdForUser(user.id)) {
                         is AppResult.Error -> {
+                            Timber.e("observeCurrentHousehold: restore failed - ${restoreResult.message}")
                             restoreStatus.value = HouseholdRestoreStatus(
                                 isRestoring = false,
                                 errorMessage = restoreResult.message,
                             )
                         }
                         is AppResult.Success -> {
+                            Timber.d("observeCurrentHousehold: restore succeeded")
                             restoreStatus.value = HouseholdRestoreStatus()
                         }
                     }
@@ -84,7 +88,10 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         inviteDao.observeInvites(householdId).map { invites -> invites.map(InviteEntity::asModel) }
 
     override suspend fun createHousehold(name: String, ownerDisplayName: String): AppResult<Household> {
-        val user = currentUser() ?: return AppResult.Error("Sign in or continue in preview mode first.")
+        Timber.d("createHousehold: name=$name ownerDisplayName=$ownerDisplayName")
+        val user = currentUser() ?: return AppResult.Error("Sign in or continue in preview mode first.").also {
+            Timber.w("createHousehold failed: user not authenticated")
+        }
         val householdId = UUID.randomUUID().toString()
         val invite = generateInvite(householdId)
         val household = HouseholdEntity(
@@ -112,11 +119,16 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     }
 
     override suspend fun joinHousehold(code: String, currentUserDisplayName: String): AppResult<Household> {
+        Timber.d("joinHousehold: code=$code displayName=$currentUserDisplayName")
         val invite = inviteDao.findByCode(code.trim())
         val user = currentUser()
         return when {
-            invite == null -> AppResult.Error("No household invite with that code was found.")
-            user == null -> AppResult.Error("Sign in or continue in preview mode first.")
+            invite == null -> AppResult.Error("No household invite with that code was found.").also {
+                Timber.w("joinHousehold: invite not found for code=$code")
+            }
+            user == null -> AppResult.Error("Sign in or continue in preview mode first.").also {
+                Timber.w("joinHousehold: user not authenticated")
+            }
             else -> {
                 val existing = memberDao.findByUserId(invite.householdId, user.id)
                 if (existing == null) {
@@ -142,6 +154,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     }
 
     override suspend fun addMember(householdId: String, displayName: String): EmptyResult {
+        Timber.d("addMember: householdId=$householdId displayName=$displayName")
         memberDao.upsert(
             MemberEntity(
                 id = UUID.randomUUID().toString(),
@@ -167,6 +180,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     }
 
     override suspend fun updateHouseholdName(householdId: String, name: String): EmptyResult {
+        Timber.d("updateHouseholdName: householdId=$householdId name=$name")
         val sanitizedName = name.trim().ifBlank { "My Household" }
         householdDao.updateName(householdId, sanitizedName)
         enqueueOperation("household", householdId, "rename", sanitizedName)

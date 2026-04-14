@@ -17,6 +17,7 @@ dependencies {
     implementation(libs.kotlinx.datetime)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.timber)
 
     testImplementation(projects.core.test)
     testImplementation(libs.google.truth)

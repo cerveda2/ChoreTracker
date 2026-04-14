@@ -19,6 +19,7 @@ import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import cz.dcervenka.choretracker.core.remote.firebase.runtime.FirebaseRuntimeConfigurator
 import dagger.hilt.android.qualifiers.ApplicationContext
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -45,6 +46,10 @@ class FirebaseHouseholdDataSource @Inject constructor(
         get() = if (FirebaseApp.getApps(context).isEmpty()) null else FirebaseFirestore.getInstance()
 
     override suspend fun upsertHouseholdSnapshot(snapshot: HouseholdSnapshot, userId: String): EmptyResult {
+        Timber.d(
+            "upsertHouseholdSnapshot: householdId=${snapshot.household.id} " +
+                "chores=${snapshot.chores.size} completions=${snapshot.completions.size}",
+        )
         val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
         return runCatching {
             val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(snapshot.household.id)
@@ -72,8 +77,10 @@ class FirebaseHouseholdDataSource @Inject constructor(
                 snapshot = snapshot,
             )
             batchUserFallback(db, userId = userId, householdId = snapshot.household.id)
+            Timber.d("upsertHouseholdSnapshot: success")
             AppResult.Success(Unit)
         }.getOrElse { error ->
+            Timber.e(error, "upsertHouseholdSnapshot: failed")
             AppResult.Error(
                 error.message ?: "Unable to sync household data.",
                 error,
@@ -182,10 +189,12 @@ class FirebaseHouseholdDataSource @Inject constructor(
     }
 
     override suspend fun fetchHouseholdSnapshot(userId: String): AppResult<HouseholdSnapshot?> {
+        Timber.d("fetchHouseholdSnapshot: userId=$userId")
         val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
         return runCatching {
             val householdId = resolveHouseholdId(db, userId)
             if (householdId == null) {
+                Timber.d("fetchHouseholdSnapshot: no household found for userId=$userId")
                 AppResult.Success(null)
             } else {
                 val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
@@ -202,6 +211,10 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     val invites = awaitTask(householdRef.collection(INVITES_COLLECTION).get()).documents
                         .map { it.asInvite(householdId) }
 
+                    Timber.d(
+                        "fetchHouseholdSnapshot: fetched householdId=$householdId " +
+                            "members=${members.size} chores=${chores.size} completions=${completions.size}",
+                    )
                     AppResult.Success(
                         HouseholdSnapshot(
                             household = householdDoc.asHousehold(householdId),
@@ -214,6 +227,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
                 }
             }
         }.getOrElse { error ->
+            Timber.e(error, "fetchHouseholdSnapshot: failed")
             AppResult.Error(
                 error.message ?: "Unable to load household data.",
                 error,

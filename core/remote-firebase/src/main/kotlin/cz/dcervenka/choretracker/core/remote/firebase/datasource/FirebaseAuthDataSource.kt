@@ -15,6 +15,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -45,8 +46,10 @@ class FirebaseAuthDataSource @Inject constructor(
         val listener = FirebaseAuth.AuthStateListener { firebase ->
             val user = firebase.currentUser
             if (user == null) {
+                Timber.d("authState: signed out")
                 trySend(AuthState.SignedOut)
             } else {
+                Timber.d("authState: authenticated uid=${user.uid}")
                 trySend(
                     AuthState.Authenticated(
                         AppUser(
@@ -63,6 +66,7 @@ class FirebaseAuthDataSource @Inject constructor(
     }
 
     override suspend fun signIn(email: String, password: String): EmptyResult {
+        Timber.d("signIn: email=$email")
         val validationError = validateCredentials(
             email = email,
             password = password,
@@ -70,8 +74,12 @@ class FirebaseAuthDataSource @Inject constructor(
         return validationError ?: firebaseAuth?.let { auth ->
             suspendCancellableCoroutine { continuation ->
                 auth.signInWithEmailAndPassword(email, password)
-                    .addOnSuccessListener { continuation.resume(AppResult.Success(Unit)) }
+                    .addOnSuccessListener {
+                        Timber.d("signIn: success")
+                        continuation.resume(AppResult.Success(Unit))
+                    }
                     .addOnFailureListener { throwable ->
+                        Timber.e(throwable, "signIn: failed")
                         continuation.resume(
                             AppResult.Error(
                                 throwable.message ?: "Unable to sign in.",
@@ -84,6 +92,7 @@ class FirebaseAuthDataSource @Inject constructor(
     }
 
     override suspend fun signUp(email: String, password: String, displayName: String): EmptyResult {
+        Timber.d("signUp: email=$email displayName=$displayName")
         val validationError = validateSignUpInputs(
             email = email,
             password = password,
@@ -106,8 +115,12 @@ class FirebaseAuthDataSource @Inject constructor(
                                     .setDisplayName(displayName)
                                     .build(),
                             )
-                                .addOnSuccessListener { continuation.resume(AppResult.Success(Unit)) }
+                                .addOnSuccessListener {
+                                    Timber.d("signUp: success uid=${user.uid}")
+                                    continuation.resume(AppResult.Success(Unit))
+                                }
                                 .addOnFailureListener { throwable ->
+                                    Timber.e(throwable, "signUp: profile update failed")
                                     continuation.resume(
                                         AppResult.Error(
                                             throwable.message ?: "Unable to update profile.",

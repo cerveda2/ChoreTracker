@@ -14,4 +14,5 @@ dependencies {
     implementation(projects.core.model)
     implementation(projects.core.remoteContract)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.timber)
 }

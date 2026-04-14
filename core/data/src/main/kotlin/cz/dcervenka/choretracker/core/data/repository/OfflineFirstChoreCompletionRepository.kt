@@ -18,6 +18,7 @@ import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -62,8 +63,11 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
         participantMemberIds: List<String>,
         note: String?,
     ): EmptyResult {
+        Timber.d("logCompletion: choreId=$choreId participants=${participantMemberIds.size} hasNote=${note != null}")
         val currentUserId = (authRepository.authState.first() as? AuthState.Authenticated)?.user?.id
-            ?: return AppResult.Error("Sign in or continue in preview mode first.")
+            ?: return AppResult.Error("Sign in or continue in preview mode first.").also {
+                Timber.w("logCompletion failed: user not authenticated")
+            }
         val completionId = UUID.randomUUID().toString()
         completionDao.upsert(
             CompletionEntity(
