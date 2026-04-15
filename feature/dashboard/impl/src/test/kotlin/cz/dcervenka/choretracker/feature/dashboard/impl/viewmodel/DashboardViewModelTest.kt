@@ -3,6 +3,7 @@ package cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
+import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentDashboardUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
@@ -51,6 +52,9 @@ class DashboardViewModelTest {
     lateinit var logCompletionUseCase: LogCompletionUseCase
 
     @MockK
+    lateinit var deleteCompletionUseCase: DeleteCompletionUseCase
+
+    @MockK
     lateinit var retryPendingSyncUseCase: RetryPendingSyncUseCase
 
     private val dashboardFlow = MutableStateFlow(sampleDashboardSnapshot())
@@ -71,7 +75,8 @@ class DashboardViewModelTest {
         every { observeMembersUseCase(any()) } answers { membersFlow }
         every { observeRecentCompletionsUseCase(any(), any()) } answers { completionsFlow }
         every { observeSyncStateUseCase(any()) } answers { syncStateFlow }
-        coEvery { logCompletionUseCase(any(), any(), any(), any()) } returns AppResult.Success(Unit)
+        coEvery { logCompletionUseCase(any(), any(), any(), any()) } returns AppResult.Success("completion-id")
+        coEvery { deleteCompletionUseCase(any()) } returns AppResult.Success(Unit)
         coEvery { retryPendingSyncUseCase() } returns AppResult.Success(Unit)
     }
 
@@ -150,5 +155,6 @@ private fun DashboardViewModelTest.createViewModel() = DashboardViewModel(
     observeRecentCompletionsUseCase = observeRecentCompletionsUseCase,
     observeSyncStateUseCase = observeSyncStateUseCase,
     logCompletionUseCase = logCompletionUseCase,
+    deleteCompletionUseCase = deleteCompletionUseCase,
     retryPendingSyncUseCase = retryPendingSyncUseCase,
 )

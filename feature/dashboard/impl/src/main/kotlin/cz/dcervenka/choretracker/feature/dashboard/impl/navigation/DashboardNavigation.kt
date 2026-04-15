@@ -22,6 +22,8 @@ fun NavGraphBuilder.dashboardScreen(
         DashboardScreen(
             uiState = uiState.value,
             onLogCompletion = viewModel::logCompletion,
+            onDeleteCompletion = viewModel::deleteCompletion,
+            undoEvents = viewModel.undoEvents,
             onRetrySync = viewModel::retrySync,
             onSeeAllCompletions = {
                 navController.navigate(DashboardCompletionsDestination.route)

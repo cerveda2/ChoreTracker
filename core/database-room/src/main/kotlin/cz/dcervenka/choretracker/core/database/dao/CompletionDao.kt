@@ -20,4 +20,7 @@ interface CompletionDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: CompletionEntity)
+
+    @Query("DELETE FROM completions WHERE id = :completionId")
+    suspend fun deleteById(completionId: String)
 }

@@ -24,7 +24,7 @@ class LogCompletionUseCaseTest {
         MockKAnnotations.init(this)
         coEvery {
             choreCompletionRepository.logCompletion(any(), any(), any(), any(), any())
-        } returns AppResult.Success(Unit)
+        } returns AppResult.Success("completion-id")
         useCase = LogCompletionUseCase(choreCompletionRepository)
     }
 
@@ -72,7 +72,19 @@ class LogCompletionUseCaseTest {
     }
 
     @Test
-    fun `returns repository result`() = runTest {
+    fun `returns completion id on success`() = runTest {
+        coEvery {
+            choreCompletionRepository.logCompletion(any(), any(), any(), any(), any())
+        } returns AppResult.Success("completion-abc")
+
+        val result = useCase("h", "c", listOf("m"), null)
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        assertThat((result as AppResult.Success).value).isEqualTo("completion-abc")
+    }
+
+    @Test
+    fun `returns error result`() = runTest {
         coEvery {
             choreCompletionRepository.logCompletion(any(), any(), any(), any(), any())
         } returns AppResult.Error("Not authenticated")

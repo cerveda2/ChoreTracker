@@ -65,7 +65,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
         participantMemberIds: List<String>,
         note: String?,
         completedAt: Instant?,
-    ): EmptyResult {
+    ): AppResult<String> {
         Timber.d(
             "logCompletion: choreId=$choreId participants=${participantMemberIds.size} " +
                 "hasNote=${note != null} completedAt=$completedAt",
@@ -104,6 +104,14 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
             ),
         )
         syncRepository.syncPendingOperations()
+        return AppResult.Success(completionId)
+    }
+
+    override suspend fun deleteCompletion(completionId: String): EmptyResult {
+        Timber.d("deleteCompletion: completionId=$completionId")
+        completionDao.deleteById(completionId)
+        participantDao.deleteByCompletionId(completionId)
+        pendingSyncOperationDao.deleteByEntityId(completionId)
         return AppResult.Success(Unit)
     }
 }
