@@ -40,8 +40,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
-import cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel.UndoEvent
-import kotlinx.coroutines.flow.Flow
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.PreviewData
@@ -59,6 +57,8 @@ import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.core.model.sync.SyncState
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
+import cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel.UndoEvent
+import kotlinx.coroutines.flow.Flow
 
 @Composable
 fun DashboardScreen(
