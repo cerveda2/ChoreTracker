@@ -2,4 +2,10 @@
 <resources>
 
     <style name="Theme.ChoreTracker" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.ChoreTracker.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#FAFAF7</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
+        <item name="postSplashScreenTheme">@style/Theme.ChoreTracker</item>
+    </style>
 </resources>
