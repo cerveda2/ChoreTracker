@@ -43,6 +43,7 @@ class PreviewAwareAuthRepository @Inject constructor(
         remoteAuthDataSource.signUp(email, password, displayName)
 
     override suspend fun continueInPreviewMode(displayName: String): EmptyResult {
+        previewState.value = null
         previewState.value = AuthState.Authenticated(
             AppUser(
                 id = "preview-user",
@@ -52,6 +53,10 @@ class PreviewAwareAuthRepository @Inject constructor(
             ),
         )
         return AppResult.Success(Unit)
+    }
+
+    override fun clearPreviewState() {
+        previewState.value = null
     }
 
     override suspend fun signOut(): EmptyResult {

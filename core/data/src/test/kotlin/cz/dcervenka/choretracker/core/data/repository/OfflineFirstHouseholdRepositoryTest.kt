@@ -61,7 +61,9 @@ class OfflineFirstHouseholdRepositoryTest {
         MockKAnnotations.init(this)
         every { authRepository.authState } returns authState
         every { householdDao.observeCurrentHousehold() } returns localHousehold
+        every { householdDao.observeHouseholdForUser(any()) } returns localHousehold
         coEvery { householdDao.getCurrentHousehold() } returns null
+        coEvery { householdDao.getCurrentHouseholdForUser(any()) } returns null
         coEvery { syncRepository.syncPendingOperations() } returns AppResult.Success(Unit)
         coEvery { syncRepository.restoreHouseholdForUser("user-1") } coAnswers {
             localHousehold.value = HouseholdEntity(
