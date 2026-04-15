@@ -97,13 +97,18 @@ fun DashboardScreen(
     var selectedNote by remember { mutableStateOf("") }
     val selectedMembers = remember { mutableStateListOf<String>() }
     val currentUserId = uiState.members.firstOrNull { it.isCurrentUser }?.id
-    val openLogDialog: (choreId: String) -> Unit = { choreId ->
+    val openLogSheet: (choreId: String) -> Unit = { choreId ->
         selectedChoreId = choreId
         selectedMembers.clear()
         if (currentUserId != null) selectedMembers.add(currentUserId)
         selectedNote = ""
     }
     val snapshot = uiState.snapshot
+    val quickLog: (choreId: String) -> Unit = quickLog@{ choreId ->
+        val householdId = snapshot?.household?.id ?: return@quickLog
+        val userId = currentUserId ?: return@quickLog
+        onLogCompletion(householdId, choreId, listOf(userId), null, null)
+    }
 
     if (snapshot == null) {
         LoadingState(message = stringResource(R.string.dashboard_loading))
@@ -210,7 +215,8 @@ fun DashboardScreen(
                                     PrimaryButton(
                                         text = chore.name,
                                         subtitle = subtitle,
-                                        onClick = { openLogDialog(chore.id) },
+                                        onClick = { quickLog(chore.id) },
+                                        onLongClick = { openLogSheet(chore.id) },
                                         fillMaxWidth = false,
                                     )
                                 }
@@ -252,7 +258,7 @@ fun DashboardScreen(
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { openLogDialog(stale.choreId) },
+                                        .clickable { openLogSheet(stale.choreId) },
                                 ) {
                                     Column(
                                         modifier = Modifier.padding(spacing.medium),
