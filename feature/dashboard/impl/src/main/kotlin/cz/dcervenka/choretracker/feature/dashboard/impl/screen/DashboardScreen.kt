@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
@@ -20,10 +19,12 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -262,7 +263,7 @@ fun DashboardScreen(
     }
 
     if (selectedChoreId != null && snapshot != null) {
-        LogCompletionDialog(
+        LogCompletionBottomSheet(
             uiState = uiState,
             selectedMembers = selectedMembers,
             selectedNote = selectedNote,
@@ -284,7 +285,7 @@ fun DashboardScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LogCompletionDialog(
+private fun LogCompletionBottomSheet(
     uiState: DashboardUiState,
     selectedMembers: androidx.compose.runtime.snapshots.SnapshotStateList<String>,
     selectedNote: String,
@@ -293,6 +294,7 @@ private fun LogCompletionDialog(
     onConfirm: (kotlin.time.Instant?) -> Unit,
 ) {
     val spacing = LocalSpacing.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = kotlin.time.Clock.System.now()
@@ -321,67 +323,72 @@ private fun LogCompletionDialog(
         }
     }
 
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text(text = stringResource(R.string.dashboard_log_completion)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
-                Text(text = stringResource(R.string.dashboard_who_completed))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(spacing.small),
-                    verticalArrangement = Arrangement.spacedBy(spacing.small),
-                ) {
-                    uiState.members.forEach { member ->
-                        FilterChip(
-                            selected = selectedMembers.contains(member.id),
-                            onClick = {
-                                if (selectedMembers.contains(member.id)) {
-                                    selectedMembers.remove(member.id)
-                                } else {
-                                    selectedMembers.add(member.id)
-                                }
-                            },
-                            label = { Text(text = member.displayName) },
-                        )
-                    }
-                }
-                OutlinedTextField(
-                    value = selectedNote,
-                    onValueChange = onNoteChange,
-                    label = { Text(text = stringResource(R.string.dashboard_note)) },
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Sentences,
-                        autoCorrectEnabled = true,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                TextButton(
-                    onClick = { showDatePicker = true },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    val dateLabel = if (completedAt != null) {
-                        formatInstantForLocale(completedAt, "yMMMd")
-                    } else {
-                        stringResource(R.string.dashboard_log_date_today)
-                    }
-                    Text(text = stringResource(R.string.dashboard_log_date, dateLabel))
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = spacing.large)
+                .padding(bottom = spacing.large),
+            verticalArrangement = Arrangement.spacedBy(spacing.medium),
+        ) {
+            Text(
+                text = stringResource(R.string.dashboard_log_completion),
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                text = stringResource(R.string.dashboard_who_completed),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(spacing.small),
+                verticalArrangement = Arrangement.spacedBy(spacing.small),
+            ) {
+                uiState.members.forEach { member ->
+                    FilterChip(
+                        selected = selectedMembers.contains(member.id),
+                        onClick = {
+                            if (selectedMembers.contains(member.id)) {
+                                selectedMembers.remove(member.id)
+                            } else {
+                                selectedMembers.add(member.id)
+                            }
+                        },
+                        label = { Text(text = member.displayName) },
+                    )
                 }
             }
-        },
-        confirmButton = {
+            OutlinedTextField(
+                value = selectedNote,
+                onValueChange = onNoteChange,
+                label = { Text(text = stringResource(R.string.dashboard_note)) },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    autoCorrectEnabled = true,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
             TextButton(
+                onClick = { showDatePicker = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                val dateLabel = if (completedAt != null) {
+                    formatInstantForLocale(completedAt, "yMMMd")
+                } else {
+                    stringResource(R.string.dashboard_log_date_today)
+                }
+                Text(text = stringResource(R.string.dashboard_log_date, dateLabel))
+            }
+            PrimaryButton(
+                text = stringResource(R.string.common_save),
                 onClick = { onConfirm(completedAt) },
                 enabled = selectedMembers.isNotEmpty(),
-            ) {
-                Text(text = stringResource(R.string.common_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = stringResource(R.string.common_cancel))
-            }
-        },
-    )
+            )
+        }
+    }
 }
 
 private const val MILLIS_PER_DAY = 86_400_000L
