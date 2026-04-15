@@ -21,11 +21,15 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +40,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
+import cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel.UndoEvent
+import kotlinx.coroutines.flow.Flow
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.PreviewData
@@ -64,11 +70,29 @@ fun DashboardScreen(
         note: String?,
         completedAt: kotlin.time.Instant?,
     ) -> Unit,
+    onDeleteCompletion: (String) -> Unit,
+    undoEvents: Flow<UndoEvent>,
     onRetrySync: () -> Unit,
     onSeeAllCompletions: () -> Unit,
     onOpenCompletion: (String) -> Unit,
 ) {
     val spacing = LocalSpacing.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val undoLabel = stringResource(R.string.common_undo)
+    val loggedMessage = stringResource(R.string.dashboard_logged_snackbar)
+
+    LaunchedEffect(undoEvents) {
+        undoEvents.collect { event ->
+            val result = snackbarHostState.showSnackbar(
+                message = loggedMessage.format(event.choreName),
+                actionLabel = undoLabel,
+                duration = SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                onDeleteCompletion(event.completionId)
+            }
+        }
+    }
     var selectedChoreId by remember { mutableStateOf<String?>(null) }
     var selectedNote by remember { mutableStateOf("") }
     val selectedMembers = remember { mutableStateListOf<String>() }
@@ -90,6 +114,7 @@ fun DashboardScreen(
         val staleItems = snapshot.staleChores.filter { it.status != ChoreStatus.OK }
 
         ChoreScaffold(
+            snackbarHostState = snackbarHostState,
             topBar = {
                 ChoreTopAppBar(title = stringResource(R.string.dashboard_title))
             },
@@ -612,6 +637,8 @@ private fun DashboardScreenPreview() {
                 allCompletions = PreviewData.dashboardSnapshot.recentCompletions,
             ),
             onLogCompletion = { _, _, _, _, _ -> },
+            onDeleteCompletion = {},
+            undoEvents = kotlinx.coroutines.flow.emptyFlow(),
             onRetrySync = {},
             onSeeAllCompletions = {},
             onOpenCompletion = {},

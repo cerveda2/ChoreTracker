@@ -1,5 +1,6 @@
 package cz.dcervenka.choretracker.core.data.contract
 
+import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import kotlinx.coroutines.flow.Flow
@@ -14,5 +15,7 @@ interface ChoreCompletionRepository {
         participantMemberIds: List<String>,
         note: String?,
         completedAt: Instant? = null,
-    ): EmptyResult
+    ): AppResult<String>
+
+    suspend fun deleteCompletion(completionId: String): EmptyResult
 }

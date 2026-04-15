@@ -17,6 +17,9 @@ interface PendingSyncOperationDao {
     @Query("DELETE FROM pending_sync_operations WHERE id = :operationId")
     suspend fun delete(operationId: String)
 
+    @Query("DELETE FROM pending_sync_operations WHERE entityId = :entityId")
+    suspend fun deleteByEntityId(entityId: String)
+
     @Query("SELECT COUNT(*) FROM pending_sync_operations")
     suspend fun pendingCount(): Int
 }

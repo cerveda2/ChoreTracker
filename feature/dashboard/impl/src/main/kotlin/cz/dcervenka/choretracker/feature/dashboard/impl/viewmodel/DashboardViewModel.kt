@@ -3,6 +3,7 @@ package cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cz.dcervenka.choretracker.core.common.AppResult
+import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentDashboardUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
@@ -12,14 +13,19 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+data class UndoEvent(val completionId: String, val choreName: String)
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
@@ -29,8 +35,13 @@ class DashboardViewModel @Inject constructor(
     observeRecentCompletionsUseCase: ObserveRecentCompletionsUseCase,
     observeSyncStateUseCase: ObserveSyncStateUseCase,
     private val logCompletionUseCase: LogCompletionUseCase,
+    private val deleteCompletionUseCase: DeleteCompletionUseCase,
     private val retryPendingSyncUseCase: RetryPendingSyncUseCase,
 ) : ViewModel() {
+
+    private val _undoChannel = Channel<UndoEvent>(Channel.BUFFERED)
+    val undoEvents: Flow<UndoEvent> = _undoChannel.receiveAsFlow()
+
     val uiState: StateFlow<DashboardUiState> = observeCurrentHouseholdUseCase()
         .filterNotNull()
         .flatMapLatest { household ->
@@ -61,13 +72,24 @@ class DashboardViewModel @Inject constructor(
         completedAt: kotlin.time.Instant? = null,
     ) {
         viewModelScope.launch {
-            logCompletionUseCase(
+            val result = logCompletionUseCase(
                 householdId = householdId,
                 choreId = choreId,
                 participantMemberIds = participantIds,
                 note = note,
                 completedAt = completedAt,
             )
+            if (result is AppResult.Success) {
+                val choreName = uiState.value.snapshot?.activeChores
+                    ?.find { it.id == choreId }?.name.orEmpty()
+                _undoChannel.send(UndoEvent(result.value, choreName))
+            }
+        }
+    }
+
+    fun deleteCompletion(completionId: String) {
+        viewModelScope.launch {
+            deleteCompletionUseCase(completionId)
         }
     }
 

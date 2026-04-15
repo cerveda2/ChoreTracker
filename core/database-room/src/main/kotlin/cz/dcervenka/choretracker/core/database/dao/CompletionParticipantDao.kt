@@ -31,4 +31,7 @@ interface CompletionParticipantDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(entities: List<CompletionParticipantEntity>)
+
+    @Query("DELETE FROM completion_participants WHERE completionId = :completionId")
+    suspend fun deleteByCompletionId(completionId: String)
 }
