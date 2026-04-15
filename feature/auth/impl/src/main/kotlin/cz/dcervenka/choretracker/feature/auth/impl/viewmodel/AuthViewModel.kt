@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.design.R
+import cz.dcervenka.choretracker.core.domain.usecase.ClearPreviewModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ContinueInPreviewModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignInUseCase
@@ -30,6 +31,7 @@ class AuthViewModel @Inject constructor(
     private val signInUseCase: SignInUseCase,
     private val signUpUseCase: SignUpUseCase,
     private val continueInPreviewModeUseCase: ContinueInPreviewModeUseCase,
+    private val clearPreviewModeUseCase: ClearPreviewModeUseCase,
 ) : ViewModel() {
 
     private val mutableUiState = MutableStateFlow(AuthUiState())
@@ -44,6 +46,8 @@ class AuthViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = AuthUiState(),
     )
+
+    fun clearPreviewState() = clearPreviewModeUseCase()
 
     fun dispatch(intent: AuthUiIntent) {
         when (intent) {

@@ -1,5 +1,6 @@
 package cz.dcervenka.choretracker.feature.auth.impl.navigation
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
@@ -11,6 +12,10 @@ fun NavGraphBuilder.authScreen() {
     composable(route = AuthDestination.route) {
         val viewModel: AuthViewModel = hiltViewModel()
         val uiState = viewModel.uiState.collectAsStateWithLifecycle()
+
+        LaunchedEffect(Unit) {
+            viewModel.clearPreviewState()
+        }
 
         AuthScreen(
             uiState = uiState.value,

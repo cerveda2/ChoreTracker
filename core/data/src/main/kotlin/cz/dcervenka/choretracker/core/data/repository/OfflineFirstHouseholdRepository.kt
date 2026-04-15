@@ -53,7 +53,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             val user = (authState as? AuthState.Authenticated)?.user
             if (user != null && !user.isPreview) {
                 syncRepository.syncPendingOperations()
-                if (householdDao.getCurrentHousehold() == null) {
+                if (householdDao.getCurrentHouseholdForUser(user.id) == null) {
                     Timber.d("observeCurrentHousehold: no local household, restoring for user=${user.id}")
                     restoreStatus.value = HouseholdRestoreStatus(isRestoring = true)
                     when (val restoreResult = syncRepository.restoreHouseholdForUser(user.id)) {
@@ -75,7 +75,11 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             } else {
                 restoreStatus.value = HouseholdRestoreStatus()
             }
-            emitAll(householdDao.observeCurrentHousehold().map { it?.asModel() })
+            if (user != null) {
+                emitAll(householdDao.observeHouseholdForUser(user.id).map { it?.asModel() })
+            } else {
+                emit(null)
+            }
         }
     }
 

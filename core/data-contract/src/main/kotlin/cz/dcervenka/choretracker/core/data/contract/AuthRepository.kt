@@ -13,5 +13,7 @@ interface AuthRepository {
 
     suspend fun continueInPreviewMode(displayName: String): EmptyResult
 
+    fun clearPreviewState() = Unit
+
     suspend fun signOut(): EmptyResult
 }

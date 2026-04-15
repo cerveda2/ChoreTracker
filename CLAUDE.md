@@ -73,26 +73,42 @@ Always create feature branches from `main`. PRs go into `main`.
 ./gradlew :feature:dashboard:impl:test     # Test specific feature
 ```
 
-## Improvement Backlog (ordered by priority)
+## Improvement Backlog
 
-1. Bottom sheet for logging (replace dialog with ModalBottomSheet)
-2. One-tap quick log (skip dialog for single-user, "log for me" shortcut)
-3. Undo snackbar (Snackbar with undo action after logging completion)
-4. Empty states (illustrations for empty lists instead of plain text)
-5. Animated transitions (shared element transitions, completion animations)
-6. Graphs/charts/visual representation (balance bars, donut charts on stats)
-7. Chore categories with icons (group by Kitchen/Bathroom/Laundry/etc.)
-8. Quick log improvements (swipe-to-log, better chore ordering)
-9. History/calendar view (heatmap or dot calendar for completion history)
-10. Undo support (extend undo to edits and deletes, not just logging)
-11. Onboarding with categories (preset chore templates during setup)
-12. Widgets (Glance widget showing needs-attention chores)
-13. Chore rotation (auto-suggest next person based on fairness)
-14. Streak/completion tracking (streaks per chore, weekly awards)
-15. Photo attachments (optional before/after photos on completions)
-16. Drag to reorder (reorder quick-log chores, pin favorites)
-17. Notifications (daily reminder, push when chore needs attention via WorkManager)
-18. Haptic feedback (subtle haptics on quick-log and confirmation)
+### Bugs (highest priority)
+
+1. **Preview mode data leak** — `HouseholdDao.observeCurrentHousehold()` has no userId filter; preview user sees real household. Fix: add `observeHouseholdForUser(userId)` query, update repository.
+2. **Preview mode dead button** — `PreviewAwareAuthRepository.previewState` never cleared on back navigation; re-entering preview doesn't re-emit. Fix: add `clearPreviewState()` to `AuthRepository` interface (default no-op), implement in `PreviewAwareAuthRepository`, call in `AuthViewModel.init`.
+3. **Post-preview sign-in navigation** — After using preview then going back, real sign-in doesn't navigate to dashboard. Root cause: downstream of bugs 1+2.
+4. **Cold start flash** — Add SplashScreen API (`androidx.core:core-splashscreen`); content = app icon (vector adaptive icon).
+5. **Bottom nav disappears** — Bottom nav hidden when navigating to completion detail screen.
+
+### Small UI Improvements
+
+6. **Delete from completion detail** — TopAppBar delete icon + confirmation dialog + `DeleteCompletionUseCase`.
+7. **LogButton component** — Rename quick-log chip to `LogButton` (fixed width). `PrimaryButton` always full-width. New `LogButton` component in `core/design`.
+8. **Needs-attention log button** — Add explicit tonal "Log" button on the right side of needs-attention items.
+9. **Settings profile section** — Make profile row clickable, navigate to Account screen.
+10. **Dashboard recent completions** — Compact rows (3–5 items visible), no Card wrapper per item.
+
+### Bigger Features
+
+11. **App icon** — Vector adaptive icon: house + checkmark, sage green + warm beige palette.
+12. **Recent completions full list** — Grouped by date with `stickyHeader` in `LazyColumn`.
+13. **Dashboard FAB** — Floating action button for logging a chore.
+14. **Statistics redesign** — 3 tabs (Summary, By Chore, Monthly) with `HorizontalPager` + `TabRow`.
+15. **Account screen** — Display name editable, email read-only, sign-out. Navigated from Settings profile section.
+16. **Language switching** — `AppCompatDelegate.setApplicationLocales()`, picker in Settings.
+
+### Previously Completed
+
+- Bottom sheet for logging (replaced AlertDialog with ModalBottomSheet)
+- One-tap quick log (skip dialog for single-user)
+- Undo snackbar (Channel<UndoEvent>, DeleteCompletionUseCase)
+- Per-chore frequency threshold (frequencyDays)
+- Balance/fairness stats with summary card
+- Days-since hint on quick-log chore buttons
+- Dashboard log dialog improvements
 
 ## Release Readiness Backlog (ordered by priority)
 

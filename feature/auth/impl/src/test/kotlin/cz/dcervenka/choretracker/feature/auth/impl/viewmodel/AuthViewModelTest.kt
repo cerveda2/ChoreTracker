@@ -4,6 +4,7 @@ import android.app.Application
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.design.R
+import cz.dcervenka.choretracker.core.domain.usecase.ClearPreviewModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ContinueInPreviewModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignInUseCase
@@ -46,6 +47,9 @@ class AuthViewModelTest {
     @MockK
     lateinit var continueInPreviewModeUseCase: ContinueInPreviewModeUseCase
 
+    @MockK
+    lateinit var clearPreviewModeUseCase: ClearPreviewModeUseCase
+
     private val authStateFlow = MutableStateFlow<AuthState>(sampleAuthenticatedState())
 
     @Before
@@ -62,6 +66,7 @@ class AuthViewModelTest {
         coEvery { signInUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { signUpUseCase(any(), any(), any()) } returns AppResult.Success(Unit)
         coEvery { continueInPreviewModeUseCase(any()) } returns AppResult.Success(Unit)
+        every { clearPreviewModeUseCase() } returns Unit
     }
 
     @Test
@@ -164,4 +169,5 @@ private fun AuthViewModelTest.createViewModel() = AuthViewModel(
     signInUseCase = signInUseCase,
     signUpUseCase = signUpUseCase,
     continueInPreviewModeUseCase = continueInPreviewModeUseCase,
+    clearPreviewModeUseCase = clearPreviewModeUseCase,
 )
