@@ -43,9 +43,13 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             rootDestination
                 .dropWhile { it == RootDestination.Loading }
-                .debounce(300)
+                .debounce(DESTINATION_SETTLE_MILLIS)
                 .first()
             _isReady.value = true
         }
+    }
+
+    companion object {
+        const val DESTINATION_SETTLE_MILLIS = 300L
     }
 }
