@@ -43,9 +43,7 @@ fun ChoreTrackerRoot(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val showBottomBar = topLevelDestinations.any { destination ->
-        currentDestination?.hierarchy?.any {
-            it.route == destination.route || it.route?.startsWith(destination.route + "/") == true
-        } == true
+        currentDestination?.hierarchy?.any { it.route == destination.route } == true
     }
 
     LaunchedEffect(rootDestination) {
@@ -69,9 +67,7 @@ fun ChoreTrackerRoot(
                         tonalElevation = 0.dp,
                     ) {
                         topLevelDestinations.forEach { destination ->
-                            val selected = currentDestination?.hierarchy?.any {
-                                it.route == destination.route || it.route?.startsWith(destination.route + "/") == true
-                            } == true
+                            val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
                             NavigationBarItem(
                                 selected = selected,
                                 onClick = {
