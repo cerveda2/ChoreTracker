@@ -53,6 +53,7 @@ import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.LoadingState
+import cz.dcervenka.choretracker.core.design.components.LogButton
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.SectionCard
 import cz.dcervenka.choretracker.core.formatters.formatInstantForLocale
@@ -217,12 +218,11 @@ fun DashboardScreen(
                                     } else {
                                         stringResource(R.string.dashboard_never_done)
                                     }
-                                    PrimaryButton(
+                                    LogButton(
                                         text = chore.name,
                                         subtitle = subtitle,
                                         onClick = { quickLog(chore.id) },
                                         onLongClick = { openLogSheet(chore.id) },
-                                        fillMaxWidth = false,
                                     )
                                 }
                             }
