@@ -92,6 +92,7 @@ class SettingsViewModel @Inject constructor(
             is AuthState.Authenticated -> householdUiState.copy(userLabel = state.user.displayName)
             AuthState.RequiresConfiguration -> householdUiState.copy(requiresConfiguration = true)
             AuthState.SignedOut -> householdUiState.copy(isSignedOut = true)
+            AuthState.Initializing -> householdUiState
         }
     }.stateIn(
         scope = viewModelScope,

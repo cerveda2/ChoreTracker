@@ -10,8 +10,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -41,15 +39,8 @@ class AppViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            rootDestination
-                .dropWhile { it == RootDestination.Loading }
-                .debounce(DESTINATION_SETTLE_MILLIS)
-                .first()
+            rootDestination.first { it != RootDestination.Loading }
             _isReady.value = true
         }
-    }
-
-    companion object {
-        const val DESTINATION_SETTLE_MILLIS = 300L
     }
 }

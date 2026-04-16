@@ -5,6 +5,7 @@ import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
 import cz.dcervenka.choretracker.core.model.app.StartupDestination
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -15,6 +16,7 @@ class ObserveStartupDestinationUseCase @Inject constructor(
     private val householdRepository: HouseholdRepository,
 ) {
     operator fun invoke(): Flow<StartupDestination> = authRepository.authState
+        .filter { it !is AuthState.Initializing }
         .flatMapLatest { authState ->
             if (authState !is AuthState.Authenticated) {
                 flowOf(StartupDestination.AUTH)

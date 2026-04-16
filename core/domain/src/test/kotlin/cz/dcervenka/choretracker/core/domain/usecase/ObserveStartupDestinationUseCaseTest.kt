@@ -35,7 +35,7 @@ class ObserveStartupDestinationUseCaseTest {
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
-        authStateFlow.value = cz.dcervenka.choretracker.core.model.auth.AuthState.SignedOut
+        authStateFlow.value = cz.dcervenka.choretracker.core.model.auth.AuthState.Initializing
         householdFlow.value = null
         every { authRepository.authState } returns authStateFlow
         every { householdRepository.observeCurrentHousehold() } returns householdFlow
@@ -47,9 +47,19 @@ class ObserveStartupDestinationUseCaseTest {
     }
 
     @Test
-    fun `emits auth then onboarding then main as session becomes ready`() = runTest {
+    fun `emits nothing while initializing then auth when signed out`() = runTest {
         useCase().test {
+            expectNoEvents()
+
+            authStateFlow.value = cz.dcervenka.choretracker.core.model.auth.AuthState.SignedOut
             assertThat(awaitItem()).isEqualTo(StartupDestination.AUTH)
+        }
+    }
+
+    @Test
+    fun `emits main directly when session restores from initializing`() = runTest {
+        useCase().test {
+            expectNoEvents()
 
             authStateFlow.value = sampleAuthenticatedState()
             assertThat(awaitItem()).isEqualTo(StartupDestination.ONBOARDING)
