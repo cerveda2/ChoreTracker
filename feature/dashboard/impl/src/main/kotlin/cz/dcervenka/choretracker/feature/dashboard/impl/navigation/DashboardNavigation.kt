@@ -59,6 +59,10 @@ fun NavGraphBuilder.dashboardScreen(
         RecentCompletionDetailScreen(
             completion = completion,
             onBack = { navController.popBackStack() },
+            onDelete = {
+                viewModel.deleteCompletion(completionId)
+                navController.popBackStack()
+            },
         )
     }
 }

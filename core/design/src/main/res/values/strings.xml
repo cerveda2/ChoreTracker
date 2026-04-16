@@ -64,6 +64,8 @@
     <string name="dashboard_recent_completions_empty_message">Once someone logs a chore, it will appear here with the latest activity first.</string>
     <string name="dashboard_completion_detail">Completion details</string>
     <string name="dashboard_completion_loading">Loading completion…</string>
+    <string name="dashboard_completion_delete_title">Delete this completion?</string>
+    <string name="dashboard_completion_delete_message">This removes the logged entry. The chore itself is not affected.</string>
     <string name="dashboard_needs_attention">Needs attention</string>
     <string name="dashboard_stale_chip">%1$s: %2$s</string>
     <string name="dashboard_stale_last_done">Last done %1$s (%2$d days ago)</string>
