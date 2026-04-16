@@ -30,16 +30,18 @@ class ObserveStartupDestinationUseCaseTest {
     private val householdFlow = MutableStateFlow<cz.dcervenka.choretracker.core.model.household.Household?>(
         sampleHousehold(),
     )
+    private val restoreStatusFlow = MutableStateFlow(HouseholdRestoreStatus())
     private lateinit var useCase: ObserveStartupDestinationUseCase
 
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
-        authStateFlow.value = cz.dcervenka.choretracker.core.model.auth.AuthState.SignedOut
+        authStateFlow.value = cz.dcervenka.choretracker.core.model.auth.AuthState.Initializing
         householdFlow.value = null
+        restoreStatusFlow.value = HouseholdRestoreStatus()
         every { authRepository.authState } returns authStateFlow
         every { householdRepository.observeCurrentHousehold() } returns householdFlow
-        every { householdRepository.observeRestoreStatus() } returns MutableStateFlow(HouseholdRestoreStatus())
+        every { householdRepository.observeRestoreStatus() } returns restoreStatusFlow
         useCase = ObserveStartupDestinationUseCase(
             authRepository = authRepository,
             householdRepository = householdRepository,
@@ -47,15 +49,41 @@ class ObserveStartupDestinationUseCaseTest {
     }
 
     @Test
-    fun `emits auth then onboarding then main as session becomes ready`() = runTest {
+    fun `emits nothing while initializing then auth when signed out`() = runTest {
         useCase().test {
+            expectNoEvents()
+
+            authStateFlow.value = cz.dcervenka.choretracker.core.model.auth.AuthState.SignedOut
             assertThat(awaitItem()).isEqualTo(StartupDestination.AUTH)
+        }
+    }
 
+    @Test
+    fun `emits main directly when session restores from initializing`() = runTest {
+        useCase().test {
+            expectNoEvents()
+
+            restoreStatusFlow.value = HouseholdRestoreStatus(isRestoring = true)
             authStateFlow.value = sampleAuthenticatedState()
-            assertThat(awaitItem()).isEqualTo(StartupDestination.ONBOARDING)
-
             householdFlow.value = sampleHousehold()
+            restoreStatusFlow.value = HouseholdRestoreStatus(isRestoring = false)
             assertThat(awaitItem()).isEqualTo(StartupDestination.MAIN)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `waits for restore to finish before emitting onboarding for authenticated user`() = runTest {
+        useCase().test {
+            expectNoEvents()
+
+            restoreStatusFlow.value = HouseholdRestoreStatus(isRestoring = true)
+            authStateFlow.value = sampleAuthenticatedState()
+            expectNoEvents()
+
+            restoreStatusFlow.value = HouseholdRestoreStatus(isRestoring = false)
+            assertThat(awaitItem()).isEqualTo(StartupDestination.ONBOARDING)
+            cancelAndIgnoreRemainingEvents()
         }
     }
 }

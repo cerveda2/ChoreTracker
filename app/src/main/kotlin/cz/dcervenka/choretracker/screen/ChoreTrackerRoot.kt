@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -24,7 +25,6 @@ import androidx.navigation.compose.rememberNavController
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.LoadingState
-import cz.dcervenka.choretracker.feature.auth.impl.navigation.AuthDestination
 import cz.dcervenka.choretracker.feature.auth.impl.navigation.authScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.navigation.dashboardScreen
 import cz.dcervenka.choretracker.feature.onboarding.impl.navigation.onboardingScreen
@@ -40,6 +40,9 @@ fun ChoreTrackerRoot(
 ) {
     val navController = rememberNavController()
     val rootDestination by viewModel.rootDestination.collectAsStateWithLifecycle()
+    val startDestination = remember(rootDestination) {
+        rootDestination.takeIf { it != RootDestination.Loading }?.route
+    }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val showBottomBar = topLevelDestinations.any { destination ->
@@ -48,6 +51,8 @@ fun ChoreTrackerRoot(
 
     LaunchedEffect(rootDestination) {
         if (rootDestination == RootDestination.Loading) return@LaunchedEffect
+        val activeRoute = navController.currentDestination?.route ?: navController.graph.findStartDestination().route
+        if (activeRoute == rootDestination.route) return@LaunchedEffect
         navController.navigate(rootDestination.route) {
             popUpTo(navController.graph.findStartDestination().id) {
                 saveState = false
@@ -99,10 +104,10 @@ fun ChoreTrackerRoot(
                     message = stringResource(cz.dcervenka.choretracker.core.design.R.string.common_loading_app),
                     modifier = Modifier.padding(padding),
                 )
-            } else {
+            } else if (startDestination != null) {
                 NavHost(
                     navController = navController,
-                    startDestination = AuthDestination.route,
+                    startDestination = startDestination,
                     modifier = Modifier.padding(padding),
                 ) {
                     authScreen()

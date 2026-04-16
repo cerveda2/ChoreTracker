@@ -33,7 +33,7 @@ class PreviewAwareAuthRepository @Inject constructor(
     }.stateIn(
         scope = scope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = if (remoteAuthDataSource.isConfigured) AuthState.SignedOut else AuthState.RequiresConfiguration,
+        initialValue = if (remoteAuthDataSource.isConfigured) AuthState.Initializing else AuthState.RequiresConfiguration,
     )
 
     override suspend fun signIn(email: String, password: String): EmptyResult =

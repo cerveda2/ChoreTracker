@@ -55,4 +55,24 @@ class AppViewModelTest {
         advanceUntilIdle()
         assertThat(viewModel.rootDestination.value).isEqualTo(RootDestination.Main)
     }
+
+    @Test
+    fun `isReady is false before first non-loading destination`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = AppViewModel(observeStartupDestinationUseCase = observeStartupDestinationUseCase)
+
+        assertThat(viewModel.isReady.value).isFalse()
+    }
+
+    @Test
+    fun `isReady becomes true as soon as first non-loading destination arrives`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = AppViewModel(observeStartupDestinationUseCase = observeStartupDestinationUseCase)
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.rootDestination.collect {}
+        }
+        advanceUntilIdle()
+
+        assertThat(viewModel.isReady.value).isTrue()
+        assertThat(viewModel.rootDestination.value).isEqualTo(RootDestination.Auth)
+    }
 }
