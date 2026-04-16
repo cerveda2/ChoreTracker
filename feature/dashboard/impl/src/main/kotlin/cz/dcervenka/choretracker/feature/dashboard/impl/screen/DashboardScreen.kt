@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,6 +21,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,6 +42,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
@@ -260,34 +263,41 @@ fun DashboardScreen(
                             )
                         } else {
                             staleItems.forEach { stale ->
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { openLogSheet(stale.choreId) },
-                                ) {
-                                    Column(
+                                Card(modifier = Modifier.fillMaxWidth()) {
+                                    Row(
                                         modifier = Modifier.padding(spacing.medium),
-                                        verticalArrangement = Arrangement.spacedBy(spacing.xSmall),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        Text(
-                                            text = stale.choreName,
-                                            style = MaterialTheme.typography.titleMedium,
-                                        )
-                                        Text(
-                                            text = when {
-                                                stale.lastCompletedDate == null ->
-                                                    stringResource(R.string.dashboard_stale_never_done)
-                                                else -> stringResource(
-                                                    R.string.dashboard_stale_last_done,
-                                                    formatLocalDateForLocale(
-                                                        date = stale.lastCompletedDate!!,
-                                                        skeleton = "yMMMd",
-                                                    ),
-                                                    stale.daysSinceLastCompletion ?: 0,
-                                                )
-                                            },
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(spacing.xSmall),
+                                        ) {
+                                            Text(
+                                                text = stale.choreName,
+                                                style = MaterialTheme.typography.titleMedium,
+                                            )
+                                            Text(
+                                                text = when {
+                                                    stale.lastCompletedDate == null ->
+                                                        stringResource(R.string.dashboard_stale_never_done)
+                                                    else -> stringResource(
+                                                        R.string.dashboard_stale_last_done,
+                                                        formatLocalDateForLocale(
+                                                            date = stale.lastCompletedDate!!,
+                                                            skeleton = "yMMMd",
+                                                        ),
+                                                        stale.daysSinceLastCompletion ?: 0,
+                                                    )
+                                                },
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        FilledTonalButton(
+                                            onClick = { openLogSheet(stale.choreId) },
+                                        ) {
+                                            Text(text = stringResource(R.string.dashboard_log))
+                                        }
                                     }
                                 }
                             }
