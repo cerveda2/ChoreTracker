@@ -15,12 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.flow.map
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.LoadingState
@@ -42,8 +44,13 @@ fun ChoreTrackerRoot(
     val rootDestination by viewModel.rootDestination.collectAsStateWithLifecycle()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-    val showBottomBar = topLevelDestinations.any { destination ->
-        currentDestination?.hierarchy?.any { it.route == destination.route } == true
+    val visibleBackStack by navController.currentBackStack
+        .map { entries ->
+            entries.filter { it.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) }
+        }
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val showBottomBar = visibleBackStack.any { entry ->
+        topLevelDestinations.any { destination -> destination.route == entry.destination.route }
     }
 
     LaunchedEffect(rootDestination) {
