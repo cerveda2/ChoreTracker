@@ -99,7 +99,6 @@ fun LogButton(
     }
 }
 
-
 @Preview(showBackground = true)
 @Composable
 private fun ChoreButtonsPreview() {
