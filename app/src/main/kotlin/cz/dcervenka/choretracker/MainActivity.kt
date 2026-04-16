@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import cz.dcervenka.choretracker.navigation.RootDestination
 import cz.dcervenka.choretracker.screen.ChoreTrackerRoot
 import cz.dcervenka.choretracker.viewmodel.AppViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -19,7 +18,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         splashScreen.setKeepOnScreenCondition {
-            appViewModel.rootDestination.value == RootDestination.Loading
+            !appViewModel.isReady.value
         }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()

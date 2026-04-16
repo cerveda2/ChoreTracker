@@ -11,6 +11,7 @@ import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
@@ -53,6 +54,41 @@ class AppViewModelTest {
 
         startupFlow.value = StartupDestination.MAIN
         advanceUntilIdle()
+        assertThat(viewModel.rootDestination.value).isEqualTo(RootDestination.Main)
+    }
+
+    @Test
+    fun `isReady becomes true after destination stabilizes`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = AppViewModel(observeStartupDestinationUseCase = observeStartupDestinationUseCase)
+
+        assertThat(viewModel.isReady.value).isFalse()
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.rootDestination.collect {}
+        }
+
+        advanceTimeBy(100)
+        assertThat(viewModel.isReady.value).isFalse()
+
+        advanceTimeBy(300)
+        assertThat(viewModel.isReady.value).isTrue()
+    }
+
+    @Test
+    fun `isReady waits for settled destination when it changes rapidly`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = AppViewModel(observeStartupDestinationUseCase = observeStartupDestinationUseCase)
+
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.rootDestination.collect {}
+        }
+
+        advanceTimeBy(100)
+        startupFlow.value = StartupDestination.MAIN
+        advanceTimeBy(100)
+        assertThat(viewModel.isReady.value).isFalse()
+
+        advanceTimeBy(300)
+        assertThat(viewModel.isReady.value).isTrue()
         assertThat(viewModel.rootDestination.value).isEqualTo(RootDestination.Main)
     }
 }
