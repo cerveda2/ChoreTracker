@@ -22,7 +22,6 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import kotlinx.coroutines.flow.map
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.LoadingState
@@ -35,6 +34,7 @@ import cz.dcervenka.choretracker.feature.stats.impl.navigation.statsScreen
 import cz.dcervenka.choretracker.navigation.RootDestination
 import cz.dcervenka.choretracker.navigation.topLevelDestinations
 import cz.dcervenka.choretracker.viewmodel.AppViewModel
+import kotlinx.coroutines.flow.map
 
 @Composable
 fun ChoreTrackerRoot(
