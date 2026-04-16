@@ -85,6 +85,7 @@ fun SettingsScreen(
                     SettingsListItem(
                         title = stringResource(R.string.settings_profile_title),
                         subtitle = stringResource(R.string.settings_profile_description, profileSummary),
+                        onClick = onOpenAccount,
                     )
                 }
             }
