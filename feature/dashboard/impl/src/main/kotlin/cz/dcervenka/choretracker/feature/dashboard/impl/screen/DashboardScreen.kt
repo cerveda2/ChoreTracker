@@ -550,7 +550,7 @@ fun RecentCompletionsScreen(
                         yesterday -> yesterdayLabel
                         else -> formatLocalDateForLocale(date, "EEEMMMd")
                     }
-                    stickyHeader(key = date.toString()) {
+                    item(key = "header-${date}") {
                         CompletionDateHeader(label = label)
                     }
                     itemsIndexed(items, key = { _, completion -> completion.completionId }) { index, completion ->
