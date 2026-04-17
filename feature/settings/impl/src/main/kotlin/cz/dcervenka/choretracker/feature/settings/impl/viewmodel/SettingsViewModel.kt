@@ -150,10 +150,27 @@ class SettingsViewModel @Inject constructor(
 
     fun dispatch(intent: SettingsUiIntent) {
         when (intent) {
+            is SettingsUiIntent.AccountDisplayNameChanged,
+            is SettingsUiIntent.HouseholdNameChanged,
+            is SettingsUiIntent.MemberInputChanged,
+            is SettingsUiIntent.ChoreInputChanged,
+            -> handleInputIntent(intent)
+            else -> handleActionIntent(intent)
+        }
+    }
+
+    private fun handleInputIntent(intent: SettingsUiIntent) {
+        when (intent) {
             is SettingsUiIntent.AccountDisplayNameChanged -> accountDisplayNameInput.value = intent.value
             is SettingsUiIntent.HouseholdNameChanged -> householdNameInput.value = intent.value
             is SettingsUiIntent.MemberInputChanged -> memberInput.value = intent.value
             is SettingsUiIntent.ChoreInputChanged -> choreInput.value = intent.value
+            else -> Unit
+        }
+    }
+
+    private fun handleActionIntent(intent: SettingsUiIntent) {
+        when (intent) {
             SettingsUiIntent.SaveAccountDisplayName -> saveAccountDisplayName()
             SettingsUiIntent.SignOut -> signOut()
             SettingsUiIntent.SaveHouseholdName -> saveHouseholdName()
@@ -164,6 +181,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsUiIntent.DeleteChore -> deleteChore(intent.choreId)
             is SettingsUiIntent.UpdateChoreFrequency -> updateChoreFrequency(intent.choreId, intent.frequencyDays)
             is SettingsUiIntent.UpdateChoreName -> updateChoreName(intent.choreId, intent.name)
+            else -> Unit
         }
     }
 

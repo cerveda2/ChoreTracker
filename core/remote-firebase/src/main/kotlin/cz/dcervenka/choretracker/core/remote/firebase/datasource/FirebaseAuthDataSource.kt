@@ -144,29 +144,30 @@ class FirebaseAuthDataSource @Inject constructor(
 
     override suspend fun updateDisplayName(displayName: String): EmptyResult {
         val sanitizedName = displayName.trim()
-        if (sanitizedName.isBlank()) {
-            return AppResult.Error("Display name is required.")
-        }
-        val user = firebaseAuth?.currentUser ?: return AppResult.Error("Sign in first.")
-        return suspendCancellableCoroutine { continuation ->
-            user.updateProfile(
-                UserProfileChangeRequest.Builder()
-                    .setDisplayName(sanitizedName)
-                    .build(),
-            )
-                .addOnSuccessListener {
-                    Timber.d("updateDisplayName: success uid=${user.uid}")
-                    continuation.resume(AppResult.Success(Unit))
-                }
-                .addOnFailureListener { throwable ->
-                    Timber.e(throwable, "updateDisplayName: failed")
-                    continuation.resume(
-                        AppResult.Error(
-                            throwable.message ?: "Unable to update profile.",
-                            throwable,
-                        ),
-                    )
-                }
+        val user = firebaseAuth?.currentUser
+        return when {
+            sanitizedName.isBlank() -> AppResult.Error("Display name is required.")
+            user == null -> AppResult.Error("Sign in first.")
+            else -> suspendCancellableCoroutine { continuation ->
+                user.updateProfile(
+                    UserProfileChangeRequest.Builder()
+                        .setDisplayName(sanitizedName)
+                        .build(),
+                )
+                    .addOnSuccessListener {
+                        Timber.d("updateDisplayName: success uid=${user.uid}")
+                        continuation.resume(AppResult.Success(Unit))
+                    }
+                    .addOnFailureListener { throwable ->
+                        Timber.e(throwable, "updateDisplayName: failed")
+                        continuation.resume(
+                            AppResult.Error(
+                                throwable.message ?: "Unable to update profile.",
+                                throwable,
+                            ),
+                        )
+                    }
+            }
         }
     }
 

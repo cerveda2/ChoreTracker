@@ -230,14 +230,22 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     }
 
     override suspend fun updateCurrentMemberDisplayName(householdId: String, displayName: String): EmptyResult {
-        val user = currentUser() ?: return AppResult.Error("Sign in first.")
-        val existing = memberDao.findByUserId(householdId, user.id)
-            ?: return AppResult.Error("Current member record was not found.")
-        val sanitizedName = displayName.trim().ifBlank { user.displayName }
-        memberDao.upsert(existing.copy(displayName = sanitizedName))
-        enqueueOperation("member", householdId, "rename", sanitizedName)
-        syncRepository.syncPendingOperations()
-        return AppResult.Success(Unit)
+        val user = currentUser()
+        return when {
+            user == null -> AppResult.Error("Sign in first.")
+            else -> {
+                val existing = memberDao.findByUserId(householdId, user.id)
+                if (existing == null) {
+                    AppResult.Error("Current member record was not found.")
+                } else {
+                    val sanitizedName = displayName.trim().ifBlank { user.displayName }
+                    memberDao.upsert(existing.copy(displayName = sanitizedName))
+                    enqueueOperation("member", householdId, "rename", sanitizedName)
+                    syncRepository.syncPendingOperations()
+                    AppResult.Success(Unit)
+                }
+            }
+        }
     }
 
     private suspend fun currentUser(): AppUser? =
