@@ -1,5 +1,6 @@
 package cz.dcervenka.choretracker.feature.dashboard.impl.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -72,6 +73,11 @@ import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiInte
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 import cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel.UndoEvent
 import kotlinx.coroutines.flow.Flow
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 @Composable
 fun DashboardScreen(
@@ -502,6 +508,18 @@ fun RecentCompletionsScreen(
     onOpenCompletion: (String) -> Unit,
 ) {
     val spacing = LocalSpacing.current
+    val tz = TimeZone.currentSystemDefault()
+    val today = remember { Clock.System.now().toLocalDateTime(tz).date }
+    val yesterday = remember { today.minus(1, DateTimeUnit.DAY) }
+    val todayLabel = stringResource(R.string.dashboard_completions_today)
+    val yesterdayLabel = stringResource(R.string.dashboard_completions_yesterday)
+
+    val grouped = remember(completions) {
+        completions
+            .groupBy { it.completedAt.toLocalDateTime(tz).date }
+            .entries
+            .sortedByDescending { it.key }
+    }
 
     ChoreScaffold(
         topBar = {
@@ -526,20 +544,44 @@ fun RecentCompletionsScreen(
                     )
                 }
             } else {
-                itemsIndexed(completions, key = { _, completion -> completion.completionId }) { index, completion ->
-                    if (index > 0) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = spacing.medium),
+                grouped.forEach { (date, items) ->
+                    val label = when (date) {
+                        today -> todayLabel
+                        yesterday -> yesterdayLabel
+                        else -> formatLocalDateForLocale(date, "EEEMMMd")
+                    }
+                    stickyHeader(key = date.toString()) {
+                        CompletionDateHeader(label = label)
+                    }
+                    itemsIndexed(items, key = { _, completion -> completion.completionId }) { index, completion ->
+                        if (index > 0) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = spacing.medium),
+                            )
+                        }
+                        RecentCompletionRow(
+                            completion = completion,
+                            onClick = { onOpenCompletion(completion.completionId) },
                         )
                     }
-                    RecentCompletionRow(
-                        completion = completion,
-                        onClick = { onOpenCompletion(completion.completionId) },
-                    )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun CompletionDateHeader(label: String) {
+    val spacing = LocalSpacing.current
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = spacing.medium, vertical = spacing.xSmall),
+    )
 }
 
 @Composable

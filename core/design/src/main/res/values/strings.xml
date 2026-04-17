@@ -60,6 +60,8 @@
     <string name="dashboard_log">Log</string>
     <string name="dashboard_recent_completions">Recent completions</string>
     <string name="dashboard_all_completions">All completions</string>
+    <string name="dashboard_completions_today">Today</string>
+    <string name="dashboard_completions_yesterday">Yesterday</string>
     <string name="dashboard_recent_completions_empty_title">No completions yet</string>
     <string name="dashboard_recent_completions_empty_message">Once someone logs a chore, it will appear here with the latest activity first.</string>
     <string name="dashboard_completion_detail">Completion details</string>
