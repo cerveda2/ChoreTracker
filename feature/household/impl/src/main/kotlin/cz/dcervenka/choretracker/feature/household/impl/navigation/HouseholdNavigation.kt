@@ -14,7 +14,7 @@ fun NavGraphBuilder.householdScreen() {
 
         HouseholdScreen(
             uiState = uiState.value,
-            onRefreshInvite = viewModel::refreshInvite,
+            onIntent = viewModel::dispatch,
         )
     }
 }

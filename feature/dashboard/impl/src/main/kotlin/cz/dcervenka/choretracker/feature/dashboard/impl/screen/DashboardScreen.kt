@@ -65,6 +65,7 @@ import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.core.model.sync.SyncState
+import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 import cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel.UndoEvent
 import kotlinx.coroutines.flow.Flow
@@ -72,16 +73,8 @@ import kotlinx.coroutines.flow.Flow
 @Composable
 fun DashboardScreen(
     uiState: DashboardUiState,
-    onLogCompletion: (
-        householdId: String,
-        choreId: String,
-        participantIds: List<String>,
-        note: String?,
-        completedAt: kotlin.time.Instant?,
-    ) -> Unit,
-    onDeleteCompletion: (String) -> Unit,
+    onIntent: (DashboardUiIntent) -> Unit,
     undoEvents: Flow<UndoEvent>,
-    onRetrySync: () -> Unit,
     onSeeAllCompletions: () -> Unit,
     onOpenCompletion: (String) -> Unit,
 ) {
@@ -98,7 +91,7 @@ fun DashboardScreen(
                 duration = SnackbarDuration.Short,
             )
             if (result == SnackbarResult.ActionPerformed) {
-                onDeleteCompletion(event.completionId)
+                onIntent(DashboardUiIntent.DeleteCompletion(event.completionId))
             }
         }
     }
@@ -147,7 +140,7 @@ fun DashboardScreen(
                         item {
                             RemoteSyncBanner(
                                 syncState = syncState,
-                                onRetrySync = onRetrySync,
+                                onRetrySync = { onIntent(DashboardUiIntent.RetrySync) },
                             )
                         }
                     }
@@ -313,13 +306,13 @@ fun DashboardScreen(
             onNoteChange = { selectedNote = it },
             onDismiss = { selectedChoreId = null },
             onConfirm = { completedAt ->
-                onLogCompletion(
-                    snapshot.household.id,
-                    selectedChoreId!!,
-                    selectedMembers.toList(),
-                    selectedNote,
-                    completedAt,
-                )
+                onIntent(DashboardUiIntent.LogCompletion(
+                    householdId = snapshot.household.id,
+                    choreId = selectedChoreId!!,
+                    participantIds = selectedMembers.toList(),
+                    note = selectedNote,
+                    completedAt = completedAt,
+                ))
                 selectedChoreId = null
             },
         )
@@ -682,10 +675,8 @@ private fun DashboardScreenPreview() {
                 members = PreviewData.members,
                 allCompletions = PreviewData.dashboardSnapshot.recentCompletions,
             ),
-            onLogCompletion = { _, _, _, _, _ -> },
-            onDeleteCompletion = {},
+            onIntent = {},
             undoEvents = kotlinx.coroutines.flow.emptyFlow(),
-            onRetrySync = {},
             onSeeAllCompletions = {},
             onOpenCompletion = {},
         )

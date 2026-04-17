@@ -11,6 +11,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveRecentCompletionsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
+import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -65,7 +66,21 @@ class DashboardViewModel @Inject constructor(
             initialValue = DashboardUiState(),
         )
 
-    fun logCompletion(
+    fun dispatch(intent: DashboardUiIntent) {
+        when (intent) {
+            is DashboardUiIntent.LogCompletion -> logCompletion(
+                householdId = intent.householdId,
+                choreId = intent.choreId,
+                participantIds = intent.participantIds,
+                note = intent.note,
+                completedAt = intent.completedAt,
+            )
+            is DashboardUiIntent.DeleteCompletion -> deleteCompletion(intent.completionId)
+            DashboardUiIntent.RetrySync -> retrySync()
+        }
+    }
+
+    private fun logCompletion(
         householdId: String,
         choreId: String,
         participantIds: List<String>,
@@ -88,13 +103,13 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    fun deleteCompletion(completionId: String) {
+    private fun deleteCompletion(completionId: String) {
         viewModelScope.launch {
             deleteCompletionUseCase(completionId)
         }
     }
 
-    fun retrySync() {
+    private fun retrySync() {
         viewModelScope.launch {
             val result = retryPendingSyncUseCase()
             if (result is AppResult.Error) {

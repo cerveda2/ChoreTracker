@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.JoinHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveHouseholdRestoreStatusUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiIntent
 import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,19 +71,17 @@ class OnboardingViewModel @Inject constructor(
         initialValue = OnboardingUiState(),
     )
 
-    fun onHouseholdNameChange(value: String) {
-        householdName.value = value
+    fun dispatch(intent: OnboardingUiIntent) {
+        when (intent) {
+            is OnboardingUiIntent.HouseholdNameChanged -> householdName.value = intent.value
+            is OnboardingUiIntent.DisplayNameChanged -> displayName.value = intent.value
+            is OnboardingUiIntent.InviteCodeChanged -> inviteCode.value = intent.value
+            OnboardingUiIntent.CreateHousehold -> createHousehold()
+            OnboardingUiIntent.JoinHousehold -> joinHousehold()
+        }
     }
 
-    fun onDisplayNameChange(value: String) {
-        displayName.value = value
-    }
-
-    fun onInviteCodeChange(value: String) {
-        inviteCode.value = value
-    }
-
-    fun createHousehold() {
+    private fun createHousehold() {
         submit {
             createHouseholdUseCase(
                 name = householdName.value,
@@ -91,7 +90,7 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
-    fun joinHousehold() {
+    private fun joinHousehold() {
         submit {
             joinHouseholdUseCase(
                 code = inviteCode.value,

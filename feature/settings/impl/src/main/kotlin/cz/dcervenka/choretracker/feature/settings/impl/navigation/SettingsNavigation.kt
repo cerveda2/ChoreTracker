@@ -35,9 +35,7 @@ fun NavGraphBuilder.settingsScreen(
         HouseholdSettingsScreen(
             uiState = uiState.value,
             onBack = { navController.popBackStack() },
-            onHouseholdNameChange = viewModel::onHouseholdNameChange,
-            onSaveHouseholdName = viewModel::saveHouseholdName,
-            onRefreshInvite = viewModel::refreshInvite,
+            onIntent = viewModel::dispatch,
         )
     }
 
@@ -48,8 +46,7 @@ fun NavGraphBuilder.settingsScreen(
         MembersSettingsScreen(
             uiState = uiState.value,
             onBack = { navController.popBackStack() },
-            onMemberInputChange = viewModel::onMemberInputChange,
-            onAddMember = viewModel::addMember,
+            onIntent = viewModel::dispatch,
         )
     }
 
@@ -60,12 +57,7 @@ fun NavGraphBuilder.settingsScreen(
         ChoresSettingsScreen(
             uiState = uiState.value,
             onBack = { navController.popBackStack() },
-            onChoreInputChange = viewModel::onChoreInputChange,
-            onAddChore = viewModel::addChore,
-            onDeleteChore = viewModel::deleteChore,
-            onUpdateChoreActive = viewModel::updateChoreActive,
-            onUpdateChoreFrequency = viewModel::updateChoreFrequency,
-            onRenameChoreName = viewModel::updateChoreName,
+            onIntent = viewModel::dispatch,
         )
     }
 
@@ -76,7 +68,7 @@ fun NavGraphBuilder.settingsScreen(
         AccountSettingsScreen(
             uiState = uiState.value,
             onBack = { navController.popBackStack() },
-            onSignOut = viewModel::signOut,
+            onIntent = viewModel::dispatch,
         )
     }
 }

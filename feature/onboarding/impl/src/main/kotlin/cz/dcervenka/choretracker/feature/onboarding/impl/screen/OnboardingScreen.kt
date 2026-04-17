@@ -23,16 +23,13 @@ import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.ScreenHeader
 import cz.dcervenka.choretracker.core.design.components.SecondaryButton
+import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiIntent
 import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiState
 
 @Composable
 fun OnboardingScreen(
     uiState: OnboardingUiState,
-    onHouseholdNameChange: (String) -> Unit,
-    onDisplayNameChange: (String) -> Unit,
-    onInviteCodeChange: (String) -> Unit,
-    onCreateHousehold: () -> Unit,
-    onJoinHousehold: () -> Unit,
+    onIntent: (OnboardingUiIntent) -> Unit,
 ) {
     val spacing = LocalSpacing.current
 
@@ -91,7 +88,7 @@ fun OnboardingScreen(
             if (uiState.canEditDisplayName) {
                 OutlinedTextField(
                     value = uiState.displayName,
-                    onValueChange = onDisplayNameChange,
+                    onValueChange = { onIntent(OnboardingUiIntent.DisplayNameChanged(it)) },
                     label = { Text(stringResource(R.string.onboarding_your_name)) },
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Words,
@@ -102,7 +99,7 @@ fun OnboardingScreen(
             }
             OutlinedTextField(
                 value = uiState.householdName,
-                onValueChange = onHouseholdNameChange,
+                onValueChange = { onIntent(OnboardingUiIntent.HouseholdNameChanged(it)) },
                 label = { Text(stringResource(R.string.onboarding_household_name)) },
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Words,
@@ -112,18 +109,18 @@ fun OnboardingScreen(
             )
             PrimaryButton(
                 text = stringResource(R.string.onboarding_create_household),
-                onClick = onCreateHousehold,
+                onClick = { onIntent(OnboardingUiIntent.CreateHousehold) },
                 enabled = !uiState.isWorking,
             )
             OutlinedTextField(
                 value = uiState.inviteCode,
-                onValueChange = onInviteCodeChange,
+                onValueChange = { onIntent(OnboardingUiIntent.InviteCodeChanged(it)) },
                 label = { Text(stringResource(R.string.onboarding_invite_code)) },
                 modifier = Modifier.fillMaxWidth(),
             )
             SecondaryButton(
                 text = stringResource(R.string.onboarding_join_household),
-                onClick = onJoinHousehold,
+                onClick = { onIntent(OnboardingUiIntent.JoinHousehold) },
                 enabled = !uiState.isWorking,
             )
         }
@@ -140,11 +137,7 @@ private fun OnboardingScreenPreview() {
                 displayName = "Dana",
                 inviteCode = "HOME42",
             ),
-            onHouseholdNameChange = {},
-            onDisplayNameChange = {},
-            onInviteCodeChange = {},
-            onCreateHousehold = {},
-            onJoinHousehold = {},
+            onIntent = {},
         )
     }
 }

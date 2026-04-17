@@ -16,6 +16,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateHouseholdNameUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -100,32 +101,37 @@ class SettingsViewModel @Inject constructor(
         initialValue = SettingsUiState(),
     )
 
-    fun onHouseholdNameChange(value: String) {
-        householdNameInput.value = value
+    fun dispatch(intent: SettingsUiIntent) {
+        when (intent) {
+            is SettingsUiIntent.HouseholdNameChanged -> householdNameInput.value = intent.value
+            is SettingsUiIntent.MemberInputChanged -> memberInput.value = intent.value
+            is SettingsUiIntent.ChoreInputChanged -> choreInput.value = intent.value
+            SettingsUiIntent.SignOut -> signOut()
+            SettingsUiIntent.SaveHouseholdName -> saveHouseholdName()
+            SettingsUiIntent.AddMember -> addMember()
+            SettingsUiIntent.AddChore -> addChore()
+            SettingsUiIntent.RefreshInvite -> refreshInvite()
+            is SettingsUiIntent.UpdateChoreActive -> updateChoreActive(intent.choreId, intent.isActive)
+            is SettingsUiIntent.DeleteChore -> deleteChore(intent.choreId)
+            is SettingsUiIntent.UpdateChoreFrequency -> updateChoreFrequency(intent.choreId, intent.frequencyDays)
+            is SettingsUiIntent.UpdateChoreName -> updateChoreName(intent.choreId, intent.name)
+        }
     }
 
-    fun onMemberInputChange(value: String) {
-        memberInput.value = value
-    }
-
-    fun onChoreInputChange(value: String) {
-        choreInput.value = value
-    }
-
-    fun signOut() {
+    private fun signOut() {
         viewModelScope.launch {
             signOutUseCase()
         }
     }
 
-    fun saveHouseholdName() {
+    private fun saveHouseholdName() {
         val household = uiState.value.household ?: return
         viewModelScope.launch {
             updateHouseholdNameUseCase(household.id, uiState.value.householdNameInput)
         }
     }
 
-    fun addMember() {
+    private fun addMember() {
         val household = uiState.value.household ?: return
         viewModelScope.launch {
             addMemberUseCase(household.id, uiState.value.memberInput)
@@ -133,7 +139,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun addChore() {
+    private fun addChore() {
         val household = uiState.value.household ?: return
         viewModelScope.launch {
             addChoreUseCase(household.id, uiState.value.choreInput)
@@ -141,32 +147,32 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun refreshInvite() {
+    private fun refreshInvite() {
         val household = uiState.value.household ?: return
         viewModelScope.launch {
             createInviteUseCase(household.id)
         }
     }
 
-    fun updateChoreActive(choreId: String, isActive: Boolean) {
+    private fun updateChoreActive(choreId: String, isActive: Boolean) {
         viewModelScope.launch {
             updateChoreActiveUseCase(choreId, isActive)
         }
     }
 
-    fun deleteChore(choreId: String) {
+    private fun deleteChore(choreId: String) {
         viewModelScope.launch {
             deleteChoreUseCase(choreId)
         }
     }
 
-    fun updateChoreFrequency(choreId: String, frequencyDays: Int?) {
+    private fun updateChoreFrequency(choreId: String, frequencyDays: Int?) {
         viewModelScope.launch {
             updateChoreFrequencyUseCase(choreId, frequencyDays)
         }
     }
 
-    fun updateChoreName(choreId: String, name: String) {
+    private fun updateChoreName(choreId: String, name: String) {
         viewModelScope.launch {
             updateChoreNameUseCase(choreId, name)
         }

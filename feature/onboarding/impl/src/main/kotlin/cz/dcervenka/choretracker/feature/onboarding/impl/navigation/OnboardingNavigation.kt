@@ -14,11 +14,7 @@ fun NavGraphBuilder.onboardingScreen() {
 
         OnboardingScreen(
             uiState = uiState.value,
-            onHouseholdNameChange = viewModel::onHouseholdNameChange,
-            onDisplayNameChange = viewModel::onDisplayNameChange,
-            onInviteCodeChange = viewModel::onInviteCodeChange,
-            onCreateHousehold = viewModel::createHousehold,
-            onJoinHousehold = viewModel::joinHousehold,
+            onIntent = viewModel::dispatch,
         )
     }
 }

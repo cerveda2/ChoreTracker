@@ -7,6 +7,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInvitesUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
+import cz.dcervenka.choretracker.feature.household.impl.contract.HouseholdUiIntent
 import cz.dcervenka.choretracker.feature.household.impl.contract.HouseholdUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -47,7 +48,13 @@ class HouseholdViewModel @Inject constructor(
             initialValue = HouseholdUiState(),
         )
 
-    fun refreshInvite() {
+    fun dispatch(intent: HouseholdUiIntent) {
+        when (intent) {
+            HouseholdUiIntent.RefreshInvite -> refreshInvite()
+        }
+    }
+
+    private fun refreshInvite() {
         uiState.value.household?.let { household ->
             viewModelScope.launch { createInviteUseCase(household.id) }
         }
