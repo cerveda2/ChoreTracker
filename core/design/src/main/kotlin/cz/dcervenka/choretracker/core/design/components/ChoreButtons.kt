@@ -2,6 +2,7 @@ package cz.dcervenka.choretracker.core.design.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -85,7 +86,7 @@ fun LogButton(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.heightIn(min = 56.dp),
-            verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+            verticalArrangement = Arrangement.Center,
         ) {
             Text(text = text, style = MaterialTheme.typography.labelLarge)
             if (subtitle != null) {
