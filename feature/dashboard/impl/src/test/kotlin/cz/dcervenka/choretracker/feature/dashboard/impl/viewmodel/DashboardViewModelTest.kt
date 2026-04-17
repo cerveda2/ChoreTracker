@@ -127,13 +127,15 @@ class DashboardViewModelTest {
     fun `log completion delegates to use case`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
 
-        viewModel.dispatch(DashboardUiIntent.LogCompletion(
-            householdId = "household-1",
-            choreId = "chore-1",
-            participantIds = listOf("member-1", "member-2"),
-            note = "Done together",
-            completedAt = null,
-        ))
+        viewModel.dispatch(
+            DashboardUiIntent.LogCompletion(
+                householdId = "household-1",
+                choreId = "chore-1",
+                participantIds = listOf("member-1", "member-2"),
+                note = "Done together",
+                completedAt = null,
+            )
+        )
         advanceUntilIdle()
 
         coVerify {

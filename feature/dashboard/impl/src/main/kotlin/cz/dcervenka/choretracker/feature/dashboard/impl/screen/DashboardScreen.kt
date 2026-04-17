@@ -306,13 +306,15 @@ fun DashboardScreen(
             onNoteChange = { selectedNote = it },
             onDismiss = { selectedChoreId = null },
             onConfirm = { completedAt ->
-                onIntent(DashboardUiIntent.LogCompletion(
-                    householdId = snapshot.household.id,
-                    choreId = selectedChoreId!!,
-                    participantIds = selectedMembers.toList(),
-                    note = selectedNote,
-                    completedAt = completedAt,
-                ))
+                onIntent(
+                    DashboardUiIntent.LogCompletion(
+                        householdId = snapshot.household.id,
+                        choreId = selectedChoreId!!,
+                        participantIds = selectedMembers.toList(),
+                        note = selectedNote,
+                        completedAt = completedAt,
+                    )
+                )
                 selectedChoreId = null
             },
         )

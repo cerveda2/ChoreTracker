@@ -7,10 +7,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.screen.DashboardScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.screen.RecentCompletionDetailScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.screen.RecentCompletionsScreen
-import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel.DashboardViewModel
 
 fun NavGraphBuilder.dashboardScreen(

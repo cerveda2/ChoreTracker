@@ -359,7 +359,14 @@ fun ChoresSettingsScreen(
                                     }
                                     Switch(
                                         checked = chore.isActive,
-                                        onCheckedChange = { checked -> onIntent(SettingsUiIntent.UpdateChoreActive(chore.id, checked)) },
+                                        onCheckedChange = { checked ->
+                                            onIntent(
+                                                SettingsUiIntent.UpdateChoreActive(
+                                                    choreId = chore.id,
+                                                    isActive = checked,
+                                                ),
+                                            )
+                                        },
                                     )
                                     IconButton(onClick = { pendingDeleteChoreId = chore.id }) {
                                         Icon(
