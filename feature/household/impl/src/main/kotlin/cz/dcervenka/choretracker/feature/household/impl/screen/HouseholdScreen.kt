@@ -17,12 +17,13 @@ import cz.dcervenka.choretracker.core.design.PreviewData
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.SectionCard
+import cz.dcervenka.choretracker.feature.household.impl.contract.HouseholdUiIntent
 import cz.dcervenka.choretracker.feature.household.impl.contract.HouseholdUiState
 
 @Composable
 fun HouseholdScreen(
     uiState: HouseholdUiState,
-    onRefreshInvite: () -> Unit,
+    onIntent: (HouseholdUiIntent) -> Unit,
 ) {
     val spacing = LocalSpacing.current
 
@@ -40,7 +41,7 @@ fun HouseholdScreen(
                 )
                 PrimaryButton(
                     text = stringResource(R.string.household_refresh_invite),
-                    onClick = onRefreshInvite,
+                    onClick = { onIntent(HouseholdUiIntent.RefreshInvite) },
                 )
             }
         }
@@ -84,7 +85,7 @@ private fun HouseholdScreenPreview() {
                 chores = PreviewData.chores,
                 invites = listOf(PreviewData.invite),
             ),
-            onRefreshInvite = {},
+            onIntent = {},
         )
     }
 }

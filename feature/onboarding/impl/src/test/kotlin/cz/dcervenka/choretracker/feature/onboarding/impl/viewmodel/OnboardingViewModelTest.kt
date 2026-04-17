@@ -9,6 +9,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveHouseholdRestoreStat
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.household.HouseholdRestoreStatus
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
+import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiIntent
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -66,15 +67,15 @@ class OnboardingViewModelTest {
 
         assertThat(viewModel.uiState.value.isWorking).isFalse()
 
-        viewModel.onHouseholdNameChange("Family Home")
+        viewModel.dispatch(OnboardingUiIntent.HouseholdNameChanged("Family Home"))
         advanceUntilIdle()
         assertThat(viewModel.uiState.value.householdName).isEqualTo("Family Home")
 
-        viewModel.onDisplayNameChange("Dana")
+        viewModel.dispatch(OnboardingUiIntent.DisplayNameChanged("Dana"))
         advanceUntilIdle()
         assertThat(viewModel.uiState.value.displayName).isEqualTo("Dana")
 
-        viewModel.createHousehold()
+        viewModel.dispatch(OnboardingUiIntent.CreateHousehold)
         advanceUntilIdle()
 
         coVerify { createHouseholdUseCase("Family Home", "Dana") }
@@ -92,15 +93,15 @@ class OnboardingViewModelTest {
 
         assertThat(viewModel.uiState.value.errorMessage).isNull()
 
-        viewModel.onInviteCodeChange("BADCODE")
+        viewModel.dispatch(OnboardingUiIntent.InviteCodeChanged("BADCODE"))
         advanceUntilIdle()
         assertThat(viewModel.uiState.value.inviteCode).isEqualTo("BADCODE")
 
-        viewModel.onDisplayNameChange("Dana")
+        viewModel.dispatch(OnboardingUiIntent.DisplayNameChanged("Dana"))
         advanceUntilIdle()
         assertThat(viewModel.uiState.value.displayName).isEqualTo("Dana")
 
-        viewModel.joinHousehold()
+        viewModel.dispatch(OnboardingUiIntent.JoinHousehold)
         advanceUntilIdle()
 
         coVerify { joinHouseholdUseCase("BADCODE", "Dana") }

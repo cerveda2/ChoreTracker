@@ -18,6 +18,7 @@ import cz.dcervenka.choretracker.core.test.mock.sampleDashboardSnapshot
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
+import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -126,11 +127,14 @@ class DashboardViewModelTest {
     fun `log completion delegates to use case`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
 
-        viewModel.logCompletion(
-            householdId = "household-1",
-            choreId = "chore-1",
-            participantIds = listOf("member-1", "member-2"),
-            note = "Done together",
+        viewModel.dispatch(
+            DashboardUiIntent.LogCompletion(
+                householdId = "household-1",
+                choreId = "chore-1",
+                participantIds = listOf("member-1", "member-2"),
+                note = "Done together",
+                completedAt = null,
+            )
         )
         advanceUntilIdle()
 
@@ -143,7 +147,7 @@ class DashboardViewModelTest {
     fun `retry sync delegates to use case`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
 
-        viewModel.retrySync()
+        viewModel.dispatch(DashboardUiIntent.RetrySync)
         advanceUntilIdle()
 
         coVerify { retryPendingSyncUseCase() }

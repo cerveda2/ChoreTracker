@@ -7,6 +7,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.screen.DashboardScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.screen.RecentCompletionDetailScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.screen.RecentCompletionsScreen
@@ -21,10 +22,8 @@ fun NavGraphBuilder.dashboardScreen(
 
         DashboardScreen(
             uiState = uiState.value,
-            onLogCompletion = viewModel::logCompletion,
-            onDeleteCompletion = viewModel::deleteCompletion,
+            onIntent = viewModel::dispatch,
             undoEvents = viewModel.undoEvents,
-            onRetrySync = viewModel::retrySync,
             onSeeAllCompletions = {
                 navController.navigate(DashboardCompletionsDestination.route)
             },
@@ -60,7 +59,7 @@ fun NavGraphBuilder.dashboardScreen(
             completion = completion,
             onBack = { navController.popBackStack() },
             onDelete = {
-                viewModel.deleteCompletion(completionId)
+                viewModel.dispatch(DashboardUiIntent.DeleteCompletion(completionId))
                 navController.popBackStack()
             },
         )

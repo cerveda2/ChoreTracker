@@ -22,6 +22,7 @@ import cz.dcervenka.choretracker.core.test.mock.sampleChore
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
+import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -132,7 +133,7 @@ class SettingsViewModelTest {
     fun `sign out delegates to use case`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
 
-        viewModel.signOut()
+        viewModel.dispatch(SettingsUiIntent.SignOut)
         advanceUntilIdle()
 
         coVerify { signOutUseCase() }
@@ -142,7 +143,7 @@ class SettingsViewModelTest {
     fun `updateChoreName delegates to use case`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
 
-        viewModel.updateChoreName("chore-1", "Dishes")
+        viewModel.dispatch(SettingsUiIntent.UpdateChoreName("chore-1", "Dishes"))
         advanceUntilIdle()
 
         coVerify { updateChoreNameUseCase("chore-1", "Dishes") }
@@ -152,7 +153,7 @@ class SettingsViewModelTest {
     fun `updateChoreFrequency delegates to use case`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
 
-        viewModel.updateChoreFrequency("chore-1", 7)
+        viewModel.dispatch(SettingsUiIntent.UpdateChoreFrequency("chore-1", 7))
         advanceUntilIdle()
 
         coVerify { updateChoreFrequencyUseCase("chore-1", 7) }

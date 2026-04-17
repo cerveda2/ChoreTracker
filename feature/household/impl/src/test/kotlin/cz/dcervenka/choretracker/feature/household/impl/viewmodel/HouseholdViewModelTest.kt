@@ -13,6 +13,7 @@ import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleInvite
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
+import cz.dcervenka.choretracker.feature.household.impl.contract.HouseholdUiIntent
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -92,7 +93,7 @@ class HouseholdViewModelTest {
             awaitItem()
             awaitItem()
 
-            viewModel.refreshInvite()
+            viewModel.dispatch(HouseholdUiIntent.RefreshInvite)
             advanceUntilIdle()
 
             coVerify { createInviteUseCase("household-1") }

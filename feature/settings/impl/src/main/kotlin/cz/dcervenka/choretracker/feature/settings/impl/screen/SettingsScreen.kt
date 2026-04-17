@@ -44,6 +44,7 @@ import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.ScreenHeader
 import cz.dcervenka.choretracker.core.design.components.SectionCard
 import cz.dcervenka.choretracker.core.design.components.SettingsListItem
+import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
 
 @Composable
@@ -149,9 +150,7 @@ private fun SettingsGroup(
 fun HouseholdSettingsScreen(
     uiState: SettingsUiState,
     onBack: () -> Unit,
-    onHouseholdNameChange: (String) -> Unit,
-    onSaveHouseholdName: () -> Unit,
-    onRefreshInvite: () -> Unit,
+    onIntent: (SettingsUiIntent) -> Unit,
 ) {
     val spacing = LocalSpacing.current
 
@@ -181,7 +180,7 @@ fun HouseholdSettingsScreen(
                     SectionCard(title = stringResource(R.string.settings_household_title)) {
                         OutlinedTextField(
                             value = uiState.householdNameInput,
-                            onValueChange = onHouseholdNameChange,
+                            onValueChange = { onIntent(SettingsUiIntent.HouseholdNameChanged(it)) },
                             label = { Text(text = stringResource(R.string.settings_household_name)) },
                             keyboardOptions = KeyboardOptions(
                                 capitalization = KeyboardCapitalization.Words,
@@ -191,7 +190,7 @@ fun HouseholdSettingsScreen(
                         )
                         PrimaryButton(
                             text = stringResource(R.string.settings_save_household_name),
-                            onClick = onSaveHouseholdName,
+                            onClick = { onIntent(SettingsUiIntent.SaveHouseholdName) },
                         )
                     }
                 }
@@ -203,7 +202,7 @@ fun HouseholdSettingsScreen(
                         )
                         PrimaryButton(
                             text = stringResource(R.string.household_refresh_invite),
-                            onClick = onRefreshInvite,
+                            onClick = { onIntent(SettingsUiIntent.RefreshInvite) },
                         )
                     }
                 }
@@ -223,8 +222,7 @@ fun HouseholdSettingsScreen(
 fun MembersSettingsScreen(
     uiState: SettingsUiState,
     onBack: () -> Unit,
-    onMemberInputChange: (String) -> Unit,
-    onAddMember: () -> Unit,
+    onIntent: (SettingsUiIntent) -> Unit,
 ) {
     val spacing = LocalSpacing.current
 
@@ -267,7 +265,7 @@ fun MembersSettingsScreen(
                     }
                     OutlinedTextField(
                         value = uiState.memberInput,
-                        onValueChange = onMemberInputChange,
+                        onValueChange = { onIntent(SettingsUiIntent.MemberInputChanged(it)) },
                         label = { Text(text = stringResource(R.string.household_new_member)) },
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Words,
@@ -277,7 +275,7 @@ fun MembersSettingsScreen(
                     )
                     PrimaryButton(
                         text = stringResource(R.string.household_add_member),
-                        onClick = onAddMember,
+                        onClick = { onIntent(SettingsUiIntent.AddMember) },
                     )
                 }
             }
@@ -289,12 +287,7 @@ fun MembersSettingsScreen(
 fun ChoresSettingsScreen(
     uiState: SettingsUiState,
     onBack: () -> Unit,
-    onChoreInputChange: (String) -> Unit,
-    onAddChore: () -> Unit,
-    onDeleteChore: (String) -> Unit,
-    onUpdateChoreActive: (String, Boolean) -> Unit,
-    onUpdateChoreFrequency: (String, Int?) -> Unit,
-    onRenameChoreName: (String, String) -> Unit,
+    onIntent: (SettingsUiIntent) -> Unit,
 ) {
     val spacing = LocalSpacing.current
     var pendingDeleteChoreId by remember { mutableStateOf<String?>(null) }
@@ -366,7 +359,14 @@ fun ChoresSettingsScreen(
                                     }
                                     Switch(
                                         checked = chore.isActive,
-                                        onCheckedChange = { checked -> onUpdateChoreActive(chore.id, checked) },
+                                        onCheckedChange = { checked ->
+                                            onIntent(
+                                                SettingsUiIntent.UpdateChoreActive(
+                                                    choreId = chore.id,
+                                                    isActive = checked,
+                                                ),
+                                            )
+                                        },
                                     )
                                     IconButton(onClick = { pendingDeleteChoreId = chore.id }) {
                                         Icon(
@@ -380,7 +380,7 @@ fun ChoresSettingsScreen(
                     }
                     OutlinedTextField(
                         value = uiState.choreInput,
-                        onValueChange = onChoreInputChange,
+                        onValueChange = { onIntent(SettingsUiIntent.ChoreInputChanged(it)) },
                         label = { Text(text = stringResource(R.string.household_new_chore)) },
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Words,
@@ -390,7 +390,7 @@ fun ChoresSettingsScreen(
                     )
                     PrimaryButton(
                         text = stringResource(R.string.household_add_chore),
-                        onClick = onAddChore,
+                        onClick = { onIntent(SettingsUiIntent.AddChore) },
                     )
                 }
             }
@@ -405,7 +405,7 @@ fun ChoresSettingsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onDeleteChore(pendingDeleteChore.id)
+                        onIntent(SettingsUiIntent.DeleteChore(pendingDeleteChore.id))
                         pendingDeleteChoreId = null
                     },
                 ) {
@@ -442,7 +442,7 @@ fun ChoresSettingsScreen(
                     onClick = {
                         val trimmed = nameInput.trim()
                         if (trimmed.isNotEmpty()) {
-                            onRenameChoreName(pendingRenameChore.id, trimmed)
+                            onIntent(SettingsUiIntent.UpdateChoreName(pendingRenameChore.id, trimmed))
                         }
                         pendingRenameChoreId = null
                     },
@@ -478,7 +478,7 @@ fun ChoresSettingsScreen(
                 TextButton(
                     onClick = {
                         val days = frequencyInput.toIntOrNull()?.takeIf { it > 0 }
-                        onUpdateChoreFrequency(pendingFrequencyChore.id, days)
+                        onIntent(SettingsUiIntent.UpdateChoreFrequency(pendingFrequencyChore.id, days))
                         pendingFrequencyChoreId = null
                     },
                 ) {
@@ -489,7 +489,7 @@ fun ChoresSettingsScreen(
                 Row {
                     TextButton(
                         onClick = {
-                            onUpdateChoreFrequency(pendingFrequencyChore.id, null)
+                            onIntent(SettingsUiIntent.UpdateChoreFrequency(pendingFrequencyChore.id, null))
                             pendingFrequencyChoreId = null
                         },
                     ) {
@@ -508,7 +508,7 @@ fun ChoresSettingsScreen(
 fun AccountSettingsScreen(
     uiState: SettingsUiState,
     onBack: () -> Unit,
-    onSignOut: () -> Unit,
+    onIntent: (SettingsUiIntent) -> Unit,
 ) {
     val spacing = LocalSpacing.current
     val profileSummary = uiState.userLabel ?: when {
@@ -544,7 +544,7 @@ fun AccountSettingsScreen(
                     )
                     PrimaryButton(
                         text = stringResource(R.string.settings_sign_out),
-                        onClick = onSignOut,
+                        onClick = { onIntent(SettingsUiIntent.SignOut) },
                     )
                 }
             }
@@ -592,9 +592,7 @@ private fun HouseholdSettingsScreenPreview() {
                 householdNameInput = PreviewData.household.name,
             ),
             onBack = {},
-            onHouseholdNameChange = {},
-            onSaveHouseholdName = {},
-            onRefreshInvite = {},
+            onIntent = {},
         )
     }
 }
