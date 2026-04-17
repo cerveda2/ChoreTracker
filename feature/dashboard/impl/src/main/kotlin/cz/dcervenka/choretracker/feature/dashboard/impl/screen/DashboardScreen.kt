@@ -556,7 +556,7 @@ fun RecentCompletionsScreen(
                         yesterday -> yesterdayLabel
                         else -> formatLocalDateForLocale(date, "EEEMMMd")
                     }
-                    item(key = "group-${date}") {
+                    item(key = "group-$date") {
                         CompletionDateSection(
                             label = label,
                             completions = items,
