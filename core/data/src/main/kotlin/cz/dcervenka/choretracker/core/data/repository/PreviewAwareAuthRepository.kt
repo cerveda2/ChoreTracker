@@ -55,6 +55,18 @@ class PreviewAwareAuthRepository @Inject constructor(
         return AppResult.Success(Unit)
     }
 
+    override suspend fun updateDisplayName(displayName: String): EmptyResult {
+        val sanitizedName = displayName.trim()
+        val previewUser = (previewState.value as? AuthState.Authenticated)?.user
+        if (previewUser != null) {
+            previewState.value = AuthState.Authenticated(
+                previewUser.copy(displayName = sanitizedName.ifBlank { "Preview User" }),
+            )
+            return AppResult.Success(Unit)
+        }
+        return remoteAuthDataSource.updateDisplayName(sanitizedName)
+    }
+
     override fun clearPreviewState() {
         previewState.value = null
     }

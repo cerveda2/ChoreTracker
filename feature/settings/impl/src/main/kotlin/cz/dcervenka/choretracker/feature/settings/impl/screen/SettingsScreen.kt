@@ -14,11 +14,13 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,6 +63,9 @@ fun SettingsScreen(
         uiState.isSignedOut -> stringResource(R.string.settings_signed_out)
         else -> stringResource(R.string.settings_loading)
     }
+    val emailValue = uiState.userEmail.orEmpty()
+    val canSaveDisplayName = uiState.accountDisplayNameInput.trim().isNotBlank() &&
+        uiState.accountDisplayNameInput.trim() != uiState.userLabel
     val householdSummary = uiState.household?.name ?: when {
         uiState.requiresConfiguration -> stringResource(R.string.settings_not_configured_summary)
         else -> stringResource(R.string.settings_no_household_summary)
@@ -516,6 +521,9 @@ fun AccountSettingsScreen(
         uiState.isSignedOut -> stringResource(R.string.settings_signed_out)
         else -> stringResource(R.string.settings_loading)
     }
+    val emailValue = uiState.userEmail.orEmpty()
+    val canSaveDisplayName = uiState.accountDisplayNameInput.trim().isNotBlank() &&
+        uiState.accountDisplayNameInput.trim() != uiState.userLabel
 
     ChoreScaffold(
         topBar = {
@@ -537,15 +545,52 @@ fun AccountSettingsScreen(
                 )
             }
             item {
-                SectionCard(title = stringResource(R.string.settings_account_actions)) {
+                SectionCard(title = stringResource(R.string.settings_profile_title)) {
+                    OutlinedTextField(
+                        value = uiState.accountDisplayNameInput,
+                        onValueChange = { onIntent(SettingsUiIntent.AccountDisplayNameChanged(it)) },
+                        label = { Text(stringResource(R.string.settings_account_display_name_label)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = emailValue,
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        label = { Text(stringResource(R.string.settings_account_email_label)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                    )
                     Text(
-                        text = stringResource(R.string.settings_theme_note),
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = stringResource(R.string.settings_account_email_supporting),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     PrimaryButton(
-                        text = stringResource(R.string.settings_sign_out),
-                        onClick = { onIntent(SettingsUiIntent.SignOut) },
+                        text = stringResource(R.string.settings_save_display_name),
+                        onClick = { onIntent(SettingsUiIntent.SaveAccountDisplayName) },
+                        enabled = canSaveDisplayName,
                     )
+                }
+            }
+            item {
+                SectionCard(title = stringResource(R.string.settings_account_actions)) {
+                    Text(
+                        text = stringResource(R.string.settings_sign_out_supporting),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    FilledTonalButton(
+                        onClick = { onIntent(SettingsUiIntent.SignOut) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.settings_sign_out))
+                    }
                 }
             }
         }

@@ -77,8 +77,6 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Backlog (ordered by priority)
 
-1. **Account screen** — Display name editable, email read-only, sign-out. Navigated from Settings profile section.
-3. **Account screen** — Display name editable, email read-only, sign-out. Navigated from Settings profile section.
 4. **Statistics redesign** — 3 tabs (Summary, By Chore, Monthly) with `HorizontalPager` + `TabRow`.
 5. **App icon** — Vector adaptive icon: house + checkmark, sage green + warm beige palette.
 6. **Language switching** — `AppCompatDelegate.setApplicationLocales()`, picker in Settings.
@@ -105,6 +103,7 @@ Always create feature branches from `main`. PRs go into `main`.
 - MVI refactor — sealed UiIntent + single dispatch() for all four ViewModels (#13)
 - Dashboard recent completions — compact rows, padded dividers, rounded ripple on widget (#15)
 - Recent completions full list — grouped by date with Today/Yesterday labels and activity-feed styling (#16)
+- Account screen — editable display name, read-only email, and sign-out from Settings profile section (#17)
 
 ## Release Readiness Backlog (ordered by priority)
 

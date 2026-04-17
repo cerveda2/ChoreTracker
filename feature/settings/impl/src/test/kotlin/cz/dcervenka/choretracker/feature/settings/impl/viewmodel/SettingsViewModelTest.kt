@@ -15,6 +15,8 @@ import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateCurrentMemberDisplayNameUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateHouseholdNameUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.test.mock.sampleAuthenticatedState
@@ -68,6 +70,12 @@ class SettingsViewModelTest {
     lateinit var deleteChoreUseCase: DeleteChoreUseCase
 
     @MockK
+    lateinit var updateDisplayNameUseCase: UpdateDisplayNameUseCase
+
+    @MockK
+    lateinit var updateCurrentMemberDisplayNameUseCase: UpdateCurrentMemberDisplayNameUseCase
+
+    @MockK
     lateinit var updateChoreActiveUseCase: UpdateChoreActiveUseCase
 
     @MockK
@@ -103,6 +111,8 @@ class SettingsViewModelTest {
             createInviteUseCase(any())
         } returns AppResult.Success(cz.dcervenka.choretracker.core.test.mock.sampleInvite())
         coEvery { deleteChoreUseCase(any()) } returns AppResult.Success(Unit)
+        coEvery { updateDisplayNameUseCase(any()) } returns AppResult.Success(Unit)
+        coEvery { updateCurrentMemberDisplayNameUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreActiveUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreFrequencyUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreNameUseCase(any(), any()) } returns AppResult.Success(Unit)
@@ -122,6 +132,8 @@ class SettingsViewModelTest {
 
             val authenticated = awaitItem()
             assertThat(authenticated.userLabel).isEqualTo("Dana")
+            assertThat(authenticated.userEmail).isEqualTo("dana@example.com")
+            assertThat(authenticated.accountDisplayNameInput).isEqualTo("Dana")
             assertThat(authenticated.isSignedOut).isFalse()
             assertThat(authenticated.household?.name).isEqualTo("Home")
             assertThat(authenticated.members).hasSize(2)
@@ -137,6 +149,25 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         coVerify { signOutUseCase() }
+    }
+
+    @Test
+    fun `saveAccountDisplayName updates auth and current member`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+        val household = sampleHousehold()
+        authStateFlow.value = sampleAuthenticatedState()
+        householdFlow.value = household
+
+        viewModel.uiState.test {
+            advanceUntilIdle()
+            viewModel.dispatch(SettingsUiIntent.AccountDisplayNameChanged("Dana New"))
+            viewModel.dispatch(SettingsUiIntent.SaveAccountDisplayName)
+            advanceUntilIdle()
+
+            coVerify { updateDisplayNameUseCase("Dana New") }
+            coVerify { updateCurrentMemberDisplayNameUseCase(household.id, "Dana New") }
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
@@ -170,6 +201,8 @@ private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
     addChoreUseCase,
     createInviteUseCase,
     deleteChoreUseCase,
+    updateDisplayNameUseCase,
+    updateCurrentMemberDisplayNameUseCase,
     updateChoreActiveUseCase,
     updateChoreFrequencyUseCase,
     updateChoreNameUseCase,
