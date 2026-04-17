@@ -75,30 +75,15 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ## Improvement Backlog
 
-### Bugs (highest priority)
+### Backlog (ordered by priority)
 
-1. **Preview mode data leak** — `HouseholdDao.observeCurrentHousehold()` has no userId filter; preview user sees real household. Fix: add `observeHouseholdForUser(userId)` query, update repository.
-2. **Preview mode dead button** — `PreviewAwareAuthRepository.previewState` never cleared on back navigation; re-entering preview doesn't re-emit. Fix: add `clearPreviewState()` to `AuthRepository` interface (default no-op), implement in `PreviewAwareAuthRepository`, call in `AuthViewModel.init`.
-3. **Post-preview sign-in navigation** — After using preview then going back, real sign-in doesn't navigate to dashboard. Root cause: downstream of bugs 1+2.
-4. **Cold start flash** — Add SplashScreen API (`androidx.core:core-splashscreen`); content = app icon (vector adaptive icon).
-5. **Bottom nav disappears** — Bottom nav hidden when navigating to completion detail screen.
-
-### Small UI Improvements
-
-6. **Delete from completion detail** — TopAppBar delete icon + confirmation dialog + `DeleteCompletionUseCase`.
-7. **LogButton component** — Rename quick-log chip to `LogButton` (fixed width). `PrimaryButton` always full-width. New `LogButton` component in `core/design`.
-8. **Needs-attention log button** — Add explicit tonal "Log" button on the right side of needs-attention items.
-9. **Settings profile section** — Make profile row clickable, navigate to Account screen.
-10. **Dashboard recent completions** — Compact rows (3–5 items visible), no Card wrapper per item.
-
-### Bigger Features
-
-11. **App icon** — Vector adaptive icon: house + checkmark, sage green + warm beige palette.
-12. **Recent completions full list** — Grouped by date with `stickyHeader` in `LazyColumn`.
-13. **Dashboard FAB** — Floating action button for logging a chore.
-14. **Statistics redesign** — 3 tabs (Summary, By Chore, Monthly) with `HorizontalPager` + `TabRow`.
-15. **Account screen** — Display name editable, email read-only, sign-out. Navigated from Settings profile section.
-16. **Language switching** — `AppCompatDelegate.setApplicationLocales()`, picker in Settings.
+1. **Recent completions full list** — Grouped by date with `stickyHeader` in `LazyColumn`.
+3. **Account screen** — Display name editable, email read-only, sign-out. Navigated from Settings profile section.
+4. **Statistics redesign** — 3 tabs (Summary, By Chore, Monthly) with `HorizontalPager` + `TabRow`.
+5. **App icon** — Vector adaptive icon: house + checkmark, sage green + warm beige palette.
+6. **Language switching** — `AppCompatDelegate.setApplicationLocales()`, picker in Settings.
+7. **Dashboard FAB** — Floating action button for logging a chore.
+8. **Bottom nav disappears** — Bottom nav hidden when navigating to completion detail screen. (low priority)
 
 ### Previously Completed
 
@@ -109,6 +94,16 @@ Always create feature branches from `main`. PRs go into `main`.
 - Balance/fairness stats with summary card
 - Days-since hint on quick-log chore buttons
 - Dashboard log dialog improvements
+- Delete from completion detail — TopAppBar delete icon + confirmation dialog (#7)
+- LogButton component — fixed-width chip in `core/design`, `PrimaryButton` always full-width (#8)
+- Needs-attention log button — tonal FilledTonalButton on right side of stale chore rows (#9)
+- Settings profile section — profile row clickable, navigates to Account screen (#10)
+- Cold start flash — SplashScreen API installed (#5)
+- Preview mode dead button — `clearPreviewState()` on back navigation (#4)
+- Post-preview sign-in navigation — fixed downstream of preview bugs (#4)
+- Preview mode data leak — preview users get mocked household, real DB never queried, writes blocked (#14)
+- MVI refactor — sealed UiIntent + single dispatch() for all four ViewModels (#13)
+- Dashboard recent completions — compact rows, padded dividers, rounded ripple on widget (#15)
 
 ## Release Readiness Backlog (ordered by priority)
 

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -23,6 +24,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -230,10 +233,16 @@ fun DashboardScreen(
                                 message = stringResource(R.string.dashboard_recent_completions_empty_message),
                             )
                         } else {
-                            highlightedCompletions.forEach { completion ->
+                            highlightedCompletions.forEachIndexed { index, completion ->
+                                if (index > 0) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = spacing.medium),
+                                    )
+                                }
                                 RecentCompletionRow(
                                     completion = completion,
                                     onClick = { onOpenCompletion(completion.completionId) },
+                                    roundedBackground = true,
                                 )
                             }
                             if (uiState.allCompletions.size > highlightedCompletions.size) {
@@ -505,12 +514,9 @@ fun RecentCompletionsScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = spacing.large,
                 top = innerPadding.calculateTopPadding() + spacing.large,
-                end = spacing.large,
                 bottom = innerPadding.calculateBottomPadding() + spacing.large,
             ),
-            verticalArrangement = Arrangement.spacedBy(spacing.medium),
         ) {
             if (completions.isEmpty()) {
                 item {
@@ -520,16 +526,16 @@ fun RecentCompletionsScreen(
                     )
                 }
             } else {
-                items(completions, key = { it.completionId }) { completion ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onOpenCompletion(completion.completionId) },
-                    ) {
-                        Column(modifier = Modifier.padding(spacing.medium)) {
-                            RecentCompletionContent(completion = completion)
-                        }
+                itemsIndexed(completions, key = { _, completion -> completion.completionId }) { index, completion ->
+                    if (index > 0) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = spacing.medium),
+                        )
                     }
+                    RecentCompletionRow(
+                        completion = completion,
+                        onClick = { onOpenCompletion(completion.completionId) },
+                    )
                 }
             }
         }
@@ -605,15 +611,37 @@ fun RecentCompletionDetailScreen(
 private fun RecentCompletionRow(
     completion: RecentCompletion,
     onClick: () -> Unit,
+    roundedBackground: Boolean = false,
 ) {
-    Card(
+    val spacing = LocalSpacing.current
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .then(if (roundedBackground) Modifier.clip(MaterialTheme.shapes.small) else Modifier)
+            .clickable(onClick = onClick)
+            .padding(
+                vertical = if (roundedBackground) spacing.xSmall else spacing.small,
+                horizontal = spacing.medium,
+            ),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.padding(LocalSpacing.current.medium)) {
-            RecentCompletionContent(completion = completion)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = completion.choreName,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = completion.participantNames.joinToString(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
+        Text(
+            text = formatInstantForLocale(completion.completedAt, "MMMd"),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
