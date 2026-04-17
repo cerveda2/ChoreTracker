@@ -101,38 +101,41 @@ class OfflineFirstHouseholdRepository @Inject constructor(
 
     override suspend fun createHousehold(name: String, ownerDisplayName: String): AppResult<Household> {
         Timber.d("createHousehold: name=$name ownerDisplayName=$ownerDisplayName")
-        val user = currentUser() ?: return AppResult.Error("Sign in or continue in preview mode first.").also {
-            Timber.w("createHousehold failed: user not authenticated")
-        }
-        if (user.isPreview) {
-            return AppResult.Error("Cannot create household in preview mode.").also {
+        val user = currentUser()
+        return when {
+            user == null -> AppResult.Error("Sign in or continue in preview mode first.").also {
+                Timber.w("createHousehold failed: user not authenticated")
+            }
+            user.isPreview -> AppResult.Error("Cannot create household in preview mode.").also {
                 Timber.w("createHousehold failed: preview user attempted write operation")
             }
+            else -> {
+                val householdId = UUID.randomUUID().toString()
+                val invite = generateInvite(householdId)
+                val household = HouseholdEntity(
+                    id = householdId,
+                    name = name.ifBlank { "My Household" },
+                    ownerUserId = user.id,
+                    inviteCode = invite.code,
+                    createdAt = Clock.System.now(),
+                )
+                householdDao.upsert(household)
+                memberDao.upsert(
+                    MemberEntity(
+                        id = UUID.randomUUID().toString(),
+                        householdId = householdId,
+                        userId = user.id,
+                        displayName = ownerDisplayName.ifBlank { user.displayName },
+                        role = HouseholdRole.OWNER.name,
+                        isCurrentUser = true,
+                    ),
+                )
+                inviteDao.upsert(invite)
+                enqueueOperation("household", householdId, "upsert", household.id)
+                syncRepository.syncPendingOperations()
+                AppResult.Success(household.asModel())
+            }
         }
-        val householdId = UUID.randomUUID().toString()
-        val invite = generateInvite(householdId)
-        val household = HouseholdEntity(
-            id = householdId,
-            name = name.ifBlank { "My Household" },
-            ownerUserId = user.id,
-            inviteCode = invite.code,
-            createdAt = Clock.System.now(),
-        )
-        householdDao.upsert(household)
-        memberDao.upsert(
-            MemberEntity(
-                id = UUID.randomUUID().toString(),
-                householdId = householdId,
-                userId = user.id,
-                displayName = ownerDisplayName.ifBlank { user.displayName },
-                role = HouseholdRole.OWNER.name,
-                isCurrentUser = true,
-            ),
-        )
-        inviteDao.upsert(invite)
-        enqueueOperation("household", householdId, "upsert", household.id)
-        syncRepository.syncPendingOperations()
-        return AppResult.Success(household.asModel())
     }
 
     override suspend fun joinHousehold(code: String, currentUserDisplayName: String): AppResult<Household> {
