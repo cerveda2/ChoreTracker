@@ -113,10 +113,8 @@ fun DashboardScreen(
         selectedNote = ""
     }
     val snapshot = uiState.snapshot
-    val quickLog: (choreId: String) -> Unit = quickLog@{ choreId ->
-        val householdId = snapshot?.household?.id ?: return@quickLog
-        val userId = currentUserId ?: return@quickLog
-        onLogCompletion(householdId, choreId, listOf(userId), null, null)
+    val quickLog: (choreId: String) -> Unit = { choreId ->
+        openLogSheet(choreId)
     }
 
     if (snapshot == null) {
@@ -225,7 +223,6 @@ fun DashboardScreen(
                                         text = chore.name,
                                         subtitle = subtitle,
                                         onClick = { quickLog(chore.id) },
-                                        onLongClick = { openLogSheet(chore.id) },
                                     )
                                 }
                             }
