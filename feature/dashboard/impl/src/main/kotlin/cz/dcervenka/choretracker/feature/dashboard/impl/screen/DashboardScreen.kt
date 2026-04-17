@@ -1,7 +1,9 @@
 package cz.dcervenka.choretracker.feature.dashboard.impl.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,9 +11,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -50,6 +54,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.PreviewData
@@ -535,7 +540,7 @@ fun RecentCompletionsScreen(
                 end = spacing.large,
                 bottom = innerPadding.calculateBottomPadding() + spacing.large,
             ),
-            verticalArrangement = Arrangement.spacedBy(spacing.medium),
+            verticalArrangement = Arrangement.spacedBy(spacing.large),
         ) {
             if (completions.isEmpty()) {
                 item {
@@ -572,31 +577,38 @@ private fun CompletionDateSection(
 ) {
     val spacing = LocalSpacing.current
     Column(
-        verticalArrangement = Arrangement.spacedBy(spacing.xSmall),
+        verticalArrangement = Arrangement.spacedBy(spacing.small),
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(horizontal = spacing.medium),
-        )
-        Card(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-            ),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
-                completions.forEachIndexed { index, completion ->
-                    RecentCompletionRow(
-                        completion = completion,
-                        onClick = { onOpenCompletion(completion.completionId) },
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = spacing.medium),
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                    )
-                }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            HorizontalDivider(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = spacing.small),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            )
+        }
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            completions.forEach { completion ->
+                RecentCompletionRow(
+                    completion = completion,
+                    onClick = { onOpenCompletion(completion.completionId) },
+                    trailingText = formatInstantForLocale(completion.completedAt, "Hm"),
+                    emphasizeAsActivity = true,
+                )
+                HorizontalDivider(
+                    modifier = Modifier.padding(start = 56.dp + spacing.small),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                )
             }
         }
     }
@@ -672,24 +684,49 @@ private fun RecentCompletionRow(
     completion: RecentCompletion,
     onClick: () -> Unit,
     roundedBackground: Boolean = false,
+    trailingText: String = formatInstantForLocale(completion.completedAt, "MMMd"),
+    emphasizeAsActivity: Boolean = false,
 ) {
     val spacing = LocalSpacing.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (roundedBackground) Modifier.clip(MaterialTheme.shapes.small) else Modifier)
+            .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onClick)
             .padding(
                 vertical = if (roundedBackground) spacing.xSmall else spacing.small,
-                horizontal = spacing.medium,
             ),
-        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        if (emphasizeAsActivity) {
+            val badgeLabel = completion.choreName.take(1).uppercase()
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = badgeLabel,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = if (emphasizeAsActivity) spacing.medium else spacing.medium),
+            verticalArrangement = Arrangement.spacedBy(spacing.xSmall),
+        ) {
             Text(
                 text = completion.choreName,
-                style = MaterialTheme.typography.bodyMedium,
+                style = if (emphasizeAsActivity) {
+                    MaterialTheme.typography.titleMedium
+                } else {
+                    MaterialTheme.typography.bodyMedium
+                },
             )
             Text(
                 text = completion.participantNames.joinToString(),
@@ -698,9 +735,10 @@ private fun RecentCompletionRow(
             )
         }
         Text(
-            text = formatInstantForLocale(completion.completedAt, "MMMd"),
-            style = MaterialTheme.typography.bodySmall,
+            text = trailingText,
+            style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = spacing.medium),
         )
     }
 }
