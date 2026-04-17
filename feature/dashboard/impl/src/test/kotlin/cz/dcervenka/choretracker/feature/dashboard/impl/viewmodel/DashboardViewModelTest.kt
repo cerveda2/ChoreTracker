@@ -11,7 +11,10 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveRecentCompletionsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
+import cz.dcervenka.choretracker.core.model.household.Household
+import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.sync.SyncState
+import kotlin.time.Instant
 import cz.dcervenka.choretracker.core.test.mock.sampleDashboardSnapshot
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
@@ -58,9 +61,8 @@ class DashboardViewModelTest {
     lateinit var retryPendingSyncUseCase: RetryPendingSyncUseCase
 
     private val dashboardFlow = MutableStateFlow(sampleDashboardSnapshot())
-    private val householdFlow = MutableStateFlow<cz.dcervenka.choretracker.core.model.household.Household?>(null)
-    private val membersFlow =
-        MutableStateFlow(emptyList<cz.dcervenka.choretracker.core.model.household.HouseholdMember>())
+    private val householdFlow = MutableStateFlow<Household?>(null)
+    private val membersFlow = MutableStateFlow(emptyList<HouseholdMember>())
     private val completionsFlow = MutableStateFlow(sampleDashboardSnapshot().recentCompletions)
     private val syncStateFlow = MutableStateFlow<SyncState?>(null)
 
@@ -109,7 +111,7 @@ class DashboardViewModelTest {
             syncStateFlow.value = SyncState(
                 householdId = "household-1",
                 lastSyncedAt = null,
-                lastSyncAttemptAt = kotlin.time.Instant.parse("2026-04-10T05:24:20Z"),
+                lastSyncAttemptAt = Instant.parse("2026-04-10T05:24:20Z"),
                 pendingOperations = 2,
                 lastErrorMessage = "Missing or insufficient permissions.",
             )

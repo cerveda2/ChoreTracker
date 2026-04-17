@@ -1,6 +1,7 @@
 package cz.dcervenka.choretracker.feature.stats.impl.screen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -41,7 +42,7 @@ fun StatsScreen(
         ) { innerPadding ->
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                contentPadding = PaddingValues(
                     start = spacing.large,
                     top = innerPadding.calculateTopPadding() + spacing.large,
                     end = spacing.large,

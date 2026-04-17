@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Instant
 
 data class UndoEvent(val completionId: String, val choreName: String)
 
@@ -69,7 +70,7 @@ class DashboardViewModel @Inject constructor(
         choreId: String,
         participantIds: List<String>,
         note: String?,
-        completedAt: kotlin.time.Instant? = null,
+        completedAt: Instant? = null,
     ) {
         viewModelScope.launch {
             val result = logCompletionUseCase(
