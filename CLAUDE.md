@@ -104,7 +104,7 @@ Always create feature branches from `main`. PRs go into `main`.
 - Preview mode data leak — preview users get mocked household, real DB never queried, writes blocked (#14)
 - MVI refactor — sealed UiIntent + single dispatch() for all four ViewModels (#13)
 - Dashboard recent completions — compact rows, padded dividers, rounded ripple on widget (#15)
-- Recent completions full list — grouped by date with sticky headers, Today/Yesterday labels (#16)
+- Recent completions full list — grouped by date with Today/Yesterday labels and activity-feed styling (#16)
 
 ## Release Readiness Backlog (ordered by priority)
 
