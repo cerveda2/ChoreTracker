@@ -156,7 +156,6 @@ fun ChoresSettingsScreen(
 
     if (pendingDeleteChore != null) {
         DeleteChoreDialog(
-            choreId = pendingDeleteChore.id,
             onDismiss = { pendingDeleteChoreId = null },
             onDelete = {
                 onIntent(SettingsUiIntent.DeleteChore(pendingDeleteChore.id))
@@ -196,7 +195,6 @@ fun ChoresSettingsScreen(
 
 @Composable
 private fun DeleteChoreDialog(
-    choreId: String,
     onDismiss: () -> Unit,
     onDelete: () -> Unit,
 ) {
