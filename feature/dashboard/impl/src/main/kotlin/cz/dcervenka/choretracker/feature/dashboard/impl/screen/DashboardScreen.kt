@@ -1,45 +1,22 @@
 package cz.dcervenka.choretracker.feature.dashboard.impl.screen
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,12 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.PreviewData
@@ -64,23 +37,15 @@ import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.LogButton
-import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.SectionCard
-import cz.dcervenka.choretracker.core.formatters.formatInstantForLocale
 import cz.dcervenka.choretracker.core.formatters.formatLocalDateForLocale
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
-import cz.dcervenka.choretracker.core.model.sync.SyncState
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 import cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel.UndoEvent
 import kotlinx.coroutines.flow.Flow
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 
 @Composable
 fun DashboardScreen(
@@ -107,20 +72,18 @@ fun DashboardScreen(
             }
         }
     }
+
     var selectedChoreId by remember { mutableStateOf<String?>(null) }
     var selectedNote by remember { mutableStateOf("") }
     val selectedMembers = remember { mutableStateListOf<String>() }
     val currentUserId = uiState.members.firstOrNull { it.isCurrentUser }?.id
-    val openLogSheet: (choreId: String) -> Unit = { choreId ->
+    val openLogSheet: (String) -> Unit = { choreId ->
         selectedChoreId = choreId
         selectedMembers.clear()
         if (currentUserId != null) selectedMembers.add(currentUserId)
         selectedNote = ""
     }
     val snapshot = uiState.snapshot
-    val quickLog: (choreId: String) -> Unit = { choreId ->
-        openLogSheet(choreId)
-    }
 
     if (snapshot == null) {
         LoadingState(message = stringResource(R.string.dashboard_loading))
@@ -168,12 +131,12 @@ fun DashboardScreen(
                         ) {
                             items(snapshot.memberContributions, key = { it.memberId }) { contribution ->
                                 Card {
-                                    Column(
+                                    androidx.compose.foundation.layout.Column(
                                         modifier = Modifier.padding(spacing.medium),
                                     ) {
                                         Text(
                                             text = contribution.displayName,
-                                            style = MaterialTheme.typography.titleMedium
+                                            style = MaterialTheme.typography.titleMedium,
                                         )
                                         Text(
                                             text = "${contribution.totalCount}",
@@ -227,7 +190,7 @@ fun DashboardScreen(
                                     LogButton(
                                         text = chore.name,
                                         subtitle = subtitle,
-                                        onClick = { quickLog(chore.id) },
+                                        onClick = { openLogSheet(chore.id) },
                                     )
                                 }
                             }
@@ -272,12 +235,12 @@ fun DashboardScreen(
                         } else {
                             staleItems.forEach { stale ->
                                 Card(modifier = Modifier.fillMaxWidth()) {
-                                    Row(
+                                    androidx.compose.foundation.layout.Row(
                                         modifier = Modifier.padding(spacing.medium),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
-                                        Column(
+                                        androidx.compose.foundation.layout.Column(
                                             modifier = Modifier.weight(1f),
                                             verticalArrangement = Arrangement.spacedBy(spacing.xSmall),
                                         ) {
@@ -286,13 +249,13 @@ fun DashboardScreen(
                                                 style = MaterialTheme.typography.titleMedium,
                                             )
                                             Text(
-                                                text = when {
-                                                    stale.lastCompletedDate == null ->
+                                                text = when (val lastCompletedDate = stale.lastCompletedDate) {
+                                                    null ->
                                                         stringResource(R.string.dashboard_stale_never_done)
                                                     else -> stringResource(
                                                         R.string.dashboard_stale_last_done,
                                                         formatLocalDateForLocale(
-                                                            date = stale.lastCompletedDate!!,
+                                                            date = lastCompletedDate,
                                                             skeleton = "yMMMd",
                                                         ),
                                                         stale.daysSinceLastCompletion ?: 0,
@@ -331,441 +294,10 @@ fun DashboardScreen(
                         participantIds = selectedMembers.toList(),
                         note = selectedNote,
                         completedAt = completedAt,
-                    )
+                    ),
                 )
                 selectedChoreId = null
             },
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun LogCompletionBottomSheet(
-    uiState: DashboardUiState,
-    selectedMembers: androidx.compose.runtime.snapshots.SnapshotStateList<String>,
-    selectedNote: String,
-    onNoteChange: (String) -> Unit,
-    onDismiss: () -> Unit,
-    onConfirm: (kotlin.time.Instant?) -> Unit,
-) {
-    val spacing = LocalSpacing.current
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var showDatePicker by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = kotlin.time.Clock.System.now()
-            .toEpochMilliseconds(),
-    )
-    val selectedDateMillis = datePickerState.selectedDateMillis
-    val completedAt = selectedDateMillis
-        ?.takeIf { it != midnightUtcToday() }
-        ?.let { kotlin.time.Instant.fromEpochMilliseconds(it) }
-
-    if (showDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text(text = stringResource(R.string.common_save))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text(text = stringResource(R.string.common_cancel))
-                }
-            },
-        ) {
-            DatePicker(state = datePickerState)
-        }
-    }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = spacing.large)
-                .padding(bottom = spacing.large),
-            verticalArrangement = Arrangement.spacedBy(spacing.medium),
-        ) {
-            Text(
-                text = stringResource(R.string.dashboard_log_completion),
-                style = MaterialTheme.typography.titleLarge,
-            )
-            Text(
-                text = stringResource(R.string.dashboard_who_completed),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(spacing.small),
-                verticalArrangement = Arrangement.spacedBy(spacing.small),
-            ) {
-                uiState.members.forEach { member ->
-                    FilterChip(
-                        selected = selectedMembers.contains(member.id),
-                        onClick = {
-                            if (selectedMembers.contains(member.id)) {
-                                selectedMembers.remove(member.id)
-                            } else {
-                                selectedMembers.add(member.id)
-                            }
-                        },
-                        label = { Text(text = member.displayName) },
-                    )
-                }
-            }
-            OutlinedTextField(
-                value = selectedNote,
-                onValueChange = onNoteChange,
-                label = { Text(text = stringResource(R.string.dashboard_note)) },
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    autoCorrectEnabled = true,
-                ),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            TextButton(
-                onClick = { showDatePicker = true },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                val dateLabel = if (completedAt != null) {
-                    formatInstantForLocale(completedAt, "yMMMd")
-                } else {
-                    stringResource(R.string.dashboard_log_date_today)
-                }
-                Text(text = stringResource(R.string.dashboard_log_date, dateLabel))
-            }
-            PrimaryButton(
-                text = stringResource(R.string.common_save),
-                onClick = { onConfirm(completedAt) },
-                enabled = selectedMembers.isNotEmpty(),
-            )
-        }
-    }
-}
-
-private const val MILLIS_PER_DAY = 86_400_000L
-
-private fun midnightUtcToday(): Long {
-    val ms = kotlin.time.Clock.System.now().toEpochMilliseconds()
-    return ms - (ms % MILLIS_PER_DAY)
-}
-
-@Composable
-private fun RemoteSyncBanner(
-    syncState: SyncState,
-    onRetrySync: () -> Unit,
-) {
-    val isError = !syncState.lastErrorMessage.isNullOrBlank()
-    val containerColor = if (isError) {
-        MaterialTheme.colorScheme.errorContainer
-    } else {
-        MaterialTheme.colorScheme.secondaryContainer
-    }
-    val contentColor = if (isError) {
-        MaterialTheme.colorScheme.onErrorContainer
-    } else {
-        MaterialTheme.colorScheme.onSecondaryContainer
-    }
-
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor,
-            contentColor = contentColor,
-        ),
-    ) {
-        Column(
-            modifier = Modifier.padding(LocalSpacing.current.medium),
-            verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.xSmall),
-        ) {
-            Text(
-                text = stringResource(
-                    id = if (isError) {
-                        R.string.dashboard_sync_failed_title
-                    } else {
-                        R.string.dashboard_sync_pending_title
-                    },
-                ),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = syncBannerMessage(syncState),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            if (syncState.pendingOperations > 0) {
-                TextButton(onClick = onRetrySync) {
-                    Text(text = stringResource(R.string.common_retry))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun RecentCompletionsScreen(
-    completions: List<RecentCompletion>,
-    onBack: () -> Unit,
-    onOpenCompletion: (String) -> Unit,
-) {
-    val spacing = LocalSpacing.current
-    val tz = TimeZone.currentSystemDefault()
-    val today = remember { Clock.System.now().toLocalDateTime(tz).date }
-    val yesterday = remember { today.minus(1, DateTimeUnit.DAY) }
-    val todayLabel = stringResource(R.string.dashboard_completions_today)
-    val yesterdayLabel = stringResource(R.string.dashboard_completions_yesterday)
-
-    val grouped = remember(completions) {
-        completions
-            .groupBy { it.completedAt.toLocalDateTime(tz).date }
-            .entries
-            .sortedByDescending { it.key }
-    }
-
-    ChoreScaffold(
-        topBar = {
-            ChoreTopAppBar(
-                title = stringResource(R.string.dashboard_all_completions),
-                onBackClick = onBack,
-            )
-        },
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = spacing.large,
-                top = innerPadding.calculateTopPadding() + spacing.large,
-                end = spacing.large,
-                bottom = innerPadding.calculateBottomPadding() + spacing.large,
-            ),
-            verticalArrangement = Arrangement.spacedBy(spacing.large),
-        ) {
-            if (completions.isEmpty()) {
-                item {
-                    EmptyState(
-                        title = stringResource(R.string.dashboard_recent_completions_empty_title),
-                        message = stringResource(R.string.dashboard_recent_completions_empty_message),
-                    )
-                }
-            } else {
-                grouped.forEach { (date, items) ->
-                    val label = when (date) {
-                        today -> todayLabel
-                        yesterday -> yesterdayLabel
-                        else -> formatLocalDateForLocale(date, "EEEMMMd")
-                    }
-                    item(key = "group-$date") {
-                        CompletionDateSection(
-                            label = label,
-                            completions = items,
-                            onOpenCompletion = onOpenCompletion,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CompletionDateSection(
-    label: String,
-    completions: List<RecentCompletion>,
-    onOpenCompletion: (String) -> Unit,
-) {
-    val spacing = LocalSpacing.current
-    Column(
-        verticalArrangement = Arrangement.spacedBy(spacing.small),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            HorizontalDivider(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = spacing.small),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-            )
-        }
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            completions.forEach { completion ->
-                RecentCompletionRow(
-                    completion = completion,
-                    onClick = { onOpenCompletion(completion.completionId) },
-                    trailingText = formatInstantForLocale(completion.completedAt, "Hm"),
-                    emphasizeAsActivity = true,
-                )
-                HorizontalDivider(
-                    modifier = Modifier.padding(start = 56.dp + spacing.small),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun RecentCompletionDetailScreen(
-    completion: RecentCompletion?,
-    onBack: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    val spacing = LocalSpacing.current
-    var showDeleteDialog by remember { mutableStateOf(false) }
-
-    if (completion == null) {
-        LoadingState(message = stringResource(R.string.dashboard_completion_loading))
-        return
-    }
-
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text(stringResource(R.string.dashboard_completion_delete_title)) },
-            text = { Text(stringResource(R.string.dashboard_completion_delete_message)) },
-            confirmButton = {
-                TextButton(onClick = onDelete) {
-                    Text(stringResource(R.string.common_delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            },
-        )
-    }
-
-    ChoreScaffold(
-        topBar = {
-            ChoreTopAppBar(
-                title = completion.choreName,
-                onBackClick = onBack,
-                actions = {
-                    IconButton(onClick = { showDeleteDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = stringResource(R.string.common_delete),
-                        )
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(spacing.large),
-            verticalArrangement = Arrangement.spacedBy(spacing.medium),
-        ) {
-            SectionCard(title = stringResource(R.string.dashboard_completion_detail)) {
-                RecentCompletionContent(
-                    completion = completion,
-                    dateSkeleton = "yMMMdHm",
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RecentCompletionRow(
-    completion: RecentCompletion,
-    onClick: () -> Unit,
-    roundedBackground: Boolean = false,
-    trailingText: String = formatInstantForLocale(completion.completedAt, "MMMd"),
-    emphasizeAsActivity: Boolean = false,
-) {
-    val spacing = LocalSpacing.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.small)
-            .clickable(onClick = onClick)
-            .padding(
-                vertical = if (roundedBackground) spacing.xSmall else spacing.small,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (emphasizeAsActivity) {
-            val badgeLabel = completion.choreName.take(1).uppercase()
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = badgeLabel,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-            }
-        }
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = if (emphasizeAsActivity) spacing.medium else spacing.medium),
-            verticalArrangement = Arrangement.spacedBy(spacing.xSmall),
-        ) {
-            Text(
-                text = completion.choreName,
-                style = if (emphasizeAsActivity) {
-                    MaterialTheme.typography.titleMedium
-                } else {
-                    MaterialTheme.typography.bodyMedium
-                },
-            )
-            Text(
-                text = completion.participantNames.joinToString(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Text(
-            text = trailingText,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = spacing.medium),
-        )
-    }
-}
-
-@Composable
-private fun RecentCompletionContent(
-    completion: RecentCompletion,
-    dateSkeleton: String = "yMMMd",
-) {
-    Text(
-        text = completion.choreName,
-        style = MaterialTheme.typography.titleMedium,
-    )
-    Text(
-        text = formatInstantForLocale(completion.completedAt, dateSkeleton),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    Text(
-        text = completion.participantNames.joinToString(),
-        style = MaterialTheme.typography.labelLarge,
-    )
-    completion.note?.takeIf(String::isNotBlank)?.let { note ->
-        Text(
-            text = note,
-            style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -776,21 +308,6 @@ private fun List<Chore>.sortedForQuickLog(completions: List<RecentCompletion>): 
         compareByDescending<Chore> { completionCounts[it.name] ?: 0 }
             .thenBy { it.name.lowercase() },
     )
-}
-
-@Composable
-private fun syncBannerMessage(syncState: SyncState): String {
-    val errorMessage = syncState.lastErrorMessage.orEmpty()
-    return when {
-        errorMessage.contains("Missing or insufficient permissions", ignoreCase = true) ->
-            stringResource(R.string.dashboard_sync_failed_permissions)
-        errorMessage.isNotBlank() ->
-            stringResource(R.string.dashboard_sync_failed_generic)
-        else -> stringResource(
-            R.string.dashboard_sync_pending_message,
-            syncState.pendingOperations,
-        )
-    }
 }
 
 @Preview(showBackground = true, heightDp = 1200)

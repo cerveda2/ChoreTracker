@@ -27,8 +27,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.time.Instant
 
-data class UndoEvent(val completionId: String, val choreName: String)
-
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     observeCurrentDashboardUseCase: ObserveCurrentDashboardUseCase,
