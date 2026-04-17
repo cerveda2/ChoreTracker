@@ -1,6 +1,5 @@
 package cz.dcervenka.choretracker.feature.dashboard.impl.screen
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -532,9 +530,12 @@ fun RecentCompletionsScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
+                start = spacing.large,
                 top = innerPadding.calculateTopPadding() + spacing.large,
+                end = spacing.large,
                 bottom = innerPadding.calculateBottomPadding() + spacing.large,
             ),
+            verticalArrangement = Arrangement.spacedBy(spacing.medium),
         ) {
             if (completions.isEmpty()) {
                 item {
@@ -550,18 +551,11 @@ fun RecentCompletionsScreen(
                         yesterday -> yesterdayLabel
                         else -> formatLocalDateForLocale(date, "EEEMMMd")
                     }
-                    item(key = "header-${date}") {
-                        CompletionDateHeader(label = label)
-                    }
-                    itemsIndexed(items, key = { _, completion -> completion.completionId }) { index, completion ->
-                        if (index > 0) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = spacing.medium),
-                            )
-                        }
-                        RecentCompletionRow(
-                            completion = completion,
-                            onClick = { onOpenCompletion(completion.completionId) },
+                    item(key = "group-${date}") {
+                        CompletionDateSection(
+                            label = label,
+                            completions = items,
+                            onOpenCompletion = onOpenCompletion,
                         )
                     }
                 }
@@ -571,17 +565,41 @@ fun RecentCompletionsScreen(
 }
 
 @Composable
-private fun CompletionDateHeader(label: String) {
+private fun CompletionDateSection(
+    label: String,
+    completions: List<RecentCompletion>,
+    onOpenCompletion: (String) -> Unit,
+) {
     val spacing = LocalSpacing.current
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = spacing.medium, vertical = spacing.xSmall),
-    )
+    Column(
+        verticalArrangement = Arrangement.spacedBy(spacing.xSmall),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = spacing.medium),
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+            ),
+        ) {
+            Column {
+                completions.forEachIndexed { index, completion ->
+                    RecentCompletionRow(
+                        completion = completion,
+                        onClick = { onOpenCompletion(completion.completionId) },
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = spacing.medium),
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
