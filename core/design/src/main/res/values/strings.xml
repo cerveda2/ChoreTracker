@@ -60,6 +60,8 @@
     <string name="dashboard_log">Log</string>
     <string name="dashboard_recent_completions">Recent completions</string>
     <string name="dashboard_all_completions">All completions</string>
+    <string name="dashboard_completions_today">Today</string>
+    <string name="dashboard_completions_yesterday">Yesterday</string>
     <string name="dashboard_recent_completions_empty_title">No completions yet</string>
     <string name="dashboard_recent_completions_empty_message">Once someone logs a chore, it will appear here with the latest activity first.</string>
     <string name="dashboard_completion_detail">Completion details</string>
@@ -120,6 +122,10 @@
     <string name="settings_account_actions">Account</string>
     <string name="settings_current_profile">Current profile: %1$s</string>
     <string name="settings_profile_description">Signed in as %1$s</string>
+    <string name="settings_account_display_name_label">Display name</string>
+    <string name="settings_account_email_label">Email</string>
+    <string name="settings_account_email_supporting">Your sign-in email can’t be changed here.</string>
+    <string name="settings_save_display_name">Save display name</string>
     <string name="settings_household_description">%1$s</string>
     <string name="settings_members_description">%1$d active household members</string>
     <string name="settings_chores_description">%1$d chores available for tracking</string>
@@ -132,6 +138,7 @@
     <string name="settings_chores_empty_message">Create your first chore to unlock quick logging, recent activity, and household statistics.</string>
     <string name="settings_theme_note">Warm Utility is the current app theme.</string>
     <string name="settings_sign_out">Sign out</string>
+    <string name="settings_sign_out_supporting">Sign out of this device and return to the authentication flow.</string>
     <string name="settings_loading">Loading…</string>
     <string name="settings_signed_out">Signed out</string>
     <string name="settings_firebase_required">Firebase setup required</string>

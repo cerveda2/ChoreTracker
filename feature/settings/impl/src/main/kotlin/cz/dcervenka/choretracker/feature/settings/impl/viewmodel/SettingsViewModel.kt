@@ -14,6 +14,8 @@ import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateCurrentMemberDisplayNameUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateHouseholdNameUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
@@ -24,6 +26,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -39,24 +43,56 @@ class SettingsViewModel @Inject constructor(
     private val addChoreUseCase: AddChoreUseCase,
     private val createInviteUseCase: CreateInviteUseCase,
     private val deleteChoreUseCase: DeleteChoreUseCase,
+    private val updateDisplayNameUseCase: UpdateDisplayNameUseCase,
+    private val updateCurrentMemberDisplayNameUseCase: UpdateCurrentMemberDisplayNameUseCase,
     private val updateChoreActiveUseCase: UpdateChoreActiveUseCase,
     private val updateChoreFrequencyUseCase: UpdateChoreFrequencyUseCase,
     private val updateChoreNameUseCase: UpdateChoreNameUseCase,
     private val updateHouseholdNameUseCase: UpdateHouseholdNameUseCase,
 ) : ViewModel() {
+    private var hydratedUserId: String? = null
+    private var currentHouseholdId: String? = null
+    private val accountDisplayNameInput = MutableStateFlow("")
     private val householdNameInput = MutableStateFlow("")
     private val memberInput = MutableStateFlow("")
     private val choreInput = MutableStateFlow("")
+
+    init {
+        observeAuthStateUseCase()
+            .onEach { state ->
+                when (state) {
+                    is AuthState.Authenticated -> {
+                        if (hydratedUserId != state.user.id || accountDisplayNameInput.value.isBlank()) {
+                            accountDisplayNameInput.value = state.user.displayName
+                            hydratedUserId = state.user.id
+                        }
+                    }
+                    else -> {
+                        hydratedUserId = null
+                        accountDisplayNameInput.value = ""
+                    }
+                }
+            }
+            .launchIn(viewModelScope)
+
+        observeCurrentHouseholdUseCase()
+            .onEach { household ->
+                currentHouseholdId = household?.id
+            }
+            .launchIn(viewModelScope)
+    }
 
     private val householdState = observeCurrentHouseholdUseCase()
         .flatMapLatest { household ->
             if (household == null) {
                 combine(
+                    accountDisplayNameInput,
                     householdNameInput,
                     memberInput,
                     choreInput,
-                ) { currentHouseholdName, currentMember, currentChore ->
+                ) { currentAccountName, currentHouseholdName, currentMember, currentChore ->
                     SettingsUiState(
+                        accountDisplayNameInput = currentAccountName,
                         householdNameInput = currentHouseholdName,
                         memberInput = currentMember,
                         choreInput = currentChore,
@@ -69,17 +105,24 @@ class SettingsViewModel @Inject constructor(
                 combine(
                     observeMembersUseCase(household.id),
                     observeChoresUseCase(household.id),
-                    householdNameInput,
-                    memberInput,
-                    choreInput,
-                ) { members, chores, currentHouseholdName, currentMember, currentChore ->
-                    SettingsUiState(
+                    combine(
+                        accountDisplayNameInput,
+                        householdNameInput,
+                        memberInput,
+                        choreInput,
+                    ) { currentAccountName, currentHouseholdName, currentMember, currentChore ->
+                        SettingsUiState(
+                            accountDisplayNameInput = currentAccountName,
+                            householdNameInput = currentHouseholdName,
+                            memberInput = currentMember,
+                            choreInput = currentChore,
+                        )
+                    },
+                ) { members, chores, draftState ->
+                    draftState.copy(
                         household = household,
                         members = members,
                         chores = chores.filter { it.deletedAt == null },
-                        householdNameInput = currentHouseholdName,
-                        memberInput = currentMember,
-                        choreInput = currentChore,
                     )
                 }
             }
@@ -90,7 +133,11 @@ class SettingsViewModel @Inject constructor(
         householdState,
     ) { state, householdUiState ->
         when (state) {
-            is AuthState.Authenticated -> householdUiState.copy(userLabel = state.user.displayName)
+            is AuthState.Authenticated -> householdUiState.copy(
+                userLabel = state.user.displayName,
+                userEmail = state.user.email,
+                accountDisplayNameInput = accountDisplayNameInput.value,
+            )
             AuthState.RequiresConfiguration -> householdUiState.copy(requiresConfiguration = true)
             AuthState.SignedOut -> householdUiState.copy(isSignedOut = true)
             AuthState.Initializing -> householdUiState
@@ -103,9 +150,11 @@ class SettingsViewModel @Inject constructor(
 
     fun dispatch(intent: SettingsUiIntent) {
         when (intent) {
+            is SettingsUiIntent.AccountDisplayNameChanged -> accountDisplayNameInput.value = intent.value
             is SettingsUiIntent.HouseholdNameChanged -> householdNameInput.value = intent.value
             is SettingsUiIntent.MemberInputChanged -> memberInput.value = intent.value
             is SettingsUiIntent.ChoreInputChanged -> choreInput.value = intent.value
+            SettingsUiIntent.SaveAccountDisplayName -> saveAccountDisplayName()
             SettingsUiIntent.SignOut -> signOut()
             SettingsUiIntent.SaveHouseholdName -> saveHouseholdName()
             SettingsUiIntent.AddMember -> addMember()
@@ -121,6 +170,20 @@ class SettingsViewModel @Inject constructor(
     private fun signOut() {
         viewModelScope.launch {
             signOutUseCase()
+        }
+    }
+
+    private fun saveAccountDisplayName() {
+        val sanitizedName = accountDisplayNameInput.value.trim()
+        if (sanitizedName.isBlank()) return
+        val householdId = currentHouseholdId
+        viewModelScope.launch {
+            val authUpdate = updateDisplayNameUseCase(sanitizedName)
+            if (authUpdate is cz.dcervenka.choretracker.core.common.AppResult.Success) {
+                householdId?.let {
+                    updateCurrentMemberDisplayNameUseCase(it, sanitizedName)
+                }
+            }
         }
     }
 
