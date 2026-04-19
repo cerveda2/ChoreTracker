@@ -148,6 +148,8 @@
     <string name="settings_members_description">%1$d active household members</string>
     <string name="settings_chores_description">%1$d chores available for tracking</string>
     <string name="settings_account_description">Sign out and app preferences</string>
+    <string name="settings_language_title">Language</string>
+    <string name="settings_language_description">App display language</string>
     <string name="settings_household_empty_title">No household selected</string>
     <string name="settings_household_empty_message">Create or join a household during onboarding to manage its name and invite code here.</string>
     <string name="settings_members_empty_title">No members yet</string>
