@@ -1,13 +1,22 @@
 package cz.dcervenka.choretracker.feature.stats.impl.screen
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -16,14 +25,11 @@ import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.PreviewData
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
+import cz.dcervenka.choretracker.core.design.components.ChoreTabRow
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
-import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.LoadingState
-import cz.dcervenka.choretracker.core.design.components.SectionCard
-import cz.dcervenka.choretracker.core.formatters.formatMonthLabelForLocale
-import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
-import cz.dcervenka.choretracker.core.model.stats.HouseholdSummary
 import cz.dcervenka.choretracker.feature.stats.impl.contract.StatsUiState
+import kotlinx.coroutines.launch
 
 @Composable
 fun StatsScreen(
@@ -34,103 +40,79 @@ fun StatsScreen(
 
     if (stats == null) {
         LoadingState(message = stringResource(R.string.stats_loading))
-    } else {
-        ChoreScaffold(
-            topBar = {
-                ChoreTopAppBar(title = stringResource(R.string.stats_title))
-            },
-        ) { innerPadding ->
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = spacing.large,
-                    top = innerPadding.calculateTopPadding() + spacing.large,
-                    end = spacing.large,
-                    bottom = innerPadding.calculateBottomPadding() + spacing.large,
-                ),
-                verticalArrangement = Arrangement.spacedBy(spacing.medium),
+        return
+    }
+
+    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+    val pagerState = rememberPagerState(
+        initialPage = selectedTabIndex,
+        pageCount = { StatsTab.entries.size },
+    )
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(pagerState.currentPage) {
+        selectedTabIndex = pagerState.currentPage
+    }
+
+    ChoreScaffold(
+        topBar = {
+            ChoreTopAppBar(title = stringResource(R.string.stats_title))
+        },
+    ) { innerPadding ->
+        val pagePadding = PaddingValues(
+            start = spacing.large,
+            top = spacing.medium,
+            end = spacing.large,
+            bottom = spacing.large,
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = innerPadding.calculateTopPadding()),
+        ) {
+            ChoreTabRow(
+                selectedTabIndex = selectedTabIndex,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = spacing.large),
             ) {
-                item {
-                    Text(
-                        text = stats.household.name,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                StatsTab.entries.forEachIndexed { index, tab ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = {
+                            selectedTabIndex = index
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(index)
+                            }
+                        },
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = { Text(text = stringResource(tab.labelRes)) },
                     )
                 }
-                item {
-                    SummaryCard(summary = stats.summary)
-                }
-                if (stats.comparisons.isEmpty() && stats.monthlyBreakdown.isEmpty()) {
-                    item {
-                        EmptyState(
-                            title = stringResource(R.string.stats_empty_title),
-                            message = stringResource(R.string.stats_empty_message),
-                        )
-                    }
-                } else {
-                    items(stats.comparisons, key = { it.choreId }) { comparison ->
-                        SectionCard(title = comparison.choreName) {
-                            Text(
-                                stringResource(R.string.stats_total_count, comparison.totalCount),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            comparison.countsByMember.forEach { (member, count) ->
-                                Text(stringResource(R.string.stats_member_count, member, count))
-                            }
-                            val leaderText = when (val leader = comparison.leader) {
-                                ChoreLeaderResult.NoData -> stringResource(R.string.stats_leader_no_data)
-                                ChoreLeaderResult.Tie -> stringResource(R.string.stats_leader_tie)
-                                is ChoreLeaderResult.Leader -> leader.displayName
-                            }
-                            Text(stringResource(R.string.stats_leader, leaderText))
-                        }
-                    }
-                    items(stats.monthlyBreakdown, key = { it.monthLabel }) { month ->
-                        SectionCard(title = formatMonthLabelForLocale(month.monthLabel)) {
-                            Text(
-                                stringResource(R.string.stats_total_count, month.totalCount),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            month.countsByMember.forEach { (member, count) ->
-                                Text(stringResource(R.string.stats_member_count, member, count))
-                            }
-                        }
-                    }
+            }
+
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            ) { page ->
+                when (StatsTab.entries[page]) {
+                    StatsTab.Summary -> SummaryTab(stats = stats, contentPadding = pagePadding)
+                    StatsTab.ByChore -> ByChoreTab(stats = stats, contentPadding = pagePadding)
+                    StatsTab.Monthly -> MonthlyTab(stats = stats, contentPadding = pagePadding)
                 }
             }
         }
     }
 }
 
-@Composable
-private fun SummaryCard(summary: HouseholdSummary) {
-    SectionCard(title = stringResource(R.string.stats_title)) {
-        if (summary.totalCompletions == 0) {
-            Text(
-                text = stringResource(R.string.stats_summary_no_data),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            Text(
-                text = stringResource(R.string.stats_summary_total, summary.totalCompletions),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            summary.topContributor?.let { top ->
-                Text(
-                    text = stringResource(
-                        R.string.stats_summary_top_contributor,
-                        top.displayName,
-                        top.sharePercent,
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-        }
-    }
+internal enum class StatsTab(val labelRes: Int) {
+    Summary(R.string.stats_tab_summary),
+    ByChore(R.string.stats_tab_by_chore),
+    Monthly(R.string.stats_tab_monthly),
 }
 
 @Preview(showBackground = true, heightDp = 1000)

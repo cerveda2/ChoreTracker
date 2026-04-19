@@ -98,15 +98,33 @@
 
     <string name="stats_loading">Loading statistics…</string>
     <string name="stats_title">Statistics</string>
+    <string name="stats_tab_summary">Summary</string>
+    <string name="stats_tab_by_chore">By chore</string>
+    <string name="stats_tab_monthly">Monthly</string>
     <string name="stats_empty_title">Not enough data yet</string>
     <string name="stats_empty_message">Statistics will appear after a few chores have been completed in your household.</string>
     <string name="stats_per_chore_comparison">Per chore comparison</string>
+    <string name="stats_per_chore_empty_title">No chore comparisons yet</string>
+    <string name="stats_per_chore_empty_message">Start logging chores and we’ll break down who is doing what for each one.</string>
     <string name="stats_member_count">%1$s: %2$d</string>
     <string name="stats_leader">Leader: %1$s</string>
     <string name="stats_leader_no_data">No data</string>
     <string name="stats_leader_tie">Tie</string>
     <string name="stats_monthly_breakdown">Monthly breakdown</string>
+    <string name="stats_monthly_empty_title">No monthly trend yet</string>
+    <string name="stats_monthly_empty_message">Once completions span a few dates, the monthly history will appear here.</string>
     <string name="stats_total_count">Total completions: %1$d</string>
+    <string name="stats_summary_members_title">Household contribution</string>
+    <string name="stats_summary_members_empty">No member activity yet.</string>
+    <string name="stats_summary_member_line">%1$s • %2$d total • %3$d%% share</string>
+    <string name="stats_summary_member_subline">Last 30 days: %1$d • This month: %2$d</string>
+    <string name="stats_summary_attention_title">Needs attention</string>
+    <string name="stats_summary_attention_empty">No stale chores right now.</string>
+    <string name="stats_summary_attention_line">%1$s • %2$s</string>
+    <string name="stats_stale_never">Never completed</string>
+    <string name="stats_stale_days_ago">%1$d days ago</string>
+    <string name="stats_stale_soon">Due soon</string>
+    <string name="stats_stale_ok">On track</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_overview">Overview</string>

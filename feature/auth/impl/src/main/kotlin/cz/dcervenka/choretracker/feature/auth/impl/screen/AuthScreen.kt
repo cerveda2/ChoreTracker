@@ -10,9 +10,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -26,6 +24,7 @@ import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
+import cz.dcervenka.choretracker.core.design.components.ChoreTabRow
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.ScreenHeader
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthMode
@@ -60,20 +59,7 @@ fun AuthScreen(
                     )
                 }
             }
-            PrimaryTabRow(
-                selectedTabIndex = uiState.authMode.ordinal,
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                indicator = {
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier
-                            .tabIndicatorOffset(uiState.authMode.ordinal, matchContentSize = false)
-                            .padding(horizontal = spacing.medium),
-                        height = spacing.xSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                },
-                divider = {},
-            ) {
+            ChoreTabRow(selectedTabIndex = uiState.authMode.ordinal) {
                 AuthMode.entries.forEach { mode ->
                     Tab(
                         selected = uiState.authMode == mode,

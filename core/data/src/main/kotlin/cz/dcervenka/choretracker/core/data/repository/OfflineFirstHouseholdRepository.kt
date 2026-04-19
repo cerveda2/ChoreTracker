@@ -51,42 +51,46 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     override fun observeCurrentHousehold(): Flow<Household?> = authRepository.authState.flatMapLatest { authState ->
         flow {
             val user = (authState as? AuthState.Authenticated)?.user
-            if (user != null && !user.isPreview) {
-                syncRepository.syncPendingOperations()
-                if (householdDao.getCurrentHouseholdForUser(user.id) == null) {
-                    Timber.d("observeCurrentHousehold: no local household, restoring for user=${user.id}")
-                    restoreStatus.value = HouseholdRestoreStatus(isRestoring = true)
-                    when (val restoreResult = syncRepository.restoreHouseholdForUser(user.id)) {
-                        is AppResult.Error -> {
-                            Timber.e("observeCurrentHousehold: restore failed - ${restoreResult.message}")
-                            restoreStatus.value = HouseholdRestoreStatus(
-                                isRestoring = false,
-                                errorMessage = restoreResult.message,
-                            )
-                        }
-                        is AppResult.Success -> {
-                            Timber.d("observeCurrentHousehold: restore succeeded")
-                            restoreStatus.value = HouseholdRestoreStatus()
-                        }
-                    }
-                } else {
+            when {
+                user == null -> {
                     restoreStatus.value = HouseholdRestoreStatus()
+                    emit(null)
                 }
-                emitAll(householdDao.observeHouseholdForUser(user.id).map { it?.asModel() })
-            } else if (user != null && user.isPreview) {
-                restoreStatus.value = HouseholdRestoreStatus()
-                emit(
-                    Household(
-                        id = "preview-household",
-                        name = "Sunny Flat",
-                        ownerUserId = "preview-user",
-                        inviteCode = "HOME42",
-                        createdAt = Clock.System.now(),
-                    ),
-                )
-            } else {
-                restoreStatus.value = HouseholdRestoreStatus()
-                emit(null)
+                user.isPreview -> {
+                    restoreStatus.value = HouseholdRestoreStatus()
+                    emit(
+                        Household(
+                            id = "preview-household",
+                            name = "Sunny Flat",
+                            ownerUserId = "preview-user",
+                            inviteCode = "HOME42",
+                            createdAt = Clock.System.now(),
+                        ),
+                    )
+                }
+                else -> {
+                    syncRepository.syncPendingOperations()
+                    if (householdDao.getCurrentHouseholdForUser(user.id) == null) {
+                        Timber.d("observeCurrentHousehold: no local household, restoring for user=${user.id}")
+                        restoreStatus.value = HouseholdRestoreStatus(isRestoring = true)
+                        when (val restoreResult = syncRepository.restoreHouseholdForUser(user.id)) {
+                            is AppResult.Error -> {
+                                Timber.e("observeCurrentHousehold: restore failed - ${restoreResult.message}")
+                                restoreStatus.value = HouseholdRestoreStatus(
+                                    isRestoring = false,
+                                    errorMessage = restoreResult.message,
+                                )
+                            }
+                            is AppResult.Success -> {
+                                Timber.d("observeCurrentHousehold: restore succeeded")
+                                restoreStatus.value = HouseholdRestoreStatus()
+                            }
+                        }
+                    } else {
+                        restoreStatus.value = HouseholdRestoreStatus()
+                    }
+                    emitAll(householdDao.observeHouseholdForUser(user.id).map { it?.asModel() })
+                }
             }
         }
     }
