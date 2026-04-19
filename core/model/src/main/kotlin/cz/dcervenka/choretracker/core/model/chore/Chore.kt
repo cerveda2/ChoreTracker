@@ -10,4 +10,5 @@ data class Chore(
     val createdAt: Instant,
     val deletedAt: Instant? = null,
     val frequencyDays: Int? = null,
+    val category: ChoreCategory = ChoreCategory.OTHER,
 )

@@ -5,9 +5,9 @@ import cz.dcervenka.choretracker.core.data.contract.ChoreRepository
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import javax.inject.Inject
 
-class AddChoreUseCase @Inject constructor(
+class UpdateChoreCategoryUseCase @Inject constructor(
     private val choreRepository: ChoreRepository,
 ) {
-    suspend operator fun invoke(householdId: String, name: String, category: ChoreCategory): EmptyResult =
-        choreRepository.addChore(householdId = householdId, name = name, category = category)
+    suspend operator fun invoke(choreId: String, category: ChoreCategory): EmptyResult =
+        choreRepository.updateChoreCategory(choreId = choreId, category = category)
 }

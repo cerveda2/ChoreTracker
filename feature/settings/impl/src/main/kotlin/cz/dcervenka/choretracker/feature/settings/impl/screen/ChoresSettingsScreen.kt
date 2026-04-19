@@ -1,21 +1,23 @@
 package cz.dcervenka.choretracker.feature.settings.impl.screen
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
@@ -37,8 +41,13 @@ import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.ScreenHeader
 import cz.dcervenka.choretracker.core.design.components.SectionCard
+import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Schedule
 
 @Composable
 fun ChoresSettingsScreen(
@@ -53,6 +62,8 @@ fun ChoresSettingsScreen(
     val pendingFrequencyChore = uiState.chores.firstOrNull { it.id == pendingFrequencyChoreId }
     var pendingRenameChoreId by remember { mutableStateOf<String?>(null) }
     val pendingRenameChore = uiState.chores.firstOrNull { it.id == pendingRenameChoreId }
+    var pendingCategoryChoreId by remember { mutableStateOf<String?>(null) }
+    val pendingCategoryChore = uiState.chores.firstOrNull { it.id == pendingCategoryChoreId }
 
     ChoreScaffold(
         topBar = {
@@ -87,6 +98,13 @@ fun ChoresSettingsScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
+                                IconButton(onClick = { pendingCategoryChoreId = chore.id }) {
+                                    Icon(
+                                        imageVector = chore.category.toIcon(),
+                                        contentDescription = stringResource(R.string.settings_chore_category_title),
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(text = chore.name)
                                     chore.frequencyDays?.let { days ->
@@ -145,6 +163,27 @@ fun ChoresSettingsScreen(
                         ),
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(spacing.xSmall),
+                    ) {
+                        ChoreCategory.entries.forEach { category ->
+                            FilterChip(
+                                selected = uiState.choreCategoryInput == category,
+                                onClick = { onIntent(SettingsUiIntent.ChoreCategoryInputChanged(category)) },
+                                label = { Text(category.label()) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = category.toIcon(),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                },
+                            )
+                        }
+                    }
                     PrimaryButton(
                         text = stringResource(R.string.household_add_chore),
                         onClick = { onIntent(SettingsUiIntent.AddChore) },
@@ -191,6 +230,27 @@ fun ChoresSettingsScreen(
             },
         )
     }
+
+    if (pendingCategoryChore != null) {
+        ChoreCategoryDialog(
+            choreId = pendingCategoryChore.id,
+            currentCategory = pendingCategoryChore.category,
+            onDismiss = { pendingCategoryChoreId = null },
+            onSave = { category ->
+                onIntent(SettingsUiIntent.UpdateChoreCategory(pendingCategoryChore.id, category))
+                pendingCategoryChoreId = null
+            },
+        )
+    }
+}
+
+@Composable
+private fun ChoreCategory.label(): String = when (this) {
+    ChoreCategory.CLEANING -> stringResource(R.string.chore_category_cleaning)
+    ChoreCategory.COOKING -> stringResource(R.string.chore_category_cooking)
+    ChoreCategory.SHOPPING -> stringResource(R.string.chore_category_shopping)
+    ChoreCategory.OUTDOOR -> stringResource(R.string.chore_category_outdoor)
+    ChoreCategory.OTHER -> stringResource(R.string.chore_category_other)
 }
 
 @Composable
@@ -302,6 +362,58 @@ private fun ChoreFrequencyDialog(
                 TextButton(onClick = onDismiss) {
                     Text(stringResource(R.string.common_cancel))
                 }
+            }
+        },
+    )
+}
+
+@Composable
+private fun ChoreCategoryDialog(
+    choreId: String,
+    currentCategory: ChoreCategory,
+    onDismiss: () -> Unit,
+    onSave: (ChoreCategory) -> Unit,
+) {
+    var selected by remember(choreId) { mutableStateOf(currentCategory) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_chore_category_title)) },
+        text = {
+            Column {
+                ChoreCategory.entries.forEach { category ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Icon(
+                            imageVector = category.toIcon(),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Text(
+                            text = category.label(),
+                            modifier = Modifier.weight(1f),
+                        )
+                        RadioButton(
+                            selected = selected == category,
+                            onClick = { selected = category },
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(selected) }) {
+                Text(stringResource(R.string.common_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.common_cancel))
             }
         },
     )

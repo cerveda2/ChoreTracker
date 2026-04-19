@@ -10,6 +10,7 @@ import com.google.firebase.firestore.SetOptions
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.chore.Chore
+import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
@@ -146,6 +147,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     "createdAt" to chore.createdAt.asTimestamp(),
                     "deletedAt" to chore.deletedAt?.asTimestamp(),
                     "frequencyDays" to chore.frequencyDays,
+                    "category" to chore.category.name,
                 ),
                 SetOptions.merge(),
             )
@@ -294,6 +296,9 @@ class FirebaseHouseholdDataSource @Inject constructor(
         createdAt = getTimestamp("createdAt").asInstant(),
         deletedAt = getTimestamp("deletedAt")?.asInstant(),
         frequencyDays = getLong("frequencyDays")?.toInt(),
+        category = getString("category")
+            ?.let { runCatching { ChoreCategory.valueOf(it) }.getOrNull() }
+            ?: ChoreCategory.OTHER,
     )
 
     private fun DocumentSnapshot.asCompletion(householdId: String): ChoreCompletion = ChoreCompletion(

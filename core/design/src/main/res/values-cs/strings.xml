@@ -175,6 +175,12 @@
     <string name="settings_chore_clear_frequency">Vymazat</string>
     <string name="settings_chore_rename_title">Přejmenovat úkol</string>
     <string name="settings_chore_rename_hint">Název úkolu</string>
+    <string name="settings_chore_category_title">Kategorie</string>
+    <string name="chore_category_cleaning">Úklid</string>
+    <string name="chore_category_cooking">Vaření</string>
+    <string name="chore_category_shopping">Nákupy</string>
+    <string name="chore_category_outdoor">Venku</string>
+    <string name="chore_category_other">Ostatní</string>
 
     <string name="common_save">Uložit</string>
     <string name="common_cancel">Zrušit</string>
