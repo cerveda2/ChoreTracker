@@ -2,15 +2,19 @@ package cz.dcervenka.choretracker.feature.dashboard.impl.screen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
@@ -28,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.PreviewData
@@ -38,6 +43,7 @@ import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.LogButton
 import cz.dcervenka.choretracker.core.design.components.SectionCard
+import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.formatters.formatLocalDateForLocale
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
@@ -92,6 +98,7 @@ fun DashboardScreen(
         val stalenessByChoreId = snapshot.staleChores.associateBy { it.choreId }
         val highlightedCompletions = uiState.allCompletions.take(3)
         val staleItems = snapshot.staleChores.filter { it.status != ChoreStatus.OK }
+        val categoryByChoreId = snapshot.activeChores.associate { it.id to it.category }
 
         ChoreScaffold(
             snackbarHostState = snackbarHostState,
@@ -190,6 +197,7 @@ fun DashboardScreen(
                                     LogButton(
                                         text = chore.name,
                                         subtitle = subtitle,
+                                        icon = chore.category.toIcon(),
                                         onClick = { openLogSheet(chore.id) },
                                     )
                                 }
@@ -234,12 +242,22 @@ fun DashboardScreen(
                             )
                         } else {
                             staleItems.forEach { stale ->
+                                val categoryIcon = categoryByChoreId[stale.choreId]?.toIcon()
                                 Card(modifier = Modifier.fillMaxWidth()) {
                                     androidx.compose.foundation.layout.Row(
                                         modifier = Modifier.padding(spacing.medium),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
+                                        if (categoryIcon != null) {
+                                            Icon(
+                                                imageVector = categoryIcon,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(20.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            Spacer(modifier = Modifier.width(spacing.small))
+                                        }
                                         androidx.compose.foundation.layout.Column(
                                             modifier = Modifier.weight(1f),
                                             verticalArrangement = Arrangement.spacedBy(spacing.xSmall),

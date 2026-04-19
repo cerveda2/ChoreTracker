@@ -7,6 +7,7 @@ import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
 import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.model.chore.Chore
+import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
@@ -38,6 +39,7 @@ internal fun ChoreEntity.asModel(): Chore = Chore(
     createdAt = createdAt,
     deletedAt = deletedAt,
     frequencyDays = frequencyDays,
+    category = runCatching { ChoreCategory.valueOf(category) }.getOrDefault(ChoreCategory.OTHER),
 )
 
 internal fun InviteEntity.asModel(): Invite = Invite(

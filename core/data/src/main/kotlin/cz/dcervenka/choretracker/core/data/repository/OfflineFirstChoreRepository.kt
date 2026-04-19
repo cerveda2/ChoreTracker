@@ -10,6 +10,7 @@ import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.chore.Chore
+import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
@@ -28,8 +29,8 @@ class OfflineFirstChoreRepository @Inject constructor(
     override fun observeChores(householdId: String): Flow<List<Chore>> =
         choreDao.observeChores(householdId).map { chores -> chores.map(ChoreEntity::asModel) }
 
-    override suspend fun addChore(householdId: String, name: String): EmptyResult {
-        Timber.d("addChore: householdId=$householdId name=$name")
+    override suspend fun addChore(householdId: String, name: String, category: ChoreCategory): EmptyResult {
+        Timber.d("addChore: householdId=$householdId name=$name category=$category")
         val choreId = UUID.randomUUID().toString()
         choreDao.upsert(
             ChoreEntity(
@@ -39,6 +40,7 @@ class OfflineFirstChoreRepository @Inject constructor(
                 isActive = true,
                 createdAt = Clock.System.now(),
                 deletedAt = null,
+                category = category.name,
             ),
         )
         pendingSyncOperationDao.upsert(
@@ -116,6 +118,23 @@ class OfflineFirstChoreRepository @Inject constructor(
                 entityId = choreId,
                 operationType = "update_frequency",
                 payload = frequencyDays?.toString().orEmpty(),
+                createdAt = Clock.System.now(),
+            ),
+        )
+        syncRepository.syncPendingOperations()
+        return AppResult.Success(Unit)
+    }
+
+    override suspend fun updateChoreCategory(choreId: String, category: ChoreCategory): EmptyResult {
+        Timber.d("updateChoreCategory: choreId=$choreId category=$category")
+        choreDao.updateCategory(choreId, category.name)
+        pendingSyncOperationDao.upsert(
+            PendingSyncOperationEntity(
+                id = UUID.randomUUID().toString(),
+                entityType = "chore",
+                entityId = choreId,
+                operationType = "update_category",
+                payload = category.name,
                 createdAt = Clock.System.now(),
             ),
         )

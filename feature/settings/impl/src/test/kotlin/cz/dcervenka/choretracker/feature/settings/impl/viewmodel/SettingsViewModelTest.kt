@@ -13,6 +13,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseC
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreCategoryUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCurrentMemberDisplayNameUseCase
@@ -85,6 +86,9 @@ class SettingsViewModelTest {
     lateinit var updateChoreNameUseCase: UpdateChoreNameUseCase
 
     @MockK
+    lateinit var updateChoreCategoryUseCase: UpdateChoreCategoryUseCase
+
+    @MockK
     lateinit var updateHouseholdNameUseCase: UpdateHouseholdNameUseCase
 
     private val authStateFlow = MutableStateFlow<AuthState>(AuthState.SignedOut)
@@ -106,7 +110,8 @@ class SettingsViewModelTest {
         every { observeChoresUseCase(any()) } answers { choresFlow }
         coEvery { signOutUseCase() } returns AppResult.Success(Unit)
         coEvery { addMemberUseCase(any(), any()) } returns AppResult.Success(Unit)
-        coEvery { addChoreUseCase(any(), any()) } returns AppResult.Success(Unit)
+        coEvery { addChoreUseCase(any(), any(), any()) } returns AppResult.Success(Unit)
+        coEvery { updateChoreCategoryUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery {
             createInviteUseCase(any())
         } returns AppResult.Success(cz.dcervenka.choretracker.core.test.mock.sampleInvite())
@@ -206,5 +211,6 @@ private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
     updateChoreActiveUseCase,
     updateChoreFrequencyUseCase,
     updateChoreNameUseCase,
+    updateChoreCategoryUseCase,
     updateHouseholdNameUseCase,
 )

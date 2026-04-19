@@ -175,6 +175,12 @@
     <string name="settings_chore_clear_frequency">Clear</string>
     <string name="settings_chore_rename_title">Rename chore</string>
     <string name="settings_chore_rename_hint">Chore name</string>
+    <string name="settings_chore_category_title">Category</string>
+    <string name="chore_category_cleaning">Cleaning</string>
+    <string name="chore_category_cooking">Cooking</string>
+    <string name="chore_category_shopping">Shopping</string>
+    <string name="chore_category_outdoor">Outdoor</string>
+    <string name="chore_category_other">Other</string>
 
     <string name="common_save">Save</string>
     <string name="common_cancel">Cancel</string>

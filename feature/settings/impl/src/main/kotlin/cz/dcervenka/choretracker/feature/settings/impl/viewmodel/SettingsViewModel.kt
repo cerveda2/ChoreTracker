@@ -12,12 +12,14 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseC
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreCategoryUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCurrentMemberDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateHouseholdNameUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -48,6 +50,7 @@ class SettingsViewModel @Inject constructor(
     private val updateChoreActiveUseCase: UpdateChoreActiveUseCase,
     private val updateChoreFrequencyUseCase: UpdateChoreFrequencyUseCase,
     private val updateChoreNameUseCase: UpdateChoreNameUseCase,
+    private val updateChoreCategoryUseCase: UpdateChoreCategoryUseCase,
     private val updateHouseholdNameUseCase: UpdateHouseholdNameUseCase,
 ) : ViewModel() {
     private var hydratedUserId: String? = null
@@ -56,6 +59,7 @@ class SettingsViewModel @Inject constructor(
     private val householdNameInput = MutableStateFlow("")
     private val memberInput = MutableStateFlow("")
     private val choreInput = MutableStateFlow("")
+    private val choreCategoryInput = MutableStateFlow(ChoreCategory.OTHER)
 
     init {
         observeAuthStateUseCase()
@@ -90,12 +94,14 @@ class SettingsViewModel @Inject constructor(
                     householdNameInput,
                     memberInput,
                     choreInput,
-                ) { currentAccountName, currentHouseholdName, currentMember, currentChore ->
+                    choreCategoryInput,
+                ) { currentAccountName, currentHouseholdName, currentMember, currentChore, currentCategory ->
                     SettingsUiState(
                         accountDisplayNameInput = currentAccountName,
                         householdNameInput = currentHouseholdName,
                         memberInput = currentMember,
                         choreInput = currentChore,
+                        choreCategoryInput = currentCategory,
                     )
                 }
             } else {
@@ -110,12 +116,14 @@ class SettingsViewModel @Inject constructor(
                         householdNameInput,
                         memberInput,
                         choreInput,
-                    ) { currentAccountName, currentHouseholdName, currentMember, currentChore ->
+                        choreCategoryInput,
+                    ) { currentAccountName, currentHouseholdName, currentMember, currentChore, currentCategory ->
                         SettingsUiState(
                             accountDisplayNameInput = currentAccountName,
                             householdNameInput = currentHouseholdName,
                             memberInput = currentMember,
                             choreInput = currentChore,
+                            choreCategoryInput = currentCategory,
                         )
                     },
                 ) { members, chores, draftState ->
@@ -154,6 +162,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsUiIntent.HouseholdNameChanged,
             is SettingsUiIntent.MemberInputChanged,
             is SettingsUiIntent.ChoreInputChanged,
+            is SettingsUiIntent.ChoreCategoryInputChanged,
             -> handleInputIntent(intent)
             else -> handleActionIntent(intent)
         }
@@ -165,6 +174,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsUiIntent.HouseholdNameChanged -> householdNameInput.value = intent.value
             is SettingsUiIntent.MemberInputChanged -> memberInput.value = intent.value
             is SettingsUiIntent.ChoreInputChanged -> choreInput.value = intent.value
+            is SettingsUiIntent.ChoreCategoryInputChanged -> choreCategoryInput.value = intent.category
             else -> Unit
         }
     }
@@ -181,6 +191,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsUiIntent.DeleteChore -> deleteChore(intent.choreId)
             is SettingsUiIntent.UpdateChoreFrequency -> updateChoreFrequency(intent.choreId, intent.frequencyDays)
             is SettingsUiIntent.UpdateChoreName -> updateChoreName(intent.choreId, intent.name)
+            is SettingsUiIntent.UpdateChoreCategory -> updateChoreCategory(intent.choreId, intent.category)
             else -> Unit
         }
     }
@@ -223,8 +234,9 @@ class SettingsViewModel @Inject constructor(
     private fun addChore() {
         val household = uiState.value.household ?: return
         viewModelScope.launch {
-            addChoreUseCase(household.id, uiState.value.choreInput)
+            addChoreUseCase(household.id, uiState.value.choreInput, choreCategoryInput.value)
             choreInput.value = ""
+            choreCategoryInput.value = ChoreCategory.OTHER
         }
     }
 
@@ -256,6 +268,12 @@ class SettingsViewModel @Inject constructor(
     private fun updateChoreName(choreId: String, name: String) {
         viewModelScope.launch {
             updateChoreNameUseCase(choreId, name)
+        }
+    }
+
+    private fun updateChoreCategory(choreId: String, category: ChoreCategory) {
+        viewModelScope.launch {
+            updateChoreCategoryUseCase(choreId, category)
         }
     }
 }
