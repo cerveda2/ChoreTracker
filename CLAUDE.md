@@ -78,7 +78,6 @@ Always create feature branches from `main`. PRs go into `main`.
 ### Backlog (ordered by priority)
 
 5. **App icon** — Vector adaptive icon: house + checkmark, sage green + warm beige palette.
-6. **Language switching** — `AppCompatDelegate.setApplicationLocales()`, picker in Settings.
 7. **Dashboard FAB** — Floating action button for logging a chore.
 8. **Bottom nav disappears** — Bottom nav hidden when navigating to completion detail screen. (low priority)
 
@@ -104,6 +103,7 @@ Always create feature branches from `main`. PRs go into `main`.
 - Recent completions full list — grouped by date with Today/Yesterday labels and activity-feed styling (#16)
 - Account screen — editable display name, read-only email, and sign-out from Settings profile section (#17)
 - Statistics redesign — 3 tabs (Summary, By Chore, Monthly) with `HorizontalPager` + `PrimaryTabRow` (#19)
+- Language switching — `LocaleManager` (API 33+) picker in Settings, `locale_config.xml`, English + Czech supported (#21)
 
 ## Release Readiness Backlog (ordered by priority)
 

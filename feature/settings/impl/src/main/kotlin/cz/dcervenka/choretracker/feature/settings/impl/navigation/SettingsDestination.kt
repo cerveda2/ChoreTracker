@@ -19,3 +19,7 @@ object ChoresSettingsDestination {
 object AccountSettingsDestination {
     const val route = "settings/account"
 }
+
+object LanguageSettingsDestination {
+    const val route = "settings/language"
+}
