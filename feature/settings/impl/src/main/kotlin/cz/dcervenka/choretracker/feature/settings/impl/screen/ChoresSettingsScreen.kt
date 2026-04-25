@@ -22,6 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,6 +45,7 @@ import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.ScreenHeader
 import cz.dcervenka.choretracker.core.design.components.SectionCard
+import cz.dcervenka.choretracker.core.design.suggestions
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
@@ -182,6 +184,22 @@ fun ChoresSettingsScreen(
                                     )
                                 },
                             )
+                        }
+                    }
+                    val suggestions = uiState.choreCategoryInput.suggestions()
+                    if (suggestions.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(spacing.xSmall),
+                        ) {
+                            suggestions.forEach { suggestion ->
+                                SuggestionChip(
+                                    onClick = { onIntent(SettingsUiIntent.ChoreInputChanged(suggestion)) },
+                                    label = { Text(suggestion) },
+                                )
+                            }
                         }
                     }
                     PrimaryButton(
