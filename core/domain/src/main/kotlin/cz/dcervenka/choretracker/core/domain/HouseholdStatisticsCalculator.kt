@@ -4,6 +4,7 @@ import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
+import cz.dcervenka.choretracker.core.model.stats.CategoryComparison
 import cz.dcervenka.choretracker.core.model.stats.ChoreComparison
 import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
@@ -88,6 +89,11 @@ class HouseholdStatisticsCalculator @Inject constructor() {
                 members = members,
                 completions = completions,
             ),
+            categoryComparisons = buildCategoryComparisons(
+                chores = chores,
+                members = members,
+                completions = completions,
+            ),
             monthlyBreakdown = buildMonthlyBreakdown(
                 members = members,
                 completions = completions,
@@ -160,6 +166,41 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         totalCompletions = contributions.sumOf { it.totalCount },
         topContributor = contributions.maxByOrNull { it.totalCount }?.takeIf { it.totalCount > 0 },
     )
+
+    private fun buildCategoryComparisons(
+        chores: List<Chore>,
+        members: List<HouseholdMember>,
+        completions: List<ChoreCompletion>,
+    ): List<CategoryComparison> = chores
+        .filter { it.deletedAt == null }
+        .groupBy { it.category }
+        .entries
+        .sortedBy { it.key.name }
+        .map { (category, categoryChores) ->
+            val choreIds = categoryChores.map { it.id }.toSet()
+            val categoryCompletions = completions.filter { it.choreId in choreIds }
+            val countsByMember = members.associate { member ->
+                member.displayName to categoryCompletions.count { completion ->
+                    member.id in completion.participantMemberIds
+                }
+            }
+            val topCount = countsByMember.values.maxOrNull() ?: 0
+            val leader: ChoreLeaderResult = when {
+                categoryCompletions.isEmpty() || topCount == 0 -> ChoreLeaderResult.NoData
+                countsByMember.values.count { it == topCount } > 1 -> ChoreLeaderResult.Tie
+                else -> countsByMember.maxByOrNull { it.value }
+                    ?.key
+                    ?.let(ChoreLeaderResult::Leader)
+                    ?: ChoreLeaderResult.NoData
+            }
+            CategoryComparison(
+                category = category,
+                choreCount = categoryChores.size,
+                countsByMember = countsByMember,
+                totalCount = categoryCompletions.size,
+                leader = leader,
+            )
+        }
 
     private fun buildComparisons(
         chores: List<Chore>,

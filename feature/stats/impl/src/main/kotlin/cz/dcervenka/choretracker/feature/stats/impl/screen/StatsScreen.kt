@@ -102,6 +102,7 @@ fun StatsScreen(
                 when (StatsTab.entries[page]) {
                     StatsTab.Summary -> SummaryTab(stats = stats, contentPadding = pagePadding)
                     StatsTab.ByChore -> ByChoreTab(stats = stats, contentPadding = pagePadding)
+                    StatsTab.ByCategory -> ByCategoryTab(stats = stats, contentPadding = pagePadding)
                     StatsTab.Monthly -> MonthlyTab(stats = stats, contentPadding = pagePadding)
                 }
             }
@@ -112,6 +113,7 @@ fun StatsScreen(
 internal enum class StatsTab(val labelRes: Int) {
     Summary(R.string.stats_tab_summary),
     ByChore(R.string.stats_tab_by_chore),
+    ByCategory(R.string.stats_tab_by_category),
     Monthly(R.string.stats_tab_monthly),
 }
 

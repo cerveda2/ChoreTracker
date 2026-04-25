@@ -101,6 +101,7 @@
     <string name="stats_title">Statistics</string>
     <string name="stats_tab_summary">Summary</string>
     <string name="stats_tab_by_chore">By chore</string>
+    <string name="stats_tab_by_category">By category</string>
     <string name="stats_tab_monthly">Monthly</string>
     <string name="stats_empty_title">Not enough data yet</string>
     <string name="stats_empty_message">Statistics will appear after a few chores have been completed in your household.</string>
@@ -126,6 +127,9 @@
     <string name="stats_stale_days_ago">%1$d days ago</string>
     <string name="stats_stale_soon">Due soon</string>
     <string name="stats_stale_ok">On track</string>
+    <string name="stats_category_chore_count">%1$d chore(s)</string>
+    <string name="stats_category_empty_title">No category data yet</string>
+    <string name="stats_category_empty_message">Log some chores and category trends will appear here.</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_overview">Overview</string>
