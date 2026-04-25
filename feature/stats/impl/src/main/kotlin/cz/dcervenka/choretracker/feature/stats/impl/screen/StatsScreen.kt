@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -19,13 +21,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.PreviewData
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
-import cz.dcervenka.choretracker.core.design.components.ChoreTabRow
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.feature.stats.impl.contract.StatsUiState
@@ -71,11 +73,25 @@ fun StatsScreen(
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding()),
         ) {
-            ChoreTabRow(
+            ScrollableTabRow(
                 selectedTabIndex = selectedTabIndex,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = spacing.large),
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                indicator = { tabPositions ->
+                    with(TabRowDefaults) {
+                        TabRowDefaults.SecondaryIndicator(
+                            modifier = Modifier
+                                .tabIndicatorOffset(tabPositions[selectedTabIndex])
+                                .padding(horizontal = spacing.medium),
+                            height = spacing.xSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                },
+                divider = {},
+                edgePadding = 0.dp,
             ) {
                 StatsTab.entries.forEachIndexed { index, tab ->
                     Tab(
