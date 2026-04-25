@@ -77,6 +77,7 @@
     <string name="dashboard_who_completed">Kdo splnil tento úkol?</string>
     <string name="dashboard_note">Poznámka</string>
     <string name="dashboard_see_all">Zobrazit vše</string>
+    <string name="dashboard_filter_all">Vše</string>
 
     <string name="household_title">Domácnost</string>
     <string name="household_active_invite">Aktivní pozvánka: %1$s</string>

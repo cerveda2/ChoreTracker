@@ -1,5 +1,6 @@
 package cz.dcervenka.choretracker.core.design
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.CleaningServices
@@ -15,4 +16,13 @@ fun ChoreCategory.toIcon(): ImageVector = when (this) {
     ChoreCategory.SHOPPING -> Icons.Outlined.ShoppingCart
     ChoreCategory.OUTDOOR -> Icons.Outlined.Park
     ChoreCategory.OTHER -> Icons.Outlined.Category
+}
+
+@StringRes
+fun ChoreCategory.toStringRes(): Int = when (this) {
+    ChoreCategory.CLEANING -> R.string.chore_category_cleaning
+    ChoreCategory.COOKING -> R.string.chore_category_cooking
+    ChoreCategory.SHOPPING -> R.string.chore_category_shopping
+    ChoreCategory.OUTDOOR -> R.string.chore_category_outdoor
+    ChoreCategory.OTHER -> R.string.chore_category_other
 }

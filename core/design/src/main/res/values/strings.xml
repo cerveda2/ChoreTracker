@@ -77,6 +77,7 @@
     <string name="dashboard_who_completed">Who completed this chore?</string>
     <string name="dashboard_note">Note</string>
     <string name="dashboard_see_all">See all</string>
+    <string name="dashboard_filter_all">All</string>
 
     <string name="household_title">Household</string>
     <string name="household_active_invite">Active invite: %1$s</string>

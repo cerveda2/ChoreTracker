@@ -5,14 +5,16 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -44,9 +46,12 @@ import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.LogButton
 import cz.dcervenka.choretracker.core.design.components.SectionCard
 import cz.dcervenka.choretracker.core.design.toIcon
+import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.formatters.formatLocalDateForLocale
 import cz.dcervenka.choretracker.core.model.chore.Chore
+import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
+import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
@@ -81,6 +86,7 @@ fun DashboardScreen(
 
     var selectedChoreId by remember { mutableStateOf<String?>(null) }
     var selectedNote by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf<ChoreCategory?>(null) }
     val selectedMembers = remember { mutableStateListOf<String>() }
     val currentUserId = uiState.members.firstOrNull { it.isCurrentUser }?.id
     val openLogSheet: (String) -> Unit = { choreId ->
@@ -94,11 +100,22 @@ fun DashboardScreen(
     if (snapshot == null) {
         LoadingState(message = stringResource(R.string.dashboard_loading))
     } else {
-        val quickLogChores = snapshot.activeChores.sortedForQuickLog(uiState.allCompletions).take(8)
+        val availableCategories = snapshot.activeChores.map { it.category }.distinct().sortedBy { it.ordinal }
+        val quickLogChores = if (selectedCategory != null) {
+            snapshot.activeChores.filter { it.category == selectedCategory }
+                .sortedForQuickLog(uiState.allCompletions)
+        } else {
+            snapshot.activeChores.sortedForQuickLog(uiState.allCompletions).take(8)
+        }
         val stalenessByChoreId = snapshot.staleChores.associateBy { it.choreId }
         val highlightedCompletions = uiState.allCompletions.take(3)
-        val staleItems = snapshot.staleChores.filter { it.status != ChoreStatus.OK }
         val categoryByChoreId = snapshot.activeChores.associate { it.id to it.category }
+        val staleItems = snapshot.staleChores.filter { it.status != ChoreStatus.OK }
+        val filteredStaleItems = if (selectedCategory != null) {
+            staleItems.filter { categoryByChoreId[it.choreId] == selectedCategory }
+        } else {
+            staleItems
+        }
 
         ChoreScaffold(
             snackbarHostState = snackbarHostState,
@@ -170,6 +187,35 @@ fun DashboardScreen(
                         }
                     }
                 }
+                if (availableCategories.size >= 2) {
+                    item {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(spacing.small)) {
+                            item {
+                                FilterChip(
+                                    selected = selectedCategory == null,
+                                    onClick = { selectedCategory = null },
+                                    label = { Text(stringResource(R.string.dashboard_filter_all)) },
+                                )
+                            }
+                            items(availableCategories, key = { it.name }) { category ->
+                                FilterChip(
+                                    selected = selectedCategory == category,
+                                    onClick = {
+                                        selectedCategory = if (selectedCategory == category) null else category
+                                    },
+                                    label = { Text(stringResource(category.toStringRes())) },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = category.toIcon(),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(FilterChipDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
                 item {
                     SectionCard(title = stringResource(R.string.dashboard_quick_log)) {
                         if (quickLogChores.isEmpty()) {
@@ -235,60 +281,47 @@ fun DashboardScreen(
                 }
                 item {
                     SectionCard(title = stringResource(R.string.dashboard_needs_attention)) {
-                        if (staleItems.isEmpty()) {
+                        if (filteredStaleItems.isEmpty()) {
                             Text(
                                 text = stringResource(R.string.dashboard_needs_attention_empty),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                        } else {
-                            staleItems.forEach { stale ->
-                                val categoryIcon = categoryByChoreId[stale.choreId]?.toIcon()
-                                Card(modifier = Modifier.fillMaxWidth()) {
+                        } else if (selectedCategory == null && availableCategories.size >= 2) {
+                            ChoreCategory.entries.forEach { category ->
+                                val group = staleItems.filter { categoryByChoreId[it.choreId] == category }
+                                if (group.isNotEmpty()) {
                                     androidx.compose.foundation.layout.Row(
-                                        modifier = Modifier.padding(spacing.medium),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(spacing.xSmall),
+                                        modifier = Modifier.padding(bottom = spacing.xSmall),
                                     ) {
-                                        if (categoryIcon != null) {
-                                            Icon(
-                                                imageVector = categoryIcon,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(20.dp),
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-                                            Spacer(modifier = Modifier.width(spacing.small))
-                                        }
-                                        androidx.compose.foundation.layout.Column(
-                                            modifier = Modifier.weight(1f),
-                                            verticalArrangement = Arrangement.spacedBy(spacing.xSmall),
-                                        ) {
-                                            Text(
-                                                text = stale.choreName,
-                                                style = MaterialTheme.typography.titleMedium,
-                                            )
-                                            Text(
-                                                text = when (val lastCompletedDate = stale.lastCompletedDate) {
-                                                    null ->
-                                                        stringResource(R.string.dashboard_stale_never_done)
-                                                    else -> stringResource(
-                                                        R.string.dashboard_stale_last_done,
-                                                        formatLocalDateForLocale(
-                                                            date = lastCompletedDate,
-                                                            skeleton = "yMMMd",
-                                                        ),
-                                                        stale.daysSinceLastCompletion ?: 0,
-                                                    )
-                                                },
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-                                        }
-                                        FilledTonalButton(
-                                            onClick = { openLogSheet(stale.choreId) },
-                                        ) {
-                                            Text(text = stringResource(R.string.dashboard_log))
-                                        }
+                                        Icon(
+                                            imageVector = category.toIcon(),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Text(
+                                            text = stringResource(category.toStringRes()),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
                                     }
+                                    group.forEach { stale ->
+                                        StaleChoreRow(
+                                            stale = stale,
+                                            onLog = { openLogSheet(stale.choreId) },
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(spacing.small))
                                 }
+                            }
+                        } else {
+                            filteredStaleItems.forEach { stale ->
+                                StaleChoreRow(
+                                    stale = stale,
+                                    onLog = { openLogSheet(stale.choreId) },
+                                )
                             }
                         }
                     }
@@ -317,6 +350,44 @@ fun DashboardScreen(
                 selectedChoreId = null
             },
         )
+    }
+}
+
+@Composable
+private fun StaleChoreRow(
+    stale: ChoreStaleness,
+    onLog: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.padding(LocalSpacing.current.medium),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.xSmall),
+            ) {
+                Text(
+                    text = stale.choreName,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = when (val lastCompletedDate = stale.lastCompletedDate) {
+                        null -> stringResource(R.string.dashboard_stale_never_done)
+                        else -> stringResource(
+                            R.string.dashboard_stale_last_done,
+                            formatLocalDateForLocale(date = lastCompletedDate, skeleton = "yMMMd"),
+                            stale.daysSinceLastCompletion ?: 0,
+                        )
+                    },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            FilledTonalButton(onClick = onLog) {
+                Text(text = stringResource(R.string.dashboard_log))
+            }
+        }
     }
 }
 
