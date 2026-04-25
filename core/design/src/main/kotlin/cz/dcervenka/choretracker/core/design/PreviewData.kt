@@ -1,11 +1,11 @@
 package cz.dcervenka.choretracker.core.design
 
 import cz.dcervenka.choretracker.core.model.chore.Chore
+import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.household.Invite
-import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.stats.CategoryComparison
 import cz.dcervenka.choretracker.core.model.stats.ChoreComparison
 import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
