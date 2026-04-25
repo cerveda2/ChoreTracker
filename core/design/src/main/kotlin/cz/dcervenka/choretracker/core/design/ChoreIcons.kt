@@ -18,6 +18,14 @@ fun ChoreCategory.toIcon(): ImageVector = when (this) {
     ChoreCategory.OTHER -> Icons.Outlined.Category
 }
 
+fun ChoreCategory.suggestions(): List<String> = when (this) {
+    ChoreCategory.CLEANING -> listOf("Vacuuming", "Mopping", "Bathroom", "Dusting", "Laundry", "Trash", "Kitchen")
+    ChoreCategory.COOKING -> listOf("Dinner", "Meal prep", "Dishes", "Breakfast", "Lunch")
+    ChoreCategory.SHOPPING -> listOf("Groceries", "Pharmacy", "Household supplies")
+    ChoreCategory.OUTDOOR -> listOf("Mow lawn", "Water plants", "Take out bins", "Rake leaves", "Sweep patio")
+    ChoreCategory.OTHER -> emptyList()
+}
+
 @StringRes
 fun ChoreCategory.toStringRes(): Int = when (this) {
     ChoreCategory.CLEANING -> R.string.chore_category_cleaning
