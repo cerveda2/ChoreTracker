@@ -7,6 +7,7 @@ data class StatsSnapshot(
     val summary: HouseholdSummary,
     val memberContributions: List<MemberContribution>,
     val comparisons: List<ChoreComparison>,
+    val categoryComparisons: List<CategoryComparison>,
     val monthlyBreakdown: List<MonthlyBreakdown>,
     val staleChores: List<ChoreStaleness>,
 )

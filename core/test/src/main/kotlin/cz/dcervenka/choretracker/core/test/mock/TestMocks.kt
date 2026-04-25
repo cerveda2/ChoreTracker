@@ -96,6 +96,7 @@ fun sampleStatsSnapshot() = StatsSnapshot(
     summary = HouseholdSummary(totalCompletions = 0, topContributor = null),
     memberContributions = emptyList(),
     comparisons = emptyList(),
+    categoryComparisons = emptyList(),
     monthlyBreakdown = emptyList(),
     staleChores = emptyList(),
 )

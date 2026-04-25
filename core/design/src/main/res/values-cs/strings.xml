@@ -101,6 +101,7 @@
     <string name="stats_title">Statistiky</string>
     <string name="stats_tab_summary">Přehled</string>
     <string name="stats_tab_by_chore">Podle úkolu</string>
+    <string name="stats_tab_by_category">Podle kategorie</string>
     <string name="stats_tab_monthly">Měsíčně</string>
     <string name="stats_empty_title">Zatím nedostatek dat</string>
     <string name="stats_empty_message">Statistiky se zobrazí po splnění několika úkolů v domácnosti.</string>
@@ -126,6 +127,9 @@
     <string name="stats_stale_days_ago">před %1$d dny</string>
     <string name="stats_stale_soon">Brzy splatné</string>
     <string name="stats_stale_ok">V pořádku</string>
+    <string name="stats_category_chore_count">%1$d úkol(ů)</string>
+    <string name="stats_category_empty_title">Zatím žádná data kategorií</string>
+    <string name="stats_category_empty_message">Zaznamnejte několik úkolů a trendy podle kategorií se zobrazí zde.</string>
 
     <string name="settings_title">Nastavení</string>
     <string name="settings_overview">Přehled</string>

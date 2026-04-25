@@ -1,10 +1,12 @@
 package cz.dcervenka.choretracker.core.design
 
 import cz.dcervenka.choretracker.core.model.chore.Chore
+import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.household.Invite
+import cz.dcervenka.choretracker.core.model.stats.CategoryComparison
 import cz.dcervenka.choretracker.core.model.stats.ChoreComparison
 import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
@@ -148,6 +150,22 @@ object PreviewData {
             topContributor = previewContributions.first(),
         ),
         memberContributions = previewContributions,
+        categoryComparisons = listOf(
+            CategoryComparison(
+                category = ChoreCategory.CLEANING,
+                choreCount = 1,
+                countsByMember = mapOf("Dana" to 14, "Alex" to 11),
+                totalCount = 25,
+                leader = ChoreLeaderResult.Leader("Dana"),
+            ),
+            CategoryComparison(
+                category = ChoreCategory.OTHER,
+                choreCount = 1,
+                countsByMember = mapOf("Dana" to 8, "Alex" to 10),
+                totalCount = 18,
+                leader = ChoreLeaderResult.Leader("Alex"),
+            ),
+        ),
         comparisons = listOf(
             ChoreComparison(
                 choreId = "chore-1",
