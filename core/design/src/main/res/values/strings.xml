@@ -77,6 +77,7 @@
     <string name="dashboard_stale_never_done">This chore has not been completed yet.</string>
     <string name="dashboard_needs_attention_empty">Everything looks up to date right now.</string>
     <string name="dashboard_log_completion">Log completion</string>
+    <string name="dashboard_edit_completion">Edit completion</string>
     <string name="dashboard_who_completed">Who completed this chore?</string>
     <string name="dashboard_note">Note</string>
     <string name="dashboard_see_all">See all</string>

@@ -17,5 +17,11 @@ interface ChoreCompletionRepository {
         completedAt: Instant? = null,
     ): AppResult<String>
 
+    suspend fun updateCompletion(
+        completionId: String,
+        note: String?,
+        participantMemberIds: List<String>,
+    ): EmptyResult
+
     suspend fun deleteCompletion(completionId: String): EmptyResult
 }

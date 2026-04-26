@@ -47,14 +47,15 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
             val memberMap = members.associateBy { it.id }
             val participantsByCompletion = participants.groupBy { it.completionId }
             completions.take(limit).map { completion ->
-                val participantNames = participantsByCompletion[completion.id].orEmpty()
-                    .mapNotNull { participant -> memberMap[participant.memberId]?.displayName }
+                val completionParticipants = participantsByCompletion[completion.id].orEmpty()
                 RecentCompletion(
                     completionId = completion.id,
                     choreName = choreMap[completion.choreId]?.name.orEmpty(),
                     note = completion.note,
                     completedAt = completion.createdAt,
-                    participantNames = participantNames,
+                    participantNames = completionParticipants
+                        .mapNotNull { memberMap[it.memberId]?.displayName },
+                    participantMemberIds = completionParticipants.map { it.memberId },
                 )
             }
         }
@@ -105,6 +106,35 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
         )
         syncRepository.syncPendingOperations()
         return AppResult.Success(completionId)
+    }
+
+    override suspend fun updateCompletion(
+        completionId: String,
+        note: String?,
+        participantMemberIds: List<String>,
+    ): EmptyResult {
+        Timber.d("updateCompletion: completionId=$completionId participants=${participantMemberIds.size}")
+        val existing = completionDao.getCompletion(completionId)
+            ?: return AppResult.Error("Completion not found")
+        completionDao.upsert(existing.copy(note = note?.takeIf(String::isNotBlank)))
+        participantDao.deleteByCompletionId(completionId)
+        participantDao.insertAll(
+            participantMemberIds.distinct().map { memberId ->
+                CompletionParticipantEntity(completionId = completionId, memberId = memberId)
+            },
+        )
+        pendingSyncOperationDao.upsert(
+            PendingSyncOperationEntity(
+                id = UUID.randomUUID().toString(),
+                entityType = "completion",
+                entityId = completionId,
+                operationType = "upsert",
+                payload = note.orEmpty(),
+                createdAt = Clock.System.now(),
+            ),
+        )
+        syncRepository.syncPendingOperations()
+        return AppResult.Success(Unit)
     }
 
     override suspend fun deleteCompletion(completionId: String): EmptyResult {

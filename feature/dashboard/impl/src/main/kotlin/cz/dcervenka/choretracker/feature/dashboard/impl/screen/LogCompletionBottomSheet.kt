@@ -40,6 +40,7 @@ internal fun LogCompletionBottomSheet(
     onNoteChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: (kotlin.time.Instant?) -> Unit,
+    editMode: Boolean = false,
 ) {
     val spacing = LocalSpacing.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -82,7 +83,9 @@ internal fun LogCompletionBottomSheet(
             verticalArrangement = Arrangement.spacedBy(spacing.medium),
         ) {
             Text(
-                text = stringResource(R.string.dashboard_log_completion),
+                text = stringResource(
+                    if (editMode) R.string.dashboard_edit_completion else R.string.dashboard_log_completion,
+                ),
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
@@ -118,16 +121,18 @@ internal fun LogCompletionBottomSheet(
                 ),
                 modifier = Modifier.fillMaxWidth(),
             )
-            TextButton(
-                onClick = { showDatePicker = true },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                val dateLabel = if (completedAt != null) {
-                    formatInstantForLocale(completedAt, "yMMMd")
-                } else {
-                    stringResource(R.string.dashboard_log_date_today)
+            if (!editMode) {
+                TextButton(
+                    onClick = { showDatePicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    val dateLabel = if (completedAt != null) {
+                        formatInstantForLocale(completedAt, "yMMMd")
+                    } else {
+                        stringResource(R.string.dashboard_log_date_today)
+                    }
+                    Text(text = stringResource(R.string.dashboard_log_date, dateLabel))
                 }
-                Text(text = stringResource(R.string.dashboard_log_date, dateLabel))
             }
             PrimaryButton(
                 text = stringResource(R.string.common_save),

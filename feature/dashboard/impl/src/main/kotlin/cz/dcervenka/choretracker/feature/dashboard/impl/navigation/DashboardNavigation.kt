@@ -71,10 +71,14 @@ fun NavGraphBuilder.dashboardScreen(
 
         RecentCompletionDetailScreen(
             completion = completion,
+            uiState = uiState.value,
             onBack = { navController.popBackStack() },
             onDelete = {
                 viewModel.dispatch(DashboardUiIntent.DeleteCompletion(completionId))
                 navController.popBackStack()
+            },
+            onUpdate = { note, participantIds ->
+                viewModel.dispatch(DashboardUiIntent.UpdateCompletion(completionId, note, participantIds))
             },
         )
     }

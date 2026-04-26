@@ -114,6 +114,7 @@ object PreviewData {
                 note = "After dinner",
                 completedAt = now,
                 participantNames = listOf("Dana"),
+                participantMemberIds = listOf("member-1"),
             ),
             RecentCompletion(
                 completionId = "completion-2",
@@ -121,6 +122,7 @@ object PreviewData {
                 note = null,
                 completedAt = now,
                 participantNames = listOf("Dana", "Alex"),
+                participantMemberIds = listOf("member-1", "member-2"),
             ),
         ),
         staleChores = listOf(

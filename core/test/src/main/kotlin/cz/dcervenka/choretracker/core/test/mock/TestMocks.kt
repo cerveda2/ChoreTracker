@@ -86,6 +86,7 @@ fun sampleDashboardSnapshot() = DashboardSnapshot(
             note = null,
             completedAt = Instant.parse("2026-03-30T10:00:00Z"),
             participantNames = listOf("Dana"),
+            participantMemberIds = listOf("member-1"),
         ),
     ),
     staleChores = emptyList(),
