@@ -184,6 +184,10 @@
     <string name="settings_chore_clear_frequency">Clear</string>
     <string name="settings_chore_rename_title">Rename chore</string>
     <string name="settings_chore_rename_hint">Chore name</string>
+    <string name="settings_chore_search_hint">Search chores</string>
+    <string name="settings_chore_group_status">Status</string>
+    <string name="settings_chore_active">Active</string>
+    <string name="settings_chore_inactive">Inactive</string>
     <string name="settings_chore_category_title">Category</string>
     <string name="chore_category_cleaning">Cleaning</string>
     <string name="chore_category_cooking">Cooking</string>
