@@ -77,7 +77,6 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Settings & chore management
 
-3. **Chores settings UX** — Add search, sort, and group-by-category/status in `ChoresSettingsScreen.kt:88`; list is getting crowded.
 4. **Inactive chores** — Show inactive chores in a collapsible section instead of hiding them entirely.
 5. **Action feedback** — Snackbar / error state for add/edit/delete mutations in `SettingsViewModel.kt:226`; currently silent on success or failure.
 
@@ -102,6 +101,7 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Previously Completed
 
+- Chores settings UX — search bar + clear button, group-by chips (All / Category / Status) above chore list in `ChoresSettingsScreen`; `ChoreRow` extracted to private composable (#31)
 - Edit completion — Edit icon in completion detail TopAppBar opens `LogCompletionBottomSheet` in `editMode`; date picker hidden, note and participants pre-filled; dispatches `UpdateCompletion` intent (#30)
 - Smart chore suggestions — "Suggested" section at top of LogChoreScreen, ranked by urgency score (`daysSince / frequencyDays`), never-done first, capped at 5 (#29)
 - Dashboard FAB → LogChoreScreen — replaced quick-log chips with FAB; new screen lists all active chores grouped by category (#28)
