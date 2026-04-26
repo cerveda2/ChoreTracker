@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.screen.DashboardScreen
+import cz.dcervenka.choretracker.feature.dashboard.impl.screen.LogChoreScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.screen.RecentCompletionDetailScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.screen.RecentCompletionsScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel.DashboardViewModel
@@ -24,12 +25,25 @@ fun NavGraphBuilder.dashboardScreen(
             uiState = uiState.value,
             onIntent = viewModel::dispatch,
             undoEvents = viewModel.undoEvents,
+            onLogChore = { navController.navigate(DashboardLogChoreDestination.route) },
             onSeeAllCompletions = {
                 navController.navigate(DashboardCompletionsDestination.route)
             },
             onOpenCompletion = { completionId ->
                 navController.navigate(DashboardCompletionDetailDestination.createRoute(completionId))
             },
+        )
+    }
+
+    composable(route = DashboardLogChoreDestination.route) {
+        val viewModel: DashboardViewModel = hiltViewModel()
+        val uiState = viewModel.uiState.collectAsStateWithLifecycle()
+
+        LogChoreScreen(
+            uiState = uiState.value,
+            onIntent = viewModel::dispatch,
+            undoEvents = viewModel.undoEvents,
+            onBack = { navController.popBackStack() },
         )
     }
 

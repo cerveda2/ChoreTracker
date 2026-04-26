@@ -53,6 +53,8 @@
     <string name="stats_summary_total">%1$d splnění celkem</string>
     <string name="stats_summary_top_contributor">Nejvíce přispívá: %1$s (%2$d%%)</string>
     <string name="stats_summary_no_data">Zatím žádná splnění</string>
+    <string name="dashboard_log_chore_title">Zaznamenat úkol</string>
+    <string name="dashboard_log_chore_fab">Zaznamenat úkol</string>
     <string name="dashboard_quick_log">Rychlé zaznamenání</string>
     <string name="dashboard_record_prompt">Klepnutím zaznamenáte za sebe. Podržením zobrazíte možnosti.</string>
     <string name="dashboard_quick_log_empty_title">Zatím žádné aktivní úkoly</string>
