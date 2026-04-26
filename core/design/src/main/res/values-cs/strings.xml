@@ -184,6 +184,10 @@
     <string name="settings_chore_clear_frequency">Vymazat</string>
     <string name="settings_chore_rename_title">Přejmenovat úkol</string>
     <string name="settings_chore_rename_hint">Název úkolu</string>
+    <string name="settings_chore_search_hint">Hledat úkoly</string>
+    <string name="settings_chore_group_status">Stav</string>
+    <string name="settings_chore_active">Aktivní</string>
+    <string name="settings_chore_inactive">Neaktivní</string>
     <string name="settings_chore_category_title">Kategorie</string>
     <string name="chore_category_cleaning">Úklid</string>
     <string name="chore_category_cooking">Vaření</string>

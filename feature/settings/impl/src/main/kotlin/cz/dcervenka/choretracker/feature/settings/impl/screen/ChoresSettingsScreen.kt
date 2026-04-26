@@ -15,8 +15,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,9 +49,12 @@ import cz.dcervenka.choretracker.core.design.components.ScreenHeader
 import cz.dcervenka.choretracker.core.design.components.SectionCard
 import cz.dcervenka.choretracker.core.design.suggestions
 import cz.dcervenka.choretracker.core.design.toIcon
+import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
+
+private enum class ChoreGroupBy { NONE, CATEGORY, STATUS }
 
 @Composable
 fun ChoresSettingsScreen(
@@ -66,6 +71,14 @@ fun ChoresSettingsScreen(
     val pendingRenameChore = uiState.chores.firstOrNull { it.id == pendingRenameChoreId }
     var pendingCategoryChoreId by remember { mutableStateOf<String?>(null) }
     val pendingCategoryChore = uiState.chores.firstOrNull { it.id == pendingCategoryChoreId }
+    var searchQuery by remember { mutableStateOf("") }
+    var groupBy by remember { mutableStateOf(ChoreGroupBy.NONE) }
+
+    val filteredChores = if (searchQuery.isBlank()) {
+        uiState.chores
+    } else {
+        uiState.chores.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    }
 
     ChoreScaffold(
         topBar = {
@@ -86,69 +99,141 @@ fun ChoresSettingsScreen(
                     subtitle = stringResource(R.string.household_chore_count, uiState.chores.size),
                 )
             }
+            if (uiState.chores.isNotEmpty()) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(spacing.xSmall)) {
+                        val clearIcon: (@Composable () -> Unit)? = if (searchQuery.isNotEmpty()) {
+                            {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Close,
+                                        contentDescription = stringResource(R.string.common_close),
+                                    )
+                                }
+                            }
+                        } else {
+                            null
+                        }
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            label = { Text(stringResource(R.string.settings_chore_search_hint)) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Search,
+                                    contentDescription = null,
+                                )
+                            },
+                            trailingIcon = clearIcon,
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(spacing.xSmall),
+                        ) {
+                            FilterChip(
+                                selected = groupBy == ChoreGroupBy.NONE,
+                                onClick = { groupBy = ChoreGroupBy.NONE },
+                                label = { Text(stringResource(R.string.dashboard_filter_all)) },
+                            )
+                            FilterChip(
+                                selected = groupBy == ChoreGroupBy.CATEGORY,
+                                onClick = { groupBy = ChoreGroupBy.CATEGORY },
+                                label = { Text(stringResource(R.string.settings_chore_category_title)) },
+                            )
+                            FilterChip(
+                                selected = groupBy == ChoreGroupBy.STATUS,
+                                onClick = { groupBy = ChoreGroupBy.STATUS },
+                                label = { Text(stringResource(R.string.settings_chore_group_status)) },
+                            )
+                        }
+                    }
+                }
+            }
             item {
                 SectionCard(title = stringResource(R.string.household_chores)) {
-                    if (uiState.chores.isEmpty()) {
+                    if (filteredChores.isEmpty()) {
                         EmptyState(
                             title = stringResource(R.string.settings_chores_empty_title),
                             message = stringResource(R.string.settings_chores_empty_message),
                         )
                     } else {
-                        uiState.chores.forEach { chore ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                IconButton(onClick = { pendingCategoryChoreId = chore.id }) {
-                                    Icon(
-                                        imageVector = chore.category.toIcon(),
-                                        contentDescription = stringResource(R.string.settings_chore_category_title),
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(text = chore.name)
-                                    chore.frequencyDays?.let { days ->
-                                        Text(
-                                            text = stringResource(R.string.settings_chore_frequency_every_n_days, days),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    IconButton(onClick = { pendingRenameChoreId = chore.id }) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Edit,
-                                            contentDescription = stringResource(
-                                                R.string.settings_chore_rename_title,
-                                            ),
-                                        )
-                                    }
-                                    IconButton(onClick = { pendingFrequencyChoreId = chore.id }) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Schedule,
-                                            contentDescription = stringResource(
-                                                R.string.settings_chore_set_frequency_title,
-                                            ),
-                                        )
-                                    }
-                                    Switch(
-                                        checked = chore.isActive,
-                                        onCheckedChange = { checked ->
-                                            onIntent(
-                                                SettingsUiIntent.UpdateChoreActive(
-                                                    choreId = chore.id,
-                                                    isActive = checked,
-                                                ),
-                                            )
+                        when (groupBy) {
+                            ChoreGroupBy.NONE -> {
+                                filteredChores.sortedBy { it.name }.forEach { chore ->
+                                    ChoreRow(
+                                        chore = chore,
+                                        onCategoryClick = { pendingCategoryChoreId = chore.id },
+                                        onRenameClick = { pendingRenameChoreId = chore.id },
+                                        onFrequencyClick = { pendingFrequencyChoreId = chore.id },
+                                        onActiveChange = { checked ->
+                                            onIntent(SettingsUiIntent.UpdateChoreActive(chore.id, checked))
                                         },
+                                        onDeleteClick = { pendingDeleteChoreId = chore.id },
                                     )
-                                    IconButton(onClick = { pendingDeleteChoreId = chore.id }) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Close,
-                                            contentDescription = stringResource(R.string.household_delete_chore),
+                                }
+                            }
+                            ChoreGroupBy.CATEGORY -> {
+                                filteredChores.groupBy { it.category }
+                                    .entries.sortedBy { it.key.ordinal }
+                                    .forEachIndexed { groupIndex, (category, chores) ->
+                                        if (groupIndex > 0) HorizontalDivider()
+                                        ChoreGroupHeader(
+                                            icon = {
+                                                Icon(
+                                                    imageVector = category.toIcon(),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(16.dp),
+                                                )
+                                            },
+                                            label = category.label(),
+                                        )
+                                        chores.sortedBy { it.name }.forEach { chore ->
+                                            ChoreRow(
+                                                chore = chore,
+                                                onCategoryClick = { pendingCategoryChoreId = chore.id },
+                                                onRenameClick = { pendingRenameChoreId = chore.id },
+                                                onFrequencyClick = { pendingFrequencyChoreId = chore.id },
+                                                onActiveChange = { checked ->
+                                                    onIntent(SettingsUiIntent.UpdateChoreActive(chore.id, checked))
+                                                },
+                                                onDeleteClick = { pendingDeleteChoreId = chore.id },
+                                            )
+                                        }
+                                    }
+                            }
+                            ChoreGroupBy.STATUS -> {
+                                val active = filteredChores.filter { it.isActive }.sortedBy { it.name }
+                                val inactive = filteredChores.filterNot { it.isActive }.sortedBy { it.name }
+                                if (active.isNotEmpty()) {
+                                    ChoreGroupHeader(label = stringResource(R.string.settings_chore_active))
+                                    active.forEach { chore ->
+                                        ChoreRow(
+                                            chore = chore,
+                                            onCategoryClick = { pendingCategoryChoreId = chore.id },
+                                            onRenameClick = { pendingRenameChoreId = chore.id },
+                                            onFrequencyClick = { pendingFrequencyChoreId = chore.id },
+                                            onActiveChange = { checked ->
+                                                onIntent(SettingsUiIntent.UpdateChoreActive(chore.id, checked))
+                                            },
+                                            onDeleteClick = { pendingDeleteChoreId = chore.id },
+                                        )
+                                    }
+                                }
+                                if (inactive.isNotEmpty()) {
+                                    if (active.isNotEmpty()) HorizontalDivider()
+                                    ChoreGroupHeader(label = stringResource(R.string.settings_chore_inactive))
+                                    inactive.forEach { chore ->
+                                        ChoreRow(
+                                            chore = chore,
+                                            onCategoryClick = { pendingCategoryChoreId = chore.id },
+                                            onRenameClick = { pendingRenameChoreId = chore.id },
+                                            onFrequencyClick = { pendingFrequencyChoreId = chore.id },
+                                            onActiveChange = { checked ->
+                                                onIntent(SettingsUiIntent.UpdateChoreActive(chore.id, checked))
+                                            },
+                                            onDeleteClick = { pendingDeleteChoreId = chore.id },
                                         )
                                     }
                                 }
@@ -258,6 +343,86 @@ fun ChoresSettingsScreen(
                 onIntent(SettingsUiIntent.UpdateChoreCategory(pendingCategoryChore.id, category))
                 pendingCategoryChoreId = null
             },
+        )
+    }
+}
+
+@Composable
+private fun ChoreRow(
+    chore: Chore,
+    onCategoryClick: () -> Unit,
+    onRenameClick: () -> Unit,
+    onFrequencyClick: () -> Unit,
+    onActiveChange: (Boolean) -> Unit,
+    onDeleteClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        IconButton(onClick = onCategoryClick) {
+            Icon(
+                imageVector = chore.category.toIcon(),
+                contentDescription = stringResource(R.string.settings_chore_category_title),
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = chore.name)
+            chore.frequencyDays?.let { days ->
+                Text(
+                    text = stringResource(R.string.settings_chore_frequency_every_n_days, days),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onRenameClick) {
+                Icon(
+                    imageVector = Icons.Outlined.Edit,
+                    contentDescription = stringResource(R.string.settings_chore_rename_title),
+                )
+            }
+            IconButton(onClick = onFrequencyClick) {
+                Icon(
+                    imageVector = Icons.Outlined.Schedule,
+                    contentDescription = stringResource(R.string.settings_chore_set_frequency_title),
+                )
+            }
+            Switch(
+                checked = chore.isActive,
+                onCheckedChange = onActiveChange,
+            )
+            IconButton(onClick = onDeleteClick) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = stringResource(R.string.household_delete_chore),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChoreGroupHeader(
+    label: String,
+    icon: (@Composable () -> Unit)? = null,
+) {
+    val spacing = LocalSpacing.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = spacing.xSmall),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(spacing.xSmall),
+    ) {
+        icon?.invoke()
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
         )
     }
 }
