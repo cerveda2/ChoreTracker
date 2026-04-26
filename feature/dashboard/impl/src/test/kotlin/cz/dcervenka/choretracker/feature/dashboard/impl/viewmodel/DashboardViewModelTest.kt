@@ -11,6 +11,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveRecentCompletionsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateCompletionUseCase
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.sync.SyncState
@@ -54,6 +55,9 @@ class DashboardViewModelTest {
 
     @MockK
     lateinit var logCompletionUseCase: LogCompletionUseCase
+
+    @MockK
+    lateinit var updateCompletionUseCase: UpdateCompletionUseCase
 
     @MockK
     lateinit var deleteCompletionUseCase: DeleteCompletionUseCase
@@ -161,6 +165,7 @@ private fun DashboardViewModelTest.createViewModel() = DashboardViewModel(
     observeRecentCompletionsUseCase = observeRecentCompletionsUseCase,
     observeSyncStateUseCase = observeSyncStateUseCase,
     logCompletionUseCase = logCompletionUseCase,
+    updateCompletionUseCase = updateCompletionUseCase,
     deleteCompletionUseCase = deleteCompletionUseCase,
     retryPendingSyncUseCase = retryPendingSyncUseCase,
 )

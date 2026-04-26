@@ -77,6 +77,7 @@
     <string name="dashboard_stale_never_done">Tento úkol ještě nebyl splněn.</string>
     <string name="dashboard_needs_attention_empty">Vše je teď aktuální.</string>
     <string name="dashboard_log_completion">Zaznamenat splnění</string>
+    <string name="dashboard_edit_completion">Upravit splnění</string>
     <string name="dashboard_who_completed">Kdo splnil tento úkol?</string>
     <string name="dashboard_note">Poznámka</string>
     <string name="dashboard_see_all">Zobrazit vše</string>

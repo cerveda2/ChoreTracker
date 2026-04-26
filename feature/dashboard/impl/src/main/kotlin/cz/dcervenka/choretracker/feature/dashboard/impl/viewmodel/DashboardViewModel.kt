@@ -11,6 +11,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveRecentCompletionsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateCompletionUseCase
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,6 +36,7 @@ class DashboardViewModel @Inject constructor(
     observeRecentCompletionsUseCase: ObserveRecentCompletionsUseCase,
     observeSyncStateUseCase: ObserveSyncStateUseCase,
     private val logCompletionUseCase: LogCompletionUseCase,
+    private val updateCompletionUseCase: UpdateCompletionUseCase,
     private val deleteCompletionUseCase: DeleteCompletionUseCase,
     private val retryPendingSyncUseCase: RetryPendingSyncUseCase,
 ) : ViewModel() {
@@ -73,6 +75,11 @@ class DashboardViewModel @Inject constructor(
                 note = intent.note,
                 completedAt = intent.completedAt,
             )
+            is DashboardUiIntent.UpdateCompletion -> updateCompletion(
+                intent.completionId,
+                intent.note,
+                intent.participantIds,
+            )
             is DashboardUiIntent.DeleteCompletion -> deleteCompletion(intent.completionId)
             DashboardUiIntent.RetrySync -> retrySync()
         }
@@ -98,6 +105,12 @@ class DashboardViewModel @Inject constructor(
                     ?.find { it.id == choreId }?.name.orEmpty()
                 _undoChannel.send(UndoEvent(result.value, choreName))
             }
+        }
+    }
+
+    private fun updateCompletion(completionId: String, note: String?, participantIds: List<String>) {
+        viewModelScope.launch {
+            updateCompletionUseCase(completionId, note, participantIds)
         }
     }
 

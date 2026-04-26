@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -25,15 +26,21 @@ import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.SectionCard
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
+import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 
 @Composable
 fun RecentCompletionDetailScreen(
     completion: RecentCompletion?,
+    uiState: DashboardUiState,
     onBack: () -> Unit,
     onDelete: () -> Unit,
+    onUpdate: (note: String?, participantIds: List<String>) -> Unit,
 ) {
     val spacing = LocalSpacing.current
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showEditSheet by remember { mutableStateOf(false) }
+    val editSelectedMembers = remember { androidx.compose.runtime.snapshots.SnapshotStateList<String>() }
+    var editNote by remember { mutableStateOf("") }
 
     if (completion == null) {
         LoadingState(message = stringResource(R.string.dashboard_completion_loading))
@@ -58,12 +65,38 @@ fun RecentCompletionDetailScreen(
         )
     }
 
+    if (showEditSheet) {
+        LogCompletionBottomSheet(
+            uiState = uiState,
+            selectedMembers = editSelectedMembers,
+            selectedNote = editNote,
+            onNoteChange = { editNote = it },
+            onDismiss = { showEditSheet = false },
+            onConfirm = { _ ->
+                onUpdate(editNote.takeIf(String::isNotBlank), editSelectedMembers.toList())
+                showEditSheet = false
+            },
+            editMode = true,
+        )
+    }
+
     ChoreScaffold(
         topBar = {
             ChoreTopAppBar(
                 title = completion.choreName,
                 onBackClick = onBack,
                 actions = {
+                    IconButton(onClick = {
+                        editNote = completion.note.orEmpty()
+                        editSelectedMembers.clear()
+                        editSelectedMembers.addAll(completion.participantMemberIds)
+                        showEditSheet = true
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = stringResource(R.string.dashboard_edit_completion),
+                        )
+                    }
                     IconButton(onClick = { showDeleteDialog = true }) {
                         Icon(
                             imageVector = Icons.Default.Delete,
