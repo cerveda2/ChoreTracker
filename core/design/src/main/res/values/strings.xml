@@ -58,6 +58,8 @@
     <string name="dashboard_quick_log_empty_title">No active chores yet</string>
     <string name="dashboard_quick_log_empty_message">Add a few chores in Settings to start logging completions from the dashboard.</string>
     <string name="dashboard_log">Log</string>
+    <string name="dashboard_log_chore_title">Log a Chore</string>
+    <string name="dashboard_log_chore_fab">Log chore</string>
     <string name="dashboard_recent_completions">Recent completions</string>
     <string name="dashboard_all_completions">All completions</string>
     <string name="dashboard_completions_today">Today</string>

@@ -14,3 +14,7 @@ object DashboardCompletionDetailDestination {
 
     fun createRoute(completionId: String): String = "dashboard/completions/$completionId"
 }
+
+object DashboardLogChoreDestination {
+    const val route = "dashboard/log"
+}

@@ -1,7 +1,9 @@
 package cz.dcervenka.choretracker.feature.dashboard.impl.screen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,10 +13,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,16 +48,13 @@ import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.LoadingState
-import cz.dcervenka.choretracker.core.design.components.LogButton
 import cz.dcervenka.choretracker.core.design.components.SectionCard
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.formatters.formatLocalDateForLocale
-import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
-import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 import cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel.UndoEvent
@@ -63,6 +65,7 @@ fun DashboardScreen(
     uiState: DashboardUiState,
     onIntent: (DashboardUiIntent) -> Unit,
     undoEvents: Flow<UndoEvent>,
+    onLogChore: () -> Unit,
     onSeeAllCompletions: () -> Unit,
     onOpenCompletion: (String) -> Unit,
 ) {
@@ -101,13 +104,6 @@ fun DashboardScreen(
         LoadingState(message = stringResource(R.string.dashboard_loading))
     } else {
         val availableCategories = snapshot.activeChores.map { it.category }.distinct().sortedBy { it.ordinal }
-        val quickLogChores = if (selectedCategory != null) {
-            snapshot.activeChores.filter { it.category == selectedCategory }
-                .sortedForQuickLog(uiState.allCompletions)
-        } else {
-            snapshot.activeChores.sortedForQuickLog(uiState.allCompletions).take(8)
-        }
-        val stalenessByChoreId = snapshot.staleChores.associateBy { it.choreId }
         val highlightedCompletions = uiState.allCompletions.take(3)
         val categoryByChoreId = snapshot.activeChores.associate { it.id to it.category }
         val staleItems = snapshot.staleChores.filter { it.status != ChoreStatus.OK }
@@ -121,6 +117,14 @@ fun DashboardScreen(
             snackbarHostState = snackbarHostState,
             topBar = {
                 ChoreTopAppBar(title = stringResource(R.string.dashboard_title))
+            },
+            floatingActionButton = {
+                FloatingActionButton(onClick = onLogChore) {
+                    Icon(
+                        imageVector = Icons.Outlined.Add,
+                        contentDescription = stringResource(R.string.dashboard_log_chore_fab),
+                    )
+                }
             },
         ) { innerPadding ->
             LazyColumn(
@@ -155,7 +159,7 @@ fun DashboardScreen(
                         ) {
                             items(snapshot.memberContributions, key = { it.memberId }) { contribution ->
                                 Card {
-                                    androidx.compose.foundation.layout.Column(
+                                    Column(
                                         modifier = Modifier.padding(spacing.medium),
                                     ) {
                                         Text(
@@ -217,69 +221,6 @@ fun DashboardScreen(
                     }
                 }
                 item {
-                    SectionCard(title = stringResource(R.string.dashboard_quick_log)) {
-                        if (quickLogChores.isEmpty()) {
-                            EmptyState(
-                                title = stringResource(R.string.dashboard_quick_log_empty_title),
-                                message = stringResource(R.string.dashboard_quick_log_empty_message),
-                            )
-                        } else {
-                            Text(
-                                stringResource(R.string.dashboard_record_prompt),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(spacing.small),
-                            ) {
-                                items(quickLogChores, key = { "quick-${it.id}" }) { chore ->
-                                    val staleness = stalenessByChoreId[chore.id]
-                                    val days = staleness?.daysSinceLastCompletion
-                                    val subtitle = if (days != null) {
-                                        stringResource(R.string.dashboard_days_ago, days)
-                                    } else {
-                                        stringResource(R.string.dashboard_never_done)
-                                    }
-                                    LogButton(
-                                        text = chore.name,
-                                        subtitle = subtitle,
-                                        icon = chore.category.toIcon(),
-                                        onClick = { openLogSheet(chore.id) },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                item {
-                    SectionCard(title = stringResource(R.string.dashboard_recent_completions)) {
-                        if (highlightedCompletions.isEmpty()) {
-                            EmptyState(
-                                title = stringResource(R.string.dashboard_recent_completions_empty_title),
-                                message = stringResource(R.string.dashboard_recent_completions_empty_message),
-                            )
-                        } else {
-                            highlightedCompletions.forEachIndexed { index, completion ->
-                                if (index > 0) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = spacing.medium),
-                                    )
-                                }
-                                RecentCompletionRow(
-                                    completion = completion,
-                                    onClick = { onOpenCompletion(completion.completionId) },
-                                    roundedBackground = true,
-                                )
-                            }
-                            if (uiState.allCompletions.size > highlightedCompletions.size) {
-                                TextButton(onClick = onSeeAllCompletions) {
-                                    Text(text = stringResource(R.string.dashboard_see_all))
-                                }
-                            }
-                        }
-                    }
-                }
-                item {
                     SectionCard(title = stringResource(R.string.dashboard_needs_attention)) {
                         if (filteredStaleItems.isEmpty()) {
                             Text(
@@ -290,7 +231,7 @@ fun DashboardScreen(
                             ChoreCategory.entries.forEach { category ->
                                 val group = staleItems.filter { categoryByChoreId[it.choreId] == category }
                                 if (group.isNotEmpty()) {
-                                    androidx.compose.foundation.layout.Row(
+                                    Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(spacing.xSmall),
                                         modifier = Modifier.padding(bottom = spacing.xSmall),
@@ -322,6 +263,34 @@ fun DashboardScreen(
                                     stale = stale,
                                     onLog = { openLogSheet(stale.choreId) },
                                 )
+                            }
+                        }
+                    }
+                }
+                item {
+                    SectionCard(title = stringResource(R.string.dashboard_recent_completions)) {
+                        if (highlightedCompletions.isEmpty()) {
+                            EmptyState(
+                                title = stringResource(R.string.dashboard_recent_completions_empty_title),
+                                message = stringResource(R.string.dashboard_recent_completions_empty_message),
+                            )
+                        } else {
+                            highlightedCompletions.forEachIndexed { index, completion ->
+                                if (index > 0) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = spacing.medium),
+                                    )
+                                }
+                                RecentCompletionRow(
+                                    completion = completion,
+                                    onClick = { onOpenCompletion(completion.completionId) },
+                                    roundedBackground = true,
+                                )
+                            }
+                            if (uiState.allCompletions.size > highlightedCompletions.size) {
+                                TextButton(onClick = onSeeAllCompletions) {
+                                    Text(text = stringResource(R.string.dashboard_see_all))
+                                }
                             }
                         }
                     }
@@ -359,12 +328,12 @@ private fun StaleChoreRow(
     onLog: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        androidx.compose.foundation.layout.Row(
+        Row(
             modifier = Modifier.padding(LocalSpacing.current.medium),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            androidx.compose.foundation.layout.Column(
+            Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.xSmall),
             ) {
@@ -391,14 +360,6 @@ private fun StaleChoreRow(
     }
 }
 
-private fun List<Chore>.sortedForQuickLog(completions: List<RecentCompletion>): List<Chore> {
-    val completionCounts = completions.groupingBy { it.choreName }.eachCount()
-    return sortedWith(
-        compareByDescending<Chore> { completionCounts[it.name] ?: 0 }
-            .thenBy { it.name.lowercase() },
-    )
-}
-
 @Preview(showBackground = true, heightDp = 1200)
 @Composable
 private fun DashboardScreenPreview() {
@@ -411,6 +372,7 @@ private fun DashboardScreenPreview() {
             ),
             onIntent = {},
             undoEvents = kotlinx.coroutines.flow.emptyFlow(),
+            onLogChore = {},
             onSeeAllCompletions = {},
             onOpenCompletion = {},
         )
