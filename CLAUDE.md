@@ -77,8 +77,7 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Dashboard & logging UX
 
-1. **Smart chore suggestions** — Surface "most overdue / best next" chore using `frequencyDays` + staleness score instead of pure recency (`HouseholdStatisticsCalculator.kt:220`).
-2. **Edit completion** — Allow editing note and participants after logging, not just deleting.
+1. **Edit completion** — Allow editing note and participants after logging, not just deleting.
 
 ### Settings & chore management
 
@@ -107,6 +106,7 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Previously Completed
 
+- Smart chore suggestions — "Suggested" section at top of LogChoreScreen, ranked by urgency score (`daysSince / frequencyDays`), never-done first, capped at 5 (#29)
 - Dashboard FAB → LogChoreScreen — replaced quick-log chips with FAB; new screen lists all active chores grouped by category (#28)
 - Category-based chore suggestions — SuggestionChip row in chore creation form, keyed by selected category (`ChoreIcons.kt`) (#26/#27)
 - Category-level stats — By Category tab in Stats; `CategoryComparison` domain model; `buildCategoryComparisons()` in `HouseholdStatisticsCalculator` (#25)
