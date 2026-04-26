@@ -136,18 +136,10 @@ fun LogChoreScreen(
                                 }
                                 .padding(horizontal = spacing.large, vertical = spacing.medium),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(spacing.medium),
                         ) {
-                            Icon(
-                                imageVector = chore.category.toIcon(),
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
                             Text(
                                 text = chore.name,
                                 style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.weight(1f),
                             )
                         }
                         HorizontalDivider(modifier = Modifier.padding(horizontal = spacing.large))

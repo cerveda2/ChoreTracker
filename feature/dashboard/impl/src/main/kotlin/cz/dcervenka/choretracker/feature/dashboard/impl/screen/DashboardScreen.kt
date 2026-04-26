@@ -1,7 +1,9 @@
 package cz.dcervenka.choretracker.feature.dashboard.impl.screen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -157,7 +159,7 @@ fun DashboardScreen(
                         ) {
                             items(snapshot.memberContributions, key = { it.memberId }) { contribution ->
                                 Card {
-                                    androidx.compose.foundation.layout.Column(
+                                    Column(
                                         modifier = Modifier.padding(spacing.medium),
                                     ) {
                                         Text(
@@ -219,34 +221,6 @@ fun DashboardScreen(
                     }
                 }
                 item {
-                    SectionCard(title = stringResource(R.string.dashboard_recent_completions)) {
-                        if (highlightedCompletions.isEmpty()) {
-                            EmptyState(
-                                title = stringResource(R.string.dashboard_recent_completions_empty_title),
-                                message = stringResource(R.string.dashboard_recent_completions_empty_message),
-                            )
-                        } else {
-                            highlightedCompletions.forEachIndexed { index, completion ->
-                                if (index > 0) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = spacing.medium),
-                                    )
-                                }
-                                RecentCompletionRow(
-                                    completion = completion,
-                                    onClick = { onOpenCompletion(completion.completionId) },
-                                    roundedBackground = true,
-                                )
-                            }
-                            if (uiState.allCompletions.size > highlightedCompletions.size) {
-                                TextButton(onClick = onSeeAllCompletions) {
-                                    Text(text = stringResource(R.string.dashboard_see_all))
-                                }
-                            }
-                        }
-                    }
-                }
-                item {
                     SectionCard(title = stringResource(R.string.dashboard_needs_attention)) {
                         if (filteredStaleItems.isEmpty()) {
                             Text(
@@ -257,7 +231,7 @@ fun DashboardScreen(
                             ChoreCategory.entries.forEach { category ->
                                 val group = staleItems.filter { categoryByChoreId[it.choreId] == category }
                                 if (group.isNotEmpty()) {
-                                    androidx.compose.foundation.layout.Row(
+                                    Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(spacing.xSmall),
                                         modifier = Modifier.padding(bottom = spacing.xSmall),
@@ -289,6 +263,34 @@ fun DashboardScreen(
                                     stale = stale,
                                     onLog = { openLogSheet(stale.choreId) },
                                 )
+                            }
+                        }
+                    }
+                }
+                item {
+                    SectionCard(title = stringResource(R.string.dashboard_recent_completions)) {
+                        if (highlightedCompletions.isEmpty()) {
+                            EmptyState(
+                                title = stringResource(R.string.dashboard_recent_completions_empty_title),
+                                message = stringResource(R.string.dashboard_recent_completions_empty_message),
+                            )
+                        } else {
+                            highlightedCompletions.forEachIndexed { index, completion ->
+                                if (index > 0) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = spacing.medium),
+                                    )
+                                }
+                                RecentCompletionRow(
+                                    completion = completion,
+                                    onClick = { onOpenCompletion(completion.completionId) },
+                                    roundedBackground = true,
+                                )
+                            }
+                            if (uiState.allCompletions.size > highlightedCompletions.size) {
+                                TextButton(onClick = onSeeAllCompletions) {
+                                    Text(text = stringResource(R.string.dashboard_see_all))
+                                }
                             }
                         }
                     }
@@ -326,12 +328,12 @@ private fun StaleChoreRow(
     onLog: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        androidx.compose.foundation.layout.Row(
+        Row(
             modifier = Modifier.padding(LocalSpacing.current.medium),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            androidx.compose.foundation.layout.Column(
+            Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.xSmall),
             ) {
