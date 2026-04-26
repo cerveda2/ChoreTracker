@@ -75,37 +75,31 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ## Improvement Backlog
 
-### Category payoff (natural next after categories merge)
-
-1. **Category-level stats** — Cleaning vs Cooking vs Shopping trends and per-category fairness summaries in Stats tabs (`HouseholdStatisticsCalculator.kt:68`).
-2. **Category defaults/templates** — Preset chore name suggestions when creating a chore, keyed by selected category; speeds up new-household setup.
-
 ### Dashboard & logging UX
 
-3. **Dashboard FAB** — Floating action button for logging a chore (existing backlog item).
-4. **Smart chore suggestions** — Surface "most overdue / best next" chore using `frequencyDays` + staleness score instead of pure recency (`HouseholdStatisticsCalculator.kt:220`).
-5. **Edit completion** — Allow editing note and participants after logging, not just deleting.
+1. **Smart chore suggestions** — Surface "most overdue / best next" chore using `frequencyDays` + staleness score instead of pure recency (`HouseholdStatisticsCalculator.kt:220`).
+2. **Edit completion** — Allow editing note and participants after logging, not just deleting.
 
 ### Settings & chore management
 
-6. **Chores settings UX** — Add search, sort, and group-by-category/status in `ChoresSettingsScreen.kt:88`; list is getting crowded.
-7. **Inactive chores** — Show inactive chores in a collapsible section instead of hiding them entirely.
-8. **Action feedback** — Snackbar / error state for add/edit/delete mutations in `SettingsViewModel.kt:226`; currently silent on success or failure.
+3. **Chores settings UX** — Add search, sort, and group-by-category/status in `ChoresSettingsScreen.kt:88`; list is getting crowded.
+4. **Inactive chores** — Show inactive chores in a collapsible section instead of hiding them entirely.
+5. **Action feedback** — Snackbar / error state for add/edit/delete mutations in `SettingsViewModel.kt:226`; currently silent on success or failure.
 
 ### Household & social
 
-9. **Invite acceptance UI** — Domain use cases exist (`ObserveInvites`, `CreateInviteUseCase`) but no UI for a new member to accept a household invite.
-10. **Upgrade household screen** — Add invite sharing, member roles, and summary cards; or fold the thin screen into Settings to remove duplication (`HouseholdScreen.kt:30`).
+6. **Invite acceptance UI** — Domain use cases exist (`ObserveInvites`, `CreateInviteUseCase`) but no UI for a new member to accept a household invite.
+7. **Upgrade household screen** — Add invite sharing, member roles, and summary cards; or fold the thin screen into Settings to remove duplication (`HouseholdScreen.kt:30`).
 
 ### Stats depth
 
-11. **Charts / visualizations** — Bar charts for member contributions and monthly trends; all three Stats tabs are currently text-only.
-12. **Completion history per chore** — Drill-down from the By Chore tab into full completion history for that chore.
-13. **Sort / filter recent completions** — Currently chronological only; add filter by member or chore.
+8. **Charts / visualizations** — Bar charts for member contributions and monthly trends; all Stats tabs are currently text-only.
+9. **Completion history per chore** — Drill-down from the By Chore tab into full completion history for that chore.
+10. **Sort / filter recent completions** — Currently chronological only; add filter by member or chore.
 
 ### Reminders
 
-14. **Chore reminders** — WorkManager daily job; push notification when X chores need attention.
+11. **Chore reminders** — WorkManager daily job; push notification when X chores need attention.
 
 ### Bugs (low priority)
 
@@ -113,30 +107,26 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Previously Completed
 
-- Bottom sheet for logging (replaced AlertDialog with ModalBottomSheet)
-- One-tap quick log (skip dialog for single-user)
-- Undo snackbar (Channel<UndoEvent>, DeleteCompletionUseCase)
-- Per-chore frequency threshold (frequencyDays)
-- Balance/fairness stats with summary card
-- Days-since hint on quick-log chore buttons
-- Dashboard log dialog improvements
-- Delete from completion detail — TopAppBar delete icon + confirmation dialog (#7)
-- LogButton component — fixed-width chip in `core/design`, `PrimaryButton` always full-width (#8)
-- Needs-attention log button — tonal FilledTonalButton on right side of stale chore rows (#9)
-- Settings profile section — profile row clickable, navigates to Account screen (#10)
-- Cold start flash — SplashScreen API installed (#5)
-- Preview mode dead button — `clearPreviewState()` on back navigation (#4)
-- Post-preview sign-in navigation — fixed downstream of preview bugs (#4)
-- Preview mode data leak — preview users get mocked household, real DB never queried, writes blocked (#14)
-- MVI refactor — sealed UiIntent + single dispatch() for all four ViewModels (#13)
-- Dashboard recent completions — compact rows, padded dividers, rounded ripple on widget (#15)
-- Recent completions full list — grouped by date with Today/Yesterday labels and activity-feed styling (#16)
-- Account screen — editable display name, read-only email, and sign-out from Settings profile section (#17)
-- Statistics redesign — 3 tabs (Summary, By Chore, Monthly) with `HorizontalPager` + `PrimaryTabRow` (#19)
-- App icon — vector adaptive icon, house + checkmark, primary sage green on warm beige background (#20)
+- Dashboard FAB → LogChoreScreen — replaced quick-log chips with FAB; new screen lists all active chores grouped by category (#28)
+- Category-based chore suggestions — SuggestionChip row in chore creation form, keyed by selected category (`ChoreIcons.kt`) (#26/#27)
+- Category-level stats — By Category tab in Stats; `CategoryComparison` domain model; `buildCategoryComparisons()` in `HouseholdStatisticsCalculator` (#25)
+- Category-based dashboard — FilterChip row (All + per-category), needs-attention grouped by category headers; `ChoreCategory.toStringRes()` added (#23)
+- Chore categories & icons — `category` field on `Chore` (enum: Cleaning, Cooking, Shopping, Outdoor, Other), Material icons throughout (#22)
 - Language switching — `LocaleManager` (API 33+) picker in Settings, `locale_config.xml`, English + Czech supported (#21)
-- Chore categories & icons — `category` field on `Chore` (enum: Cleaning, Cooking, Shopping, Outdoor, Other), Material icons on quick-log, needs-attention, and Settings chore list (#22)
-- Category-based dashboard — FilterChip row (All + per-category), quick-log filtered by category, needs-attention grouped by category headers; `ChoreCategory.toStringRes()` added (#23)
+- App icon — vector adaptive icon, house + checkmark, primary sage green on warm beige background (#20)
+- Statistics redesign — 3 tabs (Summary, By Chore, Monthly) with `HorizontalPager` + `PrimaryTabRow` (#19)
+- Account screen — editable display name, read-only email, and sign-out from Settings profile section (#17)
+- Recent completions full list — grouped by date with Today/Yesterday labels and activity-feed styling (#16)
+- Dashboard recent completions — compact rows, padded dividers, rounded ripple on widget (#15)
+- MVI refactor — sealed UiIntent + single dispatch() for all four ViewModels (#13)
+- Preview mode data leak — preview users get mocked household, real DB never queried, writes blocked (#14)
+- Cold start flash — SplashScreen API installed (#5)
+- Preview mode / post-preview sign-in navigation fixes (#4)
+- Settings profile section — profile row clickable, navigates to Account screen (#10)
+- Needs-attention log button — tonal FilledTonalButton on right side of stale chore rows (#9)
+- LogButton component — fixed-width chip in `core/design`, `PrimaryButton` always full-width (#8)
+- Delete from completion detail — TopAppBar delete icon + confirmation dialog (#7)
+- Per-chore frequency threshold (`frequencyDays`), undo snackbar, balance/fairness stats
 
 ## Release Readiness Backlog (ordered by priority)
 

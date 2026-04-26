@@ -2,6 +2,7 @@ package cz.dcervenka.choretracker.feature.dashboard.impl.screen
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,10 +37,15 @@ import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
+import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 import cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel.UndoEvent
 import kotlinx.coroutines.flow.Flow
+
+private const val SUGGESTION_LIMIT = 5
+private const val DEFAULT_ATTENTION_DAYS = 14.0
 
 @Composable
 fun LogChoreScreen(
@@ -79,6 +85,20 @@ fun LogChoreScreen(
             if (chores.isNotEmpty()) category to chores else null
         }
 
+    val staleByChoreId = snapshot?.staleChores?.associateBy { it.choreId }.orEmpty()
+    val suggestedChores = activeChores
+        .mapNotNull { chore -> staleByChoreId[chore.id]?.let { stale -> chore to stale } }
+        .filter { (_, stale) -> stale.status != ChoreStatus.OK }
+        .sortedByDescending { (_, stale) -> stale.urgencyScore() }
+        .take(SUGGESTION_LIMIT)
+
+    val openLogSheet: (String) -> Unit = { choreId ->
+        selectedChoreId = choreId
+        selectedMembers.clear()
+        if (currentUserId != null) selectedMembers.add(currentUserId)
+        selectedNote = ""
+    }
+
     ChoreScaffold(
         snackbarHostState = snackbarHostState,
         topBar = {
@@ -101,47 +121,46 @@ fun LogChoreScreen(
                     bottom = innerPadding.calculateBottomPadding() + spacing.large,
                 ),
             ) {
+                if (suggestedChores.isNotEmpty()) {
+                    item(key = "header-suggested") {
+                        SectionHeader(label = stringResource(R.string.dashboard_log_chore_suggested))
+                    }
+                    items(suggestedChores, key = { "suggested-${it.first.id}" }) { (chore, stale) ->
+                        val days = stale.daysSinceLastCompletion
+                        val hint = if (days != null) {
+                            stringResource(R.string.dashboard_days_ago, days)
+                        } else {
+                            stringResource(R.string.dashboard_never_done)
+                        }
+                        ChoreRow(
+                            name = chore.name,
+                            hint = hint,
+                            categoryIcon = chore.category.toIcon(),
+                            onClick = { openLogSheet(chore.id) },
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = spacing.large))
+                    }
+                }
+
                 choresByCategory.forEach { (category, chores) ->
                     item(key = "header-${category.name}") {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = spacing.large)
-                                .padding(top = spacing.medium, bottom = spacing.xSmall),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(spacing.small),
-                        ) {
-                            Icon(
-                                imageVector = category.toIcon(),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                            Text(
-                                text = stringResource(category.toStringRes()),
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                        }
+                        SectionHeader(
+                            label = stringResource(category.toStringRes()),
+                            icon = {
+                                Icon(
+                                    imageVector = category.toIcon(),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            },
+                        )
                     }
                     items(chores, key = { it.id }) { chore ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    selectedChoreId = chore.id
-                                    selectedMembers.clear()
-                                    if (currentUserId != null) selectedMembers.add(currentUserId)
-                                    selectedNote = ""
-                                }
-                                .padding(horizontal = spacing.large, vertical = spacing.medium),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = chore.name,
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                        }
+                        ChoreRow(
+                            name = chore.name,
+                            onClick = { openLogSheet(chore.id) },
+                        )
                         HorizontalDivider(modifier = Modifier.padding(horizontal = spacing.large))
                     }
                 }
@@ -170,4 +189,70 @@ fun LogChoreScreen(
             },
         )
     }
+}
+
+@Composable
+private fun SectionHeader(
+    label: String,
+    icon: (@Composable () -> Unit)? = null,
+) {
+    val spacing = LocalSpacing.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = spacing.large)
+            .padding(top = spacing.medium, bottom = spacing.xSmall),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(spacing.small),
+    ) {
+        icon?.invoke()
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+@Composable
+private fun ChoreRow(
+    name: String,
+    onClick: () -> Unit,
+    hint: String? = null,
+    categoryIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+) {
+    val spacing = LocalSpacing.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = spacing.large, vertical = spacing.medium),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(spacing.medium),
+    ) {
+        if (categoryIcon != null) {
+            Icon(
+                imageVector = categoryIcon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = name, style = MaterialTheme.typography.bodyLarge)
+            if (hint != null) {
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+private fun ChoreStaleness.urgencyScore(): Double {
+    val days = daysSinceLastCompletion ?: return Double.MAX_VALUE
+    val freq = frequencyDays
+    return if (freq != null && freq > 0) days.toDouble() / freq else days.toDouble() / DEFAULT_ATTENTION_DAYS
 }
