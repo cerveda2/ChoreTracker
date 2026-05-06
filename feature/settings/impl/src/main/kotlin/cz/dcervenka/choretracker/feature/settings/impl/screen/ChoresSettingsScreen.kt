@@ -1,5 +1,6 @@
 package cz.dcervenka.choretracker.feature.settings.impl.screen
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
@@ -73,6 +76,7 @@ fun ChoresSettingsScreen(
     val pendingCategoryChore = uiState.chores.firstOrNull { it.id == pendingCategoryChoreId }
     var searchQuery by remember { mutableStateOf("") }
     var groupBy by remember { mutableStateOf(ChoreGroupBy.NONE) }
+    var inactiveExpanded by remember { mutableStateOf(false) }
 
     val filteredChores = if (searchQuery.isBlank()) {
         uiState.chores
@@ -161,7 +165,9 @@ fun ChoresSettingsScreen(
                     } else {
                         when (groupBy) {
                             ChoreGroupBy.NONE -> {
-                                filteredChores.sortedBy { it.name }.forEach { chore ->
+                                val active = filteredChores.filter { it.isActive }.sortedBy { it.name }
+                                val inactive = filteredChores.filterNot { it.isActive }.sortedBy { it.name }
+                                active.forEach { chore ->
                                     ChoreRow(
                                         chore = chore,
                                         onCategoryClick = { pendingCategoryChoreId = chore.id },
@@ -172,6 +178,29 @@ fun ChoresSettingsScreen(
                                         },
                                         onDeleteClick = { pendingDeleteChoreId = chore.id },
                                     )
+                                }
+                                if (inactive.isNotEmpty()) {
+                                    if (active.isNotEmpty()) HorizontalDivider()
+                                    CollapsibleChoreGroupHeader(
+                                        label = stringResource(R.string.settings_chore_inactive),
+                                        count = inactive.size,
+                                        expanded = inactiveExpanded,
+                                        onToggle = { inactiveExpanded = !inactiveExpanded },
+                                    )
+                                    if (inactiveExpanded) {
+                                        inactive.forEach { chore ->
+                                            ChoreRow(
+                                                chore = chore,
+                                                onCategoryClick = { pendingCategoryChoreId = chore.id },
+                                                onRenameClick = { pendingRenameChoreId = chore.id },
+                                                onFrequencyClick = { pendingFrequencyChoreId = chore.id },
+                                                onActiveChange = { checked ->
+                                                    onIntent(SettingsUiIntent.UpdateChoreActive(chore.id, checked))
+                                                },
+                                                onDeleteClick = { pendingDeleteChoreId = chore.id },
+                                            )
+                                        }
+                                    }
                                 }
                             }
                             ChoreGroupBy.CATEGORY -> {
@@ -423,6 +452,36 @@ private fun ChoreGroupHeader(
             text = label,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+@Composable
+private fun CollapsibleChoreGroupHeader(
+    label: String,
+    count: Int,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    val spacing = LocalSpacing.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(vertical = spacing.xSmall),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = "$label ($count)",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Icon(
+            imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp),
         )
     }
 }
