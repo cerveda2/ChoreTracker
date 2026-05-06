@@ -18,11 +18,15 @@ import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCurrentMemberDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateHouseholdNameUseCase
+import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +34,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -53,6 +58,9 @@ class SettingsViewModel @Inject constructor(
     private val updateChoreCategoryUseCase: UpdateChoreCategoryUseCase,
     private val updateHouseholdNameUseCase: UpdateHouseholdNameUseCase,
 ) : ViewModel() {
+    private val _events = Channel<SettingsUiEvent>(Channel.BUFFERED)
+    val events: Flow<SettingsUiEvent> = _events.receiveAsFlow()
+
     private var hydratedUserId: String? = null
     private var currentHouseholdId: String? = null
     private val accountDisplayNameInput = MutableStateFlow("")
@@ -208,10 +216,11 @@ class SettingsViewModel @Inject constructor(
         val householdId = currentHouseholdId
         viewModelScope.launch {
             val authUpdate = updateDisplayNameUseCase(sanitizedName)
-            if (authUpdate is cz.dcervenka.choretracker.core.common.AppResult.Success) {
-                householdId?.let {
-                    updateCurrentMemberDisplayNameUseCase(it, sanitizedName)
-                }
+            if (authUpdate is AppResult.Success) {
+                householdId?.let { updateCurrentMemberDisplayNameUseCase(it, sanitizedName) }
+                _events.send(SettingsUiEvent.NameSaved)
+            } else if (authUpdate is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(authUpdate.message))
             }
         }
     }
@@ -219,24 +228,39 @@ class SettingsViewModel @Inject constructor(
     private fun saveHouseholdName() {
         val household = uiState.value.household ?: return
         viewModelScope.launch {
-            updateHouseholdNameUseCase(household.id, uiState.value.householdNameInput)
+            val result = updateHouseholdNameUseCase(household.id, uiState.value.householdNameInput)
+            if (result is AppResult.Success) {
+                _events.send(SettingsUiEvent.NameSaved)
+            } else if (result is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(result.message))
+            }
         }
     }
 
     private fun addMember() {
         val household = uiState.value.household ?: return
         viewModelScope.launch {
-            addMemberUseCase(household.id, uiState.value.memberInput)
-            memberInput.value = ""
+            val result = addMemberUseCase(household.id, uiState.value.memberInput)
+            if (result is AppResult.Success) {
+                memberInput.value = ""
+                _events.send(SettingsUiEvent.MemberAdded)
+            } else if (result is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(result.message))
+            }
         }
     }
 
     private fun addChore() {
         val household = uiState.value.household ?: return
         viewModelScope.launch {
-            addChoreUseCase(household.id, uiState.value.choreInput, choreCategoryInput.value)
-            choreInput.value = ""
-            choreCategoryInput.value = ChoreCategory.OTHER
+            val result = addChoreUseCase(household.id, uiState.value.choreInput, choreCategoryInput.value)
+            if (result is AppResult.Success) {
+                choreInput.value = ""
+                choreCategoryInput.value = ChoreCategory.OTHER
+                _events.send(SettingsUiEvent.ChoreAdded)
+            } else if (result is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(result.message))
+            }
         }
     }
 
@@ -255,25 +279,45 @@ class SettingsViewModel @Inject constructor(
 
     private fun deleteChore(choreId: String) {
         viewModelScope.launch {
-            deleteChoreUseCase(choreId)
+            val result = deleteChoreUseCase(choreId)
+            if (result is AppResult.Success) {
+                _events.send(SettingsUiEvent.ChoreDeleted)
+            } else if (result is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(result.message))
+            }
         }
     }
 
     private fun updateChoreFrequency(choreId: String, frequencyDays: Int?) {
         viewModelScope.launch {
-            updateChoreFrequencyUseCase(choreId, frequencyDays)
+            val result = updateChoreFrequencyUseCase(choreId, frequencyDays)
+            if (result is AppResult.Success) {
+                _events.send(SettingsUiEvent.ChoreSaved)
+            } else if (result is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(result.message))
+            }
         }
     }
 
     private fun updateChoreName(choreId: String, name: String) {
         viewModelScope.launch {
-            updateChoreNameUseCase(choreId, name)
+            val result = updateChoreNameUseCase(choreId, name)
+            if (result is AppResult.Success) {
+                _events.send(SettingsUiEvent.ChoreSaved)
+            } else if (result is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(result.message))
+            }
         }
     }
 
     private fun updateChoreCategory(choreId: String, category: ChoreCategory) {
         viewModelScope.launch {
-            updateChoreCategoryUseCase(choreId, category)
+            val result = updateChoreCategoryUseCase(choreId, category)
+            if (result is AppResult.Success) {
+                _events.send(SettingsUiEvent.ChoreSaved)
+            } else if (result is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(result.message))
+            }
         }
     }
 }
