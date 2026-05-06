@@ -77,8 +77,6 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Settings & chore management
 
-4. **Action feedback** — Snackbar / error state for add/edit/delete mutations in `SettingsViewModel.kt:226`; currently silent on success or failure.
-
 ### Household & social
 
 6. **Invite acceptance UI** — Domain use cases exist (`ObserveInvites`, `CreateInviteUseCase`) but no UI for a new member to accept a household invite.
@@ -100,6 +98,7 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Previously Completed
 
+- Action feedback snackbars — `SettingsUiEvent` Channel in `SettingsViewModel`; all mutations emit events; collected via `LaunchedEffect` in each settings screen (#35)
 - Inactive chores collapsible — `ChoreGroupBy.NONE` separates active/inactive; inactive shown in collapsed `CollapsibleChoreGroupHeader` section, expanded on tap
 - Chores settings UX — search bar + clear button, group-by chips (All / Category / Status) above chore list in `ChoresSettingsScreen`; `ChoreRow` extracted to private composable (#31)
 - Edit completion — Edit icon in completion detail TopAppBar opens `LogCompletionBottomSheet` in `editMode`; date picker hidden, note and participants pre-filled; dispatches `UpdateCompletion` intent (#30)
