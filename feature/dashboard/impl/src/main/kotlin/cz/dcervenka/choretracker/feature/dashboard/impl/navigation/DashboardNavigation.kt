@@ -53,6 +53,7 @@ fun NavGraphBuilder.dashboardScreen(
 
         RecentCompletionsScreen(
             completions = uiState.value.allCompletions,
+            members = uiState.value.members,
             onBack = { navController.popBackStack() },
             onOpenCompletion = { completionId ->
                 navController.navigate(DashboardCompletionDetailDestination.createRoute(completionId))

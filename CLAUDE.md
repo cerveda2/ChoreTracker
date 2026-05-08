@@ -78,7 +78,6 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Stats depth
 
-10. **Sort / filter recent completions** — Currently chronological only; add filter by member or chore.
 
 ### Reminders
 
@@ -90,6 +89,7 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Previously Completed
 
+- Sort / filter recent completions — member + chore `FilterChip` rows on `RecentCompletionsScreen`; local `rememberSaveable` state; AND filter applied before date-grouping; chips hidden when only one option
 - Completion history per chore — `ChoreHistoryScreen` + `ChoreHistoryViewModel`; new DAO query + repo method + `ObserveChoreCompletionsUseCase`; `SectionCard` gains optional `onClick`; tapping a chore card in By Chore tab navigates to full completion history grouped by date
 - Charts / visualizations — horizontal share bars in Summary (member contributions), vertical bar chart in Monthly (trend), horizontal count bars in By Chore (per-member); pure Compose Box/Canvas, no library
 - Removed orphaned household screen — `feature/household/impl` deleted; all functionality already covered by Settings sub-screens
