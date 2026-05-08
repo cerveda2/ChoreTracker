@@ -1,14 +1,27 @@
 package cz.dcervenka.choretracker.feature.stats.impl.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.EmptyState
@@ -89,6 +102,9 @@ private fun SummaryCard(summary: HouseholdSummary) {
 
 @Composable
 private fun MemberContributionsCard(contributions: List<MemberContribution>) {
+    val spacing = LocalSpacing.current
+    val memberColors = memberColorPalette()
+
     SectionCard(title = stringResource(R.string.stats_summary_members_title)) {
         if (contributions.isEmpty()) {
             Text(
@@ -97,15 +113,12 @@ private fun MemberContributionsCard(contributions: List<MemberContribution>) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            contributions.forEach { member ->
-                Text(
-                    text = stringResource(
-                        R.string.stats_summary_member_line,
-                        member.displayName,
-                        member.totalCount,
-                        member.sharePercent,
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
+            contributions.forEachIndexed { index, member ->
+                val barColor = memberColors[index % memberColors.size]
+                MemberShareBar(
+                    name = member.displayName,
+                    sharePercent = member.sharePercent,
+                    color = barColor,
                 )
                 Text(
                     text = stringResource(
@@ -115,9 +128,57 @@ private fun MemberContributionsCard(contributions: List<MemberContribution>) {
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
                 )
+                if (index < contributions.lastIndex) {
+                    Box(modifier = Modifier.height(spacing.small))
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun MemberShareBar(
+    name: String,
+    sharePercent: Int,
+    color: Color,
+) {
+    val spacing = LocalSpacing.current
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(spacing.small),
+    ) {
+        Text(
+            text = name,
+            modifier = Modifier.width(88.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(8.dp)
+                .background(trackColor, CircleShape),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(fraction = (sharePercent / 100f).coerceIn(0f, 1f))
+                    .background(color, CircleShape),
+            )
+        }
+        Text(
+            text = stringResource(R.string.dashboard_share_percent, sharePercent),
+            modifier = Modifier.width(36.dp),
+            style = MaterialTheme.typography.labelSmall,
+            textAlign = TextAlign.End,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -156,3 +217,11 @@ private fun stalenessLabel(chore: ChoreStaleness): String = when (chore.status) 
     ChoreStatus.SOON -> stringResource(R.string.stats_stale_soon)
     ChoreStatus.OK -> stringResource(R.string.stats_stale_ok)
 }
+
+@Composable
+internal fun memberColorPalette(): List<Color> = listOf(
+    MaterialTheme.colorScheme.primary,
+    MaterialTheme.colorScheme.secondary,
+    MaterialTheme.colorScheme.tertiary,
+    MaterialTheme.colorScheme.error,
+)

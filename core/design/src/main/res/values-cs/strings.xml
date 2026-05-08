@@ -121,6 +121,7 @@
     <string name="stats_leader_no_data">Žádná data</string>
     <string name="stats_leader_tie">Remíza</string>
     <string name="stats_monthly_breakdown">Měsíční přehled</string>
+    <string name="stats_monthly_trend">Měsíční trend</string>
     <string name="stats_monthly_empty_title">Zatím žádný měsíční trend</string>
     <string name="stats_monthly_empty_message">Jakmile budou splnění z více dat, zobrazí se zde měsíční historie.</string>
     <string name="stats_total_count">Splnění celkem: %1$d</string>

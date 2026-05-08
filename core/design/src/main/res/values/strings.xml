@@ -121,6 +121,7 @@
     <string name="stats_leader_no_data">No data</string>
     <string name="stats_leader_tie">Tie</string>
     <string name="stats_monthly_breakdown">Monthly breakdown</string>
+    <string name="stats_monthly_trend">Monthly trend</string>
     <string name="stats_monthly_empty_title">No monthly trend yet</string>
     <string name="stats_monthly_empty_message">Once completions span a few dates, the monthly history will appear here.</string>
     <string name="stats_total_count">Total completions: %1$d</string>

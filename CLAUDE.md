@@ -78,8 +78,7 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Stats depth
 
-8. **Charts / visualizations** — Bar charts for member contributions and monthly trends; all Stats tabs are currently text-only.
-9. **Completion history per chore** — Drill-down from the By Chore tab into full completion history for that chore.
+8. **Completion history per chore** — Drill-down from the By Chore tab into full completion history for that chore.
 10. **Sort / filter recent completions** — Currently chronological only; add filter by member or chore.
 
 ### Reminders
@@ -92,6 +91,7 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Previously Completed
 
+- Charts / visualizations — horizontal share bars in Summary (member contributions), vertical bar chart in Monthly (trend), horizontal count bars in By Chore (per-member); pure Compose Box/Canvas, no library
 - Removed orphaned household screen — `feature/household/impl` deleted; all functionality already covered by Settings sub-screens
 - Invite sharing — copy-to-clipboard and share sheet on `HouseholdSettingsScreen`; invite history list with pending/accepted status; `ObserveInvitesUseCase` wired into `SettingsViewModel`; `LocalClipboard` + `rememberCoroutineScope` used for clipboard writes
 - Action feedback snackbars — `SettingsUiEvent` Channel in `SettingsViewModel`; all mutations emit events; collected via `LaunchedEffect` in each settings screen (#35)
