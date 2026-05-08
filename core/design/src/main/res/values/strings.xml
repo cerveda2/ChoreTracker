@@ -82,6 +82,9 @@
     <string name="dashboard_note">Note</string>
     <string name="dashboard_see_all">See all</string>
     <string name="dashboard_filter_all">All</string>
+    <string name="dashboard_filter_action">Filter</string>
+    <string name="dashboard_filter_by_member">Member</string>
+    <string name="dashboard_filter_by_chore">Chore</string>
 
     <string name="household_title">Household</string>
     <string name="household_active_invite">Active invite: %1$s</string>
