@@ -100,6 +100,10 @@
     <string name="household_member_count">%1$d members</string>
     <string name="household_chore_count">%1$d chores</string>
     <string name="household_invite_section">Invite</string>
+    <string name="settings_invite_copy">Copy code</string>
+    <string name="settings_invite_share">Share invite</string>
+    <string name="settings_invite_share_message">Join my household in ChoreTracker! Use invite code: %s</string>
+    <string name="settings_invite_history_title">Invite history</string>
 
     <string name="stats_loading">Loading statistics…</string>
     <string name="stats_title">Statistics</string>

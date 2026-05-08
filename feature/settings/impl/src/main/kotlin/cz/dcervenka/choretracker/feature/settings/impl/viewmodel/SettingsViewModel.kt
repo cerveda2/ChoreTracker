@@ -10,6 +10,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveInvitesUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
@@ -45,6 +46,7 @@ class SettingsViewModel @Inject constructor(
     observeCurrentHouseholdUseCase: ObserveCurrentHouseholdUseCase,
     observeMembersUseCase: ObserveMembersUseCase,
     observeChoresUseCase: ObserveChoresUseCase,
+    observeInvitesUseCase: ObserveInvitesUseCase,
     private val signOutUseCase: SignOutUseCase,
     private val addMemberUseCase: AddMemberUseCase,
     private val addChoreUseCase: AddChoreUseCase,
@@ -119,6 +121,7 @@ class SettingsViewModel @Inject constructor(
                 combine(
                     observeMembersUseCase(household.id),
                     observeChoresUseCase(household.id),
+                    observeInvitesUseCase(household.id),
                     combine(
                         accountDisplayNameInput,
                         householdNameInput,
@@ -134,11 +137,12 @@ class SettingsViewModel @Inject constructor(
                             choreCategoryInput = currentCategory,
                         )
                     },
-                ) { members, chores, draftState ->
+                ) { members, chores, invites, draftState ->
                     draftState.copy(
                         household = household,
                         members = members,
                         chores = chores.filter { it.deletedAt == null },
+                        invites = invites.sortedByDescending { it.createdAt },
                     )
                 }
             }

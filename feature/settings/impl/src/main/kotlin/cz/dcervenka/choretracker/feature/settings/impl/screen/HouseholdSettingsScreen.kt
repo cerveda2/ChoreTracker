@@ -1,10 +1,21 @@
 package cz.dcervenka.choretracker.feature.settings.impl.screen
 
+import android.content.ClipData
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
@@ -12,10 +23,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.PreviewData
@@ -26,11 +43,15 @@ import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.ScreenHeader
 import cz.dcervenka.choretracker.core.design.components.SectionCard
+import cz.dcervenka.choretracker.core.model.household.Invite
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.launch
+import java.text.DateFormat
+import java.util.Date
 
 @Composable
 fun HouseholdSettingsScreen(
@@ -53,6 +74,10 @@ fun HouseholdSettingsScreen(
             snackbarHostState.showSnackbar(msg)
         }
     }
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val shareMessage = stringResource(R.string.settings_invite_share_message)
 
     ChoreScaffold(
         snackbarHostState = snackbarHostState,
@@ -97,10 +122,64 @@ fun HouseholdSettingsScreen(
                 }
                 item {
                     SectionCard(title = stringResource(R.string.household_invite_section)) {
-                        Text(
-                            text = stringResource(R.string.settings_invite_code, uiState.household.inviteCode),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_invite_code, uiState.household.inviteCode),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            IconButton(onClick = {
+                                scope.launch {
+                                    clipboard.setClipEntry(
+                                        ClipEntry(ClipData.newPlainText("", uiState.household.inviteCode)),
+                                    )
+                                }
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.ContentCopy,
+                                    contentDescription = stringResource(R.string.settings_invite_copy),
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                            IconButton(onClick = {
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, shareMessage.format(uiState.household.inviteCode))
+                                }
+                                context.startActivity(Intent.createChooser(intent, null))
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Share,
+                                    contentDescription = stringResource(R.string.settings_invite_share),
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                        }
+                        if (uiState.invites.isNotEmpty()) {
+                            HorizontalDivider()
+                            Text(
+                                text = stringResource(R.string.settings_invite_history_title),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(vertical = spacing.xSmall),
+                            )
+                            uiState.invites.forEach { invite ->
+                                InviteRow(
+                                    invite = invite,
+                                    onCopy = {
+                                        scope.launch {
+                                            clipboard.setClipEntry(
+                                                ClipEntry(ClipData.newPlainText("", invite.code)),
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+                        }
                         PrimaryButton(
                             text = stringResource(R.string.household_refresh_invite),
                             onClick = { onIntent(SettingsUiIntent.RefreshInvite) },
@@ -115,6 +194,48 @@ fun HouseholdSettingsScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun InviteRow(
+    invite: Invite,
+    onCopy: () -> Unit,
+) {
+    val spacing = LocalSpacing.current
+    val isPending = invite.consumedAt == null
+    val dateLabel = DateFormat.getDateInstance(DateFormat.SHORT)
+        .format(Date(invite.createdAt.toEpochMilliseconds()))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = spacing.xSmall),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = invite.code,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = dateLabel,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = if (isPending) "·" else "✓",
+            style = MaterialTheme.typography.labelMedium,
+            color = if (isPending) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.padding(horizontal = spacing.xSmall),
+        )
+        IconButton(onClick = onCopy) {
+            Icon(
+                imageVector = Icons.Outlined.ContentCopy,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
         }
     }
 }

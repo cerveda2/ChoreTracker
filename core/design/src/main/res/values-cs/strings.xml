@@ -100,6 +100,10 @@
     <string name="household_member_count">%1$d členů</string>
     <string name="household_chore_count">%1$d úkolů</string>
     <string name="household_invite_section">Pozvánka</string>
+    <string name="settings_invite_copy">Kopírovat kód</string>
+    <string name="settings_invite_share">Sdílet pozvánku</string>
+    <string name="settings_invite_share_message">Připoj se k mé domácnosti v ChoreTrackeru! Použij kód pozvánky: %s</string>
+    <string name="settings_invite_history_title">Historie pozvánek</string>
 
     <string name="stats_loading">Načítám statistiky…</string>
     <string name="stats_title">Statistiky</string>
