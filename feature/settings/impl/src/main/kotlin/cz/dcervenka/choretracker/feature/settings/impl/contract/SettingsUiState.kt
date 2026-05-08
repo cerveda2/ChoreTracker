@@ -5,6 +5,7 @@ import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
+import cz.dcervenka.choretracker.core.model.household.Invite
 
 data class SettingsUiState(
     val userLabel: String? = null,
@@ -12,6 +13,7 @@ data class SettingsUiState(
     val household: Household? = null,
     val members: List<HouseholdMember> = emptyList(),
     val chores: List<Chore> = emptyList(),
+    val invites: List<Invite> = emptyList(),
     val accountDisplayNameInput: String = "",
     val householdNameInput: String = "",
     val memberInput: String = "",

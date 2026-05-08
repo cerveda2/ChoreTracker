@@ -79,8 +79,7 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Household & social
 
-6. **Invite acceptance UI** — Domain use cases exist (`ObserveInvites`, `CreateInviteUseCase`) but no UI for a new member to accept a household invite.
-7. **Upgrade household screen** — Add invite sharing, member roles, and summary cards; or fold the thin screen into Settings to remove duplication (`HouseholdScreen.kt:30`).
+6. **Upgrade household screen** — Add member roles and summary cards; or fold the thin screen into Settings to remove duplication (`HouseholdScreen.kt:30`).
 
 ### Stats depth
 
@@ -98,6 +97,7 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Previously Completed
 
+- Invite sharing — copy-to-clipboard and share sheet on `HouseholdSettingsScreen`; invite history list with pending/accepted status; `ObserveInvitesUseCase` wired into `SettingsViewModel`; `LocalClipboard` + `rememberCoroutineScope` used for clipboard writes
 - Action feedback snackbars — `SettingsUiEvent` Channel in `SettingsViewModel`; all mutations emit events; collected via `LaunchedEffect` in each settings screen (#35)
 - Inactive chores collapsible — `ChoreGroupBy.NONE` separates active/inactive; inactive shown in collapsed `CollapsibleChoreGroupHeader` section, expanded on tap
 - Chores settings UX — search bar + clear button, group-by chips (All / Category / Status) above chore list in `ChoresSettingsScreen`; `ChoreRow` extracted to private composable (#31)
