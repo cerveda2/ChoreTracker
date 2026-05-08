@@ -37,7 +37,6 @@ dependencies {
     implementation(projects.feature.auth.impl)
     implementation(projects.feature.onboarding.impl)
     implementation(projects.feature.dashboard.impl)
-    implementation(projects.feature.household.impl)
     implementation(projects.feature.stats.impl)
     implementation(projects.feature.settings.impl)
     implementation(libs.androidx.core.ktx)

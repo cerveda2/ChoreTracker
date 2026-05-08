@@ -34,13 +34,12 @@ feature/
   dashboard/impl/             Main screen: contributions, quick-log, recent, needs attention
   stats/impl/                 Per-chore comparison, monthly breakdown, staleness
   settings/impl/              Household, members, chores management
-  household/impl/             Read-only household info display
 ```
 
 ## Key Conventions
 
 - New Compose components go in `core/design`, following `SectionCard`, `PrimaryButton` patterns
-- Chore/member management UI lives in **settings feature only** (household is read-only)
+- Chore/member management UI lives in **settings feature only**
 - New data attributes must update: Room entity, DAO, mapper, repository, use case, Firestore schema, `firestore.rules`
 - One feature per commit, scoped changes only
 - Do NOT add comments, docstrings, or annotations to unchanged code
@@ -77,10 +76,6 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Settings & chore management
 
-### Household & social
-
-6. **Upgrade household screen** — Add member roles and summary cards; or fold the thin screen into Settings to remove duplication (`HouseholdScreen.kt:30`).
-
 ### Stats depth
 
 8. **Charts / visualizations** — Bar charts for member contributions and monthly trends; all Stats tabs are currently text-only.
@@ -97,6 +92,7 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ### Previously Completed
 
+- Removed orphaned household screen — `feature/household/impl` deleted; all functionality already covered by Settings sub-screens
 - Invite sharing — copy-to-clipboard and share sheet on `HouseholdSettingsScreen`; invite history list with pending/accepted status; `ObserveInvitesUseCase` wired into `SettingsViewModel`; `LocalClipboard` + `rememberCoroutineScope` used for clipboard writes
 - Action feedback snackbars — `SettingsUiEvent` Channel in `SettingsViewModel`; all mutations emit events; collected via `LaunchedEffect` in each settings screen (#35)
 - Inactive chores collapsible — `ChoreGroupBy.NONE` separates active/inactive; inactive shown in collapsed `CollapsibleChoreGroupHeader` section, expanded on tap
