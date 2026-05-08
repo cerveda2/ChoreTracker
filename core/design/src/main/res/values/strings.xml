@@ -188,6 +188,12 @@
     <string name="settings_chore_group_status">Status</string>
     <string name="settings_chore_active">Active</string>
     <string name="settings_chore_inactive">Inactive</string>
+    <string name="settings_feedback_chore_added">Chore added</string>
+    <string name="settings_feedback_chore_deleted">Chore deleted</string>
+    <string name="settings_feedback_chore_saved">Saved</string>
+    <string name="settings_feedback_member_added">Member added</string>
+    <string name="settings_feedback_name_saved">Name saved</string>
+    <string name="settings_feedback_error">Something went wrong</string>
     <string name="settings_chore_category_title">Category</string>
     <string name="chore_category_cleaning">Cleaning</string>
     <string name="chore_category_cooking">Cooking</string>

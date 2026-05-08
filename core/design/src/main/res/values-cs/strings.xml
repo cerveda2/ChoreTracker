@@ -188,6 +188,12 @@
     <string name="settings_chore_group_status">Stav</string>
     <string name="settings_chore_active">Aktivní</string>
     <string name="settings_chore_inactive">Neaktivní</string>
+    <string name="settings_feedback_chore_added">Úkol přidán</string>
+    <string name="settings_feedback_chore_deleted">Úkol smazán</string>
+    <string name="settings_feedback_chore_saved">Uloženo</string>
+    <string name="settings_feedback_member_added">Člen přidán</string>
+    <string name="settings_feedback_name_saved">Název uložen</string>
+    <string name="settings_feedback_error">Něco se pokazilo</string>
     <string name="settings_chore_category_title">Kategorie</string>
     <string name="chore_category_cleaning">Úklid</string>
     <string name="chore_category_cooking">Vaření</string>

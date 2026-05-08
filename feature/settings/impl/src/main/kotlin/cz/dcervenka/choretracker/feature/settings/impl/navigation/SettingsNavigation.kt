@@ -41,6 +41,7 @@ fun NavGraphBuilder.settingsScreen(
 
         HouseholdSettingsScreen(
             uiState = uiState.value,
+            events = viewModel.events,
             onBack = { navController.popBackStack() },
             onIntent = viewModel::dispatch,
         )
@@ -52,6 +53,7 @@ fun NavGraphBuilder.settingsScreen(
 
         MembersSettingsScreen(
             uiState = uiState.value,
+            events = viewModel.events,
             onBack = { navController.popBackStack() },
             onIntent = viewModel::dispatch,
         )
@@ -63,6 +65,7 @@ fun NavGraphBuilder.settingsScreen(
 
         ChoresSettingsScreen(
             uiState = uiState.value,
+            events = viewModel.events,
             onBack = { navController.popBackStack() },
             onIntent = viewModel::dispatch,
         )
@@ -74,6 +77,7 @@ fun NavGraphBuilder.settingsScreen(
 
         AccountSettingsScreen(
             uiState = uiState.value,
+            events = viewModel.events,
             onBack = { navController.popBackStack() },
             onIntent = viewModel::dispatch,
         )

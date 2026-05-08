@@ -7,8 +7,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -23,18 +26,36 @@ import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.ScreenHeader
 import cz.dcervenka.choretracker.core.design.components.SectionCard
+import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 @Composable
 fun HouseholdSettingsScreen(
     uiState: SettingsUiState,
+    events: Flow<SettingsUiEvent>,
     onBack: () -> Unit,
     onIntent: (SettingsUiIntent) -> Unit,
 ) {
     val spacing = LocalSpacing.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val msgNameSaved = stringResource(R.string.settings_feedback_name_saved)
+    val msgError = stringResource(R.string.settings_feedback_error)
+    LaunchedEffect(events) {
+        events.collect { event ->
+            val msg = when (event) {
+                SettingsUiEvent.NameSaved -> msgNameSaved
+                is SettingsUiEvent.Error -> event.message.ifBlank { msgError }
+                else -> return@collect
+            }
+            snackbarHostState.showSnackbar(msg)
+        }
+    }
 
     ChoreScaffold(
+        snackbarHostState = snackbarHostState,
         topBar = {
             ChoreTopAppBar(
                 title = stringResource(R.string.settings_manage_household_title),
@@ -107,6 +128,7 @@ private fun HouseholdSettingsScreenPreview() {
                 household = PreviewData.household,
                 householdNameInput = PreviewData.household.name,
             ),
+            events = emptyFlow(),
             onBack = {},
             onIntent = {},
         )

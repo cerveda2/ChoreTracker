@@ -27,11 +27,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,18 +56,38 @@ import cz.dcervenka.choretracker.core.design.suggestions
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
+import kotlinx.coroutines.flow.Flow
 
 private enum class ChoreGroupBy { NONE, CATEGORY, STATUS }
 
 @Composable
 fun ChoresSettingsScreen(
     uiState: SettingsUiState,
+    events: Flow<SettingsUiEvent>,
     onBack: () -> Unit,
     onIntent: (SettingsUiIntent) -> Unit,
 ) {
     val spacing = LocalSpacing.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val msgChoreAdded = stringResource(R.string.settings_feedback_chore_added)
+    val msgChoreDeleted = stringResource(R.string.settings_feedback_chore_deleted)
+    val msgChoreSaved = stringResource(R.string.settings_feedback_chore_saved)
+    val msgError = stringResource(R.string.settings_feedback_error)
+    LaunchedEffect(events) {
+        events.collect { event ->
+            val msg = when (event) {
+                SettingsUiEvent.ChoreAdded -> msgChoreAdded
+                SettingsUiEvent.ChoreDeleted -> msgChoreDeleted
+                SettingsUiEvent.ChoreSaved -> msgChoreSaved
+                is SettingsUiEvent.Error -> event.message.ifBlank { msgError }
+                else -> return@collect
+            }
+            snackbarHostState.showSnackbar(msg)
+        }
+    }
     var pendingDeleteChoreId by remember { mutableStateOf<String?>(null) }
     val pendingDeleteChore = uiState.chores.firstOrNull { it.id == pendingDeleteChoreId }
     var pendingFrequencyChoreId by remember { mutableStateOf<String?>(null) }
@@ -85,6 +107,7 @@ fun ChoresSettingsScreen(
     }
 
     ChoreScaffold(
+        snackbarHostState = snackbarHostState,
         topBar = {
             ChoreTopAppBar(
                 title = stringResource(R.string.settings_manage_chores_title),

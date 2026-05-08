@@ -8,8 +8,11 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import cz.dcervenka.choretracker.core.design.LocalSpacing
@@ -19,16 +22,32 @@ import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.ScreenHeader
 import cz.dcervenka.choretracker.core.design.components.SectionCard
+import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
+import kotlinx.coroutines.flow.Flow
 
 @Composable
 fun AccountSettingsScreen(
     uiState: SettingsUiState,
+    events: Flow<SettingsUiEvent>,
     onBack: () -> Unit,
     onIntent: (SettingsUiIntent) -> Unit,
 ) {
     val spacing = LocalSpacing.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val msgNameSaved = stringResource(R.string.settings_feedback_name_saved)
+    val msgError = stringResource(R.string.settings_feedback_error)
+    LaunchedEffect(events) {
+        events.collect { event ->
+            val msg = when (event) {
+                SettingsUiEvent.NameSaved -> msgNameSaved
+                is SettingsUiEvent.Error -> event.message.ifBlank { msgError }
+                else -> return@collect
+            }
+            snackbarHostState.showSnackbar(msg)
+        }
+    }
     val profileSummary = uiState.userLabel ?: when {
         uiState.requiresConfiguration -> stringResource(R.string.settings_firebase_required)
         uiState.isSignedOut -> stringResource(R.string.settings_signed_out)
@@ -39,6 +58,7 @@ fun AccountSettingsScreen(
         uiState.accountDisplayNameInput.trim() != uiState.userLabel
 
     ChoreScaffold(
+        snackbarHostState = snackbarHostState,
         topBar = {
             ChoreTopAppBar(
                 title = stringResource(R.string.settings_account_title),
