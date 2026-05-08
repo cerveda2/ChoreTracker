@@ -139,6 +139,9 @@
     <string name="stats_category_chore_count">%1$d chore(s)</string>
     <string name="stats_category_empty_title">No category data yet</string>
     <string name="stats_category_empty_message">Log some chores and category trends will appear here.</string>
+    <string name="stats_chore_history_empty_title">No completions yet</string>
+    <string name="stats_chore_history_empty_message">Completions for this chore will appear here once someone logs it.</string>
+    <string name="stats_chore_history_unknown">Unknown</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_overview">Overview</string>

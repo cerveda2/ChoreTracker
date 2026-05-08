@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun StatsScreen(
     uiState: StatsUiState,
+    onChoreClick: (choreId: String, choreName: String) -> Unit = { _, _ -> },
 ) {
     val spacing = LocalSpacing.current
     val stats = uiState.snapshot
@@ -117,7 +118,11 @@ fun StatsScreen(
             ) { page ->
                 when (StatsTab.entries[page]) {
                     StatsTab.Summary -> SummaryTab(stats = stats, contentPadding = pagePadding)
-                    StatsTab.ByChore -> ByChoreTab(stats = stats, contentPadding = pagePadding)
+                    StatsTab.ByChore -> ByChoreTab(
+                        stats = stats,
+                        contentPadding = pagePadding,
+                        onChoreClick = onChoreClick,
+                    )
                     StatsTab.ByCategory -> ByCategoryTab(stats = stats, contentPadding = pagePadding)
                     StatsTab.Monthly -> MonthlyTab(stats = stats, contentPadding = pagePadding)
                 }

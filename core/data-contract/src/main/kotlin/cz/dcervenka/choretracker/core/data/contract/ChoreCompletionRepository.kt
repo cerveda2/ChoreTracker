@@ -9,6 +9,8 @@ import kotlin.time.Instant
 interface ChoreCompletionRepository {
     fun observeRecentCompletions(householdId: String, limit: Int = 10): Flow<List<RecentCompletion>>
 
+    fun observeCompletionsByChore(householdId: String, choreId: String): Flow<List<RecentCompletion>>
+
     suspend fun logCompletion(
         householdId: String,
         choreId: String,

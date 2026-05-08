@@ -113,7 +113,7 @@ fun ChoreTrackerRoot(
                     authScreen()
                     onboardingScreen()
                     dashboardScreen(navController = navController)
-                    statsScreen()
+                    statsScreen(navController = navController)
                     settingsScreen(navController = navController)
                 }
             }
