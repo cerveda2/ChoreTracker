@@ -139,6 +139,9 @@
     <string name="stats_category_chore_count">%1$d úkol(ů)</string>
     <string name="stats_category_empty_title">Zatím žádná data kategorií</string>
     <string name="stats_category_empty_message">Zaznamnejte několik úkolů a trendy podle kategorií se zobrazí zde.</string>
+    <string name="stats_chore_history_empty_title">Zatím žádná splnění</string>
+    <string name="stats_chore_history_empty_message">Splnění tohoto úkolu se zobrazí zde, jakmile ho někdo zaznamená.</string>
+    <string name="stats_chore_history_unknown">Neznámý</string>
 
     <string name="settings_title">Nastavení</string>
     <string name="settings_overview">Přehled</string>

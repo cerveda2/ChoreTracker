@@ -15,6 +15,7 @@ dependencies {
     implementation(projects.core.model)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.kotlinx.datetime)
 
     testImplementation(projects.core.dataContract)
     testImplementation(projects.core.test)

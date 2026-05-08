@@ -60,6 +60,30 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
             }
         }
 
+    override fun observeCompletionsByChore(householdId: String, choreId: String): Flow<List<RecentCompletion>> =
+        combine(
+            completionDao.observeCompletionsByChore(householdId, choreId),
+            choreDao.observeChores(householdId),
+            memberDao.observeMembers(householdId),
+            participantDao.observeParticipants(householdId),
+        ) { completions, chores, members, participants ->
+            val choreMap = chores.associateBy { it.id }
+            val memberMap = members.associateBy { it.id }
+            val participantsByCompletion = participants.groupBy { it.completionId }
+            completions.map { completion ->
+                val completionParticipants = participantsByCompletion[completion.id].orEmpty()
+                RecentCompletion(
+                    completionId = completion.id,
+                    choreName = choreMap[completion.choreId]?.name.orEmpty(),
+                    note = completion.note,
+                    completedAt = completion.createdAt,
+                    participantNames = completionParticipants
+                        .mapNotNull { memberMap[it.memberId]?.displayName },
+                    participantMemberIds = completionParticipants.map { it.memberId },
+                )
+            }
+        }
+
     override suspend fun logCompletion(
         householdId: String,
         choreId: String,

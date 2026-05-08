@@ -34,6 +34,7 @@ import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
 fun ByChoreTab(
     stats: StatsSnapshot,
     contentPadding: PaddingValues,
+    onChoreClick: (choreId: String, choreName: String) -> Unit,
 ) {
     val spacing = LocalSpacing.current
 
@@ -51,20 +52,23 @@ fun ByChoreTab(
             }
         } else {
             items(stats.comparisons, key = { it.choreId }) { comparison ->
-                ChoreComparisonCard(comparison = comparison)
+                ChoreComparisonCard(
+                    comparison = comparison,
+                    onClick = { onChoreClick(comparison.choreId, comparison.choreName) },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ChoreComparisonCard(comparison: ChoreComparison) {
+private fun ChoreComparisonCard(comparison: ChoreComparison, onClick: () -> Unit) {
     val spacing = LocalSpacing.current
     val memberColors = memberColorPalette()
     val maxCount = comparison.countsByMember.values.maxOrNull()?.coerceAtLeast(1) ?: 1
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
 
-    SectionCard(title = comparison.choreName) {
+    SectionCard(title = comparison.choreName, onClick = onClick) {
         Text(
             text = stringResource(R.string.stats_total_count, comparison.totalCount),
             style = MaterialTheme.typography.bodySmall,

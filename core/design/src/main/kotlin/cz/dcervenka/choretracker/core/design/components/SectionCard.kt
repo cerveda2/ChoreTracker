@@ -18,9 +18,32 @@ import cz.dcervenka.choretracker.core.design.LocalSpacing
 fun SectionCard(
     title: String,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val spacing = LocalSpacing.current
+
+    if (onClick != null) {
+        Card(
+            onClick = onClick,
+            modifier = modifier.fillMaxWidth(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(spacing.medium),
+                verticalArrangement = Arrangement.spacedBy(spacing.small),
+                content = {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    content()
+                },
+            )
+        }
+        return
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
