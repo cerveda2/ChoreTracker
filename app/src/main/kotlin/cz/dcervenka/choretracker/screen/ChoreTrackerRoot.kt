@@ -1,7 +1,6 @@
 package cz.dcervenka.choretracker.screen
 
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -17,7 +16,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -45,9 +43,8 @@ fun ChoreTrackerRoot(
     }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
-    val showBottomBar = topLevelDestinations.any { destination ->
-        currentDestination?.hierarchy?.any { it.route == destination.route } == true
-    }
+    val currentRoute = currentDestination?.route
+    val showBottomBar = topLevelDestinations.any { destination -> currentRoute == destination.route }
 
     LaunchedEffect(rootDestination) {
         if (rootDestination == RootDestination.Loading) return@LaunchedEffect
@@ -72,7 +69,7 @@ fun ChoreTrackerRoot(
                         tonalElevation = 0.dp,
                     ) {
                         topLevelDestinations.forEach { destination ->
-                            val selected = currentDestination?.hierarchy?.any { it.route == destination.route } == true
+                            val selected = currentRoute == destination.route
                             NavigationBarItem(
                                 selected = selected,
                                 onClick = {
@@ -98,17 +95,17 @@ fun ChoreTrackerRoot(
                     }
                 }
             },
-        ) { padding ->
+        ) { _ ->
             if (rootDestination == RootDestination.Loading) {
                 LoadingState(
                     message = stringResource(cz.dcervenka.choretracker.core.design.R.string.common_loading_app),
-                    modifier = Modifier.padding(padding),
+                    modifier = Modifier,
                 )
             } else if (startDestination != null) {
                 NavHost(
                     navController = navController,
                     startDestination = startDestination,
-                    modifier = Modifier.padding(padding),
+                    modifier = Modifier,
                 ) {
                     authScreen()
                     onboardingScreen()

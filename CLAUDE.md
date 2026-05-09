@@ -74,51 +74,9 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ## Improvement Backlog
 
-### Settings & chore management
-
-### Stats depth
-
-
 ### Reminders
 
 11. **Chore reminders** — WorkManager daily job; push notification when X chores need attention.
-
-### Bugs (low priority)
-
-- **Bottom nav disappears** — Bottom nav hidden when navigating to completion detail screen.
-
-### Previously Completed
-
-- Sort / filter recent completions — member + chore `FilterChip` rows on `RecentCompletionsScreen`; local `rememberSaveable` state; AND filter applied before date-grouping; chips hidden when only one option
-- Completion history per chore — `ChoreHistoryScreen` + `ChoreHistoryViewModel`; new DAO query + repo method + `ObserveChoreCompletionsUseCase`; `SectionCard` gains optional `onClick`; tapping a chore card in By Chore tab navigates to full completion history grouped by date
-- Charts / visualizations — horizontal share bars in Summary (member contributions), vertical bar chart in Monthly (trend), horizontal count bars in By Chore (per-member); pure Compose Box/Canvas, no library
-- Removed orphaned household screen — `feature/household/impl` deleted; all functionality already covered by Settings sub-screens
-- Invite sharing — copy-to-clipboard and share sheet on `HouseholdSettingsScreen`; invite history list with pending/accepted status; `ObserveInvitesUseCase` wired into `SettingsViewModel`; `LocalClipboard` + `rememberCoroutineScope` used for clipboard writes
-- Action feedback snackbars — `SettingsUiEvent` Channel in `SettingsViewModel`; all mutations emit events; collected via `LaunchedEffect` in each settings screen (#35)
-- Inactive chores collapsible — `ChoreGroupBy.NONE` separates active/inactive; inactive shown in collapsed `CollapsibleChoreGroupHeader` section, expanded on tap
-- Chores settings UX — search bar + clear button, group-by chips (All / Category / Status) above chore list in `ChoresSettingsScreen`; `ChoreRow` extracted to private composable (#31)
-- Edit completion — Edit icon in completion detail TopAppBar opens `LogCompletionBottomSheet` in `editMode`; date picker hidden, note and participants pre-filled; dispatches `UpdateCompletion` intent (#30)
-- Smart chore suggestions — "Suggested" section at top of LogChoreScreen, ranked by urgency score (`daysSince / frequencyDays`), never-done first, capped at 5 (#29)
-- Dashboard FAB → LogChoreScreen — replaced quick-log chips with FAB; new screen lists all active chores grouped by category (#28)
-- Category-based chore suggestions — SuggestionChip row in chore creation form, keyed by selected category (`ChoreIcons.kt`) (#26/#27)
-- Category-level stats — By Category tab in Stats; `CategoryComparison` domain model; `buildCategoryComparisons()` in `HouseholdStatisticsCalculator` (#25)
-- Category-based dashboard — FilterChip row (All + per-category), needs-attention grouped by category headers; `ChoreCategory.toStringRes()` added (#23)
-- Chore categories & icons — `category` field on `Chore` (enum: Cleaning, Cooking, Shopping, Outdoor, Other), Material icons throughout (#22)
-- Language switching — `LocaleManager` (API 33+) picker in Settings, `locale_config.xml`, English + Czech supported (#21)
-- App icon — vector adaptive icon, house + checkmark, primary sage green on warm beige background (#20)
-- Statistics redesign — 3 tabs (Summary, By Chore, Monthly) with `HorizontalPager` + `PrimaryTabRow` (#19)
-- Account screen — editable display name, read-only email, and sign-out from Settings profile section (#17)
-- Recent completions full list — grouped by date with Today/Yesterday labels and activity-feed styling (#16)
-- Dashboard recent completions — compact rows, padded dividers, rounded ripple on widget (#15)
-- MVI refactor — sealed UiIntent + single dispatch() for all four ViewModels (#13)
-- Preview mode data leak — preview users get mocked household, real DB never queried, writes blocked (#14)
-- Cold start flash — SplashScreen API installed (#5)
-- Preview mode / post-preview sign-in navigation fixes (#4)
-- Settings profile section — profile row clickable, navigates to Account screen (#10)
-- Needs-attention log button — tonal FilledTonalButton on right side of stale chore rows (#9)
-- LogButton component — fixed-width chip in `core/design`, `PrimaryButton` always full-width (#8)
-- Delete from completion detail — TopAppBar delete icon + confirmation dialog (#7)
-- Per-chore frequency threshold (`frequencyDays`), undo snackbar, balance/fairness stats
 
 ## Release Readiness Backlog (ordered by priority)
 

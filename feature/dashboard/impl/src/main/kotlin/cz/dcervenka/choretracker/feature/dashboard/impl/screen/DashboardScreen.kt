@@ -49,6 +49,7 @@ import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.SectionCard
+import cz.dcervenka.choretracker.core.design.components.TopLevelBottomBarSpacer
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.formatters.formatLocalDateForLocale
@@ -126,6 +127,7 @@ fun DashboardScreen(
                     )
                 }
             },
+            bottomBar = { TopLevelBottomBarSpacer() },
         ) { innerPadding ->
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),

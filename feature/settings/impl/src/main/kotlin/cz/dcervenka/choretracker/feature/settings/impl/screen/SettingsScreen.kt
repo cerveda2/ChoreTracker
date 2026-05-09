@@ -19,6 +19,7 @@ import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.SettingsListItem
+import cz.dcervenka.choretracker.core.design.components.TopLevelBottomBarSpacer
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
 
 @Composable
@@ -45,6 +46,7 @@ fun SettingsScreen(
         topBar = {
             ChoreTopAppBar(title = stringResource(R.string.settings_title))
         },
+        bottomBar = { TopLevelBottomBarSpacer() },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
