@@ -2,7 +2,9 @@ package cz.dcervenka.choretracker.core.design.components
 
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
@@ -15,7 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
+
+val TopLevelBottomBarHeight = 80.dp
 
 @Composable
 fun ChoreScaffold(
@@ -40,6 +45,11 @@ fun ChoreScaffold(
         containerColor = MaterialTheme.colorScheme.background,
         content = content,
     )
+}
+
+@Composable
+fun TopLevelBottomBarSpacer() {
+    Spacer(modifier = Modifier.height(TopLevelBottomBarHeight))
 }
 
 @Preview(showBackground = true)

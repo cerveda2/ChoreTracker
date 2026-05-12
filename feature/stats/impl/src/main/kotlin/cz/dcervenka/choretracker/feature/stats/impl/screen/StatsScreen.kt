@@ -30,6 +30,7 @@ import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.LoadingState
+import cz.dcervenka.choretracker.core.design.components.TopLevelBottomBarSpacer
 import cz.dcervenka.choretracker.feature.stats.impl.contract.StatsUiState
 import kotlinx.coroutines.launch
 
@@ -61,6 +62,7 @@ fun StatsScreen(
         topBar = {
             ChoreTopAppBar(title = stringResource(R.string.stats_title))
         },
+        bottomBar = { TopLevelBottomBarSpacer() },
     ) { innerPadding ->
         val pagePadding = PaddingValues(
             start = spacing.large,
@@ -72,7 +74,10 @@ fun StatsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding()),
+                .padding(
+                    top = innerPadding.calculateTopPadding(),
+                    bottom = innerPadding.calculateBottomPadding(),
+                ),
         ) {
             ScrollableTabRow(
                 selectedTabIndex = selectedTabIndex,
