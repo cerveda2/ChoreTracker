@@ -72,11 +72,61 @@ Always create feature branches from `main`. PRs go into `main`.
 ./gradlew :feature:dashboard:impl:test     # Test specific feature
 ```
 
-## Improvement Backlog
+## Code Review Findings Backlog (ordered by priority)
 
-### Reminders
+Issues found during codebase review (2026-05-13). Work through one at a time. Items already in Release Readiness Backlog are excluded.
 
-11. **Chore reminders** — WorkManager daily job; push notification when X chores need attention.
+### CRITICAL — Data Loss
+
+1. **Chore `frequencyDays` and `category` silently lost on every sync and restore** — `LocalSyncRepository.kt:258–267` builds the `Chore` snapshot without mapping `chore.frequencyDays` or `chore.category`, so both default to `null`/`OTHER`. `upsertHouseholdContent` then writes these nulled values to Firestore with `SetOptions.merge()`, overwriting real data. Same gap at `LocalSyncRepository.kt:162–173` during restore: `asChore()` reads both fields correctly from Firestore but `ChoreEntity` is constructed without them. Every sync and every reinstall/login wipes frequency and category from all chores.
+
+### HIGH — Bugs
+
+2. **`deleteCompletion` doesn't enqueue Firestore delete** — `OfflineFirstChoreCompletionRepository.kt:164–170`. Removes locally + cancels pending upsert but never queues a `"delete"` sync op → completion reappears on next restore. Compare with `OfflineFirstChoreRepository.deleteChore`.
+3. **Firestore batch unbounded** — `FirebaseHouseholdDataSource.kt:130–191`. All chores + completions + invites in one `WriteBatch`. Firestore hard-limit is 500 documents → `FirebaseFirestoreException` on active households.
+4. **Non-owner member sync fails `PERMISSION_DENIED`** — `syncPendingOperations` always uploads the full household snapshot, which includes household doc update and chore writes — both require `isHouseholdOwner`. Members only have permission to write their own completions and member record. Fix requires splitting the sync: members should only push their own completions, not the full snapshot.
+
+### HIGH — Test Gaps
+
+5. **`LocalSyncRepository` has zero tests** — most complex sync orchestration: pending op drain, snapshot upsert, remote restore, `resolveHouseholdId` branching. All untested.
+
+### MEDIUM — Bugs
+
+6. **`HouseholdRole.valueOf` unguarded** — `LocalSyncRepository.kt:232`, `DatabaseMappers.kt:30`. Throws `IllegalArgumentException` on unknown enum value. Fix: `runCatching { HouseholdRole.valueOf(it) }.getOrDefault(HouseholdRole.MEMBER)`.
+7. **`selectedChoreId!!` force-unwrap** — `DashboardScreen.kt:315`. `mutableStateOf var` can't be smart-cast; capture to local `val` instead.
+8. **`SettingsViewModel` double-subscribes** — `SettingsViewModel.kt:75` and `:152`. Two independent `flatMapLatest` chains on the same household flow → household-restore logic runs twice on init.
+9. **`isCurrentUser` not reset on sign-out** — old user's member row keeps `isCurrentUser = 1` after a user switch, sorting the wrong member first.
+10. **`Timestamp?.asInstant()` returns epoch for null** — `FirebaseHouseholdDataSource.kt:324`. Missing `createdAt` in Firestore → `Instant.fromEpochMilliseconds(0)` → chores appear massively overdue.
+11. **`observeRecentCompletions(limit = Int.MAX_VALUE)`** — `DashboardViewModel.kt:53`. Loads every completion into dashboard `StateFlow`. Full history screen should subscribe to its own flow.
+
+### MEDIUM — Code Quality
+
+12. **FQN usages instead of imports:**
+    - `LogCompletionBottomSheet.kt:38,42,49,54,149` — `SnapshotStateList`, `kotlin.time.Instant`, `Clock.System`
+    - `RecentCompletionDetailScreen.kt:42` — `SnapshotStateList`
+    - `FirebaseHouseholdDataSource.kt:94,132` — `DocumentReference`
+13. **`PreviewAwareAuthRepository` unmanaged `CoroutineScope`** — `PreviewAwareAuthRepository.kt:25`. Should inject `@ApplicationScope CoroutineScope` instead of creating its own.
+
+### MEDIUM — Test Gaps
+
+14. **`OfflineFirstChoreRepository` has no tests** — `addChore` persistence + sync trigger, `deleteChore` soft-delete path.
+15. **`PreviewAwareAuthRepository` has no tests** — `continueInPreviewMode` / `clearPreviewState` branching.
+
+### LOW — Test Gaps
+
+16. **Dashboard undo flow untested** — `DashboardViewModelTest` doesn't verify a successful log emits an undo event to `undoChannel`.
+
+### LOW — File Organization
+
+17. **`ChoresSettingsScreen.kt` is 685 lines** — `RenameChoreDialog`, `ChoreFrequencyDialog`, `ChoreCategoryDialog` should be extracted to their own files.
+18. **`StatsTab` enum inside `StatsScreen.kt`** — should be its own file per convention.
+
+### LOW — UX / Data Layer
+
+19. **Detail screen permanent loading** — `DashboardNavigation.kt:70–71`. If `allCompletions` hasn't loaded when navigating to a completion detail, the screen shows permanent loading with no error state or retry.
+20. **`observeRecentCompletions` limit not pushed to SQL** — `CompletionDao` has no `LIMIT` clause; limit is applied in-memory after loading all rows.
+
+---
 
 ## Release Readiness Backlog (ordered by priority)
 
@@ -113,3 +163,4 @@ Items needed before (and for) Google Play publication. Some are useful well befo
 18. **Accessibility audit** — Content descriptions, touch targets (48dp min), screen reader support, contrast ratios. Required for good Play Store rating.
 19. **Tablet / foldable support** — Adaptive layouts for larger screens. Google Play flags apps that don't handle tablets well.
 20. **Data export / account deletion** — Google Play policy requires account deletion option if app has accounts. Add "Delete my account" in settings.
+21. **Chore reminders** — WorkManager daily job; push notification when X chores need attention.

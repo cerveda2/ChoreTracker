@@ -9,20 +9,12 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function userDoc(userId) {
-      return get(/databases/$(database)/documents/users/$(userId));
-    }
-
     function householdDoc(householdId) {
       return get(/databases/$(database)/documents/households/$(householdId));
     }
 
     function memberDoc(householdId, uid) {
       return get(/databases/$(database)/documents/households/$(householdId)/members/$(uid));
-    }
-
-    function userDocExists(userId) {
-      return exists(/databases/$(database)/documents/users/$(userId));
     }
 
     function householdDocExists(householdId) {
@@ -34,16 +26,9 @@ service cloud.firestore {
     }
 
     function isHouseholdMember(householdId) {
-      return isSignedIn() && (
-        (
-          memberDocExists(householdId, request.auth.uid) &&
-          memberDoc(householdId, request.auth.uid).data.active == true
-        ) ||
-        (
-          userDocExists(request.auth.uid) &&
-          userDoc(request.auth.uid).data.householdId == householdId
-        )
-      );
+      return isSignedIn() &&
+        memberDocExists(householdId, request.auth.uid) &&
+        memberDoc(householdId, request.auth.uid).data.active == true;
     }
 
     function isHouseholdOwner(householdId) {
@@ -79,6 +64,13 @@ service cloud.firestore {
       allow create, update: if canManageUserDocument(userId);
     }
 
+    // Required for collectionGroup("members") queries in resolveHouseholdId.
+    // Firestore v2 does not extend nested match rules to collection group queries —
+    // an explicit /{path=**}/members/{memberId} rule is mandatory.
+    match /{path=**}/members/{memberId} {
+      allow read: if isOwnMembershipRecord();
+    }
+
     match /households/{householdId} {
       allow create: if isSignedIn() && request.resource.data.ownerUserId == request.auth.uid;
       allow read: if isHouseholdMember(householdId);
@@ -100,9 +92,15 @@ service cloud.firestore {
 
       match /completions/{completionId} {
         allow read: if isHouseholdMember(householdId);
-        allow create: if isHouseholdMember(householdId) &&
-          request.resource.data.createdByUserId == request.auth.uid;
-        allow update, delete: if isHouseholdOwner(householdId);
+        // Owner can create any completion (needed for full-snapshot sync where
+        // the authenticated user may not be the original completion author).
+        // Members can only create completions they authored.
+        allow create: if isHouseholdOwner(householdId) ||
+          (isHouseholdMember(householdId) && request.resource.data.createdByUserId == request.auth.uid);
+        // Owner can update/delete any completion.
+        // Members can update/delete completions they authored.
+        allow update, delete: if isHouseholdOwner(householdId) ||
+          (isHouseholdMember(householdId) && resource.data.createdByUserId == request.auth.uid);
       }
 
       match /invites/{inviteId} {
