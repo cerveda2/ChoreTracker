@@ -23,4 +23,6 @@ interface RemoteHouseholdDataSource {
     suspend fun upsertHouseholdSnapshot(snapshot: HouseholdSnapshot, userId: String): EmptyResult
 
     suspend fun fetchHouseholdSnapshot(userId: String): AppResult<HouseholdSnapshot?>
+
+    suspend fun deleteCompletion(householdId: String, completionId: String): EmptyResult
 }

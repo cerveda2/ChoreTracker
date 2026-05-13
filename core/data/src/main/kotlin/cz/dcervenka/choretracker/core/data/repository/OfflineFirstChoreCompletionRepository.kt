@@ -163,9 +163,23 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
 
     override suspend fun deleteCompletion(completionId: String): EmptyResult {
         Timber.d("deleteCompletion: completionId=$completionId")
+        val householdId = completionDao.getCompletion(completionId)?.householdId
         completionDao.deleteById(completionId)
         participantDao.deleteByCompletionId(completionId)
         pendingSyncOperationDao.deleteByEntityId(completionId)
+        if (householdId != null) {
+            pendingSyncOperationDao.upsert(
+                PendingSyncOperationEntity(
+                    id = UUID.randomUUID().toString(),
+                    entityType = "completion",
+                    entityId = completionId,
+                    operationType = "delete",
+                    payload = householdId,
+                    createdAt = Clock.System.now(),
+                ),
+            )
+            syncRepository.syncPendingOperations()
+        }
         return AppResult.Success(Unit)
     }
 }
