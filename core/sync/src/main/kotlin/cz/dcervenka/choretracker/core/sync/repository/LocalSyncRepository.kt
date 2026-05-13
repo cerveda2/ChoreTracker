@@ -107,15 +107,7 @@ class LocalSyncRepository @Inject constructor(
                         Timber.d(
                             "syncPendingOperations: synced ${operationIds.size} operations for household=$householdId",
                         )
-                        val operationIdSet = operationIds.toSet()
-                        operations
-                            .filter { it.id in operationIdSet && it.entityType == "completion" && it.operationType == "delete" }
-                            .forEach { op ->
-                                when (val deleteResult = remoteHouseholdDataSource.deleteCompletion(householdId, op.entityId)) {
-                                    is AppResult.Error -> Timber.e("syncPendingOperations: remote completion delete failed for ${op.entityId} — ${deleteResult.message}")
-                                    is AppResult.Success -> Unit
-                                }
-                            }
+                        deleteRemoteCompletions(householdId, operations, operationIds.toSet())
                         operationIds.forEach { operationId ->
                             pendingSyncOperationDao.delete(operationId)
                         }
@@ -221,6 +213,23 @@ class LocalSyncRepository @Inject constructor(
                 AppResult.Success(true)
             }
         }
+    }
+
+    private suspend fun deleteRemoteCompletions(
+        householdId: String,
+        operations: List<PendingSyncOperationEntity>,
+        operationIdSet: Set<String>,
+    ) {
+        operations
+            .filter { it.id in operationIdSet && it.entityType == "completion" && it.operationType == "delete" }
+            .forEach { op ->
+                val result = remoteHouseholdDataSource.deleteCompletion(householdId, op.entityId)
+                if (result is AppResult.Error) {
+                    Timber.e(
+                        "syncPendingOperations: remote completion delete failed for ${op.entityId} — ${result.message}",
+                    )
+                }
+            }
     }
 
     private suspend fun resolveHouseholdId(

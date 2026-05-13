@@ -332,15 +332,15 @@ class FirebaseHouseholdDataSource @Inject constructor(
         consumedAt = getTimestamp("consumedAt")?.asInstant(),
     )
 
-    private fun Timestamp?.asInstant(): Instant = this?.let { firebaseTimestamp ->
-        Instant.fromEpochMilliseconds(firebaseTimestamp.toDate().time)
-    } ?: Instant.fromEpochMilliseconds(0)
-
-    private fun Instant.asTimestamp(): Timestamp = Timestamp(java.util.Date(toEpochMilliseconds()))
-
     private suspend fun <T> awaitTask(task: Task<T>): T =
         suspendCancellableCoroutineCompat(task)
 }
+
+private fun Timestamp?.asInstant(): Instant = this?.let { firebaseTimestamp ->
+    Instant.fromEpochMilliseconds(firebaseTimestamp.toDate().time)
+} ?: Instant.fromEpochMilliseconds(0)
+
+private fun Instant.asTimestamp(): Timestamp = Timestamp(java.util.Date(toEpochMilliseconds()))
 
 private suspend fun <T> suspendCancellableCoroutineCompat(task: Task<T>): T =
     kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
