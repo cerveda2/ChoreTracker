@@ -129,3 +129,19 @@ jobs:
           name: choretracker-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+  deploy-firestore-rules:
+    name: Deploy Firestore rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy rules
+        run: firebase deploy --only firestore:rules --token ${{ secrets.FIREBASE_TOKEN }}
