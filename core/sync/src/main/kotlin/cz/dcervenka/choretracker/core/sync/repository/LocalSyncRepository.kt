@@ -22,6 +22,7 @@ import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.database.entity.SyncStateEntity
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.Chore
+import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
@@ -168,6 +169,8 @@ class LocalSyncRepository @Inject constructor(
                             isActive = chore.isActive,
                             createdAt = chore.createdAt,
                             deletedAt = chore.deletedAt,
+                            frequencyDays = chore.frequencyDays,
+                            category = chore.category.name,
                         ),
                     )
                 }
@@ -263,6 +266,8 @@ class LocalSyncRepository @Inject constructor(
                     isActive = chore.isActive,
                     createdAt = chore.createdAt,
                     deletedAt = chore.deletedAt,
+                    frequencyDays = chore.frequencyDays,
+                    category = runCatching { ChoreCategory.valueOf(chore.category) }.getOrDefault(ChoreCategory.OTHER),
                 )
             },
             completions = completions,
