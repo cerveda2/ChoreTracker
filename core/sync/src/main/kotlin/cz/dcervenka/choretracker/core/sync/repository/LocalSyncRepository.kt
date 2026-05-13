@@ -107,6 +107,15 @@ class LocalSyncRepository @Inject constructor(
                         Timber.d(
                             "syncPendingOperations: synced ${operationIds.size} operations for household=$householdId",
                         )
+                        val operationIdSet = operationIds.toSet()
+                        operations
+                            .filter { it.id in operationIdSet && it.entityType == "completion" && it.operationType == "delete" }
+                            .forEach { op ->
+                                when (val deleteResult = remoteHouseholdDataSource.deleteCompletion(householdId, op.entityId)) {
+                                    is AppResult.Error -> Timber.e("syncPendingOperations: remote completion delete failed for ${op.entityId} — ${deleteResult.message}")
+                                    is AppResult.Success -> Unit
+                                }
+                            }
                         operationIds.forEach { operationId ->
                             pendingSyncOperationDao.delete(operationId)
                         }
@@ -219,7 +228,11 @@ class LocalSyncRepository @Inject constructor(
     ): String? = when (operation.entityType) {
         "household", "member", "invite" -> operation.entityId
         "chore" -> choreDao.getChore(operation.entityId)?.householdId
-        "completion" -> completionDao.getCompletion(operation.entityId)?.householdId
+        "completion" -> if (operation.operationType == "delete") {
+            operation.payload.takeIf { it.isNotBlank() }
+        } else {
+            completionDao.getCompletion(operation.entityId)?.householdId
+        }
         else -> null
     }
 

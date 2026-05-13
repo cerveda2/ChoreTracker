@@ -4,6 +4,7 @@ import android.content.Context
 import com.google.android.gms.tasks.Task
 import com.google.firebase.FirebaseApp
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
@@ -33,6 +34,7 @@ private const val MEMBERS_COLLECTION = "members"
 private const val CHORES_COLLECTION = "chores"
 private const val COMPLETIONS_COLLECTION = "completions"
 private const val INVITES_COLLECTION = "invites"
+private const val FIRESTORE_BATCH_LIMIT = 500
 
 @Singleton
 class FirebaseHouseholdDataSource @Inject constructor(
@@ -91,7 +93,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
 
     private suspend fun upsertMembershipData(
         db: FirebaseFirestore,
-        householdRef: com.google.firebase.firestore.DocumentReference,
+        householdRef: DocumentReference,
         snapshot: HouseholdSnapshot,
     ) {
         if (snapshot.members.isEmpty()) return
@@ -129,64 +131,73 @@ class FirebaseHouseholdDataSource @Inject constructor(
 
     private suspend fun upsertHouseholdContent(
         db: FirebaseFirestore,
-        householdRef: com.google.firebase.firestore.DocumentReference,
+        householdRef: DocumentReference,
         snapshot: HouseholdSnapshot,
     ) {
-        val contentBatch = db.batch()
-        var hasWrites = false
-
-        snapshot.chores.forEach { chore ->
-            hasWrites = true
-            contentBatch.set(
-                householdRef.collection(CHORES_COLLECTION).document(chore.id),
-                mapOf(
-                    "id" to chore.id,
-                    "householdId" to chore.householdId,
-                    "name" to chore.name,
-                    "isActive" to chore.isActive,
-                    "createdAt" to chore.createdAt.asTimestamp(),
-                    "deletedAt" to chore.deletedAt?.asTimestamp(),
-                    "frequencyDays" to chore.frequencyDays,
-                    "category" to chore.category.name,
-                ),
-                SetOptions.merge(),
-            )
+        val writes = buildList<Pair<DocumentReference, Map<String, Any?>>> {
+            snapshot.chores.forEach { chore ->
+                add(
+                    householdRef.collection(CHORES_COLLECTION).document(chore.id) to mapOf(
+                        "id" to chore.id,
+                        "householdId" to chore.householdId,
+                        "name" to chore.name,
+                        "isActive" to chore.isActive,
+                        "createdAt" to chore.createdAt.asTimestamp(),
+                        "deletedAt" to chore.deletedAt?.asTimestamp(),
+                        "frequencyDays" to chore.frequencyDays,
+                        "category" to chore.category.name,
+                    ),
+                )
+            }
+            snapshot.completions.forEach { completion ->
+                add(
+                    householdRef.collection(COMPLETIONS_COLLECTION).document(completion.id) to mapOf(
+                        "id" to completion.id,
+                        "householdId" to completion.householdId,
+                        "choreId" to completion.choreId,
+                        "createdAt" to completion.createdAt.asTimestamp(),
+                        "createdByUserId" to completion.createdByUserId,
+                        "note" to completion.note,
+                        "participantMemberIds" to completion.participantMemberIds,
+                    ),
+                )
+            }
+            snapshot.invites.forEach { invite ->
+                add(
+                    householdRef.collection(INVITES_COLLECTION).document(invite.id) to mapOf(
+                        "id" to invite.id,
+                        "householdId" to invite.householdId,
+                        "code" to invite.code,
+                        "createdAt" to invite.createdAt.asTimestamp(),
+                        "consumedAt" to invite.consumedAt?.asTimestamp(),
+                    ),
+                )
+            }
         }
 
-        snapshot.completions.forEach { completion ->
-            hasWrites = true
-            contentBatch.set(
-                householdRef.collection(COMPLETIONS_COLLECTION).document(completion.id),
-                mapOf(
-                    "id" to completion.id,
-                    "householdId" to completion.householdId,
-                    "choreId" to completion.choreId,
-                    "createdAt" to completion.createdAt.asTimestamp(),
-                    "createdByUserId" to completion.createdByUserId,
-                    "note" to completion.note,
-                    "participantMemberIds" to completion.participantMemberIds,
-                ),
-                SetOptions.merge(),
-            )
+        writes.chunked(FIRESTORE_BATCH_LIMIT).forEach { chunk ->
+            val batch = db.batch()
+            chunk.forEach { (ref, data) -> batch.set(ref, data, SetOptions.merge()) }
+            awaitTask(batch.commit())
         }
+    }
 
-        snapshot.invites.forEach { invite ->
-            hasWrites = true
-            contentBatch.set(
-                householdRef.collection(INVITES_COLLECTION).document(invite.id),
-                mapOf(
-                    "id" to invite.id,
-                    "householdId" to invite.householdId,
-                    "code" to invite.code,
-                    "createdAt" to invite.createdAt.asTimestamp(),
-                    "consumedAt" to invite.consumedAt?.asTimestamp(),
-                ),
-                SetOptions.merge(),
+    override suspend fun deleteCompletion(householdId: String, completionId: String): EmptyResult {
+        Timber.d("deleteCompletion: householdId=$householdId completionId=$completionId")
+        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        return runCatching {
+            awaitTask(
+                db.collection(HOUSEHOLDS_COLLECTION)
+                    .document(householdId)
+                    .collection(COMPLETIONS_COLLECTION)
+                    .document(completionId)
+                    .delete(),
             )
-        }
-
-        if (hasWrites) {
-            awaitTask(contentBatch.commit())
+            Timber.d("deleteCompletion: success")
+            AppResult.Success(Unit)
+        }.getOrElse { error ->
+            Timber.e(error, "deleteCompletion: failed")
+            AppResult.Error(error.message ?: "Unable to delete completion.", error)
         }
     }
 

@@ -78,13 +78,11 @@ Issues found during codebase review (2026-05-13). Work through one at a time. It
 
 ### HIGH — Bugs
 
-1. **`deleteCompletion` doesn't enqueue Firestore delete** — `OfflineFirstChoreCompletionRepository.kt:164–170`. Removes locally + cancels pending upsert but never queues a `"delete"` sync op → completion reappears on next restore. Compare with `OfflineFirstChoreRepository.deleteChore`.
-2. **Firestore batch unbounded** — `FirebaseHouseholdDataSource.kt:130–191`. All chores + completions + invites in one `WriteBatch`. Firestore hard-limit is 500 documents → `FirebaseFirestoreException` on active households.
-3. **Non-owner member sync fails `PERMISSION_DENIED`** — `syncPendingOperations` always uploads the full household snapshot, which includes household doc update and chore writes — both require `isHouseholdOwner`. Members only have permission to write their own completions and member record. Fix requires splitting the sync: members should only push their own completions, not the full snapshot.
+1. **Non-owner member sync fails `PERMISSION_DENIED`** — `syncPendingOperations` always uploads the full household snapshot, which includes household doc update and chore writes — both require `isHouseholdOwner`. Members only have permission to write their own completions and member record. Fix requires splitting the sync: members should only push their own completions, not the full snapshot.
 
 ### HIGH — Test Gaps
 
-5. **`LocalSyncRepository` has zero tests** — most complex sync orchestration: pending op drain, snapshot upsert, remote restore, `resolveHouseholdId` branching. All untested.
+2. **`LocalSyncRepository` has zero tests** — most complex sync orchestration: pending op drain, snapshot upsert, remote restore, `resolveHouseholdId` branching. All untested.
 
 ### MEDIUM — Bugs
 
