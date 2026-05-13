@@ -76,15 +76,11 @@ Always create feature branches from `main`. PRs go into `main`.
 
 Issues found during codebase review (2026-05-13). Work through one at a time. Items already in Release Readiness Backlog are excluded.
 
-### CRITICAL — Data Loss
-
-1. **Chore `frequencyDays` and `category` silently lost on every sync and restore** — `LocalSyncRepository.kt:258–267` builds the `Chore` snapshot without mapping `chore.frequencyDays` or `chore.category`, so both default to `null`/`OTHER`. `upsertHouseholdContent` then writes these nulled values to Firestore with `SetOptions.merge()`, overwriting real data. Same gap at `LocalSyncRepository.kt:162–173` during restore: `asChore()` reads both fields correctly from Firestore but `ChoreEntity` is constructed without them. Every sync and every reinstall/login wipes frequency and category from all chores.
-
 ### HIGH — Bugs
 
-2. **`deleteCompletion` doesn't enqueue Firestore delete** — `OfflineFirstChoreCompletionRepository.kt:164–170`. Removes locally + cancels pending upsert but never queues a `"delete"` sync op → completion reappears on next restore. Compare with `OfflineFirstChoreRepository.deleteChore`.
-3. **Firestore batch unbounded** — `FirebaseHouseholdDataSource.kt:130–191`. All chores + completions + invites in one `WriteBatch`. Firestore hard-limit is 500 documents → `FirebaseFirestoreException` on active households.
-4. **Non-owner member sync fails `PERMISSION_DENIED`** — `syncPendingOperations` always uploads the full household snapshot, which includes household doc update and chore writes — both require `isHouseholdOwner`. Members only have permission to write their own completions and member record. Fix requires splitting the sync: members should only push their own completions, not the full snapshot.
+1. **`deleteCompletion` doesn't enqueue Firestore delete** — `OfflineFirstChoreCompletionRepository.kt:164–170`. Removes locally + cancels pending upsert but never queues a `"delete"` sync op → completion reappears on next restore. Compare with `OfflineFirstChoreRepository.deleteChore`.
+2. **Firestore batch unbounded** — `FirebaseHouseholdDataSource.kt:130–191`. All chores + completions + invites in one `WriteBatch`. Firestore hard-limit is 500 documents → `FirebaseFirestoreException` on active households.
+3. **Non-owner member sync fails `PERMISSION_DENIED`** — `syncPendingOperations` always uploads the full household snapshot, which includes household doc update and chore writes — both require `isHouseholdOwner`. Members only have permission to write their own completions and member record. Fix requires splitting the sync: members should only push their own completions, not the full snapshot.
 
 ### HIGH — Test Gaps
 
