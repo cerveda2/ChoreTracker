@@ -182,6 +182,65 @@ class FirebaseHouseholdDataSource @Inject constructor(
         }
     }
 
+    override suspend fun upsertMemberSnapshot(
+        householdId: String,
+        member: HouseholdMember,
+        completions: List<ChoreCompletion>,
+        userId: String,
+    ): EmptyResult {
+        Timber.d("upsertMemberSnapshot: householdId=$householdId completions=${completions.size}")
+        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        return runCatching {
+            val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
+            val memberDocumentId = member.userId ?: member.id
+            val memberBatch = db.batch()
+            memberBatch.set(
+                householdRef.collection(MEMBERS_COLLECTION).document(memberDocumentId),
+                mapOf(
+                    "id" to member.id,
+                    "householdId" to member.householdId,
+                    "userId" to member.userId,
+                    "displayName" to member.displayName,
+                    "role" to member.role.name,
+                    "active" to true,
+                ),
+                SetOptions.merge(),
+            )
+            memberBatch.set(
+                db.collection(USERS_COLLECTION).document(userId),
+                mapOf(
+                    "userId" to userId,
+                    "householdId" to householdId,
+                    "updatedAt" to Timestamp.now(),
+                ),
+                SetOptions.merge(),
+            )
+            awaitTask(memberBatch.commit())
+
+            completions.map { completion ->
+                householdRef.collection(COMPLETIONS_COLLECTION).document(completion.id) to mapOf(
+                    "id" to completion.id,
+                    "householdId" to completion.householdId,
+                    "choreId" to completion.choreId,
+                    "createdAt" to completion.createdAt.asTimestamp(),
+                    "createdByUserId" to completion.createdByUserId,
+                    "note" to completion.note,
+                    "participantMemberIds" to completion.participantMemberIds,
+                )
+            }.chunked(FIRESTORE_BATCH_LIMIT).forEach { chunk ->
+                val batch = db.batch()
+                chunk.forEach { (ref, data) -> batch.set(ref, data, SetOptions.merge()) }
+                awaitTask(batch.commit())
+            }
+
+            Timber.d("upsertMemberSnapshot: success")
+            AppResult.Success(Unit)
+        }.getOrElse { error ->
+            Timber.e(error, "upsertMemberSnapshot: failed")
+            AppResult.Error(error.message ?: "Unable to sync member data.", error)
+        }
+    }
+
     override suspend fun deleteCompletion(householdId: String, completionId: String): EmptyResult {
         Timber.d("deleteCompletion: householdId=$householdId completionId=$completionId")
         val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")

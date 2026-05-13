@@ -76,13 +76,9 @@ Always create feature branches from `main`. PRs go into `main`.
 
 Issues found during codebase review (2026-05-13). Work through one at a time. Items already in Release Readiness Backlog are excluded.
 
-### HIGH — Bugs
-
-1. **Non-owner member sync fails `PERMISSION_DENIED`** — `syncPendingOperations` always uploads the full household snapshot, which includes household doc update and chore writes — both require `isHouseholdOwner`. Members only have permission to write their own completions and member record. Fix requires splitting the sync: members should only push their own completions, not the full snapshot.
-
 ### HIGH — Test Gaps
 
-2. **`LocalSyncRepository` has zero tests** — most complex sync orchestration: pending op drain, snapshot upsert, remote restore, `resolveHouseholdId` branching. All untested.
+1. **`LocalSyncRepository` has zero tests** — most complex sync orchestration: pending op drain, snapshot upsert, remote restore, `resolveHouseholdId` branching. All untested.
 
 ### MEDIUM — Bugs
 

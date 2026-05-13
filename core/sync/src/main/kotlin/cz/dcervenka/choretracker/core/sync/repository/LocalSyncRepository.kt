@@ -87,9 +87,22 @@ class LocalSyncRepository @Inject constructor(
             null
         } else {
             operationIdsByHouseholdId.entries.firstNotNullOfOrNull { (householdId, operationIds) ->
-                val snapshot = buildSnapshot(householdId) ?: return@firstNotNullOfOrNull null
                 val now = Clock.System.now()
-                when (val result = remoteHouseholdDataSource.upsertHouseholdSnapshot(snapshot, authenticatedUser.id)) {
+                val isOwner = householdDao.getHousehold(householdId)?.ownerUserId == authenticatedUser.id
+                val result = if (isOwner) {
+                    val snapshot = buildSnapshot(householdId) ?: return@firstNotNullOfOrNull null
+                    remoteHouseholdDataSource.upsertHouseholdSnapshot(snapshot, authenticatedUser.id)
+                } else {
+                    val (member, completions) = buildMemberSync(householdId, authenticatedUser.id)
+                        ?: return@firstNotNullOfOrNull null
+                    remoteHouseholdDataSource.upsertMemberSnapshot(
+                        householdId = householdId,
+                        member = member,
+                        completions = completions,
+                        userId = authenticatedUser.id,
+                    )
+                }
+                when (result) {
                     is AppResult.Error -> {
                         Timber.e("syncPendingOperations: sync failed for household=$householdId - ${result.message}")
                         syncStateDao.upsert(
@@ -303,5 +316,37 @@ class LocalSyncRepository @Inject constructor(
                 )
             },
         )
+    }
+
+    private suspend fun buildMemberSync(
+        householdId: String,
+        userId: String,
+    ): Pair<HouseholdMember, List<ChoreCompletion>>? {
+        val memberEntity = memberDao.findByUserId(householdId, userId) ?: return null
+        val participants = completionParticipantDao.getParticipants(householdId)
+        val ownCompletions = completionDao.getCompletions(householdId)
+            .filter { it.createdByUserId == userId }
+            .map { completion ->
+                ChoreCompletion(
+                    id = completion.id,
+                    householdId = completion.householdId,
+                    choreId = completion.choreId,
+                    createdAt = completion.createdAt,
+                    createdByUserId = completion.createdByUserId,
+                    note = completion.note,
+                    participantMemberIds = participants
+                        .filter { it.completionId == completion.id }
+                        .map { it.memberId },
+                )
+            }
+        val member = HouseholdMember(
+            id = memberEntity.id,
+            householdId = memberEntity.householdId,
+            userId = memberEntity.userId,
+            displayName = memberEntity.displayName,
+            role = HouseholdRole.valueOf(memberEntity.role),
+            isCurrentUser = memberEntity.isCurrentUser,
+        )
+        return member to ownCompletions
     }
 }
