@@ -97,6 +97,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                             syncRepository.restoreHouseholdForUser(user.id)
                         }
                     }
+                    stampCurrentUserEmail(user)
                     emitAll(householdDao.observeHouseholdForUser(user.id).map { it?.asModel() })
                 }
             }
@@ -278,6 +279,15 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         enqueueOperation("member", householdId, "delete", firestoreDocId)
         syncRepository.syncPendingOperations()
         return AppResult.Success(Unit)
+    }
+
+    private suspend fun stampCurrentUserEmail(user: AppUser) {
+        val email = user.email ?: return
+        val householdId = householdDao.getCurrentHouseholdForUser(user.id)?.id ?: return
+        val member = memberDao.findByUserId(householdId, user.id) ?: return
+        if (member.email != email) {
+            memberDao.upsert(member.copy(email = email))
+        }
     }
 
     private suspend fun currentUser(): AppUser? =
