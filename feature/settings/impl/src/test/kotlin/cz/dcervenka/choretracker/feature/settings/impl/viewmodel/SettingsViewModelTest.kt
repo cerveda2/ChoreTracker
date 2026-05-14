@@ -7,6 +7,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.AddChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.DeleteMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
@@ -75,6 +76,9 @@ class SettingsViewModelTest {
     lateinit var deleteChoreUseCase: DeleteChoreUseCase
 
     @MockK
+    lateinit var deleteMemberUseCase: DeleteMemberUseCase
+
+    @MockK
     lateinit var updateDisplayNameUseCase: UpdateDisplayNameUseCase
 
     @MockK
@@ -121,6 +125,7 @@ class SettingsViewModelTest {
             createInviteUseCase(any())
         } returns AppResult.Success(cz.dcervenka.choretracker.core.test.mock.sampleInvite())
         coEvery { deleteChoreUseCase(any()) } returns AppResult.Success(Unit)
+        coEvery { deleteMemberUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateDisplayNameUseCase(any()) } returns AppResult.Success(Unit)
         coEvery { updateCurrentMemberDisplayNameUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreActiveUseCase(any(), any()) } returns AppResult.Success(Unit)
@@ -212,6 +217,7 @@ private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
     addChoreUseCase,
     createInviteUseCase,
     deleteChoreUseCase,
+    deleteMemberUseCase,
     updateDisplayNameUseCase,
     updateCurrentMemberDisplayNameUseCase,
     updateChoreActiveUseCase,
