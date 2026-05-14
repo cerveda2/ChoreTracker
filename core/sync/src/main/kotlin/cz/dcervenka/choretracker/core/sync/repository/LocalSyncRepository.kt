@@ -53,6 +53,8 @@ class LocalSyncRepository @Inject constructor(
     private val remoteHouseholdDataSource: RemoteHouseholdDataSource,
 ) : SyncRepository {
 
+    private var emailSyncedThisSession = false
+
     override fun observeSyncState(householdId: String): Flow<SyncState?> =
         syncStateDao.observeSyncState(householdId).map { state ->
             state?.let {
@@ -71,6 +73,12 @@ class LocalSyncRepository @Inject constructor(
         val shouldSkipSync = authenticatedUser == null || authenticatedUser.isPreview
         if (shouldSkipSync) {
             return AppResult.Success(Unit)
+        }
+
+        val currentEmail = authenticatedUser.email
+        if (!emailSyncedThisSession && currentEmail != null) {
+            emailSyncedThisSession = true
+            ensureEmailSynced(authenticatedUser.id, currentEmail)
         }
 
         val operations = pendingSyncOperationDao.getAll()
@@ -231,6 +239,18 @@ class LocalSyncRepository @Inject constructor(
                 AppResult.Success(true)
             }
         }
+    }
+
+    private suspend fun ensureEmailSynced(userId: String, email: String) {
+        val householdId = householdDao.getCurrentHouseholdForUser(userId)?.id ?: return
+        val (member, _) = buildMemberSync(householdId, userId) ?: return
+        remoteHouseholdDataSource.upsertMemberSnapshot(
+            householdId = householdId,
+            member = member.copy(email = email),
+            completions = emptyList(),
+            userId = userId,
+        )
+        Timber.d("ensureEmailSynced: wrote email for userId=$userId")
     }
 
     private suspend fun deleteRemoteMembers(

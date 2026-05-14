@@ -120,7 +120,10 @@ fun DashboardScreen(
                 ChoreTopAppBar(title = stringResource(R.string.dashboard_title))
             },
             floatingActionButton = {
-                FloatingActionButton(onClick = onLogChore) {
+                FloatingActionButton(
+                    onClick = onLogChore,
+                    modifier = Modifier.padding(bottom = spacing.medium),
+                ) {
                     Icon(
                         imageVector = Icons.Outlined.Add,
                         contentDescription = stringResource(R.string.dashboard_log_chore_fab),
