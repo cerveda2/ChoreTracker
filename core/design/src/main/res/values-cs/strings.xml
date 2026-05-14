@@ -93,6 +93,8 @@
     <string name="household_members">Členové</string>
     <string name="household_member_line">%1$s • %2$s</string>
     <string name="household_member_you">ty</string>
+    <string name="household_role_owner">vlastník</string>
+    <string name="household_role_member">člen</string>
     <string name="household_new_member">Nový člen</string>
     <string name="household_add_member">Přidat člena</string>
     <string name="household_chores">Úkoly</string>

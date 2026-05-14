@@ -154,13 +154,13 @@ private fun MemberRow(
                     stringResource(
                         R.string.household_member_line,
                         member.displayName,
-                        member.role.name.lowercase(),
+                        member.role.localizedName(),
                     ) + " • " + stringResource(R.string.household_member_you)
                 } else {
                     stringResource(
                         R.string.household_member_line,
                         member.displayName,
-                        member.role.name.lowercase(),
+                        member.role.localizedName(),
                     )
                 },
                 color = if (member.isCurrentUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
@@ -204,3 +204,11 @@ private fun DeleteMemberDialog(
         },
     )
 }
+
+@Composable
+private fun HouseholdRole.localizedName(): String = stringResource(
+    when (this) {
+        HouseholdRole.OWNER -> R.string.household_role_owner
+        HouseholdRole.MEMBER -> R.string.household_role_member
+    },
+)
