@@ -47,6 +47,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
 ) : HouseholdRepository {
 
     private val restoreStatus = MutableStateFlow(HouseholdRestoreStatus())
+    private var hasRefreshedFromRemoteThisSession = false
 
     override fun observeCurrentHousehold(): Flow<Household?> = authRepository.authState.flatMapLatest { authState ->
         flow {
@@ -88,8 +89,11 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                         }
                     } else {
                         restoreStatus.value = HouseholdRestoreStatus()
-                        Timber.d("observeCurrentHousehold: household exists locally, pulling fresh snapshot for user=${user.id}")
-                        syncRepository.restoreHouseholdForUser(user.id)
+                        if (!hasRefreshedFromRemoteThisSession) {
+                            hasRefreshedFromRemoteThisSession = true
+                            Timber.d("observeCurrentHousehold: household exists locally, pulling fresh snapshot for user=${user.id}")
+                            syncRepository.restoreHouseholdForUser(user.id)
+                        }
                     }
                     emitAll(householdDao.observeHouseholdForUser(user.id).map { it?.asModel() })
                 }
