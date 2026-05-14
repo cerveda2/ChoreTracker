@@ -196,7 +196,7 @@ class SettingsViewModel @Inject constructor(
     private fun handleActionIntent(intent: SettingsUiIntent) {
         when (intent) {
             SettingsUiIntent.SaveAccountDisplayName -> saveAccountDisplayName()
-            SettingsUiIntent.SignOut -> signOut()
+            SettingsUiIntent.SignOut -> viewModelScope.launch { signOutUseCase() }
             SettingsUiIntent.SaveHouseholdName -> saveHouseholdName()
             SettingsUiIntent.AddMember -> addMember()
             SettingsUiIntent.AddChore -> addChore()
@@ -211,9 +211,9 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private fun signOut() {
-        viewModelScope.launch {
-            signOutUseCase()
+    private fun refreshInvite() {
+        uiState.value.household?.let { h ->
+            viewModelScope.launch { createInviteUseCase(h.id) }
         }
     }
 
@@ -274,13 +274,6 @@ class SettingsViewModel @Inject constructor(
             } else if (result is AppResult.Error) {
                 _events.send(SettingsUiEvent.Error(result.message))
             }
-        }
-    }
-
-    private fun refreshInvite() {
-        val household = uiState.value.household ?: return
-        viewModelScope.launch {
-            createInviteUseCase(household.id)
         }
     }
 

@@ -268,25 +268,25 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         Timber.d("deleteMember: householdId=$householdId memberId=$memberId")
         val user = currentUser()
         if (user?.isPreview == true) {
-            return AppResult.Error("Cannot delete members in preview mode").also {
-                Timber.w("deleteMember failed: preview user attempted write operation")
-            }
+            Timber.w("deleteMember failed: preview user attempted write operation")
+            return AppResult.Error("Cannot delete members in preview mode")
         }
         val member = memberDao.getMembers(householdId).find { it.id == memberId }
-            ?: return AppResult.Error("Member not found.")
-        val firestoreDocId = member.userId ?: member.id
-        memberDao.deleteById(memberId)
-        enqueueOperation("member", householdId, "delete", firestoreDocId)
-        syncRepository.syncPendingOperations()
-        return AppResult.Success(Unit)
+        return if (member == null) {
+            AppResult.Error("Member not found.")
+        } else {
+            memberDao.deleteById(memberId)
+            enqueueOperation("member", householdId, "delete", member.userId ?: member.id)
+            syncRepository.syncPendingOperations()
+            AppResult.Success(Unit)
+        }
     }
 
     private suspend fun stampCurrentUserEmail(user: AppUser) {
         val email = user.email ?: return
         val householdId = householdDao.getCurrentHouseholdForUser(user.id)?.id ?: return
-        val member = memberDao.findByUserId(householdId, user.id) ?: return
-        if (member.email != email) {
-            memberDao.upsert(member.copy(email = email))
+        memberDao.findByUserId(householdId, user.id)?.let { member ->
+            if (member.email != email) memberDao.upsert(member.copy(email = email))
         }
     }
 
@@ -310,13 +310,13 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             ),
         )
     }
-
-    private fun generateInvite(householdId: String): InviteEntity =
-        InviteEntity(
-            id = UUID.randomUUID().toString(),
-            householdId = householdId,
-            code = UUID.randomUUID().toString().take(INVITE_CODE_LENGTH).uppercase(),
-            createdAt = Clock.System.now(),
-            consumedAt = null,
-        )
 }
+
+private fun generateInvite(householdId: String): InviteEntity =
+    InviteEntity(
+        id = UUID.randomUUID().toString(),
+        householdId = householdId,
+        code = UUID.randomUUID().toString().take(INVITE_CODE_LENGTH).uppercase(),
+        createdAt = Clock.System.now(),
+        consumedAt = null,
+    )

@@ -20,6 +20,7 @@ import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.database.entity.SyncStateEntity
+import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
@@ -95,59 +96,7 @@ class LocalSyncRepository @Inject constructor(
             null
         } else {
             operationIdsByHouseholdId.entries.firstNotNullOfOrNull { (householdId, operationIds) ->
-                val now = Clock.System.now()
-                val isOwner = householdDao.getHousehold(householdId)?.ownerUserId == authenticatedUser.id
-                val result = if (isOwner) {
-                    val snapshot = buildSnapshot(householdId, authenticatedUser.id, authenticatedUser.email)
-                        ?: return@firstNotNullOfOrNull null
-                    remoteHouseholdDataSource.upsertHouseholdSnapshot(snapshot, authenticatedUser.id)
-                } else {
-                    val (member, completions) = buildMemberSync(householdId, authenticatedUser.id)
-                        ?: return@firstNotNullOfOrNull null
-                    remoteHouseholdDataSource.upsertMemberSnapshot(
-                        householdId = householdId,
-                        member = member.copy(email = authenticatedUser.email),
-                        completions = completions,
-                        userId = authenticatedUser.id,
-                    )
-                }
-                when (result) {
-                    is AppResult.Error -> {
-                        Timber.e("syncPendingOperations: sync failed for household=$householdId - ${result.message}")
-                        syncStateDao.upsert(
-                            SyncStateEntity(
-                                householdId = householdId,
-                                lastSyncedAt = null,
-                                lastSyncAttemptAt = now,
-                                pendingOperations = operationIds.size,
-                                lastErrorMessage = result.message,
-                            ),
-                        )
-                        AppResult.Error(result.message, result.cause)
-                    }
-                    is AppResult.Success -> {
-                        Timber.d(
-                            "syncPendingOperations: synced ${operationIds.size} operations for household=$householdId",
-                        )
-                        if (isOwner) {
-                            deleteRemoteMembers(householdId, operations, operationIds.toSet())
-                        }
-                        deleteRemoteCompletions(householdId, operations, operationIds.toSet())
-                        operationIds.forEach { operationId ->
-                            pendingSyncOperationDao.delete(operationId)
-                        }
-                        syncStateDao.upsert(
-                            SyncStateEntity(
-                                householdId = householdId,
-                                lastSyncedAt = now,
-                                lastSyncAttemptAt = now,
-                                pendingOperations = 0,
-                                lastErrorMessage = null,
-                            ),
-                        )
-                        null
-                    }
-                }
+                syncHousehold(householdId, operationIds, operations, authenticatedUser)
             }
         }
 
@@ -243,6 +192,74 @@ class LocalSyncRepository @Inject constructor(
                 AppResult.Success(true)
             }
         }
+    }
+
+    private suspend fun syncHousehold(
+        householdId: String,
+        operationIds: List<String>,
+        operations: List<PendingSyncOperationEntity>,
+        authenticatedUser: AppUser,
+    ): AppResult.Error? {
+        val now = Clock.System.now()
+        val isOwner = householdDao.getHousehold(householdId)?.ownerUserId == authenticatedUser.id
+        val result = performRemoteSync(householdId, isOwner, authenticatedUser) ?: return null
+        return when (result) {
+            is AppResult.Error -> {
+                Timber.e("syncPendingOperations: sync failed for household=$householdId - ${result.message}")
+                syncStateDao.upsert(
+                    SyncStateEntity(
+                        householdId = householdId,
+                        lastSyncedAt = null,
+                        lastSyncAttemptAt = now,
+                        pendingOperations = operationIds.size,
+                        lastErrorMessage = result.message,
+                    ),
+                )
+                AppResult.Error(result.message, result.cause)
+            }
+            is AppResult.Success -> {
+                Timber.d("syncPendingOperations: synced ${operationIds.size} operations for household=$householdId")
+                if (isOwner) deleteRemoteMembers(householdId, operations, operationIds.toSet())
+                deleteRemoteCompletions(householdId, operations, operationIds.toSet())
+                operationIds.forEach { pendingSyncOperationDao.delete(it) }
+                syncStateDao.upsert(
+                    SyncStateEntity(
+                        householdId = householdId,
+                        lastSyncedAt = now,
+                        lastSyncAttemptAt = now,
+                        pendingOperations = 0,
+                        lastErrorMessage = null,
+                    ),
+                )
+                null
+            }
+        }
+    }
+
+    private suspend fun performRemoteSync(
+        householdId: String,
+        isOwner: Boolean,
+        authenticatedUser: AppUser,
+    ): EmptyResult? = if (isOwner) {
+        performOwnerSync(householdId, authenticatedUser)
+    } else {
+        performMemberSync(householdId, authenticatedUser)
+    }
+
+    private suspend fun performOwnerSync(householdId: String, authenticatedUser: AppUser): EmptyResult? {
+        val snapshot = buildSnapshot(householdId, authenticatedUser.id, authenticatedUser.email)
+            ?: return null
+        return remoteHouseholdDataSource.upsertHouseholdSnapshot(snapshot, authenticatedUser.id)
+    }
+
+    private suspend fun performMemberSync(householdId: String, authenticatedUser: AppUser): EmptyResult? {
+        val (member, completions) = buildMemberSync(householdId, authenticatedUser.id) ?: return null
+        return remoteHouseholdDataSource.upsertMemberSnapshot(
+            householdId = householdId,
+            member = member.copy(email = authenticatedUser.email),
+            completions = completions,
+            userId = authenticatedUser.id,
+        )
     }
 
     private suspend fun ensureEmailSynced(userId: String, email: String) {
