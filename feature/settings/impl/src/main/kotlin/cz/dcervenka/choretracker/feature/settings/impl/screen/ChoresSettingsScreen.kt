@@ -331,7 +331,8 @@ fun ChoresSettingsScreen(
                                 .horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(spacing.xSmall),
                         ) {
-                            suggestions.forEach { suggestion ->
+                            suggestions.forEach { suggestionRes ->
+                                val suggestion = stringResource(suggestionRes)
                                 SuggestionChip(
                                     onClick = { onIntent(SettingsUiIntent.ChoreInputChanged(suggestion)) },
                                     label = { Text(suggestion) },

@@ -211,6 +211,26 @@
     <string name="chore_category_shopping">Shopping</string>
     <string name="chore_category_outdoor">Outdoor</string>
     <string name="chore_category_other">Other</string>
+    <string name="chore_suggestion_vacuuming">Vacuuming</string>
+    <string name="chore_suggestion_mopping">Mopping</string>
+    <string name="chore_suggestion_bathroom">Bathroom</string>
+    <string name="chore_suggestion_dusting">Dusting</string>
+    <string name="chore_suggestion_laundry">Laundry</string>
+    <string name="chore_suggestion_trash">Trash</string>
+    <string name="chore_suggestion_kitchen">Kitchen</string>
+    <string name="chore_suggestion_dinner">Dinner</string>
+    <string name="chore_suggestion_meal_prep">Meal prep</string>
+    <string name="chore_suggestion_dishes">Dishes</string>
+    <string name="chore_suggestion_breakfast">Breakfast</string>
+    <string name="chore_suggestion_lunch">Lunch</string>
+    <string name="chore_suggestion_groceries">Groceries</string>
+    <string name="chore_suggestion_pharmacy">Pharmacy</string>
+    <string name="chore_suggestion_household_supplies">Household supplies</string>
+    <string name="chore_suggestion_mow_lawn">Mow lawn</string>
+    <string name="chore_suggestion_water_plants">Water plants</string>
+    <string name="chore_suggestion_take_out_bins">Take out bins</string>
+    <string name="chore_suggestion_rake_leaves">Rake leaves</string>
+    <string name="chore_suggestion_sweep_patio">Sweep patio</string>
 
     <string name="common_save">Save</string>
     <string name="common_cancel">Cancel</string>

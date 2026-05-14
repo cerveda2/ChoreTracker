@@ -211,6 +211,26 @@
     <string name="chore_category_shopping">Nákupy</string>
     <string name="chore_category_outdoor">Venku</string>
     <string name="chore_category_other">Ostatní</string>
+    <string name="chore_suggestion_vacuuming">Vysávání</string>
+    <string name="chore_suggestion_mopping">Mopování</string>
+    <string name="chore_suggestion_bathroom">Koupelna</string>
+    <string name="chore_suggestion_dusting">Utírání prachu</string>
+    <string name="chore_suggestion_laundry">Praní</string>
+    <string name="chore_suggestion_trash">Koš</string>
+    <string name="chore_suggestion_kitchen">Kuchyně</string>
+    <string name="chore_suggestion_dinner">Večeře</string>
+    <string name="chore_suggestion_meal_prep">Příprava jídla</string>
+    <string name="chore_suggestion_dishes">Nádobí</string>
+    <string name="chore_suggestion_breakfast">Snídaně</string>
+    <string name="chore_suggestion_lunch">Oběd</string>
+    <string name="chore_suggestion_groceries">Nákup potravin</string>
+    <string name="chore_suggestion_pharmacy">Lékárna</string>
+    <string name="chore_suggestion_household_supplies">Potřeby pro domácnost</string>
+    <string name="chore_suggestion_mow_lawn">Sekání trávy</string>
+    <string name="chore_suggestion_water_plants">Zalévání rostlin</string>
+    <string name="chore_suggestion_take_out_bins">Vynést popelnice</string>
+    <string name="chore_suggestion_rake_leaves">Hrabání listí</string>
+    <string name="chore_suggestion_sweep_patio">Zametení terasy</string>
 
     <string name="common_save">Uložit</string>
     <string name="common_cancel">Zrušit</string>
