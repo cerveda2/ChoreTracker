@@ -211,6 +211,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
                 mapOf(
                     "userId" to userId,
                     "householdId" to householdId,
+                    "displayName" to member.displayName,
                     "updatedAt" to Timestamp.now(),
                 ),
                 SetOptions.merge(),
