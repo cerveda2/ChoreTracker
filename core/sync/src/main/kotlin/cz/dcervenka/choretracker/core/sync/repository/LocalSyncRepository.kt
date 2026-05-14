@@ -174,6 +174,7 @@ class LocalSyncRepository @Inject constructor(
                         createdAt = snapshot.household.createdAt,
                     ),
                 )
+                val snapshotMemberIds = snapshot.members.map { it.id }.toSet()
                 snapshot.members.forEach { member ->
                     memberDao.upsert(
                         MemberEntity(
@@ -187,6 +188,9 @@ class LocalSyncRepository @Inject constructor(
                         ),
                     )
                 }
+                memberDao.getMembers(snapshot.household.id)
+                    .filter { it.id !in snapshotMemberIds }
+                    .forEach { memberDao.deleteById(it.id) }
                 snapshot.chores.forEach { chore ->
                     choreDao.upsert(
                         ChoreEntity(
