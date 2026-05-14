@@ -92,6 +92,7 @@
     <string name="household_refresh_invite">Refresh invite</string>
     <string name="household_members">Members</string>
     <string name="household_member_line">%1$s • %2$s</string>
+    <string name="household_member_you">you</string>
     <string name="household_new_member">New member</string>
     <string name="household_add_member">Add member</string>
     <string name="household_chores">Chores</string>

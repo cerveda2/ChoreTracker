@@ -150,11 +150,20 @@ private fun MemberRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = stringResource(
-                    R.string.household_member_line,
-                    member.displayName,
-                    member.role.name.lowercase(),
-                ),
+                text = if (member.isCurrentUser) {
+                    stringResource(
+                        R.string.household_member_line,
+                        member.displayName,
+                        member.role.name.lowercase(),
+                    ) + " • " + stringResource(R.string.household_member_you)
+                } else {
+                    stringResource(
+                        R.string.household_member_line,
+                        member.displayName,
+                        member.role.name.lowercase(),
+                    )
+                },
+                color = if (member.isCurrentUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
             )
             member.email?.let { email ->
                 Text(
