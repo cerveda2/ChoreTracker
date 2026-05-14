@@ -245,6 +245,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             user == null -> AppResult.Error("Sign in first.")
             else -> {
                 val existing = memberDao.findByUserId(householdId, user.id)
+                    ?: memberDao.findCurrentUser(householdId)
                 if (existing == null) {
                     AppResult.Error("Current member record was not found.")
                 } else {

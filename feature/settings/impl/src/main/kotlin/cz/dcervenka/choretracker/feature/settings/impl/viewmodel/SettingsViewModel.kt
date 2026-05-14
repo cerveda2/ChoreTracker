@@ -220,12 +220,18 @@ class SettingsViewModel @Inject constructor(
         val householdId = currentHouseholdId
         viewModelScope.launch {
             val authUpdate = updateDisplayNameUseCase(sanitizedName)
-            if (authUpdate is AppResult.Success) {
-                householdId?.let { updateCurrentMemberDisplayNameUseCase(it, sanitizedName) }
-                _events.send(SettingsUiEvent.NameSaved)
-            } else if (authUpdate is AppResult.Error) {
+            if (authUpdate is AppResult.Error) {
                 _events.send(SettingsUiEvent.Error(authUpdate.message))
+                return@launch
             }
+            if (householdId != null) {
+                val memberUpdate = updateCurrentMemberDisplayNameUseCase(householdId, sanitizedName)
+                if (memberUpdate is AppResult.Error) {
+                    _events.send(SettingsUiEvent.Error(memberUpdate.message))
+                    return@launch
+                }
+            }
+            _events.send(SettingsUiEvent.NameSaved)
         }
     }
 
