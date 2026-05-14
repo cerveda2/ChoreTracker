@@ -118,6 +118,12 @@ Issues found during codebase review (2026-05-13). Work through one at a time. It
 
 ---
 
+## Feature Backlog
+
+1. **QR code invite sharing** — On the owner's Manage Household screen, display a QR code for the current invite code. On the join screen, allow scanning the QR code as the primary entry path with manual code input as fallback. Use a lightweight QR-generation library (e.g. `io.github.alexzhirkevich:qrose`) for generation and `androidx.camera` + ML Kit for scanning.
+
+---
+
 ## Release Readiness Backlog (ordered by priority)
 
 Items needed before (and for) Google Play publication. Some are useful well before launch.
