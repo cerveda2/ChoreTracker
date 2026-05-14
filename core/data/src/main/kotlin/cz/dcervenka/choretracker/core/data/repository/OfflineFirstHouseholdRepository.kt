@@ -88,6 +88,8 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                         }
                     } else {
                         restoreStatus.value = HouseholdRestoreStatus()
+                        Timber.d("observeCurrentHousehold: household exists locally, pulling fresh snapshot for user=${user.id}")
+                        syncRepository.restoreHouseholdForUser(user.id)
                     }
                     emitAll(householdDao.observeHouseholdForUser(user.id).map { it?.asModel() })
                 }
