@@ -95,11 +95,13 @@ fun MembersSettingsScreen(
                             capitalization = KeyboardCapitalization.Words,
                             autoCorrectEnabled = true,
                         ),
+                        enabled = uiState.isOwner,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     PrimaryButton(
                         text = stringResource(R.string.household_add_member),
                         onClick = { onIntent(SettingsUiIntent.AddMember) },
+                        enabled = uiState.isOwner,
                     )
                 }
             }
