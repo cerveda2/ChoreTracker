@@ -123,8 +123,12 @@ class LocalSyncRepository @Inject constructor(
                         createdAt = snapshot.household.createdAt,
                     ),
                 )
-                val snapshotMemberIds = snapshot.members.map { it.id }.toSet()
-                snapshot.members.forEach { member ->
+                val uniqueMembers = snapshot.members
+                    .groupBy { it.id }
+                    .values
+                    .map { group -> group.maxByOrNull { if (it.userId != null) 1 else 0 }!! }
+                val snapshotMemberIds = uniqueMembers.map { it.id }.toSet()
+                uniqueMembers.forEach { member ->
                     memberDao.upsert(
                         MemberEntity(
                             id = member.id,
@@ -182,6 +186,7 @@ class LocalSyncRepository @Inject constructor(
                             code = invite.code,
                             createdAt = invite.createdAt,
                             consumedAt = invite.consumedAt,
+                            targetMemberId = invite.targetMemberId,
                         ),
                     )
                 }
@@ -381,6 +386,7 @@ class LocalSyncRepository @Inject constructor(
                     code = invite.code,
                     createdAt = invite.createdAt,
                     consumedAt = invite.consumedAt,
+                    targetMemberId = invite.targetMemberId,
                 )
             },
         )

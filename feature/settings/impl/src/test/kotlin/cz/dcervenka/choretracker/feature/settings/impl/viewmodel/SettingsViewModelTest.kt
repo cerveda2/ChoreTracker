@@ -6,6 +6,7 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.AddChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.CreateMemberInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
@@ -71,6 +72,9 @@ class SettingsViewModelTest {
 
     @MockK
     lateinit var createInviteUseCase: CreateInviteUseCase
+
+    @MockK
+    lateinit var createMemberInviteUseCase: CreateMemberInviteUseCase
 
     @MockK
     lateinit var deleteChoreUseCase: DeleteChoreUseCase
@@ -216,6 +220,7 @@ private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
     addMemberUseCase,
     addChoreUseCase,
     createInviteUseCase,
+    createMemberInviteUseCase,
     deleteChoreUseCase,
     deleteMemberUseCase,
     updateDisplayNameUseCase,

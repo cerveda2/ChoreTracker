@@ -167,19 +167,42 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                 Timber.w("joinHousehold failed: preview user attempted write operation")
             }
             else -> {
-                val existing = memberDao.findByUserId(invite.householdId, user.id)
-                if (existing == null) {
-                    memberDao.upsert(
-                        MemberEntity(
-                            id = UUID.randomUUID().toString(),
-                            householdId = invite.householdId,
-                            userId = user.id,
-                            displayName = currentUserDisplayName.ifBlank { user.displayName },
-                            role = HouseholdRole.MEMBER.name,
-                            isCurrentUser = true,
-                            email = user.email,
-                        ),
-                    )
+                val targetMemberId = invite.targetMemberId
+                if (targetMemberId != null) {
+                    val placeholder = memberDao.findById(invite.householdId, targetMemberId)
+                    if (placeholder != null && placeholder.userId == null) {
+                        memberDao.claimPlaceholder(targetMemberId, user.id, user.email)
+                    } else {
+                        val existing = memberDao.findByUserId(invite.householdId, user.id)
+                        if (existing == null) {
+                            memberDao.upsert(
+                                MemberEntity(
+                                    id = UUID.randomUUID().toString(),
+                                    householdId = invite.householdId,
+                                    userId = user.id,
+                                    displayName = currentUserDisplayName.ifBlank { user.displayName },
+                                    role = HouseholdRole.MEMBER.name,
+                                    isCurrentUser = true,
+                                    email = user.email,
+                                ),
+                            )
+                        }
+                    }
+                } else {
+                    val existing = memberDao.findByUserId(invite.householdId, user.id)
+                    if (existing == null) {
+                        memberDao.upsert(
+                            MemberEntity(
+                                id = UUID.randomUUID().toString(),
+                                householdId = invite.householdId,
+                                userId = user.id,
+                                displayName = currentUserDisplayName.ifBlank { user.displayName },
+                                role = HouseholdRole.MEMBER.name,
+                                isCurrentUser = true,
+                                email = user.email,
+                            ),
+                        )
+                    }
                 }
                 inviteDao.markConsumed(invite.id, Clock.System.now())
                 enqueueOperation("member", invite.householdId, "join", user.id)
@@ -223,6 +246,20 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         }
         val invite = generateInvite(householdId)
         householdDao.updateInviteCode(householdId, invite.code)
+        inviteDao.upsert(invite)
+        enqueueOperation("invite", householdId, "upsert", invite.code)
+        syncRepository.syncPendingOperations()
+        return AppResult.Success(invite.asModel())
+    }
+
+    override suspend fun createMemberInvite(householdId: String, memberId: String): AppResult<Invite> {
+        val user = currentUser()
+        if (user?.isPreview == true) {
+            return AppResult.Error("Cannot create invites in preview mode").also {
+                Timber.w("createMemberInvite failed: preview user attempted write operation")
+            }
+        }
+        val invite = generateInvite(householdId, targetMemberId = memberId)
         inviteDao.upsert(invite)
         enqueueOperation("invite", householdId, "upsert", invite.code)
         syncRepository.syncPendingOperations()
@@ -312,11 +349,12 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     }
 }
 
-private fun generateInvite(householdId: String): InviteEntity =
+private fun generateInvite(householdId: String, targetMemberId: String? = null): InviteEntity =
     InviteEntity(
         id = UUID.randomUUID().toString(),
         householdId = householdId,
         code = UUID.randomUUID().toString().take(INVITE_CODE_LENGTH).uppercase(),
         createdAt = Clock.System.now(),
         consumedAt = null,
+        targetMemberId = targetMemberId,
     )

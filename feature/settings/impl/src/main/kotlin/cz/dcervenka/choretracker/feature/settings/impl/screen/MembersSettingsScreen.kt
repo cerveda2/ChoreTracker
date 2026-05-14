@@ -1,33 +1,47 @@
 package cz.dcervenka.choretracker.feature.settings.impl.screen
 
+import android.content.ClipData
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
@@ -43,6 +57,7 @@ import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
 import kotlinx.coroutines.flow.Flow
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MembersSettingsScreen(
     uiState: SettingsUiState,
@@ -56,16 +71,64 @@ fun MembersSettingsScreen(
     val msgMemberDeleted = stringResource(R.string.settings_feedback_member_deleted)
     val msgError = stringResource(R.string.settings_feedback_error)
     var memberToDelete by rememberSaveable { mutableStateOf<String?>(null) }
+    var memberInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
+    var memberInviteName by rememberSaveable { mutableStateOf("") }
+    val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val clipboard = LocalClipboard.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val shareMessage = stringResource(R.string.settings_invite_share_message)
 
     LaunchedEffect(events) {
         events.collect { event ->
-            val msg = when (event) {
-                SettingsUiEvent.MemberAdded -> msgMemberAdded
-                SettingsUiEvent.MemberDeleted -> msgMemberDeleted
-                is SettingsUiEvent.Error -> event.message.ifBlank { msgError }
-                else -> return@collect
+            when (event) {
+                SettingsUiEvent.MemberAdded -> snackbarHostState.showSnackbar(msgMemberAdded)
+                SettingsUiEvent.MemberDeleted -> snackbarHostState.showSnackbar(msgMemberDeleted)
+                is SettingsUiEvent.Error -> snackbarHostState.showSnackbar(event.message.ifBlank { msgError })
+                is SettingsUiEvent.MemberInviteGenerated -> memberInviteCode = event.code
+                else -> Unit
             }
-            snackbarHostState.showSnackbar(msg)
+        }
+    }
+
+    memberInviteCode?.let { code ->
+        ModalBottomSheet(
+            onDismissRequest = { memberInviteCode = null },
+            sheetState = bottomSheetState,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = spacing.large, vertical = spacing.medium),
+                verticalArrangement = Arrangement.spacedBy(spacing.medium),
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_member_invite_title, memberInviteName),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = stringResource(R.string.settings_invite_code, code),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing.small)) {
+                    TextButton(onClick = {
+                        scope.launch {
+                            clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", code)))
+                        }
+                    }) {
+                        Text(stringResource(R.string.settings_invite_copy))
+                    }
+                    TextButton(onClick = {
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, shareMessage.format(code))
+                        }
+                        context.startActivity(Intent.createChooser(intent, null))
+                    }) {
+                        Text(stringResource(R.string.settings_invite_share))
+                    }
+                }
+            }
         }
     }
 
@@ -112,6 +175,10 @@ fun MembersSettingsScreen(
                                 member = member,
                                 isOwner = uiState.isOwner,
                                 onDeleteClick = { memberToDelete = member.id },
+                                onInviteClick = {
+                                    memberInviteName = member.displayName
+                                    onIntent(SettingsUiIntent.GenerateMemberInvite(member.id))
+                                },
                             )
                         }
                     }
@@ -142,8 +209,10 @@ private fun MemberRow(
     member: HouseholdMember,
     isOwner: Boolean,
     onDeleteClick: () -> Unit,
+    onInviteClick: () -> Unit,
 ) {
     val canDelete = isOwner && !member.isCurrentUser && member.role != HouseholdRole.OWNER
+    val canInvite = isOwner && member.userId == null
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -169,6 +238,15 @@ private fun MemberRow(
                 Text(
                     text = email,
                     style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+        if (canInvite) {
+            IconButton(onClick = onInviteClick) {
+                Icon(
+                    imageVector = Icons.Outlined.Link,
+                    contentDescription = stringResource(R.string.settings_member_invite_action),
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }

@@ -165,13 +165,14 @@ class FirebaseHouseholdDataSource @Inject constructor(
             }
             snapshot.invites.forEach { invite ->
                 add(
-                    householdRef.collection(INVITES_COLLECTION).document(invite.id) to mapOf(
-                        "id" to invite.id,
-                        "householdId" to invite.householdId,
-                        "code" to invite.code,
-                        "createdAt" to invite.createdAt.asTimestamp(),
-                        "consumedAt" to invite.consumedAt?.asTimestamp(),
-                    ),
+                    householdRef.collection(INVITES_COLLECTION).document(invite.id) to buildMap {
+                        put("id", invite.id)
+                        put("householdId", invite.householdId)
+                        put("code", invite.code)
+                        put("createdAt", invite.createdAt.asTimestamp())
+                        put("consumedAt", invite.consumedAt?.asTimestamp())
+                        invite.targetMemberId?.let { put("targetMemberId", it) }
+                    },
                 )
             }
         }
@@ -417,6 +418,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
         code = getString("code").orEmpty(),
         createdAt = getTimestamp("createdAt").asInstant(),
         consumedAt = getTimestamp("consumedAt")?.asInstant(),
+        targetMemberId = getString("targetMemberId"),
     )
 }
 

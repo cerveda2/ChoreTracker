@@ -8,4 +8,5 @@ sealed interface SettingsUiEvent {
     data object MemberDeleted : SettingsUiEvent
     data object NameSaved : SettingsUiEvent
     data class Error(val message: String) : SettingsUiEvent
+    data class MemberInviteGenerated(val code: String) : SettingsUiEvent
 }

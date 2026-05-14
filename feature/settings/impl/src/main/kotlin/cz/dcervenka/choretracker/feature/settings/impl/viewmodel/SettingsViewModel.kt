@@ -6,6 +6,7 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.AddChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.CreateMemberInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
@@ -52,6 +53,7 @@ class SettingsViewModel @Inject constructor(
     private val addMemberUseCase: AddMemberUseCase,
     private val addChoreUseCase: AddChoreUseCase,
     private val createInviteUseCase: CreateInviteUseCase,
+    private val createMemberInviteUseCase: CreateMemberInviteUseCase,
     private val deleteChoreUseCase: DeleteChoreUseCase,
     private val deleteMemberUseCase: DeleteMemberUseCase,
     private val updateDisplayNameUseCase: UpdateDisplayNameUseCase,
@@ -204,10 +206,23 @@ class SettingsViewModel @Inject constructor(
             is SettingsUiIntent.UpdateChoreActive -> updateChoreActive(intent.choreId, intent.isActive)
             is SettingsUiIntent.DeleteChore -> deleteChore(intent.choreId)
             is SettingsUiIntent.DeleteMember -> deleteMember(intent.memberId)
+            is SettingsUiIntent.GenerateMemberInvite -> generateMemberInvite(intent.memberId)
             is SettingsUiIntent.UpdateChoreFrequency -> updateChoreFrequency(intent.choreId, intent.frequencyDays)
             is SettingsUiIntent.UpdateChoreName -> updateChoreName(intent.choreId, intent.name)
             is SettingsUiIntent.UpdateChoreCategory -> updateChoreCategory(intent.choreId, intent.category)
             else -> Unit
+        }
+    }
+
+    private fun generateMemberInvite(memberId: String) {
+        val household = uiState.value.household ?: return
+        viewModelScope.launch {
+            val result = createMemberInviteUseCase(household.id, memberId)
+            if (result is AppResult.Success) {
+                _events.send(SettingsUiEvent.MemberInviteGenerated(result.value.code))
+            } else if (result is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(result.message))
+            }
         }
     }
 

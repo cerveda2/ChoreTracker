@@ -18,6 +18,7 @@ sealed interface SettingsUiIntent : UiIntent {
     data class UpdateChoreActive(val choreId: String, val isActive: Boolean) : SettingsUiIntent
     data class DeleteChore(val choreId: String) : SettingsUiIntent
     data class DeleteMember(val memberId: String) : SettingsUiIntent
+    data class GenerateMemberInvite(val memberId: String) : SettingsUiIntent
     data class UpdateChoreFrequency(val choreId: String, val frequencyDays: Int?) : SettingsUiIntent
     data class UpdateChoreName(val choreId: String, val name: String) : SettingsUiIntent
     data class UpdateChoreCategory(val choreId: String, val category: ChoreCategory) : SettingsUiIntent
