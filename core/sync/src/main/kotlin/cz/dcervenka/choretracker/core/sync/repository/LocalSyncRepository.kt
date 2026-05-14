@@ -90,14 +90,15 @@ class LocalSyncRepository @Inject constructor(
                 val now = Clock.System.now()
                 val isOwner = householdDao.getHousehold(householdId)?.ownerUserId == authenticatedUser.id
                 val result = if (isOwner) {
-                    val snapshot = buildSnapshot(householdId) ?: return@firstNotNullOfOrNull null
+                    val snapshot = buildSnapshot(householdId, authenticatedUser.id, authenticatedUser.email)
+                        ?: return@firstNotNullOfOrNull null
                     remoteHouseholdDataSource.upsertHouseholdSnapshot(snapshot, authenticatedUser.id)
                 } else {
                     val (member, completions) = buildMemberSync(householdId, authenticatedUser.id)
                         ?: return@firstNotNullOfOrNull null
                     remoteHouseholdDataSource.upsertMemberSnapshot(
                         householdId = householdId,
-                        member = member,
+                        member = member.copy(email = authenticatedUser.email),
                         completions = completions,
                         userId = authenticatedUser.id,
                     )
@@ -174,6 +175,7 @@ class LocalSyncRepository @Inject constructor(
                             displayName = member.displayName,
                             role = member.role.name,
                             isCurrentUser = member.isCurrentUser,
+                            email = member.email,
                         ),
                     )
                 }
@@ -278,7 +280,11 @@ class LocalSyncRepository @Inject constructor(
         else -> null
     }
 
-    private suspend fun buildSnapshot(householdId: String): HouseholdSnapshot? {
+    private suspend fun buildSnapshot(
+        householdId: String,
+        currentUserId: String,
+        currentUserEmail: String?,
+    ): HouseholdSnapshot? {
         val household = householdDao.getHousehold(householdId) ?: return null
         val participants = completionParticipantDao.getParticipants(householdId)
         val members = memberDao.getMembers(householdId).map { member ->
@@ -289,6 +295,7 @@ class LocalSyncRepository @Inject constructor(
                 displayName = member.displayName,
                 role = HouseholdRole.valueOf(member.role),
                 isCurrentUser = member.isCurrentUser,
+                email = if (member.userId == currentUserId) currentUserEmail else member.email,
             )
         }
         val completions = completionDao.getCompletions(householdId).map { completion ->

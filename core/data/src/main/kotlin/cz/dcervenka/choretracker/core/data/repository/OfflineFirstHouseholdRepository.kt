@@ -140,6 +140,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                         displayName = ownerDisplayName.ifBlank { user.displayName },
                         role = HouseholdRole.OWNER.name,
                         isCurrentUser = true,
+                        email = user.email,
                     ),
                 )
                 inviteDao.upsert(invite)
@@ -175,6 +176,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                             displayName = currentUserDisplayName.ifBlank { user.displayName },
                             role = HouseholdRole.MEMBER.name,
                             isCurrentUser = true,
+                            email = user.email,
                         ),
                     )
                 }

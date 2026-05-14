@@ -103,14 +103,15 @@ class FirebaseHouseholdDataSource @Inject constructor(
             val memberDocumentId = member.userId ?: member.id
             membershipBatch.set(
                 householdRef.collection(MEMBERS_COLLECTION).document(memberDocumentId),
-                mapOf(
-                    "id" to member.id,
-                    "householdId" to member.householdId,
-                    "userId" to member.userId,
-                    "displayName" to member.displayName,
-                    "role" to member.role.name,
-                    "active" to true,
-                ),
+                buildMap {
+                    put("id", member.id)
+                    put("householdId", member.householdId)
+                    put("userId", member.userId)
+                    put("displayName", member.displayName)
+                    put("role", member.role.name)
+                    put("active", true)
+                    member.email?.let { put("email", it) }
+                },
                 SetOptions.merge(),
             )
             member.userId?.let { memberUserId ->
@@ -196,14 +197,15 @@ class FirebaseHouseholdDataSource @Inject constructor(
             val memberBatch = db.batch()
             memberBatch.set(
                 householdRef.collection(MEMBERS_COLLECTION).document(memberDocumentId),
-                mapOf(
-                    "id" to member.id,
-                    "householdId" to member.householdId,
-                    "userId" to member.userId,
-                    "displayName" to member.displayName,
-                    "role" to member.role.name,
-                    "active" to true,
-                ),
+                buildMap {
+                    put("id", member.id)
+                    put("householdId", member.householdId)
+                    put("userId", member.userId)
+                    put("displayName", member.displayName)
+                    put("role", member.role.name)
+                    put("active", true)
+                    member.email?.let { put("email", it) }
+                },
                 SetOptions.merge(),
             )
             memberBatch.set(
@@ -381,6 +383,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             ?.let(HouseholdRole::valueOf)
             ?: HouseholdRole.MEMBER,
         isCurrentUser = getString("userId") == currentUserId,
+        email = getString("email"),
     )
 
     private fun DocumentSnapshot.asChore(householdId: String): Chore = Chore(

@@ -1,6 +1,7 @@
 package cz.dcervenka.choretracker.feature.settings.impl.screen
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +12,7 @@ import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -146,14 +148,21 @@ private fun MemberRow(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = stringResource(
-                R.string.household_member_line,
-                member.displayName,
-                member.role.name.lowercase(),
-            ),
-            modifier = Modifier.weight(1f),
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(
+                    R.string.household_member_line,
+                    member.displayName,
+                    member.role.name.lowercase(),
+                ),
+            )
+            member.email?.let { email ->
+                Text(
+                    text = email,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
         if (canDelete) {
             IconButton(onClick = onDeleteClick) {
                 Icon(

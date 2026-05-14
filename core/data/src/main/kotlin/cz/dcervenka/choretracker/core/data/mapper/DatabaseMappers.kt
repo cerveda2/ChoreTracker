@@ -29,6 +29,7 @@ internal fun MemberEntity.asModel(): HouseholdMember = HouseholdMember(
     displayName = displayName,
     role = HouseholdRole.valueOf(role),
     isCurrentUser = isCurrentUser,
+    email = email,
 )
 
 internal fun ChoreEntity.asModel(): Chore = Chore(
