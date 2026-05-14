@@ -120,8 +120,9 @@ Issues found during codebase review (2026-05-13). Work through one at a time. It
 
 ## Feature Backlog
 
-1. **QR code invite sharing** — On the owner's Manage Household screen, display a QR code for the current invite code. On the join screen, allow scanning the QR code as the primary entry path with manual code input as fallback. Use a lightweight QR-generation library (e.g. `io.github.alexzhirkevich:qrose`) for generation and `androidx.camera` + ML Kit for scanning.
-2. **Real-time Firestore sync** — Currently uses one-shot `get()` calls; a member's logged completion doesn't appear on the owner's device until the next explicit sync. Switch the completions collection (and members) to `addSnapshotListener` for push-based delivery. Requires restructuring the remote data source from pull to push — non-trivial but eliminates the need for FCM to trigger refreshes.
+1. **Per-member invite links** — Owner generates a per-member invite token that records which placeholder member it maps to. When the invite is consumed, the joining user's `userId` is written into the existing placeholder entity rather than creating a new one. Eliminates the duplicate-member problem that occurs when an owner pre-creates a named slot (e.g. "Anna") and Anna later joins with her own account.
+2. **QR code invite sharing** — On the owner's Manage Household screen, display a QR code for the current invite code. On the join screen, allow scanning the QR code as the primary entry path with manual code input as fallback. Use a lightweight QR-generation library (e.g. `io.github.alexzhirkevich:qrose`) for generation and `androidx.camera` + ML Kit for scanning.
+3. **Real-time Firestore sync** — Currently uses one-shot `get()` calls; a member's logged completion doesn't appear on the owner's device until the next explicit sync. Switch the completions collection (and members) to `addSnapshotListener` for push-based delivery. Requires restructuring the remote data source from pull to push — non-trivial but eliminates the need for FCM to trigger refreshes.
 
 ---
 

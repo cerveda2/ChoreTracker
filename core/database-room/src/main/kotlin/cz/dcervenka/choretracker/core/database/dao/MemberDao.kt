@@ -27,4 +27,7 @@ interface MemberDao {
 
     @Query("SELECT * FROM members WHERE householdId = :householdId AND isCurrentUser = 1 LIMIT 1")
     suspend fun findCurrentUser(householdId: String): MemberEntity?
+
+    @Query("DELETE FROM members WHERE id = :id")
+    suspend fun deleteById(id: String)
 }

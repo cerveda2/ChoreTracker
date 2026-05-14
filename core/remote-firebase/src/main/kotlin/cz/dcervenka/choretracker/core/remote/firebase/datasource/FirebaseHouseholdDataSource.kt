@@ -242,6 +242,25 @@ class FirebaseHouseholdDataSource @Inject constructor(
         }
     }
 
+    override suspend fun deleteMember(householdId: String, firestoreDocId: String): EmptyResult {
+        Timber.d("deleteMember: householdId=$householdId firestoreDocId=$firestoreDocId")
+        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        return runCatching {
+            awaitTask(
+                db.collection(HOUSEHOLDS_COLLECTION)
+                    .document(householdId)
+                    .collection(MEMBERS_COLLECTION)
+                    .document(firestoreDocId)
+                    .delete(),
+            )
+            Timber.d("deleteMember: success")
+            AppResult.Success(Unit)
+        }.getOrElse { error ->
+            Timber.e(error, "deleteMember: failed")
+            AppResult.Error(error.message ?: "Unable to delete member.", error)
+        }
+    }
+
     override suspend fun deleteCompletion(householdId: String, completionId: String): EmptyResult {
         Timber.d("deleteCompletion: householdId=$householdId completionId=$completionId")
         val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")

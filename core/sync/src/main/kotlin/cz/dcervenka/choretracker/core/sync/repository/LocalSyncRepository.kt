@@ -120,6 +120,9 @@ class LocalSyncRepository @Inject constructor(
                         Timber.d(
                             "syncPendingOperations: synced ${operationIds.size} operations for household=$householdId",
                         )
+                        if (isOwner) {
+                            deleteRemoteMembers(householdId, operations, operationIds.toSet())
+                        }
                         deleteRemoteCompletions(householdId, operations, operationIds.toSet())
                         operationIds.forEach { operationId ->
                             pendingSyncOperationDao.delete(operationId)
@@ -226,6 +229,23 @@ class LocalSyncRepository @Inject constructor(
                 AppResult.Success(true)
             }
         }
+    }
+
+    private suspend fun deleteRemoteMembers(
+        householdId: String,
+        operations: List<PendingSyncOperationEntity>,
+        operationIdSet: Set<String>,
+    ) {
+        operations
+            .filter { it.id in operationIdSet && it.entityType == "member" && it.operationType == "delete" }
+            .forEach { op ->
+                val result = remoteHouseholdDataSource.deleteMember(householdId, op.payload)
+                if (result is AppResult.Error) {
+                    Timber.e(
+                        "syncPendingOperations: remote member delete failed for ${op.payload} — ${result.message}",
+                    )
+                }
+            }
     }
 
     private suspend fun deleteRemoteCompletions(

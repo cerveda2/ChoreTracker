@@ -100,6 +100,9 @@
     <string name="household_delete_chore">Smazat úkol</string>
     <string name="household_delete_chore_title">Smazat tento úkol?</string>
     <string name="household_delete_chore_message">Tím se úkol odstraní z aktivního plánování, ale stávající historie splnění zůstane čitelná.</string>
+    <string name="household_delete_member">Odebrat člena</string>
+    <string name="household_delete_member_title">Odebrat tohoto člena?</string>
+    <string name="household_delete_member_message">Tím se člen odstraní z domácnosti. Jeho historie splnění zůstane viditelná.</string>
     <string name="household_member_count">%1$d členů</string>
     <string name="household_chore_count">%1$d úkolů</string>
     <string name="household_invite_section">Pozvánka</string>
@@ -203,6 +206,7 @@
     <string name="settings_feedback_chore_deleted">Úkol smazán</string>
     <string name="settings_feedback_chore_saved">Uloženo</string>
     <string name="settings_feedback_member_added">Člen přidán</string>
+    <string name="settings_feedback_member_deleted">Člen odebrán</string>
     <string name="settings_feedback_name_saved">Název uložen</string>
     <string name="settings_feedback_error">Něco se pokazilo</string>
     <string name="settings_chore_category_title">Kategorie</string>

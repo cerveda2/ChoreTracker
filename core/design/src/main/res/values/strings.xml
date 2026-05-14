@@ -100,6 +100,9 @@
     <string name="household_delete_chore">Delete chore</string>
     <string name="household_delete_chore_title">Delete this chore?</string>
     <string name="household_delete_chore_message">This removes the chore from active planning while keeping existing completion history readable.</string>
+    <string name="household_delete_member">Remove member</string>
+    <string name="household_delete_member_title">Remove this member?</string>
+    <string name="household_delete_member_message">This removes the member from the household. Their completion history remains visible.</string>
     <string name="household_member_count">%1$d members</string>
     <string name="household_chore_count">%1$d chores</string>
     <string name="household_invite_section">Invite</string>
@@ -203,6 +206,7 @@
     <string name="settings_feedback_chore_deleted">Chore deleted</string>
     <string name="settings_feedback_chore_saved">Saved</string>
     <string name="settings_feedback_member_added">Member added</string>
+    <string name="settings_feedback_member_deleted">Member removed</string>
     <string name="settings_feedback_name_saved">Name saved</string>
     <string name="settings_feedback_error">Something went wrong</string>
     <string name="settings_chore_category_title">Category</string>

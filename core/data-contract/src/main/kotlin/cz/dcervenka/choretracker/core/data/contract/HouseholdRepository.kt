@@ -27,4 +27,6 @@ interface HouseholdRepository {
     suspend fun updateHouseholdName(householdId: String, name: String): EmptyResult
 
     suspend fun updateCurrentMemberDisplayName(householdId: String, displayName: String): EmptyResult
+
+    suspend fun deleteMember(householdId: String, memberId: String): EmptyResult
 }

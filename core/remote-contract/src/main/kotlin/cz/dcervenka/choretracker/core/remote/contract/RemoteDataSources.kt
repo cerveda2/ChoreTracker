@@ -34,4 +34,6 @@ interface RemoteHouseholdDataSource {
     suspend fun fetchHouseholdSnapshot(userId: String): AppResult<HouseholdSnapshot?>
 
     suspend fun deleteCompletion(householdId: String, completionId: String): EmptyResult
+
+    suspend fun deleteMember(householdId: String, firestoreDocId: String): EmptyResult
 }

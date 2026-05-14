@@ -261,6 +261,23 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         }
     }
 
+    override suspend fun deleteMember(householdId: String, memberId: String): EmptyResult {
+        Timber.d("deleteMember: householdId=$householdId memberId=$memberId")
+        val user = currentUser()
+        if (user?.isPreview == true) {
+            return AppResult.Error("Cannot delete members in preview mode").also {
+                Timber.w("deleteMember failed: preview user attempted write operation")
+            }
+        }
+        val member = memberDao.getMembers(householdId).find { it.id == memberId }
+            ?: return AppResult.Error("Member not found.")
+        val firestoreDocId = member.userId ?: member.id
+        memberDao.deleteById(memberId)
+        enqueueOperation("member", householdId, "delete", firestoreDocId)
+        syncRepository.syncPendingOperations()
+        return AppResult.Success(Unit)
+    }
+
     private suspend fun currentUser(): AppUser? =
         (authRepository.authState.first() as? AuthState.Authenticated)?.user
 
