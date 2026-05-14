@@ -103,14 +103,15 @@ class FirebaseHouseholdDataSource @Inject constructor(
             val memberDocumentId = member.userId ?: member.id
             membershipBatch.set(
                 householdRef.collection(MEMBERS_COLLECTION).document(memberDocumentId),
-                mapOf(
-                    "id" to member.id,
-                    "householdId" to member.householdId,
-                    "userId" to member.userId,
-                    "displayName" to member.displayName,
-                    "role" to member.role.name,
-                    "active" to true,
-                ),
+                buildMap {
+                    put("id", member.id)
+                    put("householdId", member.householdId)
+                    put("userId", member.userId)
+                    put("displayName", member.displayName)
+                    put("role", member.role.name)
+                    put("active", true)
+                    member.email?.let { put("email", it) }
+                },
                 SetOptions.merge(),
             )
             member.userId?.let { memberUserId ->
@@ -182,6 +183,86 @@ class FirebaseHouseholdDataSource @Inject constructor(
         }
     }
 
+    override suspend fun upsertMemberSnapshot(
+        householdId: String,
+        member: HouseholdMember,
+        completions: List<ChoreCompletion>,
+        userId: String,
+    ): EmptyResult {
+        Timber.d("upsertMemberSnapshot: householdId=$householdId completions=${completions.size}")
+        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        return runCatching {
+            val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
+            val memberDocumentId = member.userId ?: member.id
+            val memberBatch = db.batch()
+            memberBatch.set(
+                householdRef.collection(MEMBERS_COLLECTION).document(memberDocumentId),
+                buildMap {
+                    put("id", member.id)
+                    put("householdId", member.householdId)
+                    put("userId", member.userId)
+                    put("displayName", member.displayName)
+                    put("role", member.role.name)
+                    put("active", true)
+                    member.email?.let { put("email", it) }
+                },
+                SetOptions.merge(),
+            )
+            memberBatch.set(
+                db.collection(USERS_COLLECTION).document(userId),
+                mapOf(
+                    "userId" to userId,
+                    "householdId" to householdId,
+                    "displayName" to member.displayName,
+                    "updatedAt" to Timestamp.now(),
+                ),
+                SetOptions.merge(),
+            )
+            awaitTask(memberBatch.commit())
+
+            completions.map { completion ->
+                householdRef.collection(COMPLETIONS_COLLECTION).document(completion.id) to mapOf(
+                    "id" to completion.id,
+                    "householdId" to completion.householdId,
+                    "choreId" to completion.choreId,
+                    "createdAt" to completion.createdAt.asTimestamp(),
+                    "createdByUserId" to completion.createdByUserId,
+                    "note" to completion.note,
+                    "participantMemberIds" to completion.participantMemberIds,
+                )
+            }.chunked(FIRESTORE_BATCH_LIMIT).forEach { chunk ->
+                val batch = db.batch()
+                chunk.forEach { (ref, data) -> batch.set(ref, data, SetOptions.merge()) }
+                awaitTask(batch.commit())
+            }
+
+            Timber.d("upsertMemberSnapshot: success")
+            AppResult.Success(Unit)
+        }.getOrElse { error ->
+            Timber.e(error, "upsertMemberSnapshot: failed")
+            AppResult.Error(error.message ?: "Unable to sync member data.", error)
+        }
+    }
+
+    override suspend fun deleteMember(householdId: String, firestoreDocId: String): EmptyResult {
+        Timber.d("deleteMember: householdId=$householdId firestoreDocId=$firestoreDocId")
+        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        return runCatching {
+            awaitTask(
+                db.collection(HOUSEHOLDS_COLLECTION)
+                    .document(householdId)
+                    .collection(MEMBERS_COLLECTION)
+                    .document(firestoreDocId)
+                    .delete(),
+            )
+            Timber.d("deleteMember: success")
+            AppResult.Success(Unit)
+        }.getOrElse { error ->
+            Timber.e(error, "deleteMember: failed")
+            AppResult.Error(error.message ?: "Unable to delete member.", error)
+        }
+    }
+
     override suspend fun deleteCompletion(householdId: String, completionId: String): EmptyResult {
         Timber.d("deleteCompletion: householdId=$householdId completionId=$completionId")
         val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
@@ -249,18 +330,23 @@ class FirebaseHouseholdDataSource @Inject constructor(
     }
 
     private suspend fun resolveHouseholdId(db: FirebaseFirestore, userId: String): String? {
-        val directHouseholdId = awaitTask(db.collection(USERS_COLLECTION).document(userId).get())
-            .getString("householdId")
-        if (directHouseholdId != null) {
-            return directHouseholdId
-        }
+        val directHouseholdId = runCatching {
+            awaitTask(db.collection(USERS_COLLECTION).document(userId).get())
+                .getString("householdId")
+        }.getOrNull()
+        if (directHouseholdId != null) return directHouseholdId
 
-        return awaitTask(
-            db.collectionGroup(MEMBERS_COLLECTION)
-                .whereEqualTo("userId", userId)
-                .limit(1)
-                .get(),
-        ).documents.firstOrNull()?.getString("householdId")
+        return runCatching {
+            awaitTask(
+                db.collectionGroup(MEMBERS_COLLECTION)
+                    .whereEqualTo("userId", userId)
+                    .limit(1)
+                    .get(),
+            ).documents.firstOrNull()?.getString("householdId")
+        }.getOrElse { e ->
+            Timber.w(e, "resolveHouseholdId: collectionGroup query failed for userId=$userId")
+            null
+        }
     }
 
     private suspend fun batchUserFallback(
@@ -297,6 +383,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             ?.let(HouseholdRole::valueOf)
             ?: HouseholdRole.MEMBER,
         isCurrentUser = getString("userId") == currentUserId,
+        email = getString("email"),
     )
 
     private fun DocumentSnapshot.asChore(householdId: String): Chore = Chore(
@@ -331,10 +418,10 @@ class FirebaseHouseholdDataSource @Inject constructor(
         createdAt = getTimestamp("createdAt").asInstant(),
         consumedAt = getTimestamp("consumedAt")?.asInstant(),
     )
-
-    private suspend fun <T> awaitTask(task: Task<T>): T =
-        suspendCancellableCoroutineCompat(task)
 }
+
+private suspend fun <T> awaitTask(task: Task<T>): T =
+    suspendCancellableCoroutineCompat(task)
 
 private fun Timestamp?.asInstant(): Instant = this?.let { firebaseTimestamp ->
     Instant.fromEpochMilliseconds(firebaseTimestamp.toDate().time)

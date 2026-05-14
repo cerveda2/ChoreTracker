@@ -76,13 +76,9 @@ Always create feature branches from `main`. PRs go into `main`.
 
 Issues found during codebase review (2026-05-13). Work through one at a time. Items already in Release Readiness Backlog are excluded.
 
-### HIGH — Bugs
-
-1. **Non-owner member sync fails `PERMISSION_DENIED`** — `syncPendingOperations` always uploads the full household snapshot, which includes household doc update and chore writes — both require `isHouseholdOwner`. Members only have permission to write their own completions and member record. Fix requires splitting the sync: members should only push their own completions, not the full snapshot.
-
 ### HIGH — Test Gaps
 
-2. **`LocalSyncRepository` has zero tests** — most complex sync orchestration: pending op drain, snapshot upsert, remote restore, `resolveHouseholdId` branching. All untested.
+1. **`LocalSyncRepository` has zero tests** — most complex sync orchestration: pending op drain, snapshot upsert, remote restore, `resolveHouseholdId` branching. All untested.
 
 ### MEDIUM — Bugs
 
@@ -119,6 +115,14 @@ Issues found during codebase review (2026-05-13). Work through one at a time. It
 
 19. **Detail screen permanent loading** — `DashboardNavigation.kt:70–71`. If `allCompletions` hasn't loaded when navigating to a completion detail, the screen shows permanent loading with no error state or retry.
 20. **`observeRecentCompletions` limit not pushed to SQL** — `CompletionDao` has no `LIMIT` clause; limit is applied in-memory after loading all rows.
+
+---
+
+## Feature Backlog
+
+1. **Per-member invite links** — Owner generates a per-member invite token that records which placeholder member it maps to. When the invite is consumed, the joining user's `userId` is written into the existing placeholder entity rather than creating a new one. Eliminates the duplicate-member problem that occurs when an owner pre-creates a named slot (e.g. "Anna") and Anna later joins with her own account.
+2. **QR code invite sharing** — On the owner's Manage Household screen, display a QR code for the current invite code. On the join screen, allow scanning the QR code as the primary entry path with manual code input as fallback. Use a lightweight QR-generation library (e.g. `io.github.alexzhirkevich:qrose`) for generation and `androidx.camera` + ML Kit for scanning.
+3. **Real-time Firestore sync** — Currently uses one-shot `get()` calls; a member's logged completion doesn't appear on the owner's device until the next explicit sync. Switch the completions collection (and members) to `addSnapshotListener` for push-based delivery. Requires restructuring the remote data source from pull to push — non-trivial but eliminates the need for FCM to trigger refreshes.
 
 ---
 

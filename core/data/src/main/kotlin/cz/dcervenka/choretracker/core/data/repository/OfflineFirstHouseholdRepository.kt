@@ -47,6 +47,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
 ) : HouseholdRepository {
 
     private val restoreStatus = MutableStateFlow(HouseholdRestoreStatus())
+    private var hasRefreshedFromRemoteThisSession = false
 
     override fun observeCurrentHousehold(): Flow<Household?> = authRepository.authState.flatMapLatest { authState ->
         flow {
@@ -88,7 +89,15 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                         }
                     } else {
                         restoreStatus.value = HouseholdRestoreStatus()
+                        if (!hasRefreshedFromRemoteThisSession) {
+                            hasRefreshedFromRemoteThisSession = true
+                            Timber.d(
+                                "observeCurrentHousehold: household exists locally, pulling fresh snapshot for user=${user.id}"
+                            )
+                            syncRepository.restoreHouseholdForUser(user.id)
+                        }
                     }
+                    stampCurrentUserEmail(user)
                     emitAll(householdDao.observeHouseholdForUser(user.id).map { it?.asModel() })
                 }
             }
@@ -132,6 +141,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                         displayName = ownerDisplayName.ifBlank { user.displayName },
                         role = HouseholdRole.OWNER.name,
                         isCurrentUser = true,
+                        email = user.email,
                     ),
                 )
                 inviteDao.upsert(invite)
@@ -167,6 +177,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                             displayName = currentUserDisplayName.ifBlank { user.displayName },
                             role = HouseholdRole.MEMBER.name,
                             isCurrentUser = true,
+                            email = user.email,
                         ),
                     )
                 }
@@ -239,6 +250,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             user == null -> AppResult.Error("Sign in first.")
             else -> {
                 val existing = memberDao.findByUserId(householdId, user.id)
+                    ?: memberDao.findCurrentUser(householdId)
                 if (existing == null) {
                     AppResult.Error("Current member record was not found.")
                 } else {
@@ -249,6 +261,32 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                     AppResult.Success(Unit)
                 }
             }
+        }
+    }
+
+    override suspend fun deleteMember(householdId: String, memberId: String): EmptyResult {
+        Timber.d("deleteMember: householdId=$householdId memberId=$memberId")
+        val user = currentUser()
+        if (user?.isPreview == true) {
+            Timber.w("deleteMember failed: preview user attempted write operation")
+            return AppResult.Error("Cannot delete members in preview mode")
+        }
+        val member = memberDao.getMembers(householdId).find { it.id == memberId }
+        return if (member == null) {
+            AppResult.Error("Member not found.")
+        } else {
+            memberDao.deleteById(memberId)
+            enqueueOperation("member", householdId, "delete", member.userId ?: member.id)
+            syncRepository.syncPendingOperations()
+            AppResult.Success(Unit)
+        }
+    }
+
+    private suspend fun stampCurrentUserEmail(user: AppUser) {
+        val email = user.email ?: return
+        val householdId = householdDao.getCurrentHouseholdForUser(user.id)?.id ?: return
+        memberDao.findByUserId(householdId, user.id)?.let { member ->
+            if (member.email != email) memberDao.upsert(member.copy(email = email))
         }
     }
 
@@ -272,13 +310,13 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             ),
         )
     }
-
-    private fun generateInvite(householdId: String): InviteEntity =
-        InviteEntity(
-            id = UUID.randomUUID().toString(),
-            householdId = householdId,
-            code = UUID.randomUUID().toString().take(INVITE_CODE_LENGTH).uppercase(),
-            createdAt = Clock.System.now(),
-            consumedAt = null,
-        )
 }
+
+private fun generateInvite(householdId: String): InviteEntity =
+    InviteEntity(
+        id = UUID.randomUUID().toString(),
+        householdId = householdId,
+        code = UUID.randomUUID().toString().take(INVITE_CODE_LENGTH).uppercase(),
+        createdAt = Clock.System.now(),
+        consumedAt = null,
+    )

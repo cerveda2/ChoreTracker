@@ -11,4 +11,5 @@ data class MemberEntity(
     val displayName: String,
     val role: String,
     val isCurrentUser: Boolean,
+    val email: String? = null,
 )

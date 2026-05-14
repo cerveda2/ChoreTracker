@@ -7,6 +7,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.AddChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.DeleteMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
@@ -52,6 +53,7 @@ class SettingsViewModel @Inject constructor(
     private val addChoreUseCase: AddChoreUseCase,
     private val createInviteUseCase: CreateInviteUseCase,
     private val deleteChoreUseCase: DeleteChoreUseCase,
+    private val deleteMemberUseCase: DeleteMemberUseCase,
     private val updateDisplayNameUseCase: UpdateDisplayNameUseCase,
     private val updateCurrentMemberDisplayNameUseCase: UpdateCurrentMemberDisplayNameUseCase,
     private val updateChoreActiveUseCase: UpdateChoreActiveUseCase,
@@ -194,13 +196,14 @@ class SettingsViewModel @Inject constructor(
     private fun handleActionIntent(intent: SettingsUiIntent) {
         when (intent) {
             SettingsUiIntent.SaveAccountDisplayName -> saveAccountDisplayName()
-            SettingsUiIntent.SignOut -> signOut()
+            SettingsUiIntent.SignOut -> viewModelScope.launch { signOutUseCase() }
             SettingsUiIntent.SaveHouseholdName -> saveHouseholdName()
             SettingsUiIntent.AddMember -> addMember()
             SettingsUiIntent.AddChore -> addChore()
             SettingsUiIntent.RefreshInvite -> refreshInvite()
             is SettingsUiIntent.UpdateChoreActive -> updateChoreActive(intent.choreId, intent.isActive)
             is SettingsUiIntent.DeleteChore -> deleteChore(intent.choreId)
+            is SettingsUiIntent.DeleteMember -> deleteMember(intent.memberId)
             is SettingsUiIntent.UpdateChoreFrequency -> updateChoreFrequency(intent.choreId, intent.frequencyDays)
             is SettingsUiIntent.UpdateChoreName -> updateChoreName(intent.choreId, intent.name)
             is SettingsUiIntent.UpdateChoreCategory -> updateChoreCategory(intent.choreId, intent.category)
@@ -208,9 +211,9 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private fun signOut() {
-        viewModelScope.launch {
-            signOutUseCase()
+    private fun refreshInvite() {
+        uiState.value.household?.let { h ->
+            viewModelScope.launch { createInviteUseCase(h.id) }
         }
     }
 
@@ -220,12 +223,18 @@ class SettingsViewModel @Inject constructor(
         val householdId = currentHouseholdId
         viewModelScope.launch {
             val authUpdate = updateDisplayNameUseCase(sanitizedName)
-            if (authUpdate is AppResult.Success) {
-                householdId?.let { updateCurrentMemberDisplayNameUseCase(it, sanitizedName) }
-                _events.send(SettingsUiEvent.NameSaved)
-            } else if (authUpdate is AppResult.Error) {
+            if (authUpdate is AppResult.Error) {
                 _events.send(SettingsUiEvent.Error(authUpdate.message))
+                return@launch
             }
+            if (householdId != null) {
+                val memberUpdate = updateCurrentMemberDisplayNameUseCase(householdId, sanitizedName)
+                if (memberUpdate is AppResult.Error) {
+                    _events.send(SettingsUiEvent.Error(memberUpdate.message))
+                    return@launch
+                }
+            }
+            _events.send(SettingsUiEvent.NameSaved)
         }
     }
 
@@ -268,16 +277,21 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private fun refreshInvite() {
-        val household = uiState.value.household ?: return
-        viewModelScope.launch {
-            createInviteUseCase(household.id)
-        }
-    }
-
     private fun updateChoreActive(choreId: String, isActive: Boolean) {
         viewModelScope.launch {
             updateChoreActiveUseCase(choreId, isActive)
+        }
+    }
+
+    private fun deleteMember(memberId: String) {
+        val household = uiState.value.household ?: return
+        viewModelScope.launch {
+            val result = deleteMemberUseCase(household.id, memberId)
+            if (result is AppResult.Success) {
+                _events.send(SettingsUiEvent.MemberDeleted)
+            } else if (result is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(result.message))
+            }
         }
     }
 

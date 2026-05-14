@@ -18,11 +18,36 @@ fun ChoreCategory.toIcon(): ImageVector = when (this) {
     ChoreCategory.OTHER -> Icons.Outlined.Category
 }
 
-fun ChoreCategory.suggestions(): List<String> = when (this) {
-    ChoreCategory.CLEANING -> listOf("Vacuuming", "Mopping", "Bathroom", "Dusting", "Laundry", "Trash", "Kitchen")
-    ChoreCategory.COOKING -> listOf("Dinner", "Meal prep", "Dishes", "Breakfast", "Lunch")
-    ChoreCategory.SHOPPING -> listOf("Groceries", "Pharmacy", "Household supplies")
-    ChoreCategory.OUTDOOR -> listOf("Mow lawn", "Water plants", "Take out bins", "Rake leaves", "Sweep patio")
+@StringRes
+fun ChoreCategory.suggestions(): List<Int> = when (this) {
+    ChoreCategory.CLEANING -> listOf(
+        R.string.chore_suggestion_vacuuming,
+        R.string.chore_suggestion_mopping,
+        R.string.chore_suggestion_bathroom,
+        R.string.chore_suggestion_dusting,
+        R.string.chore_suggestion_laundry,
+        R.string.chore_suggestion_trash,
+        R.string.chore_suggestion_kitchen,
+    )
+    ChoreCategory.COOKING -> listOf(
+        R.string.chore_suggestion_dinner,
+        R.string.chore_suggestion_meal_prep,
+        R.string.chore_suggestion_dishes,
+        R.string.chore_suggestion_breakfast,
+        R.string.chore_suggestion_lunch,
+    )
+    ChoreCategory.SHOPPING -> listOf(
+        R.string.chore_suggestion_groceries,
+        R.string.chore_suggestion_pharmacy,
+        R.string.chore_suggestion_household_supplies,
+    )
+    ChoreCategory.OUTDOOR -> listOf(
+        R.string.chore_suggestion_mow_lawn,
+        R.string.chore_suggestion_water_plants,
+        R.string.chore_suggestion_take_out_bins,
+        R.string.chore_suggestion_rake_leaves,
+        R.string.chore_suggestion_sweep_patio,
+    )
     ChoreCategory.OTHER -> emptyList()
 }
 

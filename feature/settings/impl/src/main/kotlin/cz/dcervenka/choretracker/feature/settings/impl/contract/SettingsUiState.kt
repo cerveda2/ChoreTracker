@@ -5,6 +5,7 @@ import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
+import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.household.Invite
 
 data class SettingsUiState(
@@ -21,4 +22,7 @@ data class SettingsUiState(
     val choreCategoryInput: ChoreCategory = ChoreCategory.OTHER,
     val requiresConfiguration: Boolean = false,
     val isSignedOut: Boolean = false,
-) : UiState
+) : UiState {
+    val isOwner: Boolean
+        get() = members.any { it.isCurrentUser && it.role == HouseholdRole.OWNER }
+}

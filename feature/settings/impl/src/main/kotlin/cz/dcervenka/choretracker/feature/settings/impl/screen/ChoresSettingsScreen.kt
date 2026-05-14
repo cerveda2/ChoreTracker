@@ -193,6 +193,7 @@ fun ChoresSettingsScreen(
                                 active.forEach { chore ->
                                     ChoreRow(
                                         chore = chore,
+                                        isOwner = uiState.isOwner,
                                         onCategoryClick = { pendingCategoryChoreId = chore.id },
                                         onRenameClick = { pendingRenameChoreId = chore.id },
                                         onFrequencyClick = { pendingFrequencyChoreId = chore.id },
@@ -214,6 +215,7 @@ fun ChoresSettingsScreen(
                                         inactive.forEach { chore ->
                                             ChoreRow(
                                                 chore = chore,
+                                                isOwner = uiState.isOwner,
                                                 onCategoryClick = { pendingCategoryChoreId = chore.id },
                                                 onRenameClick = { pendingRenameChoreId = chore.id },
                                                 onFrequencyClick = { pendingFrequencyChoreId = chore.id },
@@ -244,6 +246,7 @@ fun ChoresSettingsScreen(
                                         chores.sortedBy { it.name }.forEach { chore ->
                                             ChoreRow(
                                                 chore = chore,
+                                                isOwner = uiState.isOwner,
                                                 onCategoryClick = { pendingCategoryChoreId = chore.id },
                                                 onRenameClick = { pendingRenameChoreId = chore.id },
                                                 onFrequencyClick = { pendingFrequencyChoreId = chore.id },
@@ -263,6 +266,7 @@ fun ChoresSettingsScreen(
                                     active.forEach { chore ->
                                         ChoreRow(
                                             chore = chore,
+                                            isOwner = uiState.isOwner,
                                             onCategoryClick = { pendingCategoryChoreId = chore.id },
                                             onRenameClick = { pendingRenameChoreId = chore.id },
                                             onFrequencyClick = { pendingFrequencyChoreId = chore.id },
@@ -279,6 +283,7 @@ fun ChoresSettingsScreen(
                                     inactive.forEach { chore ->
                                         ChoreRow(
                                             chore = chore,
+                                            isOwner = uiState.isOwner,
                                             onCategoryClick = { pendingCategoryChoreId = chore.id },
                                             onRenameClick = { pendingRenameChoreId = chore.id },
                                             onFrequencyClick = { pendingFrequencyChoreId = chore.id },
@@ -300,6 +305,7 @@ fun ChoresSettingsScreen(
                             capitalization = KeyboardCapitalization.Words,
                             autoCorrectEnabled = true,
                         ),
+                        enabled = uiState.isOwner,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Row(
@@ -320,6 +326,7 @@ fun ChoresSettingsScreen(
                                         modifier = Modifier.size(16.dp),
                                     )
                                 },
+                                enabled = uiState.isOwner,
                             )
                         }
                     }
@@ -331,10 +338,12 @@ fun ChoresSettingsScreen(
                                 .horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(spacing.xSmall),
                         ) {
-                            suggestions.forEach { suggestion ->
+                            suggestions.forEach { suggestionRes ->
+                                val suggestion = stringResource(suggestionRes)
                                 SuggestionChip(
                                     onClick = { onIntent(SettingsUiIntent.ChoreInputChanged(suggestion)) },
                                     label = { Text(suggestion) },
+                                    enabled = uiState.isOwner,
                                 )
                             }
                         }
@@ -342,6 +351,7 @@ fun ChoresSettingsScreen(
                     PrimaryButton(
                         text = stringResource(R.string.household_add_chore),
                         onClick = { onIntent(SettingsUiIntent.AddChore) },
+                        enabled = uiState.isOwner,
                     )
                 }
             }
@@ -402,6 +412,7 @@ fun ChoresSettingsScreen(
 @Composable
 private fun ChoreRow(
     chore: Chore,
+    isOwner: Boolean,
     onCategoryClick: () -> Unit,
     onRenameClick: () -> Unit,
     onFrequencyClick: () -> Unit,
@@ -413,7 +424,7 @@ private fun ChoreRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        IconButton(onClick = onCategoryClick) {
+        IconButton(onClick = onCategoryClick, enabled = isOwner) {
             Icon(
                 imageVector = chore.category.toIcon(),
                 contentDescription = stringResource(R.string.settings_chore_category_title),
@@ -431,13 +442,13 @@ private fun ChoreRow(
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onRenameClick) {
+            IconButton(onClick = onRenameClick, enabled = isOwner) {
                 Icon(
                     imageVector = Icons.Outlined.Edit,
                     contentDescription = stringResource(R.string.settings_chore_rename_title),
                 )
             }
-            IconButton(onClick = onFrequencyClick) {
+            IconButton(onClick = onFrequencyClick, enabled = isOwner) {
                 Icon(
                     imageVector = Icons.Outlined.Schedule,
                     contentDescription = stringResource(R.string.settings_chore_set_frequency_title),
@@ -446,8 +457,9 @@ private fun ChoreRow(
             Switch(
                 checked = chore.isActive,
                 onCheckedChange = onActiveChange,
+                enabled = isOwner,
             )
-            IconButton(onClick = onDeleteClick) {
+            IconButton(onClick = onDeleteClick, enabled = isOwner) {
                 Icon(
                     imageVector = Icons.Outlined.Close,
                     contentDescription = stringResource(R.string.household_delete_chore),

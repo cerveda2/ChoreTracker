@@ -92,6 +92,9 @@
     <string name="household_refresh_invite">Refresh invite</string>
     <string name="household_members">Members</string>
     <string name="household_member_line">%1$s • %2$s</string>
+    <string name="household_member_you">you</string>
+    <string name="household_role_owner">owner</string>
+    <string name="household_role_member">member</string>
     <string name="household_new_member">New member</string>
     <string name="household_add_member">Add member</string>
     <string name="household_chores">Chores</string>
@@ -100,6 +103,9 @@
     <string name="household_delete_chore">Delete chore</string>
     <string name="household_delete_chore_title">Delete this chore?</string>
     <string name="household_delete_chore_message">This removes the chore from active planning while keeping existing completion history readable.</string>
+    <string name="household_delete_member">Remove member</string>
+    <string name="household_delete_member_title">Remove this member?</string>
+    <string name="household_delete_member_message">This removes the member from the household. Their completion history remains visible.</string>
     <string name="household_member_count">%1$d members</string>
     <string name="household_chore_count">%1$d chores</string>
     <string name="household_invite_section">Invite</string>
@@ -203,6 +209,7 @@
     <string name="settings_feedback_chore_deleted">Chore deleted</string>
     <string name="settings_feedback_chore_saved">Saved</string>
     <string name="settings_feedback_member_added">Member added</string>
+    <string name="settings_feedback_member_deleted">Member removed</string>
     <string name="settings_feedback_name_saved">Name saved</string>
     <string name="settings_feedback_error">Something went wrong</string>
     <string name="settings_chore_category_title">Category</string>
@@ -211,6 +218,26 @@
     <string name="chore_category_shopping">Shopping</string>
     <string name="chore_category_outdoor">Outdoor</string>
     <string name="chore_category_other">Other</string>
+    <string name="chore_suggestion_vacuuming">Vacuuming</string>
+    <string name="chore_suggestion_mopping">Mopping</string>
+    <string name="chore_suggestion_bathroom">Bathroom</string>
+    <string name="chore_suggestion_dusting">Dusting</string>
+    <string name="chore_suggestion_laundry">Laundry</string>
+    <string name="chore_suggestion_trash">Trash</string>
+    <string name="chore_suggestion_kitchen">Kitchen</string>
+    <string name="chore_suggestion_dinner">Dinner</string>
+    <string name="chore_suggestion_meal_prep">Meal prep</string>
+    <string name="chore_suggestion_dishes">Dishes</string>
+    <string name="chore_suggestion_breakfast">Breakfast</string>
+    <string name="chore_suggestion_lunch">Lunch</string>
+    <string name="chore_suggestion_groceries">Groceries</string>
+    <string name="chore_suggestion_pharmacy">Pharmacy</string>
+    <string name="chore_suggestion_household_supplies">Household supplies</string>
+    <string name="chore_suggestion_mow_lawn">Mow lawn</string>
+    <string name="chore_suggestion_water_plants">Water plants</string>
+    <string name="chore_suggestion_take_out_bins">Take out bins</string>
+    <string name="chore_suggestion_rake_leaves">Rake leaves</string>
+    <string name="chore_suggestion_sweep_patio">Sweep patio</string>
 
     <string name="common_save">Save</string>
     <string name="common_cancel">Cancel</string>
