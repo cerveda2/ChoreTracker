@@ -308,18 +308,23 @@ class FirebaseHouseholdDataSource @Inject constructor(
     }
 
     private suspend fun resolveHouseholdId(db: FirebaseFirestore, userId: String): String? {
-        val directHouseholdId = awaitTask(db.collection(USERS_COLLECTION).document(userId).get())
-            .getString("householdId")
-        if (directHouseholdId != null) {
-            return directHouseholdId
-        }
+        val directHouseholdId = runCatching {
+            awaitTask(db.collection(USERS_COLLECTION).document(userId).get())
+                .getString("householdId")
+        }.getOrNull()
+        if (directHouseholdId != null) return directHouseholdId
 
-        return awaitTask(
-            db.collectionGroup(MEMBERS_COLLECTION)
-                .whereEqualTo("userId", userId)
-                .limit(1)
-                .get(),
-        ).documents.firstOrNull()?.getString("householdId")
+        return runCatching {
+            awaitTask(
+                db.collectionGroup(MEMBERS_COLLECTION)
+                    .whereEqualTo("userId", userId)
+                    .limit(1)
+                    .get(),
+            ).documents.firstOrNull()?.getString("householdId")
+        }.getOrElse { e ->
+            Timber.w(e, "resolveHouseholdId: collectionGroup query failed for userId=$userId")
+            null
+        }
     }
 
     private suspend fun batchUserFallback(
