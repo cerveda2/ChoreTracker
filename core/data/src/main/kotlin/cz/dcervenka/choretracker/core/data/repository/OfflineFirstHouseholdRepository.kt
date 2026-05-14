@@ -91,7 +91,9 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                         restoreStatus.value = HouseholdRestoreStatus()
                         if (!hasRefreshedFromRemoteThisSession) {
                             hasRefreshedFromRemoteThisSession = true
-                            Timber.d("observeCurrentHousehold: household exists locally, pulling fresh snapshot for user=${user.id}")
+                            Timber.d(
+                                "observeCurrentHousehold: household exists locally, pulling fresh snapshot for user=${user.id}"
+                            )
                             syncRepository.restoreHouseholdForUser(user.id)
                         }
                     }
