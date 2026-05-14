@@ -91,12 +91,6 @@ fun SettingsScreen(
             item {
                 SettingsGroup(title = stringResource(R.string.settings_account_section)) {
                     SettingsListItem(
-                        title = stringResource(R.string.settings_account_title),
-                        subtitle = stringResource(R.string.settings_account_description),
-                        onClick = onOpenAccount,
-                    )
-                    androidx.compose.material3.HorizontalDivider()
-                    SettingsListItem(
                         title = stringResource(R.string.settings_language_title),
                         subtitle = stringResource(R.string.settings_language_description),
                         onClick = onOpenLanguage,
