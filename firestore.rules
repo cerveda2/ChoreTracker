@@ -71,6 +71,13 @@ service cloud.firestore {
       allow read: if isOwnMembershipRecord();
     }
 
+    // Required for collectionGroup("invites") queries in fetchInviteByCode.
+    // Allows any authenticated user to read an unconsumed invite — needed so a
+    // joining user (not yet a member) can look up an invite by code before joining.
+    match /{path=**}/invites/{inviteId} {
+      allow read: if isSignedIn() && resource.data.consumedAt == null;
+    }
+
     match /households/{householdId} {
       allow create: if isSignedIn() && request.resource.data.ownerUserId == request.auth.uid;
       allow read: if isHouseholdMember(householdId);
@@ -105,7 +112,10 @@ service cloud.firestore {
 
       match /invites/{inviteId} {
         allow read: if isHouseholdMember(householdId);
-        allow create, update, delete: if isHouseholdOwner(householdId);
+        allow create, delete: if isHouseholdOwner(householdId);
+        allow update: if isHouseholdOwner(householdId) ||
+          (isHouseholdMember(householdId) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['consumedAt']));
       }
     }
   }
