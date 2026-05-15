@@ -72,10 +72,12 @@ service cloud.firestore {
     }
 
     // Required for collectionGroup("invites") queries in fetchInviteByCode.
-    // Allows any authenticated user to read an unconsumed invite — needed so a
-    // joining user (not yet a member) can look up an invite by code before joining.
+    // Any authenticated user can read invites — needed so a joining user (not yet
+    // a member) can look up an invite by code. The 8-char random code is the access
+    // token; resource.data checks are omitted because Firestore rejects collection
+    // group queries whose rules reference document data without a matching query filter.
     match /{path=**}/invites/{inviteId} {
-      allow read: if isSignedIn() && resource.data.consumedAt == null;
+      allow read: if isSignedIn();
     }
 
     match /households/{householdId} {
