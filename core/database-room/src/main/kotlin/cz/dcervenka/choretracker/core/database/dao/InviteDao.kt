@@ -19,7 +19,10 @@ interface InviteDao {
     @Query("SELECT * FROM invites WHERE code = :code LIMIT 1")
     suspend fun findByCode(code: String): InviteEntity?
 
-    @Query("SELECT * FROM invites WHERE householdId = :householdId AND targetMemberId = :memberId AND consumedAt IS NULL LIMIT 1")
+    @Query(
+        "SELECT * FROM invites WHERE householdId = :householdId" +
+            " AND targetMemberId = :memberId AND consumedAt IS NULL LIMIT 1",
+    )
     suspend fun findPendingByTargetMember(householdId: String, memberId: String): InviteEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

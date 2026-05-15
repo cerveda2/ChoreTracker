@@ -41,7 +41,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
@@ -56,6 +55,7 @@ import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

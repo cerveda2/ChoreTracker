@@ -36,6 +36,7 @@ import kotlin.time.Clock
 
 private const val INVITE_CODE_LENGTH = 8
 
+@Suppress("TooManyFunctions")
 @Singleton
 class OfflineFirstHouseholdRepository @Inject constructor(
     private val householdDao: HouseholdDao,
@@ -167,43 +168,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                 Timber.w("joinHousehold failed: preview user attempted write operation")
             }
             else -> {
-                val targetMemberId = invite.targetMemberId
-                if (targetMemberId != null) {
-                    val placeholder = memberDao.findById(invite.householdId, targetMemberId)
-                    if (placeholder != null && placeholder.userId == null) {
-                        memberDao.claimPlaceholder(targetMemberId, user.id, user.email)
-                    } else {
-                        val existing = memberDao.findByUserId(invite.householdId, user.id)
-                        if (existing == null) {
-                            memberDao.upsert(
-                                MemberEntity(
-                                    id = UUID.randomUUID().toString(),
-                                    householdId = invite.householdId,
-                                    userId = user.id,
-                                    displayName = currentUserDisplayName.ifBlank { user.displayName },
-                                    role = HouseholdRole.MEMBER.name,
-                                    isCurrentUser = true,
-                                    email = user.email,
-                                ),
-                            )
-                        }
-                    }
-                } else {
-                    val existing = memberDao.findByUserId(invite.householdId, user.id)
-                    if (existing == null) {
-                        memberDao.upsert(
-                            MemberEntity(
-                                id = UUID.randomUUID().toString(),
-                                householdId = invite.householdId,
-                                userId = user.id,
-                                displayName = currentUserDisplayName.ifBlank { user.displayName },
-                                role = HouseholdRole.MEMBER.name,
-                                isCurrentUser = true,
-                                email = user.email,
-                            ),
-                        )
-                    }
-                }
+                memberDao.resolveMemberForInvite(invite, user, currentUserDisplayName)
                 inviteDao.markConsumed(invite.id, Clock.System.now())
                 enqueueOperation("member", invite.householdId, "join", user.id)
                 syncRepository.syncPendingOperations()
@@ -255,17 +220,19 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     override suspend fun createMemberInvite(householdId: String, memberId: String): AppResult<Invite> {
         val user = currentUser()
         if (user?.isPreview == true) {
-            return AppResult.Error("Cannot create invites in preview mode").also {
-                Timber.w("createMemberInvite failed: preview user attempted write operation")
-            }
+            Timber.w("createMemberInvite failed: preview user attempted write operation")
+            return AppResult.Error("Cannot create invites in preview mode")
         }
         val existing = inviteDao.findPendingByTargetMember(householdId, memberId)
-        if (existing != null) return AppResult.Success(existing.asModel())
-        val invite = generateInvite(householdId, targetMemberId = memberId)
-        inviteDao.upsert(invite)
-        enqueueOperation("invite", householdId, "upsert", invite.code)
-        syncRepository.syncPendingOperations()
-        return AppResult.Success(invite.asModel())
+        return if (existing != null) {
+            AppResult.Success(existing.asModel())
+        } else {
+            val invite = generateInvite(householdId, targetMemberId = memberId)
+            inviteDao.upsert(invite)
+            enqueueOperation("invite", householdId, "upsert", invite.code)
+            syncRepository.syncPendingOperations()
+            AppResult.Success(invite.asModel())
+        }
     }
 
     override suspend fun updateHouseholdName(householdId: String, name: String): EmptyResult {
@@ -346,6 +313,44 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                 operationType = operationType,
                 payload = payload,
                 createdAt = Clock.System.now(),
+            ),
+        )
+    }
+}
+
+private suspend fun MemberDao.resolveMemberForInvite(
+    invite: InviteEntity,
+    user: AppUser,
+    currentUserDisplayName: String,
+) {
+    val targetMemberId = invite.targetMemberId
+    if (targetMemberId != null) {
+        val placeholder = findById(invite.householdId, targetMemberId)
+        if (placeholder != null && placeholder.userId == null) {
+            claimPlaceholder(targetMemberId, user.id, user.email)
+        } else if (findByUserId(invite.householdId, user.id) == null) {
+            upsert(
+                MemberEntity(
+                    id = UUID.randomUUID().toString(),
+                    householdId = invite.householdId,
+                    userId = user.id,
+                    displayName = currentUserDisplayName.ifBlank { user.displayName },
+                    role = HouseholdRole.MEMBER.name,
+                    isCurrentUser = true,
+                    email = user.email,
+                ),
+            )
+        }
+    } else if (findByUserId(invite.householdId, user.id) == null) {
+        upsert(
+            MemberEntity(
+                id = UUID.randomUUID().toString(),
+                householdId = invite.householdId,
+                userId = user.id,
+                displayName = currentUserDisplayName.ifBlank { user.displayName },
+                role = HouseholdRole.MEMBER.name,
+                isCurrentUser = true,
+                email = user.email,
             ),
         )
     }

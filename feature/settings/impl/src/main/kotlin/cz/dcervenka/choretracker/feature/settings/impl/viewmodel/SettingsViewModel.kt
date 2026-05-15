@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@Suppress("TooManyFunctions")
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     observeAuthStateUseCase: ObserveAuthStateUseCase,
@@ -195,6 +196,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    @Suppress("CyclomaticComplexMethod")
     private fun handleActionIntent(intent: SettingsUiIntent) {
         when (intent) {
             SettingsUiIntent.SaveAccountDisplayName -> saveAccountDisplayName()
