@@ -82,7 +82,6 @@ Issues found during codebase review (2026-05-13). Work through one at a time. It
 
 ### MEDIUM — Bugs
 
-5. **Firestore deletions not reflected in local DB** — `restoreHouseholdForUser` only upserts what Firestore returns, never deletes stale local rows. Any record deleted directly in Firestore (invite, member, chore, completion) persists in Room until reinstall or destructive migration. Fix: after upserting the snapshot, delete local rows whose IDs are absent from the Firestore snapshot for each collection.
 6. **`HouseholdRole.valueOf` unguarded** — `LocalSyncRepository.kt:232`, `DatabaseMappers.kt:30`. Throws `IllegalArgumentException` on unknown enum value. Fix: `runCatching { HouseholdRole.valueOf(it) }.getOrDefault(HouseholdRole.MEMBER)`.
 7. **`selectedChoreId!!` force-unwrap** — `DashboardScreen.kt:315`. `mutableStateOf var` can't be smart-cast; capture to local `val` instead.
 8. **`SettingsViewModel` double-subscribes** — `SettingsViewModel.kt:75` and `:152`. Two independent `flatMapLatest` chains on the same household flow → household-restore logic runs twice on init.

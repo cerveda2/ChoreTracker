@@ -179,6 +179,7 @@ class LocalSyncRepository @Inject constructor(
                         },
                     )
                 }
+                val snapshotInviteIds = snapshot.invites.map { it.id }.toSet()
                 snapshot.invites.forEach { invite ->
                     inviteDao.upsert(
                         InviteEntity(
@@ -191,6 +192,13 @@ class LocalSyncRepository @Inject constructor(
                         ),
                     )
                 }
+                inviteDao.getInvites(snapshot.household.id)
+                    .filter { it.id !in snapshotInviteIds }
+                    .forEach { inviteDao.deleteById(it.id) }
+                val snapshotCompletionIds = snapshot.completions.map { it.id }.toSet()
+                completionDao.getCompletions(snapshot.household.id)
+                    .filter { it.id !in snapshotCompletionIds }
+                    .forEach { completionDao.deleteById(it.id) }
                 Timber.d(
                     "restoreHouseholdForUser: restored household=${snapshot.household.id} " +
                         "members=${snapshot.members.size} chores=${snapshot.chores.size} completions=${snapshot.completions.size}",

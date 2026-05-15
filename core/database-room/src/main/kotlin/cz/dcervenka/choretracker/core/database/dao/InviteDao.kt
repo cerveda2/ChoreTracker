@@ -30,4 +30,7 @@ interface InviteDao {
 
     @Query("UPDATE invites SET consumedAt = :consumedAt WHERE id = :inviteId")
     suspend fun markConsumed(inviteId: String, consumedAt: Instant)
+
+    @Query("DELETE FROM invites WHERE id = :id")
+    suspend fun deleteById(id: String)
 }
