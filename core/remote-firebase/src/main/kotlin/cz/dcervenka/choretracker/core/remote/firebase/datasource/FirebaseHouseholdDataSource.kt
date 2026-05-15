@@ -265,6 +265,23 @@ class FirebaseHouseholdDataSource @Inject constructor(
         }
     }
 
+    override suspend fun fetchInviteByCode(code: String): AppResult<Invite?> {
+        Timber.d("fetchInviteByCode: code=$code")
+        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        return runCatching {
+            val doc = awaitTask(
+                db.collectionGroup(INVITES_COLLECTION)
+                    .whereEqualTo("code", code)
+                    .limit(1)
+                    .get(),
+            ).documents.firstOrNull()
+            AppResult.Success(doc?.asInvite(doc.getString("householdId").orEmpty()))
+        }.getOrElse { error ->
+            Timber.e(error, "fetchInviteByCode: failed")
+            AppResult.Error(error.message ?: "Unable to fetch invite.", error)
+        }
+    }
+
     override suspend fun markInviteConsumed(householdId: String, inviteId: String, consumedAt: Instant): EmptyResult {
         Timber.d("markInviteConsumed: householdId=$householdId inviteId=$inviteId")
         val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")

@@ -40,6 +40,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Clock
 
+@Suppress("TooManyFunctions")
 @Singleton
 class LocalSyncRepository @Inject constructor(
     private val authRepository: AuthRepository,
@@ -312,6 +313,26 @@ class LocalSyncRepository @Inject constructor(
                     )
                 }
             }
+    }
+
+    override suspend fun ensureInviteLocal(code: String): EmptyResult {
+        val result = remoteHouseholdDataSource.fetchInviteByCode(code)
+        if (result is AppResult.Error) return result
+        return result.value
+            ?.also { invite ->
+                inviteDao.upsert(
+                    InviteEntity(
+                        id = invite.id,
+                        householdId = invite.householdId,
+                        code = invite.code,
+                        createdAt = invite.createdAt,
+                        consumedAt = invite.consumedAt,
+                        targetMemberId = invite.targetMemberId,
+                    ),
+                )
+            }
+            ?.let { AppResult.Success(Unit) }
+            ?: AppResult.Error("No invite with that code was found.")
     }
 
     private suspend fun consumeRemoteInvites(

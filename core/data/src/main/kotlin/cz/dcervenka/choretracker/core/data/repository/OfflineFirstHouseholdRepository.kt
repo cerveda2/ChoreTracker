@@ -156,6 +156,9 @@ class OfflineFirstHouseholdRepository @Inject constructor(
 
     override suspend fun joinHousehold(code: String, currentUserDisplayName: String): AppResult<Household> {
         Timber.d("joinHousehold: code=$code displayName=$currentUserDisplayName")
+        if (inviteDao.findByCode(code.trim()) == null) {
+            syncRepository.ensureInviteLocal(code.trim())
+        }
         val invite = inviteDao.findByCode(code.trim())
         val user = currentUser()
         return when {
