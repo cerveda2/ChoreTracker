@@ -34,6 +34,9 @@ interface MemberDao {
     @Query("UPDATE members SET userId = :userId, email = :email, isCurrentUser = 1 WHERE id = :memberId")
     suspend fun claimPlaceholder(memberId: String, userId: String, email: String?)
 
+    @Query("UPDATE members SET isCurrentUser = 0 WHERE isCurrentUser = 1")
+    suspend fun clearCurrentUser()
+
     @Query("DELETE FROM members WHERE id = :id")
     suspend fun deleteById(id: String)
 }

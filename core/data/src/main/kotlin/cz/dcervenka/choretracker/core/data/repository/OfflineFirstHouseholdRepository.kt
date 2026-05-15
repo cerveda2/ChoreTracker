@@ -55,6 +55,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             val user = (authState as? AuthState.Authenticated)?.user
             when {
                 user == null -> {
+                    memberDao.clearCurrentUser()
                     restoreStatus.value = HouseholdRestoreStatus()
                     emit(null)
                 }
