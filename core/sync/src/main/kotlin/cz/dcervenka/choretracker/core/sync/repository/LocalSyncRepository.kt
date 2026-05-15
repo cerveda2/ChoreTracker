@@ -128,7 +128,6 @@ class LocalSyncRepository @Inject constructor(
                     .groupBy { it.id }
                     .values
                     .map { group -> group.maxByOrNull { if (it.userId != null) 1 else 0 }!! }
-                val snapshotMemberIds = uniqueMembers.map { it.id }.toSet()
                 uniqueMembers.forEach { member ->
                     memberDao.upsert(
                         MemberEntity(
@@ -142,9 +141,6 @@ class LocalSyncRepository @Inject constructor(
                         ),
                     )
                 }
-                memberDao.getMembers(snapshot.household.id)
-                    .filter { it.id !in snapshotMemberIds }
-                    .forEach { memberDao.deleteById(it.id) }
                 snapshot.chores.forEach { chore ->
                     choreDao.upsert(
                         ChoreEntity(
@@ -179,7 +175,6 @@ class LocalSyncRepository @Inject constructor(
                         },
                     )
                 }
-                val snapshotInviteIds = snapshot.invites.map { it.id }.toSet()
                 snapshot.invites.forEach { invite ->
                     inviteDao.upsert(
                         InviteEntity(
@@ -192,13 +187,7 @@ class LocalSyncRepository @Inject constructor(
                         ),
                     )
                 }
-                inviteDao.getInvites(snapshot.household.id)
-                    .filter { it.id !in snapshotInviteIds }
-                    .forEach { inviteDao.deleteById(it.id) }
-                val snapshotCompletionIds = snapshot.completions.map { it.id }.toSet()
-                completionDao.getCompletions(snapshot.household.id)
-                    .filter { it.id !in snapshotCompletionIds }
-                    .forEach { completionDao.deleteById(it.id) }
+                pruneStaleLocalRows(snapshot)
                 Timber.d(
                     "restoreHouseholdForUser: restored household=${snapshot.household.id} " +
                         "members=${snapshot.members.size} chores=${snapshot.chores.size} completions=${snapshot.completions.size}",
@@ -342,6 +331,22 @@ class LocalSyncRepository @Inject constructor(
             )
             AppResult.Success(Unit)
         }
+    }
+
+    private suspend fun pruneStaleLocalRows(snapshot: HouseholdSnapshot) {
+        val householdId = snapshot.household.id
+        val memberIds = snapshot.members.map { it.id }.toSet()
+        memberDao.getMembers(householdId)
+            .filter { it.id !in memberIds }
+            .forEach { memberDao.deleteById(it.id) }
+        val inviteIds = snapshot.invites.map { it.id }.toSet()
+        inviteDao.getInvites(householdId)
+            .filter { it.id !in inviteIds }
+            .forEach { inviteDao.deleteById(it.id) }
+        val completionIds = snapshot.completions.map { it.id }.toSet()
+        completionDao.getCompletions(householdId)
+            .filter { it.id !in completionIds }
+            .forEach { completionDao.deleteById(it.id) }
     }
 
     private suspend fun consumeRemoteInvites(
