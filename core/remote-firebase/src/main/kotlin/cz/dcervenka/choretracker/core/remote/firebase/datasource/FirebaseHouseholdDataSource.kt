@@ -36,6 +36,7 @@ private const val COMPLETIONS_COLLECTION = "completions"
 private const val INVITES_COLLECTION = "invites"
 private const val FIRESTORE_BATCH_LIMIT = 500
 
+@Suppress("TooManyFunctions")
 @Singleton
 class FirebaseHouseholdDataSource @Inject constructor(
     @param:ApplicationContext private val context: Context,
@@ -261,6 +262,25 @@ class FirebaseHouseholdDataSource @Inject constructor(
         }.getOrElse { error ->
             Timber.e(error, "deleteMember: failed")
             AppResult.Error(error.message ?: "Unable to delete member.", error)
+        }
+    }
+
+    override suspend fun markInviteConsumed(householdId: String, inviteId: String, consumedAt: Instant): EmptyResult {
+        Timber.d("markInviteConsumed: householdId=$householdId inviteId=$inviteId")
+        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        return runCatching {
+            awaitTask(
+                db.collection(HOUSEHOLDS_COLLECTION)
+                    .document(householdId)
+                    .collection(INVITES_COLLECTION)
+                    .document(inviteId)
+                    .update("consumedAt", consumedAt.asTimestamp()),
+            )
+            Timber.d("markInviteConsumed: success")
+            AppResult.Success(Unit)
+        }.getOrElse { error ->
+            Timber.e(error, "markInviteConsumed: failed")
+            AppResult.Error(error.message ?: "Unable to mark invite as consumed.", error)
         }
     }
 

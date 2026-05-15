@@ -226,6 +226,7 @@ class LocalSyncRepository @Inject constructor(
                 Timber.d("syncPendingOperations: synced ${operationIds.size} operations for household=$householdId")
                 if (isOwner) deleteRemoteMembers(householdId, operations, operationIds.toSet())
                 deleteRemoteCompletions(householdId, operations, operationIds.toSet())
+                consumeRemoteInvites(householdId, operations, operationIds.toSet())
                 operationIds.forEach { pendingSyncOperationDao.delete(it) }
                 syncStateDao.upsert(
                     SyncStateEntity(
@@ -308,6 +309,25 @@ class LocalSyncRepository @Inject constructor(
                 if (result is AppResult.Error) {
                     Timber.e(
                         "syncPendingOperations: remote completion delete failed for ${op.entityId} — ${result.message}",
+                    )
+                }
+            }
+    }
+
+    private suspend fun consumeRemoteInvites(
+        householdId: String,
+        operations: List<PendingSyncOperationEntity>,
+        operationIdSet: Set<String>,
+    ) {
+        operations
+            .filter { it.id in operationIdSet && it.entityType == "invite" && it.operationType == "consumed" }
+            .forEach { op ->
+                val consumedAt = inviteDao.getInvites(householdId).find { it.id == op.payload }?.consumedAt
+                    ?: return@forEach
+                val result = remoteHouseholdDataSource.markInviteConsumed(householdId, op.payload, consumedAt)
+                if (result is AppResult.Error) {
+                    Timber.e(
+                        "syncPendingOperations: remote invite consumed failed for ${op.payload} — ${result.message}",
                     )
                 }
             }

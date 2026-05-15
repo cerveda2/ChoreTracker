@@ -172,6 +172,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                 memberDao.resolveMemberForInvite(invite, user, currentUserDisplayName)
                 inviteDao.markConsumed(invite.id, Clock.System.now())
                 enqueueOperation("member", invite.householdId, "join", user.id)
+                enqueueOperation("invite", invite.householdId, "consumed", invite.id)
                 syncRepository.syncPendingOperations()
                 householdDao.getHousehold(invite.householdId)
                     ?.let { AppResult.Success(it.asModel()) }

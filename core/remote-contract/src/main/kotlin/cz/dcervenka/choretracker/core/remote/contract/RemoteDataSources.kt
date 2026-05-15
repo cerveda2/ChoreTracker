@@ -7,6 +7,7 @@ import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
 import kotlinx.coroutines.flow.Flow
+import kotlin.time.Instant
 
 interface RemoteAuthDataSource {
     val authState: Flow<AuthState>
@@ -32,6 +33,8 @@ interface RemoteHouseholdDataSource {
     ): EmptyResult
 
     suspend fun fetchHouseholdSnapshot(userId: String): AppResult<HouseholdSnapshot?>
+
+    suspend fun markInviteConsumed(householdId: String, inviteId: String, consumedAt: Instant): EmptyResult
 
     suspend fun deleteCompletion(householdId: String, completionId: String): EmptyResult
 
