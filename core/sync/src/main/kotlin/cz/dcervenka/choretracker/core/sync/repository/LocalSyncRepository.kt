@@ -318,21 +318,22 @@ class LocalSyncRepository @Inject constructor(
     override suspend fun ensureInviteLocal(code: String): EmptyResult {
         val result = remoteHouseholdDataSource.fetchInviteByCode(code)
         if (result is AppResult.Error) return result
-        return result.value
-            ?.also { invite ->
-                inviteDao.upsert(
-                    InviteEntity(
-                        id = invite.id,
-                        householdId = invite.householdId,
-                        code = invite.code,
-                        createdAt = invite.createdAt,
-                        consumedAt = invite.consumedAt,
-                        targetMemberId = invite.targetMemberId,
-                    ),
-                )
-            }
-            ?.let { AppResult.Success(Unit) }
-            ?: AppResult.Error("No invite with that code was found.")
+        val invite = (result as AppResult.Success).value
+        return if (invite == null) {
+            AppResult.Error("No invite with that code was found.")
+        } else {
+            inviteDao.upsert(
+                InviteEntity(
+                    id = invite.id,
+                    householdId = invite.householdId,
+                    code = invite.code,
+                    createdAt = invite.createdAt,
+                    consumedAt = invite.consumedAt,
+                    targetMemberId = invite.targetMemberId,
+                ),
+            )
+            AppResult.Success(Unit)
+        }
     }
 
     private suspend fun consumeRemoteInvites(
