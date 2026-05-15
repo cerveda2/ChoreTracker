@@ -259,6 +259,8 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                 Timber.w("createMemberInvite failed: preview user attempted write operation")
             }
         }
+        val existing = inviteDao.findPendingByTargetMember(householdId, memberId)
+        if (existing != null) return AppResult.Success(existing.asModel())
         val invite = generateInvite(householdId, targetMemberId = memberId)
         inviteDao.upsert(invite)
         enqueueOperation("invite", householdId, "upsert", invite.code)

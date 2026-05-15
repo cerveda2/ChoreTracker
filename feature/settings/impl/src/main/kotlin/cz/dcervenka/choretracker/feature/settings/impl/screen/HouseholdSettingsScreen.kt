@@ -3,6 +3,7 @@ package cz.dcervenka.choretracker.feature.settings.impl.screen
 import android.content.ClipData
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -169,9 +170,15 @@ fun HouseholdSettingsScreen(
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(vertical = spacing.xSmall),
                             )
+                            val labelOpen = stringResource(R.string.settings_invite_label_open)
+                            val labelForMember = stringResource(R.string.settings_invite_label_for_member)
                             uiState.invites.forEach { invite ->
+                                val memberName = invite.targetMemberId
+                                    ?.let { id -> uiState.members.find { it.id == id }?.displayName }
+                                val label = if (memberName != null) labelForMember.format(memberName) else labelOpen
                                 InviteRow(
                                     invite = invite,
+                                    label = label,
                                     onCopy = {
                                         scope.launch {
                                             clipboard.setClipEntry(
@@ -204,42 +211,49 @@ fun HouseholdSettingsScreen(
 @Composable
 private fun InviteRow(
     invite: Invite,
+    label: String,
     onCopy: () -> Unit,
 ) {
     val spacing = LocalSpacing.current
     val isPending = invite.consumedAt == null
+    val statusText = stringResource(
+        if (isPending) R.string.settings_invite_status_pending else R.string.settings_invite_status_joined,
+    )
     val dateLabel = DateFormat.getDateInstance(DateFormat.SHORT)
         .format(Date(invite.createdAt.toEpochMilliseconds()))
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = spacing.xSmall),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "$dateLabel · $statusText",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isPending) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.secondary,
+            )
+            IconButton(onClick = onCopy) {
+                Icon(
+                    imageVector = Icons.Outlined.ContentCopy,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
         Text(
             text = invite.code,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = dateLabel,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Text(
-            text = if (isPending) "·" else "✓",
-            style = MaterialTheme.typography.labelMedium,
-            color = if (isPending) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-            modifier = Modifier.padding(horizontal = spacing.xSmall),
-        )
-        IconButton(onClick = onCopy) {
-            Icon(
-                imageVector = Icons.Outlined.ContentCopy,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
-        }
     }
 }
 
