@@ -112,7 +112,13 @@
     <string name="settings_invite_copy">Kopírovat kód</string>
     <string name="settings_invite_share">Sdílet pozvánku</string>
     <string name="settings_invite_share_message">Připoj se k mé domácnosti v ChoreTrackeru! Použij kód pozvánky: %s</string>
-    <string name="settings_invite_history_title">Historie pozvánek</string>
+    <string name="settings_invite_history_title">Kódy pozvánek</string>
+    <string name="settings_invite_label_open">Otevřená pozvánka</string>
+    <string name="settings_invite_label_for_member">Pro %1$s</string>
+    <string name="settings_invite_status_pending">čekající</string>
+    <string name="settings_invite_status_joined">připojeno</string>
+    <string name="settings_member_invite_title">Pozvánka pro %1$s</string>
+    <string name="settings_member_invite_action">Vygenerovat odkaz na pozvánku</string>
 
     <string name="stats_loading">Načítám statistiky…</string>
     <string name="stats_title">Statistiky</string>
