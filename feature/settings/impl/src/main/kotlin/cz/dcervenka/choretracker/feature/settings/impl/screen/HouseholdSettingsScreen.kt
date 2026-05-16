@@ -173,9 +173,12 @@ fun HouseholdSettingsScreen(
                             val labelOpen = stringResource(R.string.settings_invite_label_open)
                             val labelForMember = stringResource(R.string.settings_invite_label_for_member)
                             uiState.invites.forEach { invite ->
-                                val memberName = invite.targetMemberId
-                                    ?.let { id -> uiState.members.find { it.id == id }?.displayName }
-                                val label = if (memberName != null) labelForMember.format(memberName) else labelOpen
+                                val label = if (invite.targetMemberId != null) {
+                                    val memberName = uiState.members.find { it.id == invite.targetMemberId }?.displayName
+                                    labelForMember.format(memberName ?: "?")
+                                } else {
+                                    labelOpen
+                                }
                                 InviteRow(
                                     invite = invite,
                                     label = label,

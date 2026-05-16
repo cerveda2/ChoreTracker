@@ -172,7 +172,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
                         put("householdId", invite.householdId)
                         put("code", invite.code)
                         put("createdAt", invite.createdAt.asTimestamp())
-                        put("consumedAt", invite.consumedAt?.asTimestamp())
+                        invite.consumedAt?.let { put("consumedAt", it.asTimestamp()) }
                         invite.targetMemberId?.let { put("targetMemberId", it) }
                     },
                 )
