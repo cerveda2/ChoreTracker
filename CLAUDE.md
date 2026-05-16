@@ -76,10 +76,6 @@ Always create feature branches from `main`. PRs go into `main`.
 
 Issues found during codebase review (2026-05-13). Work through one at a time. Items already in Release Readiness Backlog are excluded.
 
-### HIGH — Test Gaps
-
-1. **`LocalSyncRepository` has zero tests** — most complex sync orchestration: pending op drain, snapshot upsert, remote restore, `resolveHouseholdId` branching. All untested.
-
 ### MEDIUM — Bugs
 
 6. **`HouseholdRole.valueOf` unguarded** — `LocalSyncRepository.kt:232`, `DatabaseMappers.kt:30`. Throws `IllegalArgumentException` on unknown enum value. Fix: `runCatching { HouseholdRole.valueOf(it) }.getOrDefault(HouseholdRole.MEMBER)`.
@@ -95,15 +91,6 @@ Issues found during codebase review (2026-05-13). Work through one at a time. It
     - `RecentCompletionDetailScreen.kt:42` — `SnapshotStateList`
     - `FirebaseHouseholdDataSource.kt:94,132` — `DocumentReference`
 13. **`PreviewAwareAuthRepository` unmanaged `CoroutineScope`** — `PreviewAwareAuthRepository.kt:25`. Should inject `@ApplicationScope CoroutineScope` instead of creating its own.
-
-### MEDIUM — Test Gaps
-
-14. **`OfflineFirstChoreRepository` has no tests** — `addChore` persistence + sync trigger, `deleteChore` soft-delete path.
-15. **`PreviewAwareAuthRepository` has no tests** — `continueInPreviewMode` / `clearPreviewState` branching.
-
-### LOW — Test Gaps
-
-16. **Dashboard undo flow untested** — `DashboardViewModelTest` doesn't verify a successful log emits an undo event to `undoChannel`.
 
 ### LOW — File Organization
 
