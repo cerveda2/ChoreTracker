@@ -20,7 +20,6 @@ import cz.dcervenka.choretracker.core.test.mock.sampleDashboardSnapshot
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
-import cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel.UndoEvent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
