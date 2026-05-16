@@ -50,7 +50,7 @@ class DashboardViewModel @Inject constructor(
             combine(
                 observeCurrentDashboardUseCase(),
                 observeMembersUseCase(household.id),
-                observeRecentCompletionsUseCase(household.id, limit = Int.MAX_VALUE),
+                observeRecentCompletionsUseCase(household.id, limit = 25),
                 observeSyncStateUseCase(household.id),
             ) { snapshot, members, completions, syncState ->
                 DashboardUiState(

@@ -1,5 +1,6 @@
 package cz.dcervenka.choretracker.feature.dashboard.impl.navigation
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
@@ -69,6 +70,12 @@ fun NavGraphBuilder.dashboardScreen(
         val uiState = viewModel.uiState.collectAsStateWithLifecycle()
         val completionId = backStackEntry.arguments?.getString("completionId").orEmpty()
         val completion = uiState.value.allCompletions.firstOrNull { it.completionId == completionId }
+
+        LaunchedEffect(uiState.value.snapshot, completion) {
+            if (uiState.value.snapshot != null && completion == null) {
+                navController.popBackStack()
+            }
+        }
 
         RecentCompletionDetailScreen(
             completion = completion,

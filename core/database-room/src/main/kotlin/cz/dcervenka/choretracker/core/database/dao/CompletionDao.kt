@@ -12,6 +12,9 @@ interface CompletionDao {
     @Query("SELECT * FROM completions WHERE householdId = :householdId ORDER BY createdAt DESC")
     fun observeCompletions(householdId: String): Flow<List<CompletionEntity>>
 
+    @Query("SELECT * FROM completions WHERE householdId = :householdId ORDER BY createdAt DESC LIMIT :limit")
+    fun observeRecentCompletions(householdId: String, limit: Int): Flow<List<CompletionEntity>>
+
     @Query("SELECT * FROM completions WHERE householdId = :householdId AND choreId = :choreId ORDER BY createdAt DESC")
     fun observeCompletionsByChore(householdId: String, choreId: String): Flow<List<CompletionEntity>>
 

@@ -38,7 +38,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
 
     override fun observeRecentCompletions(householdId: String, limit: Int): Flow<List<RecentCompletion>> =
         combine(
-            completionDao.observeCompletions(householdId),
+            completionDao.observeRecentCompletions(householdId, limit),
             choreDao.observeChores(householdId),
             memberDao.observeMembers(householdId),
             participantDao.observeParticipants(householdId),
@@ -46,7 +46,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
             val choreMap = chores.associateBy { it.id }
             val memberMap = members.associateBy { it.id }
             val participantsByCompletion = participants.groupBy { it.completionId }
-            completions.take(limit).map { completion ->
+            completions.map { completion ->
                 val completionParticipants = participantsByCompletion[completion.id].orEmpty()
                 RecentCompletion(
                     completionId = completion.id,

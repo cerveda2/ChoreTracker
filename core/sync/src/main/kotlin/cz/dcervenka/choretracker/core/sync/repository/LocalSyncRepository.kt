@@ -394,7 +394,7 @@ class LocalSyncRepository @Inject constructor(
                 householdId = member.householdId,
                 userId = member.userId,
                 displayName = member.displayName,
-                role = HouseholdRole.valueOf(member.role),
+                role = runCatching { HouseholdRole.valueOf(member.role) }.getOrDefault(HouseholdRole.MEMBER),
                 isCurrentUser = member.isCurrentUser,
                 email = if (member.userId == currentUserId) currentUserEmail else member.email,
             )
@@ -473,7 +473,7 @@ class LocalSyncRepository @Inject constructor(
             householdId = memberEntity.householdId,
             userId = memberEntity.userId,
             displayName = memberEntity.displayName,
-            role = HouseholdRole.valueOf(memberEntity.role),
+            role = runCatching { HouseholdRole.valueOf(memberEntity.role) }.getOrDefault(HouseholdRole.MEMBER),
             isCurrentUser = memberEntity.isCurrentUser,
         )
         return member to ownCompletions

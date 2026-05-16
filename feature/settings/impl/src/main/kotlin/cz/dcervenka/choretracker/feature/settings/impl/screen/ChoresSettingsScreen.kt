@@ -26,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Switch
@@ -42,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
@@ -522,7 +520,7 @@ private fun CollapsibleChoreGroupHeader(
 }
 
 @Composable
-private fun ChoreCategory.label(): String = when (this) {
+internal fun ChoreCategory.label(): String = when (this) {
     ChoreCategory.CLEANING -> stringResource(R.string.chore_category_cleaning)
     ChoreCategory.COOKING -> stringResource(R.string.chore_category_cooking)
     ChoreCategory.SHOPPING -> stringResource(R.string.chore_category_shopping)
@@ -542,150 +540,6 @@ private fun DeleteChoreDialog(
         confirmButton = {
             TextButton(onClick = onDelete) {
                 Text(stringResource(R.string.common_delete))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.common_cancel))
-            }
-        },
-    )
-}
-
-@Composable
-private fun RenameChoreDialog(
-    choreId: String,
-    initialName: String,
-    onDismiss: () -> Unit,
-    onSave: (String) -> Unit,
-) {
-    var nameInput by remember(choreId) { mutableStateOf(initialName) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_chore_rename_title)) },
-        text = {
-            OutlinedTextField(
-                value = nameInput,
-                onValueChange = { nameInput = it },
-                label = { Text(stringResource(R.string.settings_chore_rename_hint)) },
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Words,
-                    autoCorrectEnabled = true,
-                ),
-                singleLine = true,
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val trimmed = nameInput.trim()
-                    if (trimmed.isNotEmpty()) {
-                        onSave(trimmed)
-                    } else {
-                        onDismiss()
-                    }
-                },
-            ) {
-                Text(stringResource(R.string.common_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.common_cancel))
-            }
-        },
-    )
-}
-
-@Composable
-private fun ChoreFrequencyDialog(
-    choreId: String,
-    initialFrequencyDays: Int?,
-    onDismiss: () -> Unit,
-    onSave: (Int?) -> Unit,
-    onClear: () -> Unit,
-) {
-    var frequencyInput by remember(choreId) {
-        mutableStateOf(initialFrequencyDays?.toString().orEmpty())
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_chore_set_frequency_title)) },
-        text = {
-            OutlinedTextField(
-                value = frequencyInput,
-                onValueChange = { frequencyInput = it.filter(Char::isDigit) },
-                label = { Text(stringResource(R.string.settings_chore_set_frequency_hint)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    onSave(frequencyInput.toIntOrNull()?.takeIf { it > 0 })
-                },
-            ) {
-                Text(stringResource(R.string.common_save))
-            }
-        },
-        dismissButton = {
-            Row {
-                TextButton(onClick = onClear) {
-                    Text(stringResource(R.string.settings_chore_clear_frequency))
-                }
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
-        },
-    )
-}
-
-@Composable
-private fun ChoreCategoryDialog(
-    choreId: String,
-    currentCategory: ChoreCategory,
-    onDismiss: () -> Unit,
-    onSave: (ChoreCategory) -> Unit,
-) {
-    var selected by remember(choreId) { mutableStateOf(currentCategory) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_chore_category_title)) },
-        text = {
-            Column {
-                ChoreCategory.entries.forEach { category ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Icon(
-                            imageVector = category.toIcon(),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Text(
-                            text = category.label(),
-                            modifier = Modifier.weight(1f),
-                        )
-                        RadioButton(
-                            selected = selected == category,
-                            onClick = { selected = category },
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onSave(selected) }) {
-                Text(stringResource(R.string.common_save))
             }
         },
         dismissButton = {

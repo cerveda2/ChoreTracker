@@ -26,6 +26,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 private const val USERS_COLLECTION = "users"
@@ -464,7 +465,7 @@ private suspend fun <T> awaitTask(task: Task<T>): T =
 
 private fun Timestamp?.asInstant(): Instant = this?.let { firebaseTimestamp ->
     Instant.fromEpochMilliseconds(firebaseTimestamp.toDate().time)
-} ?: Instant.fromEpochMilliseconds(0)
+} ?: Clock.System.now()
 
 private fun Instant.asTimestamp(): Timestamp = Timestamp(java.util.Date(toEpochMilliseconds()))
 

@@ -304,7 +304,8 @@ fun DashboardScreen(
         }
     }
 
-    if (selectedChoreId != null && snapshot != null) {
+    val choreId = selectedChoreId
+    if (choreId != null && snapshot != null) {
         LogCompletionBottomSheet(
             uiState = uiState,
             selectedMembers = selectedMembers,
@@ -315,7 +316,7 @@ fun DashboardScreen(
                 onIntent(
                     DashboardUiIntent.LogCompletion(
                         householdId = snapshot.household.id,
-                        choreId = selectedChoreId!!,
+                        choreId = choreId,
                         participantIds = selectedMembers.toList(),
                         note = selectedNote,
                         completedAt = completedAt,
