@@ -13,14 +13,12 @@ import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
-import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntity
 import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
 import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
-import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
@@ -43,16 +41,35 @@ import kotlin.time.Instant
 
 class LocalSyncRepositoryTest {
 
-    @MockK lateinit var authRepository: AuthRepository
-    @MockK lateinit var householdDao: HouseholdDao
-    @MockK lateinit var memberDao: MemberDao
-    @MockK lateinit var choreDao: ChoreDao
-    @MockK lateinit var completionDao: CompletionDao
-    @MockK lateinit var completionParticipantDao: CompletionParticipantDao
-    @MockK lateinit var inviteDao: InviteDao
-    @MockK lateinit var pendingSyncOperationDao: PendingSyncOperationDao
-    @MockK lateinit var syncStateDao: SyncStateDao
-    @MockK lateinit var remoteHouseholdDataSource: RemoteHouseholdDataSource
+    @MockK
+    lateinit var authRepository: AuthRepository
+
+    @MockK
+    lateinit var householdDao: HouseholdDao
+
+    @MockK
+    lateinit var memberDao: MemberDao
+
+    @MockK
+    lateinit var choreDao: ChoreDao
+
+    @MockK
+    lateinit var completionDao: CompletionDao
+
+    @MockK
+    lateinit var completionParticipantDao: CompletionParticipantDao
+
+    @MockK
+    lateinit var inviteDao: InviteDao
+
+    @MockK
+    lateinit var pendingSyncOperationDao: PendingSyncOperationDao
+
+    @MockK
+    lateinit var syncStateDao: SyncStateDao
+
+    @MockK
+    lateinit var remoteHouseholdDataSource: RemoteHouseholdDataSource
 
     private val authState = MutableStateFlow<AuthState>(
         AuthState.Authenticated(
