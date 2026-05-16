@@ -15,6 +15,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.UpdateCompletionUseCase
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.sync.SyncState
+import cz.dcervenka.choretracker.core.test.mock.sampleChore
 import cz.dcervenka.choretracker.core.test.mock.sampleDashboardSnapshot
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
@@ -26,6 +27,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
@@ -155,6 +157,32 @@ class DashboardViewModelTest {
         advanceUntilIdle()
 
         coVerify { retryPendingSyncUseCase() }
+    }
+
+    @Test
+    fun `log completion emits undo event with completion id and chore name`() = runTest(coroutineRule.dispatcher) {
+        dashboardFlow.value = sampleDashboardSnapshot().copy(activeChores = listOf(sampleChore()))
+        householdFlow.value = sampleHousehold()
+        val viewModel = createViewModel()
+
+        viewModel.undoEvents.test {
+            val stateJob = launch { viewModel.uiState.collect {} }
+            advanceUntilIdle()
+
+            viewModel.dispatch(
+                DashboardUiIntent.LogCompletion(
+                    householdId = "household-1",
+                    choreId = "chore-1",
+                    participantIds = listOf("member-1"),
+                    note = null,
+                    completedAt = null,
+                )
+            )
+            advanceUntilIdle()
+
+            assertThat(awaitItem()).isEqualTo(UndoEvent("completion-id", "Kitchen"))
+            stateJob.cancel()
+        }
     }
 }
 
