@@ -331,20 +331,21 @@ private suspend fun MemberDao.resolveMemberForInvite(
     val targetMemberId = invite.targetMemberId
     if (targetMemberId != null) {
         val placeholder = findById(invite.householdId, targetMemberId)
-        if (placeholder != null && placeholder.userId == null) {
-            claimPlaceholder(targetMemberId, user.id, user.email)
-        } else if (findByUserId(invite.householdId, user.id) == null) {
-            upsert(
-                MemberEntity(
-                    id = UUID.randomUUID().toString(),
-                    householdId = invite.householdId,
-                    userId = user.id,
-                    displayName = currentUserDisplayName.ifBlank { user.displayName },
-                    role = HouseholdRole.MEMBER.name,
-                    isCurrentUser = true,
-                    email = user.email,
-                ),
-            )
+        when {
+            placeholder != null && placeholder.userId == null ->
+                claimPlaceholder(targetMemberId, user.id, user.email)
+            findByUserId(invite.householdId, user.id) == null ->
+                upsert(
+                    MemberEntity(
+                        id = targetMemberId,
+                        householdId = invite.householdId,
+                        userId = user.id,
+                        displayName = currentUserDisplayName.ifBlank { user.displayName },
+                        role = HouseholdRole.MEMBER.name,
+                        isCurrentUser = true,
+                        email = user.email,
+                    ),
+                )
         }
     } else if (findByUserId(invite.householdId, user.id) == null) {
         upsert(
