@@ -3,7 +3,6 @@ package cz.dcervenka.choretracker.core.data.repository
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
-import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.remote.contract.RemoteAuthDataSource
 import io.mockk.MockKAnnotations

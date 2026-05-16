@@ -18,13 +18,17 @@ import io.mockk.slot
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test
-import kotlin.time.Instant
 
 class OfflineFirstChoreRepositoryTest {
 
-    @MockK lateinit var choreDao: ChoreDao
-    @MockK lateinit var pendingSyncOperationDao: PendingSyncOperationDao
-    @MockK lateinit var syncRepository: SyncRepository
+    @MockK
+    lateinit var choreDao: ChoreDao
+
+    @MockK
+    lateinit var pendingSyncOperationDao: PendingSyncOperationDao
+
+    @MockK
+    lateinit var syncRepository: SyncRepository
 
     private lateinit var repository: OfflineFirstChoreRepository
 
