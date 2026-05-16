@@ -13,7 +13,6 @@ import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
-import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
@@ -102,15 +101,6 @@ class LocalSyncRepositoryTest {
         isActive = true,
         createdAt = Instant.parse("2026-01-03T10:00:00Z"),
         deletedAt = null,
-    )
-
-    private val inviteEntity = InviteEntity(
-        id = "invite-1",
-        householdId = "household-1",
-        code = "ABC123",
-        createdAt = Instant.parse("2026-01-02T10:00:00Z"),
-        consumedAt = null,
-        targetMemberId = null,
     )
 
     @Before
