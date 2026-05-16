@@ -2,6 +2,8 @@ package cz.dcervenka.choretracker.core.database.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
@@ -18,6 +20,12 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+private val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE invites ADD COLUMN targetMemberId TEXT DEFAULT NULL")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -29,7 +37,7 @@ object DatabaseModule {
         context,
         ChoreTrackerDatabase::class.java,
         "chore-tracker.db",
-    ).fallbackToDestructiveMigration(dropAllTables = true).build()
+    ).addMigrations(MIGRATION_6_7).fallbackToDestructiveMigration(dropAllTables = true).build()
 
     @Provides
     fun provideHouseholdDao(database: ChoreTrackerDatabase): HouseholdDao = database.householdDao()

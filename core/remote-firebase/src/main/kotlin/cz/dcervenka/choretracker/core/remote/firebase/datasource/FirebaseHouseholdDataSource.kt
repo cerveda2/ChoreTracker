@@ -36,6 +36,7 @@ private const val COMPLETIONS_COLLECTION = "completions"
 private const val INVITES_COLLECTION = "invites"
 private const val FIRESTORE_BATCH_LIMIT = 500
 
+@Suppress("TooManyFunctions")
 @Singleton
 class FirebaseHouseholdDataSource @Inject constructor(
     @param:ApplicationContext private val context: Context,
@@ -165,13 +166,14 @@ class FirebaseHouseholdDataSource @Inject constructor(
             }
             snapshot.invites.forEach { invite ->
                 add(
-                    householdRef.collection(INVITES_COLLECTION).document(invite.id) to mapOf(
-                        "id" to invite.id,
-                        "householdId" to invite.householdId,
-                        "code" to invite.code,
-                        "createdAt" to invite.createdAt.asTimestamp(),
-                        "consumedAt" to invite.consumedAt?.asTimestamp(),
-                    ),
+                    householdRef.collection(INVITES_COLLECTION).document(invite.id) to buildMap {
+                        put("id", invite.id)
+                        put("householdId", invite.householdId)
+                        put("code", invite.code)
+                        put("createdAt", invite.createdAt.asTimestamp())
+                        put("consumedAt", invite.consumedAt?.asTimestamp())
+                        invite.targetMemberId?.let { put("targetMemberId", it) }
+                    },
                 )
             }
         }
@@ -260,6 +262,42 @@ class FirebaseHouseholdDataSource @Inject constructor(
         }.getOrElse { error ->
             Timber.e(error, "deleteMember: failed")
             AppResult.Error(error.message ?: "Unable to delete member.", error)
+        }
+    }
+
+    override suspend fun fetchInviteByCode(code: String): AppResult<Invite?> {
+        Timber.d("fetchInviteByCode: code=$code")
+        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        return runCatching {
+            val doc = awaitTask(
+                db.collectionGroup(INVITES_COLLECTION)
+                    .whereEqualTo("code", code)
+                    .limit(1)
+                    .get(),
+            ).documents.firstOrNull()
+            AppResult.Success(doc?.asInvite(doc.getString("householdId").orEmpty()))
+        }.getOrElse { error ->
+            Timber.e(error, "fetchInviteByCode: failed")
+            AppResult.Error(error.message ?: "Unable to fetch invite.", error)
+        }
+    }
+
+    override suspend fun markInviteConsumed(householdId: String, inviteId: String, consumedAt: Instant): EmptyResult {
+        Timber.d("markInviteConsumed: householdId=$householdId inviteId=$inviteId")
+        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        return runCatching {
+            awaitTask(
+                db.collection(HOUSEHOLDS_COLLECTION)
+                    .document(householdId)
+                    .collection(INVITES_COLLECTION)
+                    .document(inviteId)
+                    .update("consumedAt", consumedAt.asTimestamp()),
+            )
+            Timber.d("markInviteConsumed: success")
+            AppResult.Success(Unit)
+        }.getOrElse { error ->
+            Timber.e(error, "markInviteConsumed: failed")
+            AppResult.Error(error.message ?: "Unable to mark invite as consumed.", error)
         }
     }
 
@@ -417,6 +455,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
         code = getString("code").orEmpty(),
         createdAt = getTimestamp("createdAt").asInstant(),
         consumedAt = getTimestamp("consumedAt")?.asInstant(),
+        targetMemberId = getString("targetMemberId"),
     )
 }
 

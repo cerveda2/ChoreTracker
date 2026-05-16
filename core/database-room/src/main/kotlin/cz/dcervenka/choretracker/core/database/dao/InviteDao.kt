@@ -19,9 +19,18 @@ interface InviteDao {
     @Query("SELECT * FROM invites WHERE code = :code LIMIT 1")
     suspend fun findByCode(code: String): InviteEntity?
 
+    @Query(
+        "SELECT * FROM invites WHERE householdId = :householdId" +
+            " AND targetMemberId = :memberId AND consumedAt IS NULL LIMIT 1",
+    )
+    suspend fun findPendingByTargetMember(householdId: String, memberId: String): InviteEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: InviteEntity)
 
     @Query("UPDATE invites SET consumedAt = :consumedAt WHERE id = :inviteId")
     suspend fun markConsumed(inviteId: String, consumedAt: Instant)
+
+    @Query("DELETE FROM invites WHERE id = :id")
+    suspend fun deleteById(id: String)
 }

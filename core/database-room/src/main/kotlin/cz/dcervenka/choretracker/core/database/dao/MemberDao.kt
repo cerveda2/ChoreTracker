@@ -28,6 +28,15 @@ interface MemberDao {
     @Query("SELECT * FROM members WHERE householdId = :householdId AND isCurrentUser = 1 LIMIT 1")
     suspend fun findCurrentUser(householdId: String): MemberEntity?
 
+    @Query("SELECT * FROM members WHERE householdId = :householdId AND id = :memberId LIMIT 1")
+    suspend fun findById(householdId: String, memberId: String): MemberEntity?
+
+    @Query("UPDATE members SET userId = :userId, email = :email, isCurrentUser = 1 WHERE id = :memberId")
+    suspend fun claimPlaceholder(memberId: String, userId: String, email: String?)
+
+    @Query("UPDATE members SET isCurrentUser = 0 WHERE isCurrentUser = 1")
+    suspend fun clearCurrentUser()
+
     @Query("DELETE FROM members WHERE id = :id")
     suspend fun deleteById(id: String)
 }

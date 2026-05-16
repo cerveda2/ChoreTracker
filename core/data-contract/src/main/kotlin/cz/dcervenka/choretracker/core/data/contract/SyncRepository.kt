@@ -11,4 +11,6 @@ interface SyncRepository {
     suspend fun syncPendingOperations(): EmptyResult
 
     suspend fun restoreHouseholdForUser(userId: String): AppResult<Boolean>
+
+    suspend fun ensureInviteLocal(code: String): EmptyResult
 }

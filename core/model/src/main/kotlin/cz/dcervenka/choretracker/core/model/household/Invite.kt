@@ -8,4 +8,5 @@ data class Invite(
     val code: String,
     val createdAt: Instant,
     val consumedAt: Instant? = null,
+    val targetMemberId: String? = null,
 )

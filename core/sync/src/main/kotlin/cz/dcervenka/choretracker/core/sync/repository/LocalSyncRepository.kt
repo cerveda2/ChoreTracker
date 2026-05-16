@@ -40,6 +40,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Clock
 
+@Suppress("TooManyFunctions")
 @Singleton
 class LocalSyncRepository @Inject constructor(
     private val authRepository: AuthRepository,
@@ -123,8 +124,11 @@ class LocalSyncRepository @Inject constructor(
                         createdAt = snapshot.household.createdAt,
                     ),
                 )
-                val snapshotMemberIds = snapshot.members.map { it.id }.toSet()
-                snapshot.members.forEach { member ->
+                val uniqueMembers = snapshot.members
+                    .groupBy { it.id }
+                    .values
+                    .map { group -> group.maxByOrNull { if (it.userId != null) 1 else 0 }!! }
+                uniqueMembers.forEach { member ->
                     memberDao.upsert(
                         MemberEntity(
                             id = member.id,
@@ -137,9 +141,6 @@ class LocalSyncRepository @Inject constructor(
                         ),
                     )
                 }
-                memberDao.getMembers(snapshot.household.id)
-                    .filter { it.id !in snapshotMemberIds }
-                    .forEach { memberDao.deleteById(it.id) }
                 snapshot.chores.forEach { chore ->
                     choreDao.upsert(
                         ChoreEntity(
@@ -182,9 +183,11 @@ class LocalSyncRepository @Inject constructor(
                             code = invite.code,
                             createdAt = invite.createdAt,
                             consumedAt = invite.consumedAt,
+                            targetMemberId = invite.targetMemberId,
                         ),
                     )
                 }
+                pruneStaleLocalRows(snapshot)
                 Timber.d(
                     "restoreHouseholdForUser: restored household=${snapshot.household.id} " +
                         "members=${snapshot.members.size} chores=${snapshot.chores.size} completions=${snapshot.completions.size}",
@@ -221,6 +224,7 @@ class LocalSyncRepository @Inject constructor(
                 Timber.d("syncPendingOperations: synced ${operationIds.size} operations for household=$householdId")
                 if (isOwner) deleteRemoteMembers(householdId, operations, operationIds.toSet())
                 deleteRemoteCompletions(householdId, operations, operationIds.toSet())
+                consumeRemoteInvites(householdId, operations, operationIds.toSet())
                 operationIds.forEach { pendingSyncOperationDao.delete(it) }
                 syncStateDao.upsert(
                     SyncStateEntity(
@@ -308,6 +312,62 @@ class LocalSyncRepository @Inject constructor(
             }
     }
 
+    override suspend fun ensureInviteLocal(code: String): EmptyResult {
+        val result = remoteHouseholdDataSource.fetchInviteByCode(code)
+        if (result is AppResult.Error) return result
+        val invite = (result as AppResult.Success).value
+        return if (invite == null) {
+            AppResult.Error("No invite with that code was found.")
+        } else {
+            inviteDao.upsert(
+                InviteEntity(
+                    id = invite.id,
+                    householdId = invite.householdId,
+                    code = invite.code,
+                    createdAt = invite.createdAt,
+                    consumedAt = invite.consumedAt,
+                    targetMemberId = invite.targetMemberId,
+                ),
+            )
+            AppResult.Success(Unit)
+        }
+    }
+
+    private suspend fun pruneStaleLocalRows(snapshot: HouseholdSnapshot) {
+        val householdId = snapshot.household.id
+        val memberIds = snapshot.members.map { it.id }.toSet()
+        memberDao.getMembers(householdId)
+            .filter { it.id !in memberIds }
+            .forEach { memberDao.deleteById(it.id) }
+        val inviteIds = snapshot.invites.map { it.id }.toSet()
+        inviteDao.getInvites(householdId)
+            .filter { it.id !in inviteIds }
+            .forEach { inviteDao.deleteById(it.id) }
+        val completionIds = snapshot.completions.map { it.id }.toSet()
+        completionDao.getCompletions(householdId)
+            .filter { it.id !in completionIds }
+            .forEach { completionDao.deleteById(it.id) }
+    }
+
+    private suspend fun consumeRemoteInvites(
+        householdId: String,
+        operations: List<PendingSyncOperationEntity>,
+        operationIdSet: Set<String>,
+    ) {
+        operations
+            .filter { it.id in operationIdSet && it.entityType == "invite" && it.operationType == "consumed" }
+            .forEach { op ->
+                val consumedAt = inviteDao.getInvites(householdId).find { it.id == op.payload }?.consumedAt
+                    ?: return@forEach
+                val result = remoteHouseholdDataSource.markInviteConsumed(householdId, op.payload, consumedAt)
+                if (result is AppResult.Error) {
+                    Timber.e(
+                        "syncPendingOperations: remote invite consumed failed for ${op.payload} — ${result.message}",
+                    )
+                }
+            }
+    }
+
     private suspend fun resolveHouseholdId(
         operation: PendingSyncOperationEntity,
     ): String? = when (operation.entityType) {
@@ -381,6 +441,7 @@ class LocalSyncRepository @Inject constructor(
                     code = invite.code,
                     createdAt = invite.createdAt,
                     consumedAt = invite.consumedAt,
+                    targetMemberId = invite.targetMemberId,
                 )
             },
         )

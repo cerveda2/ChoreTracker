@@ -11,4 +11,5 @@ data class InviteEntity(
     val code: String,
     val createdAt: Instant,
     val consumedAt: Instant?,
+    val targetMemberId: String? = null,
 )

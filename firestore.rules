@@ -71,6 +71,15 @@ service cloud.firestore {
       allow read: if isOwnMembershipRecord();
     }
 
+    // Required for collectionGroup("invites") queries in fetchInviteByCode.
+    // Any authenticated user can read invites — needed so a joining user (not yet
+    // a member) can look up an invite by code. The 8-char random code is the access
+    // token; resource.data checks are omitted because Firestore rejects collection
+    // group queries whose rules reference document data without a matching query filter.
+    match /{path=**}/invites/{inviteId} {
+      allow read: if isSignedIn();
+    }
+
     match /households/{householdId} {
       allow create: if isSignedIn() && request.resource.data.ownerUserId == request.auth.uid;
       allow read: if isHouseholdMember(householdId);
@@ -105,7 +114,10 @@ service cloud.firestore {
 
       match /invites/{inviteId} {
         allow read: if isHouseholdMember(householdId);
-        allow create, update, delete: if isHouseholdOwner(householdId);
+        allow create, delete: if isHouseholdOwner(householdId);
+        allow update: if isHouseholdOwner(householdId) ||
+          (isHouseholdMember(householdId) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['consumedAt']));
       }
     }
   }

@@ -36,6 +36,7 @@ import kotlin.time.Clock
 
 private const val INVITE_CODE_LENGTH = 8
 
+@Suppress("TooManyFunctions")
 @Singleton
 class OfflineFirstHouseholdRepository @Inject constructor(
     private val householdDao: HouseholdDao,
@@ -54,6 +55,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             val user = (authState as? AuthState.Authenticated)?.user
             when {
                 user == null -> {
+                    memberDao.clearCurrentUser()
                     restoreStatus.value = HouseholdRestoreStatus()
                     emit(null)
                 }
@@ -154,6 +156,9 @@ class OfflineFirstHouseholdRepository @Inject constructor(
 
     override suspend fun joinHousehold(code: String, currentUserDisplayName: String): AppResult<Household> {
         Timber.d("joinHousehold: code=$code displayName=$currentUserDisplayName")
+        if (inviteDao.findByCode(code.trim()) == null) {
+            syncRepository.ensureInviteLocal(code.trim())
+        }
         val invite = inviteDao.findByCode(code.trim())
         val user = currentUser()
         return when {
@@ -167,22 +172,10 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                 Timber.w("joinHousehold failed: preview user attempted write operation")
             }
             else -> {
-                val existing = memberDao.findByUserId(invite.householdId, user.id)
-                if (existing == null) {
-                    memberDao.upsert(
-                        MemberEntity(
-                            id = UUID.randomUUID().toString(),
-                            householdId = invite.householdId,
-                            userId = user.id,
-                            displayName = currentUserDisplayName.ifBlank { user.displayName },
-                            role = HouseholdRole.MEMBER.name,
-                            isCurrentUser = true,
-                            email = user.email,
-                        ),
-                    )
-                }
+                memberDao.resolveMemberForInvite(invite, user, currentUserDisplayName)
                 inviteDao.markConsumed(invite.id, Clock.System.now())
                 enqueueOperation("member", invite.householdId, "join", user.id)
+                enqueueOperation("invite", invite.householdId, "consumed", invite.id)
                 syncRepository.syncPendingOperations()
                 householdDao.getHousehold(invite.householdId)
                     ?.let { AppResult.Success(it.asModel()) }
@@ -227,6 +220,24 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         enqueueOperation("invite", householdId, "upsert", invite.code)
         syncRepository.syncPendingOperations()
         return AppResult.Success(invite.asModel())
+    }
+
+    override suspend fun createMemberInvite(householdId: String, memberId: String): AppResult<Invite> {
+        val user = currentUser()
+        if (user?.isPreview == true) {
+            Timber.w("createMemberInvite failed: preview user attempted write operation")
+            return AppResult.Error("Cannot create invites in preview mode")
+        }
+        val existing = inviteDao.findPendingByTargetMember(householdId, memberId)
+        return if (existing != null) {
+            AppResult.Success(existing.asModel())
+        } else {
+            val invite = generateInvite(householdId, targetMemberId = memberId)
+            inviteDao.upsert(invite)
+            enqueueOperation("invite", householdId, "upsert", invite.code)
+            syncRepository.syncPendingOperations()
+            AppResult.Success(invite.asModel())
+        }
     }
 
     override suspend fun updateHouseholdName(householdId: String, name: String): EmptyResult {
@@ -312,11 +323,51 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     }
 }
 
-private fun generateInvite(householdId: String): InviteEntity =
+private suspend fun MemberDao.resolveMemberForInvite(
+    invite: InviteEntity,
+    user: AppUser,
+    currentUserDisplayName: String,
+) {
+    val targetMemberId = invite.targetMemberId
+    if (targetMemberId != null) {
+        val placeholder = findById(invite.householdId, targetMemberId)
+        when {
+            placeholder != null && placeholder.userId == null ->
+                claimPlaceholder(targetMemberId, user.id, user.email)
+            findByUserId(invite.householdId, user.id) == null ->
+                upsert(
+                    MemberEntity(
+                        id = targetMemberId,
+                        householdId = invite.householdId,
+                        userId = user.id,
+                        displayName = currentUserDisplayName.ifBlank { user.displayName },
+                        role = HouseholdRole.MEMBER.name,
+                        isCurrentUser = true,
+                        email = user.email,
+                    ),
+                )
+        }
+    } else if (findByUserId(invite.householdId, user.id) == null) {
+        upsert(
+            MemberEntity(
+                id = UUID.randomUUID().toString(),
+                householdId = invite.householdId,
+                userId = user.id,
+                displayName = currentUserDisplayName.ifBlank { user.displayName },
+                role = HouseholdRole.MEMBER.name,
+                isCurrentUser = true,
+                email = user.email,
+            ),
+        )
+    }
+}
+
+private fun generateInvite(householdId: String, targetMemberId: String? = null): InviteEntity =
     InviteEntity(
         id = UUID.randomUUID().toString(),
         householdId = householdId,
         code = UUID.randomUUID().toString().take(INVITE_CODE_LENGTH).uppercase(),
         createdAt = Clock.System.now(),
         consumedAt = null,
+        targetMemberId = targetMemberId,
     )

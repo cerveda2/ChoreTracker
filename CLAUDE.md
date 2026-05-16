@@ -85,7 +85,6 @@ Issues found during codebase review (2026-05-13). Work through one at a time. It
 6. **`HouseholdRole.valueOf` unguarded** — `LocalSyncRepository.kt:232`, `DatabaseMappers.kt:30`. Throws `IllegalArgumentException` on unknown enum value. Fix: `runCatching { HouseholdRole.valueOf(it) }.getOrDefault(HouseholdRole.MEMBER)`.
 7. **`selectedChoreId!!` force-unwrap** — `DashboardScreen.kt:315`. `mutableStateOf var` can't be smart-cast; capture to local `val` instead.
 8. **`SettingsViewModel` double-subscribes** — `SettingsViewModel.kt:75` and `:152`. Two independent `flatMapLatest` chains on the same household flow → household-restore logic runs twice on init.
-9. **`isCurrentUser` not reset on sign-out** — old user's member row keeps `isCurrentUser = 1` after a user switch, sorting the wrong member first.
 10. **`Timestamp?.asInstant()` returns epoch for null** — `FirebaseHouseholdDataSource.kt:324`. Missing `createdAt` in Firestore → `Instant.fromEpochMilliseconds(0)` → chores appear massively overdue.
 11. **`observeRecentCompletions(limit = Int.MAX_VALUE)`** — `DashboardViewModel.kt:53`. Loads every completion into dashboard `StateFlow`. Full history screen should subscribe to its own flow.
 
@@ -120,9 +119,13 @@ Issues found during codebase review (2026-05-13). Work through one at a time. It
 
 ## Feature Backlog
 
-1. **Per-member invite links** — Owner generates a per-member invite token that records which placeholder member it maps to. When the invite is consumed, the joining user's `userId` is written into the existing placeholder entity rather than creating a new one. Eliminates the duplicate-member problem that occurs when an owner pre-creates a named slot (e.g. "Anna") and Anna later joins with her own account.
-2. **QR code invite sharing** — On the owner's Manage Household screen, display a QR code for the current invite code. On the join screen, allow scanning the QR code as the primary entry path with manual code input as fallback. Use a lightweight QR-generation library (e.g. `io.github.alexzhirkevich:qrose`) for generation and `androidx.camera` + ML Kit for scanning.
-3. **Real-time Firestore sync** — Currently uses one-shot `get()` calls; a member's logged completion doesn't appear on the owner's device until the next explicit sync. Switch the completions collection (and members) to `addSnapshotListener` for push-based delivery. Requires restructuring the remote data source from pull to push — non-trivial but eliminates the need for FCM to trigger refreshes.
+1. **QR code invite sharing** — On the owner's Manage Household screen, display a QR code for the current invite code. On the join screen, allow scanning the QR code as the primary entry path with manual code input as fallback. Use a lightweight QR-generation library (e.g. `io.github.alexzhirkevich:qrose`) for generation and `androidx.camera` + ML Kit for scanning.
+2. **Real-time Firestore sync** — Currently uses one-shot `get()` calls; a member's logged completion doesn't appear on the owner's device until the next explicit sync. Switch the completions collection (and members) to `addSnapshotListener` for push-based delivery. Requires restructuring the remote data source from pull to push — non-trivial but eliminates the need for FCM to trigger refreshes. Known UX issue: owner doesn't see accepted invite until cold start — will be resolved by invite-accepted notification or real-time sync.
+3. **Password visibility toggle** — Show/hide button on sign-in and sign-up password fields.
+4. **Invite code input auto-uppercase** — Join screen code field should `KeyboardCapitalization.Characters` + auto-uppercase transform so manual entry matches generated codes without user needing to switch case.
+5. **Pull-to-refresh on dashboard** — `SwipeRefresh` (or `PullToRefreshBox` M3) to manually trigger `syncPendingOperations` + `restoreHouseholdForUser`.
+6. **Invite accepted notification** — FCM push to owner when a member consumes an invite link. Requires Phase 1 Firebase setup (Crashlytics) to be in place first.
+7. **Notification settings** — In-app screen to toggle specific notification types (invite accepted, chore reminders, etc.).
 
 ---
 
