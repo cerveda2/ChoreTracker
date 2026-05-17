@@ -4,6 +4,7 @@ kotlin = "2.3.21"
 ksp = "2.3.4"
 hilt = "2.59.2"
 firebaseBom = "34.13.0"
+firebaseCrashlyticsPlugin = "3.0.4"
 room = "2.8.4"
 coroutines = "1.11.0"
 serialization = "1.11.0"
@@ -70,6 +71,9 @@ room-testing = { group = "androidx.room", name = "room-testing", version.ref = "
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
+firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
+firebase-crashlytics-gradle-plugin = { group = "com.google.firebase", name = "firebase-crashlytics-gradle", version.ref = "firebaseCrashlyticsPlugin" }
 
 junit4 = { group = "junit", name = "junit", version.ref = "junit4" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExt" }
@@ -98,6 +102,7 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 google-services = { id = "com.google.gms.google-services", version = "4.4.4" }
+firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlyticsPlugin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 choretracker-android-application = { id = "choretracker.android.application", version = "unspecified" }
 choretracker-android-application-compose = { id = "choretracker.android.application.compose", version = "unspecified" }
@@ -106,5 +111,6 @@ choretracker-android-library-compose = { id = "choretracker.android.library.comp
 choretracker-android-feature = { id = "choretracker.android.feature", version = "unspecified" }
 choretracker-hilt = { id = "choretracker.hilt", version = "unspecified" }
 choretracker-room = { id = "choretracker.room", version = "unspecified" }
+choretracker-firebase = { id = "choretracker.firebase", version = "unspecified" }
 choretracker-kotlin-library = { id = "choretracker.kotlin.library", version = "unspecified" }
 choretracker-detekt = { id = "choretracker.detekt", version = "unspecified" }

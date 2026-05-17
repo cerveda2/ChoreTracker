@@ -64,6 +64,21 @@ class AndroidFeatureConventionPlugin : Plugin<Project> {
     }
 }
 
+class FirebaseConventionPlugin : Plugin<Project> {
+    override fun apply(target: Project) {
+        with(target) {
+            pluginManager.withPlugin("com.android.application") {
+                pluginManager.apply("com.google.firebase.crashlytics")
+                dependencies {
+                    add("implementation", platform(libsCatalog.findLibrary("firebase-bom").get()))
+                    add("implementation", libsCatalog.findLibrary("firebase-crashlytics").get())
+                    add("implementation", libsCatalog.findLibrary("firebase-analytics").get())
+                }
+            }
+        }
+    }
+}
+
 class HiltConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         with(target) {

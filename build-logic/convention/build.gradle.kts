@@ -19,6 +19,7 @@ dependencies {
     compileOnly(libs.kotlin.gradle.plugin)
     compileOnly(libs.ksp.gradle.plugin)
     compileOnly(libs.hilt.gradle.plugin)
+    compileOnly(libs.firebase.crashlytics.gradle.plugin)
     compileOnly(libs.detekt.gradle.plugin)
     compileOnly(libs.detekt.formatting)
 }
@@ -51,6 +52,10 @@ gradlePlugin {
         register("androidFeature") {
             id = "choretracker.android.feature"
             implementationClass = "AndroidFeatureConventionPlugin"
+        }
+        register("firebase") {
+            id = "choretracker.firebase"
+            implementationClass = "FirebaseConventionPlugin"
         }
         register("hilt") {
             id = "choretracker.hilt"
