@@ -284,8 +284,13 @@ class FirebaseHouseholdDataSource @Inject constructor(
         }
     }
 
-    override suspend fun markInviteConsumed(householdId: String, inviteId: String, consumedAt: Instant, consumedByMemberId: String): EmptyResult {
-        Timber.d("markInviteConsumed: householdId=$householdId inviteId=$inviteId consumedByMemberId=$consumedByMemberId")
+    override suspend fun markInviteConsumed(
+        householdId: String,
+        inviteId: String,
+        consumedAt: Instant,
+        consumedByMemberId: String,
+    ): EmptyResult {
+        Timber.d("markInviteConsumed: householdId=$householdId inviteId=$inviteId")
         val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
         return runCatching {
             awaitTask(
@@ -294,8 +299,10 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     .collection(INVITES_COLLECTION)
                     .document(inviteId)
                     .update(
-                        "consumedAt", consumedAt.asTimestamp(),
-                        "consumedByMemberId", consumedByMemberId,
+                        mapOf(
+                            "consumedAt" to consumedAt.asTimestamp(),
+                            "consumedByMemberId" to consumedByMemberId,
+                        ),
                     ),
             )
             Timber.d("markInviteConsumed: success")
