@@ -124,11 +124,7 @@ class LocalSyncRepository @Inject constructor(
                         createdAt = snapshot.household.createdAt,
                     ),
                 )
-                val uniqueMembers = snapshot.members
-                    .groupBy { it.id }
-                    .values
-                    .map { group -> group.maxByOrNull { if (it.userId != null) 1 else 0 }!! }
-                uniqueMembers.forEach { member ->
+                deduplicateMembers(snapshot.members).forEach { member ->
                     memberDao.upsert(
                         MemberEntity(
                             id = member.id,
@@ -184,6 +180,7 @@ class LocalSyncRepository @Inject constructor(
                             createdAt = invite.createdAt,
                             consumedAt = invite.consumedAt,
                             targetMemberId = invite.targetMemberId,
+                            consumedByMemberId = invite.consumedByMemberId,
                         ),
                     )
                 }
@@ -327,11 +324,23 @@ class LocalSyncRepository @Inject constructor(
                     createdAt = invite.createdAt,
                     consumedAt = invite.consumedAt,
                     targetMemberId = invite.targetMemberId,
+                    consumedByMemberId = invite.consumedByMemberId,
                 ),
             )
             AppResult.Success(Unit)
         }
     }
+
+    private fun deduplicateMembers(members: List<HouseholdMember>): List<HouseholdMember> =
+        members.groupBy { it.id }.values.map { group ->
+            val claimed = group.firstOrNull { it.userId != null }
+            val placeholder = group.firstOrNull { it.userId == null }
+            when {
+                claimed != null && placeholder != null ->
+                    claimed.copy(displayName = placeholder.displayName.ifBlank { claimed.displayName })
+                else -> group.maxByOrNull { if (it.userId != null) 1 else 0 }!!
+            }
+        }
 
     private suspend fun pruneStaleLocalRows(snapshot: HouseholdSnapshot) {
         val householdId = snapshot.household.id
@@ -357,9 +366,15 @@ class LocalSyncRepository @Inject constructor(
         operations
             .filter { it.id in operationIdSet && it.entityType == "invite" && it.operationType == "consumed" }
             .forEach { op ->
-                val consumedAt = inviteDao.getInvites(householdId).find { it.id == op.payload }?.consumedAt
-                    ?: return@forEach
-                val result = remoteHouseholdDataSource.markInviteConsumed(householdId, op.payload, consumedAt)
+                val invite = inviteDao.getInvites(householdId).find { it.id == op.payload } ?: return@forEach
+                val consumedAt = invite.consumedAt ?: return@forEach
+                val consumedByMemberId = invite.consumedByMemberId ?: return@forEach
+                val result = remoteHouseholdDataSource.markInviteConsumed(
+                    householdId,
+                    op.payload,
+                    consumedAt,
+                    consumedByMemberId,
+                )
                 if (result is AppResult.Error) {
                     Timber.e(
                         "syncPendingOperations: remote invite consumed failed for ${op.payload} — ${result.message}",
@@ -442,6 +457,7 @@ class LocalSyncRepository @Inject constructor(
                     createdAt = invite.createdAt,
                     consumedAt = invite.consumedAt,
                     targetMemberId = invite.targetMemberId,
+                    consumedByMemberId = invite.consumedByMemberId,
                 )
             },
         )

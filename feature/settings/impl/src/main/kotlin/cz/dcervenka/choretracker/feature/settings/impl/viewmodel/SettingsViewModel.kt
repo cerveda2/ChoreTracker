@@ -86,7 +86,8 @@ class SettingsViewModel @Inject constructor(
                 when (state) {
                     is AuthState.Authenticated -> {
                         if (hydratedUserId != state.user.id || accountDisplayNameInput.value.isBlank()) {
-                            accountDisplayNameInput.value = state.user.displayName
+                            accountDisplayNameInput.value =
+                                state.user.displayName.takeIf { it != state.user.email.orEmpty() }.orEmpty()
                             hydratedUserId = state.user.id
                         }
                     }
@@ -156,11 +157,18 @@ class SettingsViewModel @Inject constructor(
         householdState,
     ) { state, householdUiState ->
         when (state) {
-            is AuthState.Authenticated -> householdUiState.copy(
-                userLabel = state.user.displayName,
-                userEmail = state.user.email,
-                accountDisplayNameInput = accountDisplayNameInput.value,
-            )
+            is AuthState.Authenticated -> {
+                val memberName = householdUiState.members.find { it.isCurrentUser }
+                    ?.displayName?.takeIf { it.isNotBlank() }
+                val resolvedName = memberName
+                    ?: state.user.displayName.takeIf { it != state.user.email.orEmpty() }
+                    ?: state.user.email.orEmpty()
+                householdUiState.copy(
+                    userLabel = resolvedName,
+                    userEmail = state.user.email,
+                    accountDisplayNameInput = accountDisplayNameInput.value.ifBlank { resolvedName },
+                )
+            }
             AuthState.RequiresConfiguration -> householdUiState.copy(requiresConfiguration = true)
             AuthState.SignedOut -> householdUiState.copy(isSignedOut = true)
             AuthState.Initializing -> householdUiState

@@ -100,6 +100,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                         }
                     }
                     stampCurrentUserEmail(user)
+                    stampCurrentUserDisplayName(user)
                     emitAll(householdDao.observeHouseholdForUser(user.id).map { it?.asModel() })
                 }
             }
@@ -171,23 +172,31 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             user.isPreview -> AppResult.Error("Cannot join household in preview mode.").also {
                 Timber.w("joinHousehold failed: preview user attempted write operation")
             }
-            else -> {
-                memberDao.resolveMemberForInvite(invite, user, currentUserDisplayName)
-                if (invite.targetMemberId != null) {
-                    val actualMember = memberDao.findByUserId(invite.householdId, user.id)
-                    if (actualMember != null && actualMember.id != invite.targetMemberId) {
-                        inviteDao.updateTargetMemberId(invite.id, actualMember.id)
-                    }
-                }
-                inviteDao.markConsumed(invite.id, Clock.System.now())
-                enqueueOperation("member", invite.householdId, "join", user.id)
-                enqueueOperation("invite", invite.householdId, "consumed", invite.id)
-                syncRepository.syncPendingOperations()
-                householdDao.getHousehold(invite.householdId)
-                    ?.let { AppResult.Success(it.asModel()) }
-                    ?: AppResult.Error("The household for that invite is no longer available.")
-            }
+            else -> performJoin(invite, user, currentUserDisplayName)
         }
+    }
+
+    private suspend fun performJoin(
+        invite: InviteEntity,
+        user: AppUser,
+        currentUserDisplayName: String,
+    ): AppResult<Household> {
+        memberDao.resolveMemberForInvite(invite, user, currentUserDisplayName)
+        val resolvedMember = memberDao.findByUserId(invite.householdId, user.id)
+        if (invite.targetMemberId != null && resolvedMember != null && resolvedMember.id != invite.targetMemberId) {
+            inviteDao.updateTargetMemberId(invite.id, resolvedMember.id)
+        }
+        val consumedByMemberId = resolvedMember?.id ?: invite.targetMemberId ?: user.id
+        inviteDao.markConsumed(invite.id, Clock.System.now(), consumedByMemberId)
+        enqueueOperation("member", invite.householdId, "join", user.id)
+        enqueueOperation("invite", invite.householdId, "consumed", invite.id)
+        syncRepository.syncPendingOperations()
+        if (householdDao.getHousehold(invite.householdId) == null) {
+            syncRepository.restoreHouseholdForUser(user.id)
+        }
+        return householdDao.getHousehold(invite.householdId)
+            ?.let { AppResult.Success(it.asModel()) }
+            ?: AppResult.Error("The household for that invite is no longer available.")
     }
 
     override suspend fun addMember(householdId: String, displayName: String): EmptyResult {
@@ -225,6 +234,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         inviteDao.upsert(invite)
         enqueueOperation("invite", householdId, "upsert", invite.code)
         syncRepository.syncPendingOperations()
+        user?.id?.let { syncRepository.restoreHouseholdForUser(it) }
         return AppResult.Success(invite.asModel())
     }
 
@@ -307,6 +317,18 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         }
     }
 
+    private suspend fun stampCurrentUserDisplayName(user: AppUser) {
+        val name = user.displayName.takeIf { it.isNotBlank() && it != user.email.orEmpty() } ?: return
+        val householdId = householdDao.getCurrentHouseholdForUser(user.id)?.id ?: return
+        memberDao.findByUserId(householdId, user.id)?.let { member ->
+            if (member.displayName != name) {
+                memberDao.upsert(member.copy(displayName = name))
+                enqueueOperation("member", householdId, "rename", name)
+                syncRepository.syncPendingOperations()
+            }
+        }
+    }
+
     private suspend fun currentUser(): AppUser? =
         (authRepository.authState.first() as? AuthState.Authenticated)?.user
 
@@ -339,7 +361,12 @@ private suspend fun MemberDao.resolveMemberForInvite(
         val placeholder = findById(invite.householdId, targetMemberId)
         when {
             placeholder != null && placeholder.userId == null ->
-                claimPlaceholder(targetMemberId, user.id, user.email)
+                claimPlaceholder(
+                    targetMemberId,
+                    user.id,
+                    user.email,
+                    currentUserDisplayName.ifBlank { user.displayName },
+                )
             findByUserId(invite.householdId, user.id) == null ->
                 upsert(
                     MemberEntity(

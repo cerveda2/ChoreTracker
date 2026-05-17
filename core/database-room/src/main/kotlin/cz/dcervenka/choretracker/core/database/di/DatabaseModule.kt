@@ -26,6 +26,12 @@ private val MIGRATION_6_7 = object : Migration(6, 7) {
     }
 }
 
+private val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE invites ADD COLUMN consumedByMemberId TEXT DEFAULT NULL")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -37,7 +43,7 @@ object DatabaseModule {
         context,
         ChoreTrackerDatabase::class.java,
         "chore-tracker.db",
-    ).addMigrations(MIGRATION_6_7).fallbackToDestructiveMigration(dropAllTables = true).build()
+    ).addMigrations(MIGRATION_6_7, MIGRATION_7_8).fallbackToDestructiveMigration(dropAllTables = true).build()
 
     @Provides
     fun provideHouseholdDao(database: ChoreTrackerDatabase): HouseholdDao = database.householdDao()

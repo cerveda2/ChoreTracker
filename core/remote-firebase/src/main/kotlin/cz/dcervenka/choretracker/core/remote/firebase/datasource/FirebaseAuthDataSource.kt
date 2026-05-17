@@ -14,6 +14,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.suspendCancellableCoroutine
 import timber.log.Timber
 import javax.inject.Inject
@@ -43,13 +44,13 @@ class FirebaseAuthDataSource @Inject constructor(
             return@callbackFlow
         }
 
-        val listener = FirebaseAuth.AuthStateListener { firebase ->
+        val listener = FirebaseAuth.IdTokenListener { firebase ->
             val user = firebase.currentUser
             if (user == null) {
                 Timber.d("authState: signed out")
                 trySend(AuthState.SignedOut)
             } else {
-                Timber.d("authState: authenticated uid=${user.uid}")
+                Timber.d("authState: authenticated uid=${user.uid} displayName=${user.displayName}")
                 trySend(
                     AuthState.Authenticated(
                         AppUser(
@@ -61,9 +62,9 @@ class FirebaseAuthDataSource @Inject constructor(
                 )
             }
         }
-        auth.addAuthStateListener(listener)
-        awaitClose { auth.removeAuthStateListener(listener) }
-    }
+        auth.addIdTokenListener(listener)
+        awaitClose { auth.removeIdTokenListener(listener) }
+    }.distinctUntilChanged()
 
     override suspend fun signIn(email: String, password: String): EmptyResult {
         Timber.d("signIn: email=$email")
@@ -116,8 +117,12 @@ class FirebaseAuthDataSource @Inject constructor(
                                     .build(),
                             )
                                 .addOnSuccessListener {
-                                    Timber.d("signUp: success uid=${user.uid}")
-                                    continuation.resume(AppResult.Success(Unit))
+                                    Timber.d("signUp: profile updated uid=${user.uid}, forcing token refresh")
+                                    user.getIdToken(true)
+                                        .addOnCompleteListener {
+                                            Timber.d("signUp: token refreshed uid=${user.uid}")
+                                            continuation.resume(AppResult.Success(Unit))
+                                        }
                                 }
                                 .addOnFailureListener { throwable ->
                                     Timber.e(throwable, "signUp: profile update failed")
@@ -155,8 +160,11 @@ class FirebaseAuthDataSource @Inject constructor(
                         .build(),
                 )
                     .addOnSuccessListener {
-                        Timber.d("updateDisplayName: success uid=${user.uid}")
-                        continuation.resume(AppResult.Success(Unit))
+                        user.getIdToken(true)
+                            .addOnCompleteListener {
+                                Timber.d("updateDisplayName: success uid=${user.uid}")
+                                continuation.resume(AppResult.Success(Unit))
+                            }
                     }
                     .addOnFailureListener { throwable ->
                         Timber.e(throwable, "updateDisplayName: failed")

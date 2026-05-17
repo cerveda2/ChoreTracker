@@ -13,6 +13,7 @@ import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
+import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
@@ -326,6 +327,61 @@ class LocalSyncRepositoryTest {
 
         coVerify { memberDao.deleteById("stale-member") }
         coVerify(exactly = 0) { memberDao.deleteById("member-1") }
+    }
+
+    @Test
+    fun `restoreHouseholdForUser deduplicates members preferring placeholder displayName`() = runBlocking {
+        val claimed = sampleMembers()[0]
+        val placeholder = claimed.copy(userId = null, displayName = "UserChosenName")
+        val snapshot = buildSnapshot(members = listOf(claimed, placeholder))
+        coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
+        coEvery { memberDao.getMembers("household-1") } returns emptyList()
+
+        repository.restoreHouseholdForUser("user-1")
+
+        coVerify(exactly = 1) {
+            memberDao.upsert(
+                match { it.id == "member-1" && it.userId == "user-1" && it.displayName == "UserChosenName" },
+            )
+        }
+    }
+
+    @Test
+    fun `syncPendingOperations calls markInviteConsumed with consumedByMemberId`() = runBlocking {
+        val consumedAt = Instant.parse("2026-02-01T10:00:00Z")
+        val consumedInvite = InviteEntity(
+            id = "invite-1",
+            householdId = "household-1",
+            code = "ABC123",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+            consumedAt = consumedAt,
+            targetMemberId = null,
+            consumedByMemberId = "member-1",
+        )
+        val op = PendingSyncOperationEntity(
+            id = "op-1",
+            entityType = "invite",
+            entityId = "household-1",
+            operationType = "consumed",
+            payload = "invite-1",
+            createdAt = Instant.parse("2026-01-04T10:00:00Z"),
+        )
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(op)
+        coEvery { householdDao.getHousehold("household-1") } returns householdEntity
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns memberEntity
+        coEvery { completionParticipantDao.getParticipants("household-1") } returns emptyList()
+        coEvery { choreDao.getChores("household-1") } returns emptyList()
+        coEvery { completionDao.getCompletions("household-1") } returns emptyList()
+        coEvery { inviteDao.getInvites("household-1") } returns listOf(consumedInvite)
+        coEvery { memberDao.getMembers("household-1") } returns listOf(memberEntity)
+        coEvery { remoteHouseholdDataSource.upsertHouseholdSnapshot(any(), any()) } returns AppResult.Success(Unit)
+        coEvery { remoteHouseholdDataSource.markInviteConsumed(any(), any(), any(), any()) } returns AppResult.Success(Unit)
+        coEvery { pendingSyncOperationDao.delete(any()) } just Runs
+
+        val result = repository.syncPendingOperations()
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify { remoteHouseholdDataSource.markInviteConsumed("household-1", "invite-1", consumedAt, "member-1") }
     }
 }
 

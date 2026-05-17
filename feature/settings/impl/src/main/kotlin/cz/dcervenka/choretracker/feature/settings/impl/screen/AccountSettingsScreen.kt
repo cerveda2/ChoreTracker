@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
@@ -35,6 +36,7 @@ fun AccountSettingsScreen(
     onIntent: (SettingsUiIntent) -> Unit,
 ) {
     val spacing = LocalSpacing.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val snackbarHostState = remember { SnackbarHostState() }
     val msgNameSaved = stringResource(R.string.settings_feedback_name_saved)
     val msgError = stringResource(R.string.settings_feedback_error)
@@ -107,7 +109,10 @@ fun AccountSettingsScreen(
                     )
                     PrimaryButton(
                         text = stringResource(R.string.settings_save_display_name),
-                        onClick = { onIntent(SettingsUiIntent.SaveAccountDisplayName) },
+                        onClick = {
+                            keyboardController?.hide()
+                            onIntent(SettingsUiIntent.SaveAccountDisplayName)
+                        },
                         enabled = canSaveDisplayName,
                     )
                 }

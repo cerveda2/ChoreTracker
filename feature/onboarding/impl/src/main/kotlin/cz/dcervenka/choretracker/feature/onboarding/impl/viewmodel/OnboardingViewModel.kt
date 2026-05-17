@@ -34,7 +34,8 @@ class OnboardingViewModel @Inject constructor(
     private val errorMessage = MutableStateFlow<String?>(null)
 
     private val authDisplayName = observeAuthStateUseCase().map { state ->
-        (state as? AuthState.Authenticated)?.user?.displayName
+        val user = (state as? AuthState.Authenticated)?.user
+        user?.displayName?.takeIf { it.isNotBlank() && it != user.email }
     }
     private val restoreStatus = observeHouseholdRestoreStatusUseCase()
 
@@ -94,7 +95,7 @@ class OnboardingViewModel @Inject constructor(
         submit {
             joinHouseholdUseCase(
                 code = inviteCode.value,
-                currentUserDisplayName = displayName.value,
+                currentUserDisplayName = uiState.value.displayName,
             )
         }
     }

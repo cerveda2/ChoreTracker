@@ -28,8 +28,8 @@ interface InviteDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: InviteEntity)
 
-    @Query("UPDATE invites SET consumedAt = :consumedAt WHERE id = :inviteId")
-    suspend fun markConsumed(inviteId: String, consumedAt: Instant)
+    @Query("UPDATE invites SET consumedAt = :consumedAt, consumedByMemberId = :consumedByMemberId WHERE id = :inviteId")
+    suspend fun markConsumed(inviteId: String, consumedAt: Instant, consumedByMemberId: String)
 
     @Query("UPDATE invites SET targetMemberId = :memberId WHERE id = :inviteId")
     suspend fun updateTargetMemberId(inviteId: String, memberId: String)

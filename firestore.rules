@@ -117,7 +117,8 @@ service cloud.firestore {
         allow create, delete: if isHouseholdOwner(householdId);
         allow update: if isHouseholdOwner(householdId) ||
           (isHouseholdMember(householdId) &&
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['consumedAt']));
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['consumedAt', 'consumedByMemberId']));
       }
     }
   }
