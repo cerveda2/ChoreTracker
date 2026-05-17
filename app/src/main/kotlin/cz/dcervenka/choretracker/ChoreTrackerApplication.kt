@@ -11,7 +11,11 @@ class ChoreTrackerApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true)
+        // TODO - enable crashlytics and analytics only for release builds
+        /*val isRelease = !BuildConfig.DEBUG
+        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(isRelease)
+        FirebaseAnalytics.getInstance(this).setAnalyticsCollectionEnabled(isRelease)*/
+        FirebaseCrashlytics.getInstance().isCrashlyticsCollectionEnabled = true
         FirebaseAnalytics.getInstance(this).setAnalyticsCollectionEnabled(true)
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
