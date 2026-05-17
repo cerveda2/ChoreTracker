@@ -100,6 +100,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                         }
                     }
                     stampCurrentUserEmail(user)
+                    stampCurrentUserDisplayName(user)
                     emitAll(householdDao.observeHouseholdForUser(user.id).map { it?.asModel() })
                 }
             }
@@ -313,6 +314,18 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         val householdId = householdDao.getCurrentHouseholdForUser(user.id)?.id ?: return
         memberDao.findByUserId(householdId, user.id)?.let { member ->
             if (member.email != email) memberDao.upsert(member.copy(email = email))
+        }
+    }
+
+    private suspend fun stampCurrentUserDisplayName(user: AppUser) {
+        val name = user.displayName.takeIf { it.isNotBlank() && it != user.email.orEmpty() } ?: return
+        val householdId = householdDao.getCurrentHouseholdForUser(user.id)?.id ?: return
+        memberDao.findByUserId(householdId, user.id)?.let { member ->
+            if (member.displayName != name) {
+                memberDao.upsert(member.copy(displayName = name))
+                enqueueOperation("member", householdId, "rename", name)
+                syncRepository.syncPendingOperations()
+            }
         }
     }
 
