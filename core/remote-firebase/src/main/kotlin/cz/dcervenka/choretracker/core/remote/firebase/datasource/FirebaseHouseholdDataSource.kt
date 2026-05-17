@@ -116,6 +116,11 @@ class FirebaseHouseholdDataSource @Inject constructor(
                 },
                 SetOptions.merge(),
             )
+            if (member.userId != null) {
+                membershipBatch.delete(
+                    householdRef.collection(MEMBERS_COLLECTION).document(member.id),
+                )
+            }
             member.userId?.let { memberUserId ->
                 membershipBatch.set(
                     db.collection(USERS_COLLECTION).document(memberUserId),

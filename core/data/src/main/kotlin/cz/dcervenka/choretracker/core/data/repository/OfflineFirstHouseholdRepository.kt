@@ -190,6 +190,9 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         enqueueOperation("member", invite.householdId, "join", user.id)
         enqueueOperation("invite", invite.householdId, "consumed", invite.id)
         syncRepository.syncPendingOperations()
+        if (householdDao.getHousehold(invite.householdId) == null) {
+            syncRepository.restoreHouseholdForUser(user.id)
+        }
         return householdDao.getHousehold(invite.householdId)
             ?.let { AppResult.Success(it.asModel()) }
             ?: AppResult.Error("The household for that invite is no longer available.")
@@ -230,6 +233,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         inviteDao.upsert(invite)
         enqueueOperation("invite", householdId, "upsert", invite.code)
         syncRepository.syncPendingOperations()
+        user?.id?.let { syncRepository.restoreHouseholdForUser(it) }
         return AppResult.Success(invite.asModel())
     }
 
