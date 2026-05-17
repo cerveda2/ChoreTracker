@@ -74,7 +74,7 @@ Always create feature branches from `main`. PRs go into `main`.
 
 ## Feature Backlog
 
-1. **QR code invite sharing** — On the owner's Manage Household screen, display a QR code for the current invite code. On the join screen, allow scanning the QR code as the primary entry path with manual code input as fallback. Use a lightweight QR-generation library (e.g. `io.github.alexzhirkevich:qrose`) for generation and `androidx.camera` + ML Kit for scanning.
+1. ~~**QR code invite sharing**~~ — Done. qrose `rememberQrCodePainter` in settings, CameraX + ML Kit barcode scanner inline on join screen.
 2. **Real-time Firestore sync** — Currently uses one-shot `get()` calls; a member's logged completion doesn't appear on the owner's device until the next explicit sync. Switch the completions collection (and members) to `addSnapshotListener` for push-based delivery. Requires restructuring the remote data source from pull to push — non-trivial but eliminates the need for FCM to trigger refreshes. Known UX issue: owner doesn't see accepted invite until cold start — will be resolved by invite-accepted notification or real-time sync.
 3. **Password visibility toggle** — Show/hide button on sign-in and sign-up password fields.
 4. **Invite code input auto-uppercase** — Join screen code field should `KeyboardCapitalization.Characters` + auto-uppercase transform so manual entry matches generated codes without user needing to switch case.
