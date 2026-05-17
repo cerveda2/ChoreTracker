@@ -184,6 +184,7 @@ class LocalSyncRepository @Inject constructor(
                             createdAt = invite.createdAt,
                             consumedAt = invite.consumedAt,
                             targetMemberId = invite.targetMemberId,
+                            consumedByMemberId = invite.consumedByMemberId,
                         ),
                     )
                 }
@@ -327,6 +328,7 @@ class LocalSyncRepository @Inject constructor(
                     createdAt = invite.createdAt,
                     consumedAt = invite.consumedAt,
                     targetMemberId = invite.targetMemberId,
+                    consumedByMemberId = invite.consumedByMemberId,
                 ),
             )
             AppResult.Success(Unit)
@@ -357,9 +359,10 @@ class LocalSyncRepository @Inject constructor(
         operations
             .filter { it.id in operationIdSet && it.entityType == "invite" && it.operationType == "consumed" }
             .forEach { op ->
-                val consumedAt = inviteDao.getInvites(householdId).find { it.id == op.payload }?.consumedAt
-                    ?: return@forEach
-                val result = remoteHouseholdDataSource.markInviteConsumed(householdId, op.payload, consumedAt)
+                val invite = inviteDao.getInvites(householdId).find { it.id == op.payload } ?: return@forEach
+                val consumedAt = invite.consumedAt ?: return@forEach
+                val consumedByMemberId = invite.consumedByMemberId ?: return@forEach
+                val result = remoteHouseholdDataSource.markInviteConsumed(householdId, op.payload, consumedAt, consumedByMemberId)
                 if (result is AppResult.Error) {
                     Timber.e(
                         "syncPendingOperations: remote invite consumed failed for ${op.payload} — ${result.message}",
@@ -442,6 +445,7 @@ class LocalSyncRepository @Inject constructor(
                     createdAt = invite.createdAt,
                     consumedAt = invite.consumedAt,
                     targetMemberId = invite.targetMemberId,
+                    consumedByMemberId = invite.consumedByMemberId,
                 )
             },
         )

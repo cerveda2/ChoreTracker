@@ -81,7 +81,6 @@ Always create feature branches from `main`. PRs go into `main`.
 5. **Pull-to-refresh on dashboard** — `SwipeRefresh` (or `PullToRefreshBox` M3) to manually trigger `syncPendingOperations` + `restoreHouseholdForUser`.
 6. **Invite accepted notification** — FCM push to owner when a member consumes an invite link. Requires Phase 1 Firebase setup (Crashlytics) to be in place first.
 7. **Notification settings** — In-app screen to toggle specific notification types (invite accepted, chore reminders, etc.).
-8. **`consumedByMemberId` on Invite** — Add a `consumedByMemberId: String?` field to `Invite`, `InviteEntity`, and Firestore. Populate it in `joinHousehold` with the actual joining member's ID. Use it in the invite history label lookup instead of (or alongside) `targetMemberId`. This cleanly separates "who the invite was intended for" from "who actually used it", fixing label display when the consumer already had a different member ID. Requires DB migration (add column), Firestore schema update, and UI label logic update.
 
 ---
 

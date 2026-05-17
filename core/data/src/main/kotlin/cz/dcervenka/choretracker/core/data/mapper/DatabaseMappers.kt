@@ -50,6 +50,7 @@ internal fun InviteEntity.asModel(): Invite = Invite(
     createdAt = createdAt,
     consumedAt = consumedAt,
     targetMemberId = targetMemberId,
+    consumedByMemberId = consumedByMemberId,
 )
 
 internal fun List<CompletionEntity>.asModels(

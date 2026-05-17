@@ -174,6 +174,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
                         put("createdAt", invite.createdAt.asTimestamp())
                         invite.consumedAt?.let { put("consumedAt", it.asTimestamp()) }
                         invite.targetMemberId?.let { put("targetMemberId", it) }
+                        invite.consumedByMemberId?.let { put("consumedByMemberId", it) }
                     },
                 )
             }
@@ -283,8 +284,8 @@ class FirebaseHouseholdDataSource @Inject constructor(
         }
     }
 
-    override suspend fun markInviteConsumed(householdId: String, inviteId: String, consumedAt: Instant): EmptyResult {
-        Timber.d("markInviteConsumed: householdId=$householdId inviteId=$inviteId")
+    override suspend fun markInviteConsumed(householdId: String, inviteId: String, consumedAt: Instant, consumedByMemberId: String): EmptyResult {
+        Timber.d("markInviteConsumed: householdId=$householdId inviteId=$inviteId consumedByMemberId=$consumedByMemberId")
         val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
         return runCatching {
             awaitTask(
@@ -292,7 +293,10 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     .document(householdId)
                     .collection(INVITES_COLLECTION)
                     .document(inviteId)
-                    .update("consumedAt", consumedAt.asTimestamp()),
+                    .update(
+                        "consumedAt", consumedAt.asTimestamp(),
+                        "consumedByMemberId", consumedByMemberId,
+                    ),
             )
             Timber.d("markInviteConsumed: success")
             AppResult.Success(Unit)
@@ -457,6 +461,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
         createdAt = getTimestamp("createdAt").asInstant(),
         consumedAt = getTimestamp("consumedAt")?.asInstant(),
         targetMemberId = getString("targetMemberId"),
+        consumedByMemberId = getString("consumedByMemberId"),
     )
 }
 
