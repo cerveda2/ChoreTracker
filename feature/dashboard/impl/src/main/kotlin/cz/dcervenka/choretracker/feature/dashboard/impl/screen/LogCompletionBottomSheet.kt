@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -30,28 +31,30 @@ import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.formatters.formatInstantForLocale
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LogCompletionBottomSheet(
     uiState: DashboardUiState,
-    selectedMembers: androidx.compose.runtime.snapshots.SnapshotStateList<String>,
+    selectedMembers: SnapshotStateList<String>,
     selectedNote: String,
     onNoteChange: (String) -> Unit,
     onDismiss: () -> Unit,
-    onConfirm: (kotlin.time.Instant?) -> Unit,
+    onConfirm: (Instant?) -> Unit,
     editMode: Boolean = false,
 ) {
     val spacing = LocalSpacing.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showDatePicker by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = kotlin.time.Clock.System.now().toEpochMilliseconds(),
+        initialSelectedDateMillis = Clock.System.now().toEpochMilliseconds(),
     )
     val selectedDateMillis = datePickerState.selectedDateMillis
     val completedAt = selectedDateMillis
         ?.takeIf { it != midnightUtcToday() }
-        ?.let { kotlin.time.Instant.fromEpochMilliseconds(it) }
+        ?.let { Instant.fromEpochMilliseconds(it) }
 
     if (showDatePicker) {
         DatePickerDialog(
@@ -146,6 +149,6 @@ internal fun LogCompletionBottomSheet(
 private const val MILLIS_PER_DAY = 86_400_000L
 
 private fun midnightUtcToday(): Long {
-    val millis = kotlin.time.Clock.System.now().toEpochMilliseconds()
+    val millis = Clock.System.now().toEpochMilliseconds()
     return millis - (millis % MILLIS_PER_DAY)
 }

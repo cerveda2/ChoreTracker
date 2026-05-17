@@ -136,13 +136,6 @@ fun StatsScreen(
     }
 }
 
-internal enum class StatsTab(val labelRes: Int) {
-    Summary(R.string.stats_tab_summary),
-    ByChore(R.string.stats_tab_by_chore),
-    ByCategory(R.string.stats_tab_by_category),
-    Monthly(R.string.stats_tab_monthly),
-}
-
 @Preview(showBackground = true, heightDp = 1000)
 @Composable
 private fun StatsScreenPreview() {

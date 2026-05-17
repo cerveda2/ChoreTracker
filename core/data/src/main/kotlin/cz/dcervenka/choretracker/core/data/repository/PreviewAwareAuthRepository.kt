@@ -3,12 +3,11 @@ package cz.dcervenka.choretracker.core.data.repository
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
+import cz.dcervenka.choretracker.core.data.di.ApplicationScope
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.remote.contract.RemoteAuthDataSource
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,9 +19,9 @@ import javax.inject.Singleton
 @Singleton
 class PreviewAwareAuthRepository @Inject constructor(
     private val remoteAuthDataSource: RemoteAuthDataSource,
+    @ApplicationScope private val scope: CoroutineScope,
 ) : AuthRepository {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val previewState = MutableStateFlow<AuthState?>(null)
 
     override val authState: Flow<AuthState> = combine(

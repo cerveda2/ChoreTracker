@@ -27,7 +27,7 @@ internal fun MemberEntity.asModel(): HouseholdMember = HouseholdMember(
     householdId = householdId,
     userId = userId,
     displayName = displayName,
-    role = HouseholdRole.valueOf(role),
+    role = runCatching { HouseholdRole.valueOf(role) }.getOrDefault(HouseholdRole.MEMBER),
     isCurrentUser = isCurrentUser,
     email = email,
 )

@@ -10,6 +10,9 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
@@ -28,7 +31,10 @@ class PreviewAwareAuthRepositoryTest {
         MockKAnnotations.init(this)
         every { remoteAuthDataSource.authState } returns remoteAuthState
         every { remoteAuthDataSource.isConfigured } returns true
-        repository = PreviewAwareAuthRepository(remoteAuthDataSource)
+        repository = PreviewAwareAuthRepository(
+            remoteAuthDataSource,
+            CoroutineScope(SupervisorJob() + Dispatchers.IO),
+        )
     }
 
     // authState initial value — tested via the StateFlow's stateIn initialValue
@@ -37,7 +43,11 @@ class PreviewAwareAuthRepositoryTest {
     @Test
     fun `authState initial value is Initializing when remote is configured`() = runBlocking {
         every { remoteAuthDataSource.isConfigured } returns true
-        val repo = PreviewAwareAuthRepository(remoteAuthDataSource)
+        val repo =
+            PreviewAwareAuthRepository(
+                remoteAuthDataSource,
+                CoroutineScope(SupervisorJob() + Dispatchers.IO),
+            )
 
         repo.authState.test {
             assertThat(awaitItem()).isEqualTo(AuthState.Initializing)
@@ -48,7 +58,11 @@ class PreviewAwareAuthRepositoryTest {
     @Test
     fun `authState initial value is RequiresConfiguration when remote is not configured`() = runBlocking {
         every { remoteAuthDataSource.isConfigured } returns false
-        val repo = PreviewAwareAuthRepository(remoteAuthDataSource)
+        val repo =
+            PreviewAwareAuthRepository(
+                remoteAuthDataSource,
+                CoroutineScope(SupervisorJob() + Dispatchers.IO),
+            )
 
         repo.authState.test {
             assertThat(awaitItem()).isEqualTo(AuthState.RequiresConfiguration)

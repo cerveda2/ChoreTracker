@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import cz.dcervenka.choretracker.core.design.LocalSpacing
@@ -39,7 +40,7 @@ fun RecentCompletionDetailScreen(
     val spacing = LocalSpacing.current
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showEditSheet by remember { mutableStateOf(false) }
-    val editSelectedMembers = remember { androidx.compose.runtime.snapshots.SnapshotStateList<String>() }
+    val editSelectedMembers = remember { SnapshotStateList<String>() }
     var editNote by remember { mutableStateOf("") }
 
     if (completion == null) {

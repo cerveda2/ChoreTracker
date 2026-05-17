@@ -72,38 +72,6 @@ Always create feature branches from `main`. PRs go into `main`.
 ./gradlew :feature:dashboard:impl:test     # Test specific feature
 ```
 
-## Code Review Findings Backlog (ordered by priority)
-
-Issues found during codebase review (2026-05-13). Work through one at a time. Items already in Release Readiness Backlog are excluded.
-
-### MEDIUM — Bugs
-
-6. **`HouseholdRole.valueOf` unguarded** — `LocalSyncRepository.kt:232`, `DatabaseMappers.kt:30`. Throws `IllegalArgumentException` on unknown enum value. Fix: `runCatching { HouseholdRole.valueOf(it) }.getOrDefault(HouseholdRole.MEMBER)`.
-7. **`selectedChoreId!!` force-unwrap** — `DashboardScreen.kt:315`. `mutableStateOf var` can't be smart-cast; capture to local `val` instead.
-8. **`SettingsViewModel` double-subscribes** — `SettingsViewModel.kt:75` and `:152`. Two independent `flatMapLatest` chains on the same household flow → household-restore logic runs twice on init.
-10. **`Timestamp?.asInstant()` returns epoch for null** — `FirebaseHouseholdDataSource.kt:324`. Missing `createdAt` in Firestore → `Instant.fromEpochMilliseconds(0)` → chores appear massively overdue.
-11. **`observeRecentCompletions(limit = Int.MAX_VALUE)`** — `DashboardViewModel.kt:53`. Loads every completion into dashboard `StateFlow`. Full history screen should subscribe to its own flow.
-
-### MEDIUM — Code Quality
-
-12. **FQN usages instead of imports:**
-    - `LogCompletionBottomSheet.kt:38,42,49,54,149` — `SnapshotStateList`, `kotlin.time.Instant`, `Clock.System`
-    - `RecentCompletionDetailScreen.kt:42` — `SnapshotStateList`
-    - `FirebaseHouseholdDataSource.kt:94,132` — `DocumentReference`
-13. **`PreviewAwareAuthRepository` unmanaged `CoroutineScope`** — `PreviewAwareAuthRepository.kt:25`. Should inject `@ApplicationScope CoroutineScope` instead of creating its own.
-
-### LOW — File Organization
-
-17. **`ChoresSettingsScreen.kt` is 685 lines** — `RenameChoreDialog`, `ChoreFrequencyDialog`, `ChoreCategoryDialog` should be extracted to their own files.
-18. **`StatsTab` enum inside `StatsScreen.kt`** — should be its own file per convention.
-
-### LOW — UX / Data Layer
-
-19. **Detail screen permanent loading** — `DashboardNavigation.kt:70–71`. If `allCompletions` hasn't loaded when navigating to a completion detail, the screen shows permanent loading with no error state or retry.
-20. **`observeRecentCompletions` limit not pushed to SQL** — `CompletionDao` has no `LIMIT` clause; limit is applied in-memory after loading all rows.
-
----
-
 ## Feature Backlog
 
 1. **QR code invite sharing** — On the owner's Manage Household screen, display a QR code for the current invite code. On the join screen, allow scanning the QR code as the primary entry path with manual code input as fallback. Use a lightweight QR-generation library (e.g. `io.github.alexzhirkevich:qrose`) for generation and `androidx.camera` + ML Kit for scanning.
@@ -113,6 +81,7 @@ Issues found during codebase review (2026-05-13). Work through one at a time. It
 5. **Pull-to-refresh on dashboard** — `SwipeRefresh` (or `PullToRefreshBox` M3) to manually trigger `syncPendingOperations` + `restoreHouseholdForUser`.
 6. **Invite accepted notification** — FCM push to owner when a member consumes an invite link. Requires Phase 1 Firebase setup (Crashlytics) to be in place first.
 7. **Notification settings** — In-app screen to toggle specific notification types (invite accepted, chore reminders, etc.).
+8. **`consumedByMemberId` on Invite** — Add a `consumedByMemberId: String?` field to `Invite`, `InviteEntity`, and Firestore. Populate it in `joinHousehold` with the actual joining member's ID. Use it in the invite history label lookup instead of (or alongside) `targetMemberId`. This cleanly separates "who the invite was intended for" from "who actually used it", fixing label display when the consumer already had a different member ID. Requires DB migration (add column), Firestore schema update, and UI label logic update.
 
 ---
 

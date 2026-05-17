@@ -76,6 +76,10 @@ class SettingsViewModel @Inject constructor(
     private val choreInput = MutableStateFlow("")
     private val choreCategoryInput = MutableStateFlow(ChoreCategory.OTHER)
 
+    private val currentHousehold = observeCurrentHouseholdUseCase()
+        .onEach { household -> currentHouseholdId = household?.id }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     init {
         observeAuthStateUseCase()
             .onEach { state ->
@@ -93,15 +97,9 @@ class SettingsViewModel @Inject constructor(
                 }
             }
             .launchIn(viewModelScope)
-
-        observeCurrentHouseholdUseCase()
-            .onEach { household ->
-                currentHouseholdId = household?.id
-            }
-            .launchIn(viewModelScope)
     }
 
-    private val householdState = observeCurrentHouseholdUseCase()
+    private val householdState = currentHousehold
         .flatMapLatest { household ->
             if (household == null) {
                 combine(
