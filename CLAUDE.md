@@ -91,8 +91,9 @@ Items needed before (and for) Google Play publication. Some are useful well befo
 
 ### Phase 1 — Useful Now (add during active development)
 
-1. **Crashlytics + Analytics** — Add `firebase-crashlytics` + `firebase-analytics` to BOM, apply Gradle plugin, init in Application. Catches crashes in dev/testing before users hit them. Convention plugin recommended.
-2. **Release build hardening** — Enable `isMinifyEnabled = true`, `isShrinkResources = true`, `isDebuggable = false` for release. Add R8 keep rules for Room, Firebase, Hilt, Kotlin Serialization. Test release build regularly.
+1. ~~**Crashlytics + Analytics**~~ — Done. `FirebaseConventionPlugin` wires both SDKs; collection disabled in DEBUG builds.
+2. **Analytics events** — Instrument key user actions with `FirebaseAnalytics.logEvent()`: sign-in/sign-up, household create/join, chore logged, chore added/edited/deleted, member invited/removed. Gives visibility into real usage before launch.
+3. **Release build hardening** — Enable `isMinifyEnabled = true`, `isShrinkResources = true`, `isDebuggable = false` for release. Add R8 keep rules for Room, Firebase, Hilt, Kotlin Serialization. Test release build regularly.
 3. **ProGuard/R8 rules** — Current `proguard-rules.pro` is empty template. Need keep rules for: Room entities, Firebase model classes, Kotlin serialization, Hilt generated code. Test with `./gradlew assembleRelease` and verify no runtime crashes.
 4. **Signing config** — Generate upload keystore (`.jks`), configure `signingConfigs` in `app/build.gradle.kts`, store passwords in `local.properties` (gitignored). Google Play requires consistent signing.
 5. **Version bumping strategy** — Current `version.properties` (0.1.0) works. Define: patch = bugfix, minor = feature, major = breaking. Consider a Gradle task or script to bump + tag.
