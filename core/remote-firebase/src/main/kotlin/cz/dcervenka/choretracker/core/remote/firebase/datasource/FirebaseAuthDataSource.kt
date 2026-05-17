@@ -160,8 +160,11 @@ class FirebaseAuthDataSource @Inject constructor(
                         .build(),
                 )
                     .addOnSuccessListener {
-                        Timber.d("updateDisplayName: success uid=${user.uid}")
-                        continuation.resume(AppResult.Success(Unit))
+                        user.getIdToken(true)
+                            .addOnCompleteListener {
+                                Timber.d("updateDisplayName: success uid=${user.uid}")
+                                continuation.resume(AppResult.Success(Unit))
+                            }
                     }
                     .addOnFailureListener { throwable ->
                         Timber.e(throwable, "updateDisplayName: failed")
