@@ -94,7 +94,7 @@ class OnboardingViewModel @Inject constructor(
         submit {
             joinHouseholdUseCase(
                 code = inviteCode.value,
-                currentUserDisplayName = displayName.value,
+                currentUserDisplayName = uiState.value.displayName,
             )
         }
     }
