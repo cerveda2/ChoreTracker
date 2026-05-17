@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.choretracker.android.application.compose)
     alias(libs.plugins.choretracker.hilt)
+    alias(libs.plugins.choretracker.firebase)
     alias(libs.plugins.google.services)
 }
 
