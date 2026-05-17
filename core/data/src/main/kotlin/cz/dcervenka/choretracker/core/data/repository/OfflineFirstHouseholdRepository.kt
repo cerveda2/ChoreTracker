@@ -348,7 +348,12 @@ private suspend fun MemberDao.resolveMemberForInvite(
         val placeholder = findById(invite.householdId, targetMemberId)
         when {
             placeholder != null && placeholder.userId == null ->
-                claimPlaceholder(targetMemberId, user.id, user.email)
+                claimPlaceholder(
+                    targetMemberId,
+                    user.id,
+                    user.email,
+                    currentUserDisplayName.ifBlank { user.displayName },
+                )
             findByUserId(invite.householdId, user.id) == null ->
                 upsert(
                     MemberEntity(

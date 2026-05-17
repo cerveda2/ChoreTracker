@@ -124,43 +124,53 @@ fun HouseholdSettingsScreen(
                     }
                 }
                 item {
+                    val hasActiveInvite = uiState.invites.isNotEmpty() &&
+                        uiState.invites.any { it.code == uiState.household.inviteCode && it.consumedAt == null }
                     SectionCard(title = stringResource(R.string.household_invite_section)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(
-                                text = stringResource(R.string.settings_invite_code, uiState.household.inviteCode),
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.weight(1f),
-                            )
-                            IconButton(onClick = {
-                                scope.launch {
-                                    clipboard.setClipEntry(
-                                        ClipEntry(ClipData.newPlainText("", uiState.household.inviteCode)),
+                        if (hasActiveInvite) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.settings_invite_code, uiState.household.inviteCode),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        clipboard.setClipEntry(
+                                            ClipEntry(ClipData.newPlainText("", uiState.household.inviteCode)),
+                                        )
+                                    }
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.ContentCopy,
+                                        contentDescription = stringResource(R.string.settings_invite_copy),
+                                        modifier = Modifier.size(20.dp),
                                     )
                                 }
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Outlined.ContentCopy,
-                                    contentDescription = stringResource(R.string.settings_invite_copy),
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                            IconButton(onClick = {
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, shareMessage.format(uiState.household.inviteCode))
+                                IconButton(onClick = {
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, shareMessage.format(uiState.household.inviteCode))
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, null))
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Share,
+                                        contentDescription = stringResource(R.string.settings_invite_share),
+                                        modifier = Modifier.size(20.dp),
+                                    )
                                 }
-                                context.startActivity(Intent.createChooser(intent, null))
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Share,
-                                    contentDescription = stringResource(R.string.settings_invite_share),
-                                    modifier = Modifier.size(20.dp),
-                                )
                             }
+                        } else {
+                            Text(
+                                text = stringResource(R.string.settings_invite_none),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                         if (uiState.invites.isNotEmpty()) {
                             HorizontalDivider()
