@@ -14,6 +14,11 @@ dependencies {
     implementation(projects.core.model)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.camera.camera2)
+    implementation(libs.camera.lifecycle)
+    implementation(libs.camera.view)
+    implementation(libs.mlkit.barcode.scanning)
 
     testImplementation(projects.core.dataContract)
     testImplementation(projects.core.test)

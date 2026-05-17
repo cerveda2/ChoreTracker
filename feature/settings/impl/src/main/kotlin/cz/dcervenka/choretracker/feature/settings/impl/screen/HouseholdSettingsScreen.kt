@@ -3,6 +3,8 @@ package cz.dcervenka.choretracker.feature.settings.impl.screen
 import android.content.ClipData
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -164,6 +167,16 @@ fun HouseholdSettingsScreen(
                                         modifier = Modifier.size(20.dp),
                                     )
                                 }
+                            }
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Image(
+                                    painter = rememberQrCodePainter(uiState.household.inviteCode),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(180.dp),
+                                )
                             }
                         } else {
                             Text(
