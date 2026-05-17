@@ -173,6 +173,12 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             }
             else -> {
                 memberDao.resolveMemberForInvite(invite, user, currentUserDisplayName)
+                if (invite.targetMemberId != null) {
+                    val actualMember = memberDao.findByUserId(invite.householdId, user.id)
+                    if (actualMember != null && actualMember.id != invite.targetMemberId) {
+                        inviteDao.updateTargetMemberId(invite.id, actualMember.id)
+                    }
+                }
                 inviteDao.markConsumed(invite.id, Clock.System.now())
                 enqueueOperation("member", invite.householdId, "join", user.id)
                 enqueueOperation("invite", invite.householdId, "consumed", invite.id)
