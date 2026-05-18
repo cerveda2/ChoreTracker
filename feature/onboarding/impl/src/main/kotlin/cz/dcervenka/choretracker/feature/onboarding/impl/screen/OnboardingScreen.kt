@@ -148,12 +148,14 @@ fun OnboardingScreen(
             SecondaryButton(
                 text = stringResource(R.string.onboarding_scan_qr_code),
                 onClick = {
-                    if (showScanner) {
-                        showScanner = false
-                    } else if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                        showScanner = true
-                    } else {
-                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    val granted = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.CAMERA,
+                    ) == PackageManager.PERMISSION_GRANTED
+                    when {
+                        showScanner -> showScanner = false
+                        granted -> showScanner = true
+                        else -> cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                     }
                 },
             )
