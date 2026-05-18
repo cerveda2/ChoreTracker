@@ -1,7 +1,7 @@
 package cz.dcervenka.choretracker.feature.onboarding.impl.screen
 
+import android.annotation.SuppressLint
 import androidx.camera.core.CameraSelector
-import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -18,6 +18,7 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 
+@SuppressLint("UnsafeOptInUsageError")
 @Composable
 fun QrCodeScanner(
     onCodeScanned: (String) -> Unit,
@@ -52,7 +53,6 @@ fun QrCodeScanner(
                         proxy.close()
                         return@setAnalyzer
                     }
-                    @OptIn(ExperimentalGetImage::class)
                     val mediaImage = proxy.image
                     if (mediaImage != null) {
                         scanner.process(InputImage.fromMediaImage(mediaImage, proxy.imageInfo.rotationDegrees))

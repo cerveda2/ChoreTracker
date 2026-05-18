@@ -35,6 +35,7 @@
     <string name="onboarding_create_household">Vytvořit domácnost</string>
     <string name="onboarding_invite_code">Pozvánkový kód</string>
     <string name="onboarding_join_household">Připojit se k domácnosti</string>
+    <string name="onboarding_scan_qr_code">Naskenovat QR kód</string>
 
     <string name="dashboard_loading">Načítám přehled…</string>
     <string name="dashboard_recent_balance">Nedávná rovnováha a tok úkolů</string>
