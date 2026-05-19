@@ -17,7 +17,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.camera.camera2)
     implementation(libs.camera.lifecycle)
-    implementation(libs.camera.view)
+    implementation(libs.camera.compose)
     implementation(libs.mlkit.barcode.scanning)
 
     testImplementation(projects.core.dataContract)
