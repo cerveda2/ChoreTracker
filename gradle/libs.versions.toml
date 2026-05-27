@@ -90,6 +90,7 @@ timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "tim
 qrose = { group = "io.github.alexzhirkevich", name = "qrose", version.ref = "qrose" }
 camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "cameraX" }
 camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraX" }
+camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraX" }
 camera-compose = { group = "androidx.camera", name = "camera-compose", version.ref = "cameraX" }
 mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
 

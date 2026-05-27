@@ -108,7 +108,7 @@ fun ChoreTrackerRoot(
                     modifier = Modifier,
                 ) {
                     authScreen()
-                    onboardingScreen()
+                    onboardingScreen(navController = navController)
                     dashboardScreen(navController = navController)
                     statsScreen(navController = navController)
                     settingsScreen(navController = navController)

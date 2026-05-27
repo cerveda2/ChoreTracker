@@ -36,6 +36,7 @@
     <string name="onboarding_invite_code">Invite code</string>
     <string name="onboarding_join_household">Join household</string>
     <string name="onboarding_scan_qr_code">Scan QR code</string>
+    <string name="onboarding_enter_code_manually">Enter code manually</string>
 
     <string name="dashboard_loading">Loading dashboard…</string>
     <string name="dashboard_recent_balance">Recent balance and task flow</string>
