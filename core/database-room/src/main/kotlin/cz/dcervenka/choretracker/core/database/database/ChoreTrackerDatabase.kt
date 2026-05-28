@@ -20,6 +20,8 @@ import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.database.entity.SyncStateEntity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Database(
     entities = [
@@ -45,4 +47,6 @@ abstract class ChoreTrackerDatabase : RoomDatabase() {
     abstract fun inviteDao(): InviteDao
     abstract fun pendingSyncOperationDao(): PendingSyncOperationDao
     abstract fun syncStateDao(): SyncStateDao
+
+    suspend fun clearAll() = withContext(Dispatchers.IO) { clearAllTables() }
 }

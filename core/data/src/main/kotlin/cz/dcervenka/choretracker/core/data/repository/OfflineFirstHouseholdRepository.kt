@@ -10,6 +10,7 @@ import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
 import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
@@ -45,6 +46,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     private val pendingSyncOperationDao: PendingSyncOperationDao,
     private val authRepository: AuthRepository,
     private val syncRepository: SyncRepository,
+    private val database: ChoreTrackerDatabase,
 ) : HouseholdRepository {
 
     private val restoreStatus = MutableStateFlow(HouseholdRestoreStatus())
@@ -55,7 +57,8 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             val user = (authState as? AuthState.Authenticated)?.user
             when {
                 user == null -> {
-                    memberDao.clearCurrentUser()
+                    database.clearAll()
+                    hasRefreshedFromRemoteThisSession = false
                     restoreStatus.value = HouseholdRestoreStatus()
                     emit(null)
                 }

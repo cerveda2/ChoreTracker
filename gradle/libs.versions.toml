@@ -4,13 +4,13 @@ kotlin = "2.3.21"
 ksp = "2.3.4"
 hilt = "2.59.2"
 firebaseBom = "34.13.0"
-firebaseCrashlyticsPlugin = "3.0.4"
+firebaseCrashlyticsPlugin = "3.0.7"
 room = "2.8.4"
 coroutines = "1.11.0"
 serialization = "1.11.0"
 datetime = "0.8.0"
 navigation = "2.9.8"
-composeBom = "2026.05.00"
+composeBom = "2026.05.01"
 coreKtx = "1.18.0"
 splashscreen = "1.2.0"
 lifecycle = "2.10.0"
@@ -25,6 +25,9 @@ truth = "1.4.5"
 mockk = "1.14.9"
 detekt = "1.23.8"
 timber = "5.0.1"
+qrose = "1.1.2"
+cameraX = "1.6.1"
+mlkitBarcode = "17.3.0"
 javaxInject = "1"
 robolectric = "4.16.1"
 
@@ -84,6 +87,12 @@ turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine
 javax-inject = { group = "javax.inject", name = "javax.inject", version.ref = "javaxInject" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
+qrose = { group = "io.github.alexzhirkevich", name = "qrose", version.ref = "qrose" }
+camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "cameraX" }
+camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraX" }
+camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraX" }
+camera-compose = { group = "androidx.camera", name = "camera-compose", version.ref = "cameraX" }
+mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
 
 android-gradle-plugin = { group = "com.android.tools.build", name = "gradle", version.ref = "agp" }
 kotlin-gradle-plugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }

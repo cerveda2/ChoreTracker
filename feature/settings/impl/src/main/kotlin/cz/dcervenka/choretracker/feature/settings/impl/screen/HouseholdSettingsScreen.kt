@@ -2,7 +2,9 @@ package cz.dcervenka.choretracker.feature.settings.impl.screen
 
 import android.content.ClipData
 import android.content.Intent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +15,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -23,8 +27,11 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
@@ -48,6 +55,7 @@ import cz.dcervenka.choretracker.core.model.household.Invite
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
+import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
@@ -165,6 +173,16 @@ fun HouseholdSettingsScreen(
                                     )
                                 }
                             }
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Image(
+                                    painter = rememberQrCodePainter(uiState.household.inviteCode),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(180.dp),
+                                )
+                            }
                         } else {
                             Text(
                                 text = stringResource(R.string.settings_invite_none),
@@ -234,6 +252,7 @@ private fun InviteRow(
 ) {
     val spacing = LocalSpacing.current
     val isPending = invite.consumedAt == null
+    var expanded by remember { mutableStateOf(false) }
     val statusText = stringResource(
         if (isPending) R.string.settings_invite_status_pending else R.string.settings_invite_status_joined,
     )
@@ -266,12 +285,33 @@ private fun InviteRow(
                     modifier = Modifier.size(16.dp),
                 )
             }
+            if (isPending) {
+                IconButton(onClick = { expanded = !expanded }) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
         }
         Text(
             text = invite.code,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (isPending && expanded) {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    painter = rememberQrCodePainter(invite.code),
+                    contentDescription = null,
+                    modifier = Modifier.size(160.dp),
+                )
+            }
+        }
     }
 }
 

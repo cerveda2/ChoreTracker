@@ -32,6 +32,7 @@ import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiSt
 fun OnboardingScreen(
     uiState: OnboardingUiState,
     onIntent: (OnboardingUiIntent) -> Unit,
+    onJoinHousehold: () -> Unit,
 ) {
     val spacing = LocalSpacing.current
 
@@ -115,16 +116,9 @@ fun OnboardingScreen(
                 onClick = { onIntent(OnboardingUiIntent.CreateHousehold) },
                 enabled = !uiState.isWorking,
             )
-            OutlinedTextField(
-                value = uiState.inviteCode,
-                onValueChange = { onIntent(OnboardingUiIntent.InviteCodeChanged(it)) },
-                label = { Text(stringResource(R.string.onboarding_invite_code)) },
-                modifier = Modifier.fillMaxWidth(),
-            )
             SecondaryButton(
                 text = stringResource(R.string.onboarding_join_household),
-                onClick = { onIntent(OnboardingUiIntent.JoinHousehold) },
-                enabled = !uiState.isWorking,
+                onClick = onJoinHousehold,
             )
         }
     }
@@ -141,6 +135,7 @@ private fun OnboardingScreenPreview() {
                 inviteCode = "HOME42",
             ),
             onIntent = {},
+            onJoinHousehold = {},
         )
     }
 }

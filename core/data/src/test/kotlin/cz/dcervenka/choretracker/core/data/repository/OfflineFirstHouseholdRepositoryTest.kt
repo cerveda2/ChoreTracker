@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
 import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
@@ -48,6 +49,9 @@ class OfflineFirstHouseholdRepositoryTest {
     @MockK
     lateinit var syncRepository: SyncRepository
 
+    @MockK
+    lateinit var database: ChoreTrackerDatabase
+
     private val authState = MutableStateFlow<AuthState>(
         AuthState.Authenticated(
             user = AppUser(
@@ -87,6 +91,7 @@ class OfflineFirstHouseholdRepositoryTest {
             pendingSyncOperationDao = pendingSyncOperationDao,
             authRepository = authRepository,
             syncRepository = syncRepository,
+            database = database,
         )
     }
 

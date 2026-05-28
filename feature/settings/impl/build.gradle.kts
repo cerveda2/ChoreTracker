@@ -14,6 +14,7 @@ dependencies {
     implementation(projects.core.model)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.qrose)
 
     testImplementation(projects.core.dataContract)
     testImplementation(projects.core.test)
