@@ -96,9 +96,6 @@ fun QrScanScreen(
                 .padding(bottom = spacing.large),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            if (uiState.isWorking) {
-                CircularProgressIndicator(color = Color.White)
-            }
             uiState.errorMessage?.let { message ->
                 Text(
                     text = message,
@@ -111,6 +108,16 @@ fun QrScanScreen(
                     text = stringResource(R.string.onboarding_enter_code_manually),
                     color = Color.White,
                 )
+            }
+        }
+        if (uiState.isWorking) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.75f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = Color.White)
             }
         }
     }

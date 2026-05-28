@@ -1,5 +1,9 @@
 package cz.dcervenka.choretracker.screen
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -63,7 +67,11 @@ fun ChoreTrackerRoot(
         ChoreScaffold(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
-                if (showBottomBar && rootDestination != RootDestination.Loading) {
+                AnimatedVisibility(
+                    visible = showBottomBar && rootDestination != RootDestination.Loading,
+                    enter = fadeIn(tween(300)),
+                    exit = fadeOut(tween(300)),
+                ) {
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.background,
                         tonalElevation = 0.dp,
@@ -106,6 +114,10 @@ fun ChoreTrackerRoot(
                     navController = navController,
                     startDestination = startDestination,
                     modifier = Modifier,
+                    enterTransition = { fadeIn(tween(300)) },
+                    exitTransition = { fadeOut(tween(300)) },
+                    popEnterTransition = { fadeIn(tween(300)) },
+                    popExitTransition = { fadeOut(tween(300)) },
                 ) {
                     authScreen()
                     onboardingScreen(navController = navController)
