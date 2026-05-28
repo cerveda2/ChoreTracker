@@ -12,6 +12,7 @@ dependencies {
     implementation(projects.core.model)
     implementation(projects.core.dataContract)
     implementation(projects.core.databaseRoom)
+    implementation(libs.room.runtime)
     implementation(projects.core.remoteContract)
     implementation(projects.core.domain)
     implementation(libs.kotlinx.datetime)

@@ -3,6 +3,8 @@ package cz.dcervenka.choretracker.core.database.database
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import cz.dcervenka.choretracker.core.database.converter.InstantConverters
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
@@ -45,4 +47,6 @@ abstract class ChoreTrackerDatabase : RoomDatabase() {
     abstract fun inviteDao(): InviteDao
     abstract fun pendingSyncOperationDao(): PendingSyncOperationDao
     abstract fun syncStateDao(): SyncStateDao
+
+    suspend fun clearAll() = withContext(Dispatchers.IO) { clearAllTables() }
 }
