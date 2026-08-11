@@ -5,6 +5,7 @@ import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.remote.contract.RemoteAuthDataSource
+import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -15,10 +16,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
 class PreviewAwareAuthRepositoryTest {
+
+    @get:Rule
+    val coroutineRule = TestCoroutineRule(startPaused = true)
 
     @MockK lateinit var remoteAuthDataSource: RemoteAuthDataSource
 
@@ -37,16 +43,18 @@ class PreviewAwareAuthRepositoryTest {
         )
     }
 
-    // authState initial value — tested via the StateFlow's stateIn initialValue
-    // which is emitted synchronously as the first item before upstream activates
+    // authState initial value — tested via the StateFlow's stateIn initialValue,
+    // emitted synchronously as the first item before upstream activates. A paused
+    // TestDispatcher keeps this deterministic: the WhileSubscribed sharing coroutine
+    // can't run ahead of the assertion the way a real Dispatchers.IO scope could.
 
     @Test
-    fun `authState initial value is Initializing when remote is configured`() = runBlocking {
+    fun `authState initial value is Initializing when remote is configured`() = runTest(coroutineRule.dispatcher) {
         every { remoteAuthDataSource.isConfigured } returns true
         val repo =
             PreviewAwareAuthRepository(
                 remoteAuthDataSource,
-                CoroutineScope(SupervisorJob() + Dispatchers.IO),
+                CoroutineScope(SupervisorJob() + coroutineRule.dispatcher),
             )
 
         repo.authState.test {
@@ -56,12 +64,14 @@ class PreviewAwareAuthRepositoryTest {
     }
 
     @Test
-    fun `authState initial value is RequiresConfiguration when remote is not configured`() = runBlocking {
+    fun `authState initial value is RequiresConfiguration when remote is not configured`() = runTest(
+        coroutineRule.dispatcher,
+    ) {
         every { remoteAuthDataSource.isConfigured } returns false
         val repo =
             PreviewAwareAuthRepository(
                 remoteAuthDataSource,
-                CoroutineScope(SupervisorJob() + Dispatchers.IO),
+                CoroutineScope(SupervisorJob() + coroutineRule.dispatcher),
             )
 
         repo.authState.test {
