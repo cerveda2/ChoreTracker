@@ -9,6 +9,8 @@
     <string name="auth_display_name">Zobrazované jméno</string>
     <string name="auth_email">E-mail</string>
     <string name="auth_password">Heslo</string>
+    <string name="auth_password_show">Zobrazit heslo</string>
+    <string name="auth_password_hide">Skrýt heslo</string>
     <string name="auth_sign_in">Přihlásit se</string>
     <string name="auth_create_account">Vytvořit účet</string>
     <string name="auth_continue_preview">Pokračovat v ukázkovém režimu</string>

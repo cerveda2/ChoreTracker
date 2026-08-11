@@ -76,7 +76,7 @@ Always create feature branches from `main`. PRs go into `main`.
 
 1. ~~**QR code invite sharing**~~ — Done. qrose `rememberQrCodePainter` in settings, CameraX + ML Kit barcode scanner inline on join screen.
 2. **Real-time Firestore sync** — Currently uses one-shot `get()` calls; a member's logged completion doesn't appear on the owner's device until the next explicit sync. Switch the completions collection (and members) to `addSnapshotListener` for push-based delivery. Requires restructuring the remote data source from pull to push — non-trivial but eliminates the need for FCM to trigger refreshes. Known UX issue: owner doesn't see accepted invite until cold start — will be resolved by invite-accepted notification or real-time sync.
-3. **Password visibility toggle** — Show/hide button on sign-in and sign-up password fields.
+3. ~~**Password visibility toggle**~~ — Done. Trailing eye `IconButton` on the shared password field in `AuthScreen` (covers both Sign in and Create account).
 4. **Invite code input auto-uppercase** — Join screen code field should `KeyboardCapitalization.Characters` + auto-uppercase transform so manual entry matches generated codes without user needing to switch case.
 5. **Pull-to-refresh on dashboard** — `SwipeRefresh` (or `PullToRefreshBox` M3) to manually trigger `syncPendingOperations` + `restoreHouseholdForUser`.
 6. **Invite accepted notification** — FCM push to owner when a member consumes an invite link. Requires Phase 1 Firebase setup (Crashlytics) to be in place first.
