@@ -44,7 +44,7 @@ class FirebaseAuthDataSource @Inject constructor(
             return@callbackFlow
         }
 
-        val listener = FirebaseAuth.IdTokenListener { firebase ->
+        val listener = FirebaseAuth.IdTokenListener { firebase: FirebaseAuth ->
             val user = firebase.currentUser
             if (user == null) {
                 Timber.d("authState: signed out")
