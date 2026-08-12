@@ -35,6 +35,7 @@ dependencies {
     implementation(projects.core.model)
     implementation(projects.core.remoteFirebase)
     implementation(projects.core.sync)
+    implementation(projects.core.notifications)
     implementation(projects.feature.auth.impl)
     implementation(projects.feature.onboarding.impl)
     implementation(projects.feature.dashboard.impl)

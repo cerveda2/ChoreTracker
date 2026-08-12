@@ -11,3 +11,7 @@
 local.properties
 .gradle-user-home
 **/build/
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
