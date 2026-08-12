@@ -14,6 +14,7 @@ dependencies {
     implementation(projects.core.model)
     implementation(projects.core.remoteContract)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.room.runtime)
     implementation(libs.timber)
 
     testImplementation(projects.core.test)

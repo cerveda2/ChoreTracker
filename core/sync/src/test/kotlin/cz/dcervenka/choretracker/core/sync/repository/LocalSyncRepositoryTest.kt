@@ -11,6 +11,7 @@ import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
+import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
@@ -81,6 +82,9 @@ class LocalSyncRepositoryTest {
     @MockK
     lateinit var remoteHouseholdDataSource: RemoteHouseholdDataSource
 
+    @MockK
+    lateinit var database: ChoreTrackerDatabase
+
     private val authState = MutableStateFlow<AuthState>(
         AuthState.Authenticated(
             user = AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
@@ -142,6 +146,7 @@ class LocalSyncRepositoryTest {
         // test explicitly advances it (see "real-time sync" section below); default to a no-op
         // household so it stays inert for tests that don't care about it.
         every { householdDao.observeHouseholdForUser(any()) } returns MutableStateFlow(null)
+        coEvery { database.clearAll() } just Runs
         repository = LocalSyncRepository(
             authRepository = authRepository,
             householdDao = householdDao,
@@ -153,6 +158,7 @@ class LocalSyncRepositoryTest {
             pendingSyncOperationDao = pendingSyncOperationDao,
             syncStateDao = syncStateDao,
             remoteHouseholdDataSource = remoteHouseholdDataSource,
+            database = database,
             syncScope = CoroutineScope(SupervisorJob() + coroutineRule.dispatcher),
         )
     }
@@ -366,6 +372,33 @@ class LocalSyncRepositoryTest {
     }
 
     @Test
+    fun `restoreHouseholdForUser clears local data when current user missing from snapshot members`() = runBlocking {
+        val snapshot = buildSnapshot(members = listOf(sampleMembers()[1]))
+        coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
+        coEvery { householdDao.getCurrentHouseholdForUser("user-1") } returns householdEntity
+
+        val result = repository.restoreHouseholdForUser("user-1")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        assertThat((result as AppResult.Success).value).isFalse()
+        coVerify { database.clearAll() }
+        coVerify(exactly = 0) { householdDao.upsert(any()) }
+        coVerify(exactly = 0) { memberDao.upsert(any()) }
+    }
+
+    @Test
+    fun `restoreHouseholdForUser does not clear when no local household existed`() = runBlocking {
+        val snapshot = buildSnapshot(members = listOf(sampleMembers()[1]))
+        coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
+        coEvery { householdDao.getCurrentHouseholdForUser("user-1") } returns null
+
+        val result = repository.restoreHouseholdForUser("user-1")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify(exactly = 0) { database.clearAll() }
+    }
+
+    @Test
     fun `syncPendingOperations calls markInviteConsumed with consumedByMemberId`() = runBlocking {
         val consumedAt = Instant.parse("2026-02-01T10:00:00Z")
         val consumedInvite = InviteEntity(
@@ -458,6 +491,19 @@ class LocalSyncRepositoryTest {
 
             coVerify { memberDao.deleteById("stale-member") }
             coVerify(exactly = 0) { memberDao.deleteById("member-1") }
+        }
+
+    @Test
+    fun `real-time sync clears local data when current user missing from remote members`() =
+        runTest(coroutineRule.dispatcher) {
+            every { householdDao.observeHouseholdForUser("user-1") } returns MutableStateFlow(householdEntity)
+            every { remoteHouseholdDataSource.observeMembers("household-1", "user-1") } returns
+                MutableStateFlow(listOf(sampleMembers()[1]))
+
+            advanceUntilIdle()
+
+            coVerify { database.clearAll() }
+            coVerify(exactly = 0) { memberDao.upsert(any()) }
         }
 
     @Test

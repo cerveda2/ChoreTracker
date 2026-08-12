@@ -81,7 +81,7 @@ Always create feature branches from `main`. PRs go into `main`.
 5. ~~**Pull-to-refresh on dashboard**~~ — Done. `PullToRefreshBox` (M3) wraps the dashboard `LazyColumn`, driving a new `RefreshHouseholdUseCase` (`syncPendingOperations` + `restoreHouseholdForUser`) via `DashboardUiIntent.Refresh`; `isRefreshing` threaded through `DashboardUiState`.
 6. **Invite accepted notification** — FCM push to owner when a member consumes an invite link. Requires Phase 1 Firebase setup (Crashlytics) to be in place first.
 7. **Notification settings** — In-app screen to toggle specific notification types (invite accepted, chore reminders, etc.).
-8. **Member removal enforcement** — When the owner removes a member, that member's device still shows the household until they restart. Need to detect removal on next sync/restore (member no longer present in Firestore snapshot) and clear local household data, then redirect to onboarding. Requires checking membership after `restoreHouseholdForUser` and wiping Room DB + navigating out if the current user's member record is gone.
+8. ~~**Member removal enforcement**~~ — Done. `LocalSyncRepository.restoreHouseholdForUser`/`applyRealtimeMembers` (`core/sync`) now detect when the fetched/live snapshot's members no longer include the current user and call `ChoreTrackerDatabase.clearAll()`; the existing `observeHouseholdForUser` (INNER JOIN on membership) → `ObserveStartupDestinationUseCase` reactive chain redirects to onboarding automatically once the local member row is gone — no UI/ViewModel changes needed, same pattern as real-time sync (#2).
 
 ---
 
