@@ -10,6 +10,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseC
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveRecentCompletionsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.RefreshHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCompletionUseCase
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
@@ -17,6 +18,7 @@ import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiStat
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -39,10 +41,13 @@ class DashboardViewModel @Inject constructor(
     private val updateCompletionUseCase: UpdateCompletionUseCase,
     private val deleteCompletionUseCase: DeleteCompletionUseCase,
     private val retryPendingSyncUseCase: RetryPendingSyncUseCase,
+    private val refreshHouseholdUseCase: RefreshHouseholdUseCase,
 ) : ViewModel() {
 
     private val _undoChannel = Channel<UndoEvent>(Channel.BUFFERED)
     val undoEvents: Flow<UndoEvent> = _undoChannel.receiveAsFlow()
+
+    private val isRefreshing = MutableStateFlow(false)
 
     val uiState: StateFlow<DashboardUiState> = observeCurrentHouseholdUseCase()
         .filterNotNull()
@@ -52,12 +57,14 @@ class DashboardViewModel @Inject constructor(
                 observeMembersUseCase(household.id),
                 observeRecentCompletionsUseCase(household.id, limit = 25),
                 observeSyncStateUseCase(household.id),
-            ) { snapshot, members, completions, syncState ->
+                isRefreshing,
+            ) { snapshot, members, completions, syncState, refreshing ->
                 DashboardUiState(
                     snapshot = snapshot,
                     members = members,
                     allCompletions = completions,
                     syncState = syncState,
+                    isRefreshing = refreshing,
                 )
             }
         }.stateIn(
@@ -82,6 +89,7 @@ class DashboardViewModel @Inject constructor(
             )
             is DashboardUiIntent.DeleteCompletion -> deleteCompletion(intent.completionId)
             DashboardUiIntent.RetrySync -> retrySync()
+            DashboardUiIntent.Refresh -> refresh()
         }
     }
 
@@ -126,6 +134,14 @@ class DashboardViewModel @Inject constructor(
             if (result is AppResult.Error) {
                 // The persistent sync banner already communicates the latest failure state.
             }
+        }
+    }
+
+    private fun refresh() {
+        viewModelScope.launch {
+            isRefreshing.value = true
+            refreshHouseholdUseCase()
+            isRefreshing.value = false
         }
     }
 }

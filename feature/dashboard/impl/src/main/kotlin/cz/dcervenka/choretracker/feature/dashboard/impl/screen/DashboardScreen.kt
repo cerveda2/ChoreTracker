@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -28,6 +29,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,6 +63,7 @@ import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiStat
 import cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel.UndoEvent
 import kotlinx.coroutines.flow.Flow
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     uiState: DashboardUiState,
@@ -132,169 +135,175 @@ fun DashboardScreen(
             },
             bottomBar = { TopLevelBottomBarSpacer() },
         ) { innerPadding ->
-            LazyColumn(
+            PullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = { onIntent(DashboardUiIntent.Refresh) },
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = spacing.large,
-                    top = innerPadding.calculateTopPadding() + spacing.large,
-                    end = spacing.large,
-                    bottom = innerPadding.calculateBottomPadding() + spacing.large,
-                ),
-                verticalArrangement = Arrangement.spacedBy(spacing.medium),
             ) {
-                uiState.syncState
-                    ?.takeIf { it.pendingOperations > 0 || !it.lastErrorMessage.isNullOrBlank() }
-                    ?.let { syncState ->
-                        item {
-                            RemoteSyncBanner(
-                                syncState = syncState,
-                                onRetrySync = { onIntent(DashboardUiIntent.RetrySync) },
-                            )
-                        }
-                    }
-                item {
-                    SectionCard(title = snapshot.household.name) {
-                        Text(
-                            text = stringResource(R.string.dashboard_recent_balance),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(spacing.medium),
-                        ) {
-                            items(snapshot.memberContributions, key = { it.memberId }) { contribution ->
-                                Card {
-                                    Column(
-                                        modifier = Modifier.padding(spacing.medium),
-                                    ) {
-                                        Text(
-                                            text = contribution.displayName,
-                                            style = MaterialTheme.typography.titleMedium,
-                                        )
-                                        Text(
-                                            text = "${contribution.totalCount}",
-                                            style = MaterialTheme.typography.headlineSmall,
-                                        )
-                                        Text(
-                                            text = stringResource(
-                                                R.string.dashboard_share_percent,
-                                                contribution.sharePercent,
-                                            ),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.primary,
-                                        )
-                                        Text(
-                                            text = stringResource(
-                                                R.string.dashboard_last_30d,
-                                                contribution.last30DaysCount,
-                                            ),
-                                            style = MaterialTheme.typography.bodySmall,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if (availableCategories.size >= 2) {
-                    item {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(spacing.small)) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = spacing.large,
+                        top = innerPadding.calculateTopPadding() + spacing.large,
+                        end = spacing.large,
+                        bottom = innerPadding.calculateBottomPadding() + spacing.large,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(spacing.medium),
+                ) {
+                    uiState.syncState
+                        ?.takeIf { it.pendingOperations > 0 || !it.lastErrorMessage.isNullOrBlank() }
+                        ?.let { syncState ->
                             item {
-                                FilterChip(
-                                    selected = selectedCategory == null,
-                                    onClick = { selectedCategory = null },
-                                    label = { Text(stringResource(R.string.dashboard_filter_all)) },
-                                )
-                            }
-                            items(availableCategories, key = { it.name }) { category ->
-                                FilterChip(
-                                    selected = selectedCategory == category,
-                                    onClick = {
-                                        selectedCategory = if (selectedCategory == category) null else category
-                                    },
-                                    label = { Text(stringResource(category.toStringRes())) },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = category.toIcon(),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(FilterChipDefaults.IconSize),
-                                        )
-                                    },
+                                RemoteSyncBanner(
+                                    syncState = syncState,
+                                    onRetrySync = { onIntent(DashboardUiIntent.RetrySync) },
                                 )
                             }
                         }
-                    }
-                }
-                item {
-                    SectionCard(title = stringResource(R.string.dashboard_needs_attention)) {
-                        if (filteredStaleItems.isEmpty()) {
+                    item {
+                        SectionCard(title = snapshot.household.name) {
                             Text(
-                                text = stringResource(R.string.dashboard_needs_attention_empty),
+                                text = stringResource(R.string.dashboard_recent_balance),
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                        } else if (selectedCategory == null && availableCategories.size >= 2) {
-                            ChoreCategory.entries.forEach { category ->
-                                val group = staleItems.filter { categoryByChoreId[it.choreId] == category }
-                                if (group.isNotEmpty()) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(spacing.xSmall),
-                                        modifier = Modifier.padding(bottom = spacing.xSmall),
-                                    ) {
-                                        Icon(
-                                            imageVector = category.toIcon(),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                        Text(
-                                            text = stringResource(category.toStringRes()),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(spacing.medium),
+                            ) {
+                                items(snapshot.memberContributions, key = { it.memberId }) { contribution ->
+                                    Card {
+                                        Column(
+                                            modifier = Modifier.padding(spacing.medium),
+                                        ) {
+                                            Text(
+                                                text = contribution.displayName,
+                                                style = MaterialTheme.typography.titleMedium,
+                                            )
+                                            Text(
+                                                text = "${contribution.totalCount}",
+                                                style = MaterialTheme.typography.headlineSmall,
+                                            )
+                                            Text(
+                                                text = stringResource(
+                                                    R.string.dashboard_share_percent,
+                                                    contribution.sharePercent,
+                                                ),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.primary,
+                                            )
+                                            Text(
+                                                text = stringResource(
+                                                    R.string.dashboard_last_30d,
+                                                    contribution.last30DaysCount,
+                                                ),
+                                                style = MaterialTheme.typography.bodySmall,
+                                            )
+                                        }
                                     }
-                                    group.forEach { stale ->
-                                        StaleChoreRow(
-                                            stale = stale,
-                                            onLog = { openLogSheet(stale.choreId) },
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(spacing.small))
                                 }
-                            }
-                        } else {
-                            filteredStaleItems.forEach { stale ->
-                                StaleChoreRow(
-                                    stale = stale,
-                                    onLog = { openLogSheet(stale.choreId) },
-                                )
                             }
                         }
                     }
-                }
-                item {
-                    SectionCard(title = stringResource(R.string.dashboard_recent_completions)) {
-                        if (highlightedCompletions.isEmpty()) {
-                            EmptyState(
-                                title = stringResource(R.string.dashboard_recent_completions_empty_title),
-                                message = stringResource(R.string.dashboard_recent_completions_empty_message),
-                            )
-                        } else {
-                            highlightedCompletions.forEachIndexed { index, completion ->
-                                if (index > 0) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = spacing.medium),
+                    if (availableCategories.size >= 2) {
+                        item {
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(spacing.small)) {
+                                item {
+                                    FilterChip(
+                                        selected = selectedCategory == null,
+                                        onClick = { selectedCategory = null },
+                                        label = { Text(stringResource(R.string.dashboard_filter_all)) },
                                     )
                                 }
-                                RecentCompletionRow(
-                                    completion = completion,
-                                    onClick = { onOpenCompletion(completion.completionId) },
-                                    roundedBackground = true,
-                                )
+                                items(availableCategories, key = { it.name }) { category ->
+                                    FilterChip(
+                                        selected = selectedCategory == category,
+                                        onClick = {
+                                            selectedCategory = if (selectedCategory == category) null else category
+                                        },
+                                        label = { Text(stringResource(category.toStringRes())) },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = category.toIcon(),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(FilterChipDefaults.IconSize),
+                                            )
+                                        },
+                                    )
+                                }
                             }
-                            if (uiState.allCompletions.size > highlightedCompletions.size) {
-                                TextButton(onClick = onSeeAllCompletions) {
-                                    Text(text = stringResource(R.string.dashboard_see_all))
+                        }
+                    }
+                    item {
+                        SectionCard(title = stringResource(R.string.dashboard_needs_attention)) {
+                            if (filteredStaleItems.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.dashboard_needs_attention_empty),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            } else if (selectedCategory == null && availableCategories.size >= 2) {
+                                ChoreCategory.entries.forEach { category ->
+                                    val group = staleItems.filter { categoryByChoreId[it.choreId] == category }
+                                    if (group.isNotEmpty()) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(spacing.xSmall),
+                                            modifier = Modifier.padding(bottom = spacing.xSmall),
+                                        ) {
+                                            Icon(
+                                                imageVector = category.toIcon(),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                            Text(
+                                                text = stringResource(category.toStringRes()),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        group.forEach { stale ->
+                                            StaleChoreRow(
+                                                stale = stale,
+                                                onLog = { openLogSheet(stale.choreId) },
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(spacing.small))
+                                    }
+                                }
+                            } else {
+                                filteredStaleItems.forEach { stale ->
+                                    StaleChoreRow(
+                                        stale = stale,
+                                        onLog = { openLogSheet(stale.choreId) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    item {
+                        SectionCard(title = stringResource(R.string.dashboard_recent_completions)) {
+                            if (highlightedCompletions.isEmpty()) {
+                                EmptyState(
+                                    title = stringResource(R.string.dashboard_recent_completions_empty_title),
+                                    message = stringResource(R.string.dashboard_recent_completions_empty_message),
+                                )
+                            } else {
+                                highlightedCompletions.forEachIndexed { index, completion ->
+                                    if (index > 0) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = spacing.medium),
+                                        )
+                                    }
+                                    RecentCompletionRow(
+                                        completion = completion,
+                                        onClick = { onOpenCompletion(completion.completionId) },
+                                        roundedBackground = true,
+                                    )
+                                }
+                                if (uiState.allCompletions.size > highlightedCompletions.size) {
+                                    TextButton(onClick = onSeeAllCompletions) {
+                                        Text(text = stringResource(R.string.dashboard_see_all))
+                                    }
                                 }
                             }
                         }
