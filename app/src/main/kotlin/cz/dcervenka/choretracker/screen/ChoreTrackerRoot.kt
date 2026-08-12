@@ -27,6 +27,7 @@ import androidx.navigation.compose.rememberNavController
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.LoadingState
+import cz.dcervenka.choretracker.core.notifications.ui.NotificationPermissionRequest
 import cz.dcervenka.choretracker.feature.auth.impl.navigation.authScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.navigation.dashboardScreen
 import cz.dcervenka.choretracker.feature.onboarding.impl.navigation.onboardingScreen
@@ -124,6 +125,9 @@ fun ChoreTrackerRoot(
                     dashboardScreen(navController = navController)
                     statsScreen(navController = navController)
                     settingsScreen(navController = navController)
+                }
+                if (rootDestination == RootDestination.Main) {
+                    NotificationPermissionRequest()
                 }
             }
         }
