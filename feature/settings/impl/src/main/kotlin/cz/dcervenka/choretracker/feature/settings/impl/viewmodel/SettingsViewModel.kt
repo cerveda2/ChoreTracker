@@ -75,6 +75,7 @@ class SettingsViewModel @Inject constructor(
     private val memberInput = MutableStateFlow("")
     private val choreInput = MutableStateFlow("")
     private val choreCategoryInput = MutableStateFlow(ChoreCategory.OTHER)
+    private val choreFrequencyInput = MutableStateFlow("")
 
     private val currentHousehold = observeCurrentHouseholdUseCase()
         .onEach { household -> currentHouseholdId = household?.id }
@@ -108,14 +109,15 @@ class SettingsViewModel @Inject constructor(
                     householdNameInput,
                     memberInput,
                     choreInput,
-                    choreCategoryInput,
-                ) { currentAccountName, currentHouseholdName, currentMember, currentChore, currentCategory ->
+                    combine(choreCategoryInput, choreFrequencyInput, ::Pair),
+                ) { currentAccountName, currentHouseholdName, currentMember, currentChore, (currentCategory, currentFrequency) ->
                     SettingsUiState(
                         accountDisplayNameInput = currentAccountName,
                         householdNameInput = currentHouseholdName,
                         memberInput = currentMember,
                         choreInput = currentChore,
                         choreCategoryInput = currentCategory,
+                        choreFrequencyInput = currentFrequency,
                     )
                 }
             } else {
@@ -131,14 +133,15 @@ class SettingsViewModel @Inject constructor(
                         householdNameInput,
                         memberInput,
                         choreInput,
-                        choreCategoryInput,
-                    ) { currentAccountName, currentHouseholdName, currentMember, currentChore, currentCategory ->
+                        combine(choreCategoryInput, choreFrequencyInput, ::Pair),
+                    ) { currentAccountName, currentHouseholdName, currentMember, currentChore, (currentCategory, currentFrequency) ->
                         SettingsUiState(
                             accountDisplayNameInput = currentAccountName,
                             householdNameInput = currentHouseholdName,
                             memberInput = currentMember,
                             choreInput = currentChore,
                             choreCategoryInput = currentCategory,
+                            choreFrequencyInput = currentFrequency,
                         )
                     },
                 ) { members, chores, invites, draftState ->
@@ -186,6 +189,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsUiIntent.MemberInputChanged,
             is SettingsUiIntent.ChoreInputChanged,
             is SettingsUiIntent.ChoreCategoryInputChanged,
+            is SettingsUiIntent.ChoreFrequencyInputChanged,
             -> handleInputIntent(intent)
             else -> handleActionIntent(intent)
         }
@@ -198,6 +202,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsUiIntent.MemberInputChanged -> memberInput.value = intent.value
             is SettingsUiIntent.ChoreInputChanged -> choreInput.value = intent.value
             is SettingsUiIntent.ChoreCategoryInputChanged -> choreCategoryInput.value = intent.category
+            is SettingsUiIntent.ChoreFrequencyInputChanged -> choreFrequencyInput.value = intent.value
             else -> Unit
         }
     }
@@ -288,11 +293,18 @@ class SettingsViewModel @Inject constructor(
 
     private fun addChore() {
         val household = uiState.value.household ?: return
+        val frequencyDays = choreFrequencyInput.value.toIntOrNull()?.takeIf { it > 0 }
         viewModelScope.launch {
-            val result = addChoreUseCase(household.id, uiState.value.choreInput, choreCategoryInput.value)
+            val result = addChoreUseCase(
+                householdId = household.id,
+                name = uiState.value.choreInput,
+                category = choreCategoryInput.value,
+                frequencyDays = frequencyDays,
+            )
             if (result is AppResult.Success) {
                 choreInput.value = ""
                 choreCategoryInput.value = ChoreCategory.OTHER
+                choreFrequencyInput.value = ""
                 _events.send(SettingsUiEvent.ChoreAdded)
             } else if (result is AppResult.Error) {
                 _events.send(SettingsUiEvent.Error(result.message))

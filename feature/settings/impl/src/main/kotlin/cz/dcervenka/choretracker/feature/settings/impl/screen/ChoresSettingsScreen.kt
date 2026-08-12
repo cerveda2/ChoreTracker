@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -41,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
@@ -114,7 +116,9 @@ fun ChoresSettingsScreen(
         },
     ) { innerPadding ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding(),
             contentPadding = detailContentPadding(innerPadding),
             verticalArrangement = Arrangement.spacedBy(spacing.medium),
         ) {
@@ -303,6 +307,17 @@ fun ChoresSettingsScreen(
                             capitalization = KeyboardCapitalization.Words,
                             autoCorrectEnabled = true,
                         ),
+                        enabled = uiState.isOwner,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = uiState.choreFrequencyInput,
+                        onValueChange = {
+                            onIntent(SettingsUiIntent.ChoreFrequencyInputChanged(it.filter(Char::isDigit)))
+                        },
+                        label = { Text(text = stringResource(R.string.settings_chore_set_frequency_hint)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
                         enabled = uiState.isOwner,
                         modifier = Modifier.fillMaxWidth(),
                     )

@@ -9,6 +9,7 @@ sealed interface SettingsUiIntent : UiIntent {
     data class MemberInputChanged(val value: String) : SettingsUiIntent
     data class ChoreInputChanged(val value: String) : SettingsUiIntent
     data class ChoreCategoryInputChanged(val category: ChoreCategory) : SettingsUiIntent
+    data class ChoreFrequencyInputChanged(val value: String) : SettingsUiIntent
     data object SaveAccountDisplayName : SettingsUiIntent
     data object SignOut : SettingsUiIntent
     data object SaveHouseholdName : SettingsUiIntent

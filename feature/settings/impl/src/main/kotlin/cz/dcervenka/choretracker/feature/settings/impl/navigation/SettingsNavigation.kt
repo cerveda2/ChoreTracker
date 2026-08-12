@@ -3,6 +3,13 @@ package cz.dcervenka.choretracker.feature.settings.impl.navigation
 import android.app.LocaleManager
 import android.os.Build
 import android.os.LocaleList
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -13,17 +20,21 @@ import cz.dcervenka.choretracker.feature.settings.impl.screen.AccountSettingsScr
 import cz.dcervenka.choretracker.feature.settings.impl.screen.AppLanguage
 import cz.dcervenka.choretracker.feature.settings.impl.screen.ChoresSettingsScreen
 import cz.dcervenka.choretracker.feature.settings.impl.screen.HouseholdSettingsScreen
-import cz.dcervenka.choretracker.feature.settings.impl.screen.LanguageSettingsScreen
+import cz.dcervenka.choretracker.feature.settings.impl.screen.LanguageBottomSheetContent
 import cz.dcervenka.choretracker.feature.settings.impl.screen.MembersSettingsScreen
 import cz.dcervenka.choretracker.feature.settings.impl.screen.SettingsScreen
 import cz.dcervenka.choretracker.feature.settings.impl.viewmodel.SettingsViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 fun NavGraphBuilder.settingsScreen(
     navController: NavHostController,
 ) {
     composable(route = SettingsDestination.route) {
         val viewModel: SettingsViewModel = hiltViewModel()
         val uiState = viewModel.uiState.collectAsStateWithLifecycle()
+        val context = LocalContext.current
+        var showLanguageSheet by remember { mutableStateOf(false) }
+        val languageSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
         SettingsScreen(
             uiState = uiState.value,
@@ -31,8 +42,41 @@ fun NavGraphBuilder.settingsScreen(
             onOpenMembers = { navController.navigate(MembersSettingsDestination.route) },
             onOpenChores = { navController.navigate(ChoresSettingsDestination.route) },
             onOpenAccount = { navController.navigate(AccountSettingsDestination.route) },
-            onOpenLanguage = { navController.navigate(LanguageSettingsDestination.route) },
+            onOpenLanguage = { showLanguageSheet = true },
         )
+
+        if (showLanguageSheet) {
+            val currentTag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.getSystemService(LocaleManager::class.java)
+                    .applicationLocales
+                    .takeIf { !it.isEmpty }
+                    ?.get(0)
+                    ?.toLanguageTag()
+                    ?: ""
+            } else {
+                ""
+            }
+
+            ModalBottomSheet(
+                onDismissRequest = { showLanguageSheet = false },
+                sheetState = languageSheetState,
+            ) {
+                LanguageBottomSheetContent(
+                    currentTag = currentTag,
+                    onLanguageSelected = { language ->
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            val locales = if (language == AppLanguage.System) {
+                                LocaleList.getEmptyLocaleList()
+                            } else {
+                                LocaleList.forLanguageTags(language.tag)
+                            }
+                            context.getSystemService(LocaleManager::class.java).applicationLocales = locales
+                        }
+                        showLanguageSheet = false
+                    },
+                )
+            }
+        }
     }
 
     composable(route = HouseholdSettingsDestination.route) {
@@ -80,35 +124,6 @@ fun NavGraphBuilder.settingsScreen(
             events = viewModel.events,
             onBack = { navController.popBackStack() },
             onIntent = viewModel::dispatch,
-        )
-    }
-
-    composable(route = LanguageSettingsDestination.route) {
-        val context = LocalContext.current
-        val currentTag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.getSystemService(LocaleManager::class.java)
-                .applicationLocales
-                .takeIf { !it.isEmpty }
-                ?.get(0)
-                ?.toLanguageTag()
-                ?: ""
-        } else {
-            ""
-        }
-
-        LanguageSettingsScreen(
-            currentTag = currentTag,
-            onBack = { navController.popBackStack() },
-            onLanguageSelected = { language ->
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    val locales = if (language == AppLanguage.System) {
-                        LocaleList.getEmptyLocaleList()
-                    } else {
-                        LocaleList.forLanguageTags(language.tag)
-                    }
-                    context.getSystemService(LocaleManager::class.java).applicationLocales = locales
-                }
-            },
         )
     }
 }

@@ -29,8 +29,13 @@ class OfflineFirstChoreRepository @Inject constructor(
     override fun observeChores(householdId: String): Flow<List<Chore>> =
         choreDao.observeChores(householdId).map { chores -> chores.map(ChoreEntity::asModel) }
 
-    override suspend fun addChore(householdId: String, name: String, category: ChoreCategory): EmptyResult {
-        Timber.d("addChore: householdId=$householdId name=$name category=$category")
+    override suspend fun addChore(
+        householdId: String,
+        name: String,
+        category: ChoreCategory,
+        frequencyDays: Int?,
+    ): EmptyResult {
+        Timber.d("addChore: householdId=$householdId name=$name category=$category frequencyDays=$frequencyDays")
         val choreId = UUID.randomUUID().toString()
         choreDao.upsert(
             ChoreEntity(
@@ -40,6 +45,7 @@ class OfflineFirstChoreRepository @Inject constructor(
                 isActive = true,
                 createdAt = Clock.System.now(),
                 deletedAt = null,
+                frequencyDays = frequencyDays,
                 category = category.name,
             ),
         )

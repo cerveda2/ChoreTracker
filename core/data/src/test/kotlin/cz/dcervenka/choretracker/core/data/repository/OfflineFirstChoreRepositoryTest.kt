@@ -64,8 +64,19 @@ class OfflineFirstChoreRepositoryTest {
             assertThat(name).isEqualTo("Kitchen")
             assertThat(isActive).isTrue()
             assertThat(deletedAt).isNull()
+            assertThat(frequencyDays).isNull()
             assertThat(category).isEqualTo(ChoreCategory.COOKING.name)
         }
+    }
+
+    @Test
+    fun `addChore passes frequencyDays through to the entity`() = runBlocking {
+        val slot = slot<ChoreEntity>()
+        coEvery { choreDao.upsert(capture(slot)) } just Runs
+
+        repository.addChore("household-1", "Kitchen", ChoreCategory.COOKING, frequencyDays = 6)
+
+        assertThat(slot.captured.frequencyDays).isEqualTo(6)
     }
 
     @Test
