@@ -21,6 +21,7 @@ import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import cz.dcervenka.choretracker.core.remote.firebase.runtime.FirebaseRuntimeConfigurator
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -123,7 +124,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             batchUserFallback(db, userId = userId, householdId = snapshot.household.id)
             Timber.d("upsertHouseholdSnapshot: success")
             AppResult.Success(Unit)
-        }.getOrElse { error ->
+        }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "upsertHouseholdSnapshot: failed")
             AppResult.Error(
                 error.message ?: "Unable to sync household data.",
@@ -286,7 +287,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
 
             Timber.d("upsertMemberSnapshot: success")
             AppResult.Success(Unit)
-        }.getOrElse { error ->
+        }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "upsertMemberSnapshot: failed")
             AppResult.Error(error.message ?: "Unable to sync member data.", error)
         }
@@ -305,7 +306,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             )
             Timber.d("deleteMember: success")
             AppResult.Success(Unit)
-        }.getOrElse { error ->
+        }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "deleteMember: failed")
             AppResult.Error(error.message ?: "Unable to delete member.", error)
         }
@@ -322,7 +323,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     .get(),
             ).documents.firstOrNull()
             AppResult.Success(doc?.asInvite(doc.getString("householdId").orEmpty()))
-        }.getOrElse { error ->
+        }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "fetchInviteByCode: failed")
             AppResult.Error(error.message ?: "Unable to fetch invite.", error)
         }
@@ -351,7 +352,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             )
             Timber.d("markInviteConsumed: success")
             AppResult.Success(Unit)
-        }.getOrElse { error ->
+        }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "markInviteConsumed: failed")
             AppResult.Error(error.message ?: "Unable to mark invite as consumed.", error)
         }
@@ -370,7 +371,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             )
             Timber.d("deleteCompletion: success")
             AppResult.Success(Unit)
-        }.getOrElse { error ->
+        }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "deleteCompletion: failed")
             AppResult.Error(error.message ?: "Unable to delete completion.", error)
         }
@@ -414,7 +415,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     )
                 }
             }
-        }.getOrElse { error ->
+        }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "fetchHouseholdSnapshot: failed")
             AppResult.Error(
                 error.message ?: "Unable to load household data.",
@@ -427,7 +428,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
         val directHouseholdId = runCatching {
             awaitTask(db.collection(USERS_COLLECTION).document(userId).get())
                 .getString("householdId")
-        }.getOrNull()
+        }.rethrowCancellation().getOrNull()
         if (directHouseholdId != null) return directHouseholdId
 
         return runCatching {
@@ -437,7 +438,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     .limit(1)
                     .get(),
             ).documents.firstOrNull()?.getString("householdId")
-        }.getOrElse { e ->
+        }.rethrowCancellation().getOrElse { e ->
             Timber.w(e, "resolveHouseholdId: collectionGroup query failed for userId=$userId")
             null
         }
@@ -518,6 +519,12 @@ class FirebaseHouseholdDataSource @Inject constructor(
 
 private suspend fun <T> awaitTask(task: Task<T>): T =
     suspendCancellableCoroutineCompat(task)
+
+// Result.getOrElse/getOrNull don't special-case CancellationException - without this, a coroutine
+// cancelled mid-Firestore-call (e.g. its scope torn down) gets misreported as a business-logic
+// AppResult.Error instead of letting the cancellation propagate as structured concurrency expects.
+internal fun <T> Result<T>.rethrowCancellation(): Result<T> =
+    onFailure { if (it is CancellationException) throw it }
 
 private fun Timestamp?.asInstant(): Instant = this?.let { firebaseTimestamp ->
     Instant.fromEpochMilliseconds(firebaseTimestamp.toDate().time)
