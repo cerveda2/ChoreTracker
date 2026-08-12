@@ -32,9 +32,17 @@ import cz.dcervenka.choretracker.core.model.household.Invite
 import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
 import cz.dcervenka.choretracker.core.model.sync.SyncState
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
+import cz.dcervenka.choretracker.core.sync.di.SyncScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onEach
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -53,9 +61,83 @@ class LocalSyncRepository @Inject constructor(
     private val pendingSyncOperationDao: PendingSyncOperationDao,
     private val syncStateDao: SyncStateDao,
     private val remoteHouseholdDataSource: RemoteHouseholdDataSource,
+    @SyncScope private val syncScope: CoroutineScope,
 ) : SyncRepository {
 
     private var emailSyncedThisSession = false
+
+    init {
+        authRepository.authState
+            .flatMapLatest { authState ->
+                val user = (authState as? AuthState.Authenticated)?.user
+                if (user == null || user.isPreview) {
+                    emptyFlow()
+                } else {
+                    householdDao.observeHouseholdForUser(user.id)
+                        .map { it?.id }
+                        .distinctUntilChanged()
+                        .flatMapLatest { householdId ->
+                            if (householdId == null) emptyFlow() else observeRealtimeUpdates(householdId, user.id)
+                        }
+                }
+            }
+            .launchIn(syncScope)
+    }
+
+    private fun observeRealtimeUpdates(householdId: String, userId: String): Flow<Unit> = merge(
+        remoteHouseholdDataSource.observeMembers(householdId, userId)
+            .onEach { applyRealtimeMembers(householdId, it) },
+        remoteHouseholdDataSource.observeCompletions(householdId)
+            .onEach { applyRealtimeCompletions(householdId, it) },
+    ).map { }
+
+    private suspend fun applyRealtimeMembers(householdId: String, members: List<HouseholdMember>) {
+        deduplicateMembers(members).forEach { member ->
+            memberDao.upsert(
+                MemberEntity(
+                    id = member.id,
+                    householdId = member.householdId,
+                    userId = member.userId,
+                    displayName = member.displayName,
+                    role = member.role.name,
+                    isCurrentUser = member.isCurrentUser,
+                    email = member.email,
+                ),
+            )
+        }
+        val memberIds = members.map { it.id }.toSet()
+        memberDao.getMembers(householdId)
+            .filter { it.id !in memberIds }
+            .forEach { memberDao.deleteById(it.id) }
+    }
+
+    private suspend fun applyRealtimeCompletions(householdId: String, completions: List<ChoreCompletion>) {
+        completions.forEach { completion ->
+            completionDao.upsert(
+                CompletionEntity(
+                    id = completion.id,
+                    householdId = completion.householdId,
+                    choreId = completion.choreId,
+                    createdAt = completion.createdAt,
+                    createdByUserId = completion.createdByUserId,
+                    note = completion.note,
+                ),
+            )
+            completionParticipantDao.deleteByCompletionId(completion.id)
+            completionParticipantDao.insertAll(
+                completion.participantMemberIds.map { memberId ->
+                    CompletionParticipantEntity(
+                        completionId = completion.id,
+                        memberId = memberId,
+                    )
+                },
+            )
+        }
+        val completionIds = completions.map { it.id }.toSet()
+        completionDao.getCompletions(householdId)
+            .filter { it.id !in completionIds }
+            .forEach { completionDao.deleteById(it.id) }
+    }
 
     override fun observeSyncState(householdId: String): Flow<SyncState?> =
         syncStateDao.observeSyncState(householdId).map { state ->

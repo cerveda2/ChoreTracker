@@ -21,6 +21,9 @@ import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import cz.dcervenka.choretracker.core.remote.firebase.runtime.FirebaseRuntimeConfigurator
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -49,6 +52,42 @@ class FirebaseHouseholdDataSource @Inject constructor(
 
     private val firestore: FirebaseFirestore?
         get() = if (FirebaseApp.getApps(context).isEmpty()) null else FirebaseFirestore.getInstance()
+
+    override fun observeMembers(householdId: String, currentUserId: String): Flow<List<HouseholdMember>> = callbackFlow {
+        val db = firestore
+        if (db == null) {
+            close()
+            return@callbackFlow
+        }
+        val registration = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
+            .collection(MEMBERS_COLLECTION)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Timber.e(error, "observeMembers: listen failed householdId=$householdId")
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.documents?.map { it.asMember(currentUserId, householdId) }.orEmpty())
+            }
+        awaitClose { registration.remove() }
+    }
+
+    override fun observeCompletions(householdId: String): Flow<List<ChoreCompletion>> = callbackFlow {
+        val db = firestore
+        if (db == null) {
+            close()
+            return@callbackFlow
+        }
+        val registration = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
+            .collection(COMPLETIONS_COLLECTION)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Timber.e(error, "observeCompletions: listen failed householdId=$householdId")
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.documents?.map { it.asCompletion(householdId) }.orEmpty())
+            }
+        awaitClose { registration.remove() }
+    }
 
     override suspend fun upsertHouseholdSnapshot(snapshot: HouseholdSnapshot, userId: String): EmptyResult {
         Timber.d(

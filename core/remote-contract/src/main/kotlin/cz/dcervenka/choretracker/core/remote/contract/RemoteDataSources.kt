@@ -24,6 +24,10 @@ interface RemoteAuthDataSource {
 }
 
 interface RemoteHouseholdDataSource {
+    fun observeMembers(householdId: String, currentUserId: String): Flow<List<HouseholdMember>>
+
+    fun observeCompletions(householdId: String): Flow<List<ChoreCompletion>>
+
     suspend fun upsertHouseholdSnapshot(snapshot: HouseholdSnapshot, userId: String): EmptyResult
 
     suspend fun upsertMemberSnapshot(
