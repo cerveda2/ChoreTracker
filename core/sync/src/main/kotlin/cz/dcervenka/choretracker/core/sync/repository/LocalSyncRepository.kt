@@ -35,6 +35,7 @@ import cz.dcervenka.choretracker.core.model.sync.SyncState
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import cz.dcervenka.choretracker.core.sync.di.SyncScope
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
@@ -162,11 +163,15 @@ class LocalSyncRepository @Inject constructor(
             }
         }
 
-    override suspend fun syncPendingOperations(): EmptyResult {
+    // Runs detached from the caller's own coroutine scope (syncScope is a long-lived singleton,
+    // see SyncModule) so that a UI-triggered call - e.g. a screen popping its own back stack
+    // right after dispatching a mutation - can't cut the remote push short. The caller still
+    // suspends until the push finishes; it just can no longer cancel it out from under itself.
+    override suspend fun syncPendingOperations(): EmptyResult = syncScope.async {
         val authenticatedUser = (authRepository.authState.first() as? AuthState.Authenticated)?.user
         val shouldSkipSync = authenticatedUser == null || authenticatedUser.isPreview
         if (shouldSkipSync) {
-            return AppResult.Success(Unit)
+            return@async AppResult.Success(Unit)
         }
 
         val currentEmail = authenticatedUser.email
@@ -193,8 +198,8 @@ class LocalSyncRepository @Inject constructor(
             }
         }
 
-        return syncError ?: AppResult.Success(Unit)
-    }
+        syncError ?: AppResult.Success(Unit)
+    }.await()
 
     override suspend fun restoreHouseholdForUser(userId: String): AppResult<Boolean> {
         Timber.d("restoreHouseholdForUser: userId=$userId")
@@ -313,7 +318,10 @@ class LocalSyncRepository @Inject constructor(
         val result = performRemoteSync(householdId, isOwner, authenticatedUser) ?: return null
         return when (result) {
             is AppResult.Error -> {
-                Timber.e("syncPendingOperations: sync failed for household=$householdId - ${result.message}")
+                Timber.e(
+                    result.cause,
+                    "syncPendingOperations: sync failed for household=$householdId - ${result.message}",
+                )
                 syncStateDao.upsert(
                     SyncStateEntity(
                         householdId = householdId,
