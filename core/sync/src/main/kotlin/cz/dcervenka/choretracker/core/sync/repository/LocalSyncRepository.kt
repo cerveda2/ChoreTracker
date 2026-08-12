@@ -92,6 +92,10 @@ class LocalSyncRepository @Inject constructor(
             .onEach { applyRealtimeMembers(householdId, userId, it) },
         remoteHouseholdDataSource.observeCompletions(householdId)
             .onEach { applyRealtimeCompletions(householdId, it) },
+        remoteHouseholdDataSource.observeInvites(householdId)
+            .onEach { applyRealtimeInvites(householdId, it) },
+        remoteHouseholdDataSource.observeChores(householdId)
+            .onEach { applyRealtimeChores(it) },
     ).map { }
 
     private suspend fun applyRealtimeMembers(householdId: String, userId: String, members: List<HouseholdMember>) {
@@ -148,6 +152,46 @@ class LocalSyncRepository @Inject constructor(
         completionDao.getCompletions(householdId)
             .filter { it.id !in completionIds }
             .forEach { completionDao.deleteById(it.id) }
+    }
+
+    private suspend fun applyRealtimeInvites(householdId: String, invites: List<Invite>) {
+        invites.forEach { invite ->
+            inviteDao.upsert(
+                InviteEntity(
+                    id = invite.id,
+                    householdId = invite.householdId,
+                    code = invite.code,
+                    createdAt = invite.createdAt,
+                    consumedAt = invite.consumedAt,
+                    targetMemberId = invite.targetMemberId,
+                    consumedByMemberId = invite.consumedByMemberId,
+                ),
+            )
+        }
+        val inviteIds = invites.map { it.id }.toSet()
+        inviteDao.getInvites(householdId)
+            .filter { it.id !in inviteIds }
+            .forEach { inviteDao.deleteById(it.id) }
+    }
+
+    // No prune step: chores are soft-deleted (isActive/deletedAt fields, see ChoreEntity), never
+    // removed from Firestore - same as the existing pull-based sync (pruneStaleLocalRows doesn't
+    // touch chores either), so there's nothing stale to reconcile here.
+    private suspend fun applyRealtimeChores(chores: List<Chore>) {
+        chores.forEach { chore ->
+            choreDao.upsert(
+                ChoreEntity(
+                    id = chore.id,
+                    householdId = chore.householdId,
+                    name = chore.name,
+                    isActive = chore.isActive,
+                    createdAt = chore.createdAt,
+                    deletedAt = chore.deletedAt,
+                    frequencyDays = chore.frequencyDays,
+                    category = chore.category.name,
+                ),
+            )
+        }
     }
 
     override fun observeSyncState(householdId: String): Flow<SyncState?> =
