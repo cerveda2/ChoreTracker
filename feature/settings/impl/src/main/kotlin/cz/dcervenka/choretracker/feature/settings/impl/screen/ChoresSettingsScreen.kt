@@ -349,7 +349,7 @@ fun ChoresSettingsScreen(
                     PrimaryButton(
                         text = stringResource(R.string.household_add_chore),
                         onClick = { onIntent(SettingsUiIntent.AddChore) },
-                        enabled = uiState.isOwner,
+                        enabled = uiState.isOwner && uiState.choreInput.isNotBlank(),
                     )
                 }
             }
