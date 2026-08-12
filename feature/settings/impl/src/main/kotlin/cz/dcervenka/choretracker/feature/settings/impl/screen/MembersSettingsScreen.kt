@@ -196,7 +196,7 @@ fun MembersSettingsScreen(
                     PrimaryButton(
                         text = stringResource(R.string.household_add_member),
                         onClick = { onIntent(SettingsUiIntent.AddMember) },
-                        enabled = uiState.isOwner,
+                        enabled = uiState.isOwner && uiState.memberInput.isNotBlank(),
                     )
                 }
             }
