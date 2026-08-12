@@ -7,11 +7,16 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.util.Locale
 import java.util.TimeZone
 import kotlin.time.Instant
 
+// Robolectric 4.16.1's newest supported SDK is 36; targetSdk is 37, ahead of what
+// Robolectric ships shadows for yet. Pin the test SDK explicitly until Robolectric
+// catches up.
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [36])
 class DateFormattingTest {
 
     private lateinit var originalDefaultLocale: Locale
