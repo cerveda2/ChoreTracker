@@ -12,6 +12,7 @@ import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
+import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntity
@@ -48,7 +49,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Clock
 
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "LongParameterList")
 @Singleton
 class LocalSyncRepository @Inject constructor(
     private val authRepository: AuthRepository,
@@ -61,6 +62,7 @@ class LocalSyncRepository @Inject constructor(
     private val pendingSyncOperationDao: PendingSyncOperationDao,
     private val syncStateDao: SyncStateDao,
     private val remoteHouseholdDataSource: RemoteHouseholdDataSource,
+    private val database: ChoreTrackerDatabase,
     @SyncScope private val syncScope: CoroutineScope,
 ) : SyncRepository {
 
@@ -86,12 +88,20 @@ class LocalSyncRepository @Inject constructor(
 
     private fun observeRealtimeUpdates(householdId: String, userId: String): Flow<Unit> = merge(
         remoteHouseholdDataSource.observeMembers(householdId, userId)
-            .onEach { applyRealtimeMembers(householdId, it) },
+            .onEach { applyRealtimeMembers(householdId, userId, it) },
         remoteHouseholdDataSource.observeCompletions(householdId)
             .onEach { applyRealtimeCompletions(householdId, it) },
     ).map { }
 
-    private suspend fun applyRealtimeMembers(householdId: String, members: List<HouseholdMember>) {
+    private suspend fun applyRealtimeMembers(householdId: String, userId: String, members: List<HouseholdMember>) {
+        if (members.none { it.userId == userId }) {
+            Timber.w(
+                "applyRealtimeMembers: userId=$userId no longer a member of household=$householdId - " +
+                    "clearing local data",
+            )
+            database.clearAll()
+            return
+        }
         deduplicateMembers(members).forEach { member ->
             memberDao.upsert(
                 MemberEntity(
@@ -194,86 +204,102 @@ class LocalSyncRepository @Inject constructor(
                 AppResult.Error(result.message, result.cause)
             }
             is AppResult.Success -> {
-                val snapshot = result.value ?: return AppResult.Success(false).also {
-                    Timber.d("restoreHouseholdForUser: no remote snapshot found")
+                val snapshot = result.value
+                when {
+                    snapshot == null -> AppResult.Success(false).also {
+                        Timber.d("restoreHouseholdForUser: no remote snapshot found")
+                    }
+                    snapshot.members.none { it.userId == userId } &&
+                        householdDao.getCurrentHouseholdForUser(userId) != null -> {
+                        Timber.w(
+                            "restoreHouseholdForUser: userId=$userId no longer a member of " +
+                                "household=${snapshot.household.id} - clearing local data",
+                        )
+                        database.clearAll()
+                        AppResult.Success(false)
+                    }
+                    else -> applySnapshot(snapshot)
                 }
-                householdDao.upsert(
-                    HouseholdEntity(
-                        id = snapshot.household.id,
-                        name = snapshot.household.name,
-                        ownerUserId = snapshot.household.ownerUserId,
-                        inviteCode = snapshot.household.inviteCode,
-                        createdAt = snapshot.household.createdAt,
-                    ),
-                )
-                deduplicateMembers(snapshot.members).forEach { member ->
-                    memberDao.upsert(
-                        MemberEntity(
-                            id = member.id,
-                            householdId = member.householdId,
-                            userId = member.userId,
-                            displayName = member.displayName,
-                            role = member.role.name,
-                            isCurrentUser = member.isCurrentUser,
-                            email = member.email,
-                        ),
-                    )
-                }
-                snapshot.chores.forEach { chore ->
-                    choreDao.upsert(
-                        ChoreEntity(
-                            id = chore.id,
-                            householdId = chore.householdId,
-                            name = chore.name,
-                            isActive = chore.isActive,
-                            createdAt = chore.createdAt,
-                            deletedAt = chore.deletedAt,
-                            frequencyDays = chore.frequencyDays,
-                            category = chore.category.name,
-                        ),
-                    )
-                }
-                snapshot.completions.forEach { completion ->
-                    completionDao.upsert(
-                        CompletionEntity(
-                            id = completion.id,
-                            householdId = completion.householdId,
-                            choreId = completion.choreId,
-                            createdAt = completion.createdAt,
-                            createdByUserId = completion.createdByUserId,
-                            note = completion.note,
-                        ),
-                    )
-                    completionParticipantDao.insertAll(
-                        completion.participantMemberIds.map { memberId ->
-                            CompletionParticipantEntity(
-                                completionId = completion.id,
-                                memberId = memberId,
-                            )
-                        },
-                    )
-                }
-                snapshot.invites.forEach { invite ->
-                    inviteDao.upsert(
-                        InviteEntity(
-                            id = invite.id,
-                            householdId = invite.householdId,
-                            code = invite.code,
-                            createdAt = invite.createdAt,
-                            consumedAt = invite.consumedAt,
-                            targetMemberId = invite.targetMemberId,
-                            consumedByMemberId = invite.consumedByMemberId,
-                        ),
-                    )
-                }
-                pruneStaleLocalRows(snapshot)
-                Timber.d(
-                    "restoreHouseholdForUser: restored household=${snapshot.household.id} " +
-                        "members=${snapshot.members.size} chores=${snapshot.chores.size} completions=${snapshot.completions.size}",
-                )
-                AppResult.Success(true)
             }
         }
+    }
+
+    private suspend fun applySnapshot(snapshot: HouseholdSnapshot): AppResult<Boolean> {
+        householdDao.upsert(
+            HouseholdEntity(
+                id = snapshot.household.id,
+                name = snapshot.household.name,
+                ownerUserId = snapshot.household.ownerUserId,
+                inviteCode = snapshot.household.inviteCode,
+                createdAt = snapshot.household.createdAt,
+            ),
+        )
+        deduplicateMembers(snapshot.members).forEach { member ->
+            memberDao.upsert(
+                MemberEntity(
+                    id = member.id,
+                    householdId = member.householdId,
+                    userId = member.userId,
+                    displayName = member.displayName,
+                    role = member.role.name,
+                    isCurrentUser = member.isCurrentUser,
+                    email = member.email,
+                ),
+            )
+        }
+        snapshot.chores.forEach { chore ->
+            choreDao.upsert(
+                ChoreEntity(
+                    id = chore.id,
+                    householdId = chore.householdId,
+                    name = chore.name,
+                    isActive = chore.isActive,
+                    createdAt = chore.createdAt,
+                    deletedAt = chore.deletedAt,
+                    frequencyDays = chore.frequencyDays,
+                    category = chore.category.name,
+                ),
+            )
+        }
+        snapshot.completions.forEach { completion ->
+            completionDao.upsert(
+                CompletionEntity(
+                    id = completion.id,
+                    householdId = completion.householdId,
+                    choreId = completion.choreId,
+                    createdAt = completion.createdAt,
+                    createdByUserId = completion.createdByUserId,
+                    note = completion.note,
+                ),
+            )
+            completionParticipantDao.insertAll(
+                completion.participantMemberIds.map { memberId ->
+                    CompletionParticipantEntity(
+                        completionId = completion.id,
+                        memberId = memberId,
+                    )
+                },
+            )
+        }
+        snapshot.invites.forEach { invite ->
+            inviteDao.upsert(
+                InviteEntity(
+                    id = invite.id,
+                    householdId = invite.householdId,
+                    code = invite.code,
+                    createdAt = invite.createdAt,
+                    consumedAt = invite.consumedAt,
+                    targetMemberId = invite.targetMemberId,
+                    consumedByMemberId = invite.consumedByMemberId,
+                ),
+            )
+        }
+        pruneStaleLocalRows(snapshot)
+        Timber.d(
+            "restoreHouseholdForUser: restored household=${snapshot.household.id} " +
+                "members=${snapshot.members.size} chores=${snapshot.chores.size} completions=${snapshot.completions.size}",
+        )
+        return AppResult.Success(true)
     }
 
     private suspend fun syncHousehold(
