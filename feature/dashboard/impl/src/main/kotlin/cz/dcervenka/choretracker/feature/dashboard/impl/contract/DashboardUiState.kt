@@ -12,4 +12,5 @@ data class DashboardUiState(
     val allCompletions: List<RecentCompletion> = emptyList(),
     val syncState: SyncState? = null,
     val errorMessage: String? = null,
+    val isRefreshing: Boolean = false,
 ) : UiState

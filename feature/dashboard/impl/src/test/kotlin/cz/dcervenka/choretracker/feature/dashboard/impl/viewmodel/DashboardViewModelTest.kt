@@ -10,6 +10,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseC
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveRecentCompletionsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.RefreshHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCompletionUseCase
 import cz.dcervenka.choretracker.core.model.household.Household
@@ -67,6 +68,9 @@ class DashboardViewModelTest {
     @MockK
     lateinit var retryPendingSyncUseCase: RetryPendingSyncUseCase
 
+    @MockK
+    lateinit var refreshHouseholdUseCase: RefreshHouseholdUseCase
+
     private val dashboardFlow = MutableStateFlow(sampleDashboardSnapshot())
     private val householdFlow = MutableStateFlow<Household?>(null)
     private val membersFlow = MutableStateFlow(emptyList<HouseholdMember>())
@@ -87,6 +91,7 @@ class DashboardViewModelTest {
         coEvery { logCompletionUseCase(any(), any(), any(), any()) } returns AppResult.Success("completion-id")
         coEvery { deleteCompletionUseCase(any()) } returns AppResult.Success(Unit)
         coEvery { retryPendingSyncUseCase() } returns AppResult.Success(Unit)
+        coEvery { refreshHouseholdUseCase() } returns AppResult.Success(Unit)
     }
 
     @Test
@@ -160,6 +165,22 @@ class DashboardViewModelTest {
     }
 
     @Test
+    fun `refresh delegates to use case and toggles isRefreshing`() = runTest(coroutineRule.dispatcher) {
+        householdFlow.value = sampleHousehold()
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            advanceUntilIdle()
+            viewModel.dispatch(DashboardUiIntent.Refresh)
+            advanceUntilIdle()
+
+            coVerify { refreshHouseholdUseCase() }
+            assertThat(viewModel.uiState.value.isRefreshing).isFalse()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `log completion emits undo event with completion id and chore name`() = runTest(coroutineRule.dispatcher) {
         dashboardFlow.value = sampleDashboardSnapshot().copy(activeChores = listOf(sampleChore()))
         householdFlow.value = sampleHousehold()
@@ -196,4 +217,5 @@ private fun DashboardViewModelTest.createViewModel() = DashboardViewModel(
     updateCompletionUseCase = updateCompletionUseCase,
     deleteCompletionUseCase = deleteCompletionUseCase,
     retryPendingSyncUseCase = retryPendingSyncUseCase,
+    refreshHouseholdUseCase = refreshHouseholdUseCase,
 )
