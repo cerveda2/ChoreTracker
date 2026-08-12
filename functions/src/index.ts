@@ -72,7 +72,12 @@ export const onInviteAccepted = onDocumentUpdated(
           body: `${joiningDisplayName} joined your household`,
         },
       });
-      logger.info("onInviteAccepted: notified household owner", { householdId, ownerUserId });
+      logger.info("onInviteAccepted: notified household owner", {
+        householdId,
+        ownerUserId,
+        consumedByMemberId,
+        joiningDisplayName,
+      });
     } catch (error) {
       const code = (error as { code?: string }).code;
       const isStaleToken =

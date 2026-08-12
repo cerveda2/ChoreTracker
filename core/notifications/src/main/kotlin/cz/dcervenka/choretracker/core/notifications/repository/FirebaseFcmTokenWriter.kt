@@ -28,6 +28,10 @@ class FirebaseFcmTokenWriter @Inject constructor() : FcmTokenWriter {
     }.rethrowCancellation().getOrElse { error ->
         Timber.w(error, "FirebaseFcmTokenWriter: failed to fetch device token")
         null
+    }?.also { token ->
+        // Handy for manually testing via Firebase Console -> Messaging -> "Send test message".
+        // Only reaches logcat in debug builds - Timber's tree is only planted there.
+        Timber.d("FirebaseFcmTokenWriter: current device token=$token")
     }
 
     override suspend fun writeToken(userId: String, token: String) {
