@@ -123,7 +123,7 @@ class SettingsViewModelTest {
         every { observeInvitesUseCase(any()) } returns MutableStateFlow(emptyList())
         coEvery { signOutUseCase() } returns AppResult.Success(Unit)
         coEvery { addMemberUseCase(any(), any()) } returns AppResult.Success(Unit)
-        coEvery { addChoreUseCase(any(), any(), any()) } returns AppResult.Success(Unit)
+        coEvery { addChoreUseCase(any(), any(), any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreCategoryUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery {
             createInviteUseCase(any())
@@ -208,6 +208,35 @@ class SettingsViewModelTest {
 
         coVerify { updateChoreFrequencyUseCase("chore-1", 7) }
     }
+
+    @Test
+    fun `addChore delegates to use case with parsed frequency and resets inputs on success`() =
+        runTest(coroutineRule.dispatcher) {
+            val viewModel = createViewModel()
+            val household = sampleHousehold()
+            authStateFlow.value = sampleAuthenticatedState()
+            householdFlow.value = household
+
+            viewModel.uiState.test {
+                advanceUntilIdle()
+                viewModel.dispatch(SettingsUiIntent.ChoreInputChanged("Vacuum"))
+                viewModel.dispatch(SettingsUiIntent.ChoreFrequencyInputChanged("6"))
+                advanceUntilIdle()
+                viewModel.dispatch(SettingsUiIntent.AddChore)
+                advanceUntilIdle()
+
+                coVerify {
+                    addChoreUseCase(
+                        householdId = household.id,
+                        name = "Vacuum",
+                        category = cz.dcervenka.choretracker.core.model.chore.ChoreCategory.OTHER,
+                        frequencyDays = 6,
+                    )
+                }
+                assertThat(viewModel.uiState.value.choreFrequencyInput).isEqualTo("")
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
 }
 
 private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(

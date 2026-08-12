@@ -1,10 +1,10 @@
 package cz.dcervenka.choretracker.feature.settings.impl.screen
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -16,47 +16,30 @@ import androidx.compose.ui.tooling.preview.Preview
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
-import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
-import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
-import cz.dcervenka.choretracker.core.design.components.SectionCard
 
 @Composable
-fun LanguageSettingsScreen(
+fun LanguageBottomSheetContent(
     currentTag: String,
-    onBack: () -> Unit,
     onLanguageSelected: (AppLanguage) -> Unit,
 ) {
     val spacing = LocalSpacing.current
 
-    ChoreScaffold(
-        topBar = {
-            ChoreTopAppBar(
-                title = stringResource(R.string.settings_language_title),
-                onBackClick = onBack,
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = spacing.large, vertical = spacing.medium),
+        verticalArrangement = Arrangement.spacedBy(spacing.small),
+    ) {
+        Text(
+            text = stringResource(R.string.settings_language_title),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        AppLanguage.entries.forEach { language ->
+            LanguageRow(
+                language = language,
+                selected = language.tag == currentTag,
+                onSelect = { onLanguageSelected(language) },
             )
-        },
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier.padding(
-                start = spacing.large,
-                top = innerPadding.calculateTopPadding() + spacing.medium,
-                end = spacing.large,
-                bottom = innerPadding.calculateBottomPadding() + spacing.large,
-            ),
-        ) {
-            item {
-                SectionCard(title = stringResource(R.string.settings_language_title)) {
-                    Column {
-                        AppLanguage.entries.forEach { language ->
-                            LanguageRow(
-                                language = language,
-                                selected = language.tag == currentTag,
-                                onSelect = { onLanguageSelected(language) },
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -89,11 +72,10 @@ private fun LanguageRow(
 
 @Preview(showBackground = true)
 @Composable
-private fun LanguageSettingsScreenPreview() {
+private fun LanguageBottomSheetContentPreview() {
     ChoreTrackerTheme {
-        LanguageSettingsScreen(
+        LanguageBottomSheetContent(
             currentTag = "en",
-            onBack = {},
             onLanguageSelected = {},
         )
     }

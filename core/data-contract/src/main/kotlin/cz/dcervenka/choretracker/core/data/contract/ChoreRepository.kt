@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 interface ChoreRepository {
     fun observeChores(householdId: String): Flow<List<Chore>>
 
-    suspend fun addChore(householdId: String, name: String, category: ChoreCategory): EmptyResult
+    suspend fun addChore(householdId: String, name: String, category: ChoreCategory, frequencyDays: Int? = null): EmptyResult
 
     suspend fun deleteChore(choreId: String): EmptyResult
 

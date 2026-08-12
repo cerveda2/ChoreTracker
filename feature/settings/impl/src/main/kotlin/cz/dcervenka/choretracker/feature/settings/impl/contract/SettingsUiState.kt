@@ -20,6 +20,7 @@ data class SettingsUiState(
     val memberInput: String = "",
     val choreInput: String = "",
     val choreCategoryInput: ChoreCategory = ChoreCategory.OTHER,
+    val choreFrequencyInput: String = "",
     val requiresConfiguration: Boolean = false,
     val isSignedOut: Boolean = false,
 ) : UiState {
