@@ -36,4 +36,8 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
     implementation(libs.timber)
+
+    testImplementation(libs.junit4)
+    testImplementation(libs.google.truth)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
