@@ -12,12 +12,14 @@ import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
+import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
 import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
@@ -25,6 +27,7 @@ import cz.dcervenka.choretracker.core.test.mock.sampleChore
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleInvite
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
+import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import io.mockk.MockKAnnotations
 import io.mockk.Runs
 import io.mockk.coEvery
@@ -32,13 +35,21 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.just
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import kotlin.time.Instant
 
 class LocalSyncRepositoryTest {
+
+    @get:Rule
+    val coroutineRule = TestCoroutineRule(startPaused = true)
 
     @MockK
     lateinit var authRepository: AuthRepository
@@ -122,8 +133,15 @@ class LocalSyncRepositoryTest {
         coEvery { memberDao.deleteById(any()) } just Runs
         coEvery { inviteDao.deleteById(any()) } just Runs
         coEvery { completionDao.deleteById(any()) } just Runs
+        coEvery { completionParticipantDao.deleteByCompletionId(any()) } just Runs
+        every { remoteHouseholdDataSource.observeMembers(any(), any()) } returns MutableStateFlow(emptyList())
+        every { remoteHouseholdDataSource.observeCompletions(any()) } returns MutableStateFlow(emptyList())
         // ensureEmailSynced runs on first authenticated sync; return null so it exits early
         coEvery { householdDao.getCurrentHouseholdForUser(any()) } returns null
+        // Real-time subscription init block — paused dispatcher means this never runs unless a
+        // test explicitly advances it (see "real-time sync" section below); default to a no-op
+        // household so it stays inert for tests that don't care about it.
+        every { householdDao.observeHouseholdForUser(any()) } returns MutableStateFlow(null)
         repository = LocalSyncRepository(
             authRepository = authRepository,
             householdDao = householdDao,
@@ -135,6 +153,7 @@ class LocalSyncRepositoryTest {
             pendingSyncOperationDao = pendingSyncOperationDao,
             syncStateDao = syncStateDao,
             remoteHouseholdDataSource = remoteHouseholdDataSource,
+            syncScope = CoroutineScope(SupervisorJob() + coroutineRule.dispatcher),
         )
     }
 
@@ -383,6 +402,109 @@ class LocalSyncRepositoryTest {
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
         coVerify { remoteHouseholdDataSource.markInviteConsumed("household-1", "invite-1", consumedAt, "member-1") }
     }
+
+    // real-time sync (init-block subscription — see LocalSyncRepository.observeRealtimeUpdates)
+
+    @Test
+    fun `real-time sync does not subscribe when no local household exists`() = runTest(coroutineRule.dispatcher) {
+        every { householdDao.observeHouseholdForUser("user-1") } returns MutableStateFlow(null)
+
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { remoteHouseholdDataSource.observeMembers(any(), any()) }
+        coVerify(exactly = 0) { remoteHouseholdDataSource.observeCompletions(any()) }
+    }
+
+    @Test
+    fun `real-time sync does not subscribe when signed out`() = runTest(coroutineRule.dispatcher) {
+        every { householdDao.observeHouseholdForUser("user-1") } returns MutableStateFlow(householdEntity)
+        authState.value = AuthState.SignedOut
+
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { remoteHouseholdDataSource.observeMembers(any(), any()) }
+        coVerify(exactly = 0) { remoteHouseholdDataSource.observeCompletions(any()) }
+    }
+
+    @Test
+    fun `real-time sync upserts members received from the remote listener`() = runTest(coroutineRule.dispatcher) {
+        every { householdDao.observeHouseholdForUser("user-1") } returns MutableStateFlow(householdEntity)
+        every { remoteHouseholdDataSource.observeMembers("household-1", "user-1") } returns
+            MutableStateFlow(sampleMembers())
+
+        advanceUntilIdle()
+
+        coVerify { memberDao.upsert(match { it.id == "member-1" }) }
+        coVerify { memberDao.upsert(match { it.id == "member-2" }) }
+    }
+
+    @Test
+    fun `real-time sync prunes members no longer present in the remote listener`() =
+        runTest(coroutineRule.dispatcher) {
+            every { householdDao.observeHouseholdForUser("user-1") } returns MutableStateFlow(householdEntity)
+            every { remoteHouseholdDataSource.observeMembers("household-1", "user-1") } returns
+                MutableStateFlow(listOf(sampleMembers()[0]))
+            val staleMember = MemberEntity(
+                id = "stale-member",
+                householdId = "household-1",
+                userId = null,
+                displayName = "Gone",
+                role = HouseholdRole.MEMBER.name,
+                isCurrentUser = false,
+            )
+            coEvery { memberDao.getMembers("household-1") } returns listOf(memberEntity, staleMember)
+
+            advanceUntilIdle()
+
+            coVerify { memberDao.deleteById("stale-member") }
+            coVerify(exactly = 0) { memberDao.deleteById("member-1") }
+        }
+
+    @Test
+    fun `real-time sync upserts completions and replaces their participants`() = runTest(coroutineRule.dispatcher) {
+        val completion = ChoreCompletion(
+            id = "completion-1",
+            householdId = "household-1",
+            choreId = "chore-1",
+            createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+            createdByUserId = "user-1",
+            note = null,
+            participantMemberIds = listOf("member-1", "member-2"),
+        )
+        every { householdDao.observeHouseholdForUser("user-1") } returns MutableStateFlow(householdEntity)
+        every { remoteHouseholdDataSource.observeCompletions("household-1") } returns MutableStateFlow(listOf(completion))
+
+        advanceUntilIdle()
+
+        coVerify { completionDao.upsert(match { it.id == "completion-1" }) }
+        coVerify { completionParticipantDao.deleteByCompletionId("completion-1") }
+        coVerify {
+            completionParticipantDao.insertAll(
+                match { participants -> participants.map { it.memberId }.toSet() == setOf("member-1", "member-2") },
+            )
+        }
+    }
+
+    @Test
+    fun `real-time sync prunes completions no longer present in the remote listener`() =
+        runTest(coroutineRule.dispatcher) {
+            every { householdDao.observeHouseholdForUser("user-1") } returns MutableStateFlow(householdEntity)
+            every { remoteHouseholdDataSource.observeCompletions("household-1") } returns MutableStateFlow(emptyList())
+            coEvery { completionDao.getCompletions("household-1") } returns listOf(
+                CompletionEntity(
+                    id = "stale-completion",
+                    householdId = "household-1",
+                    choreId = "chore-1",
+                    createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+                    createdByUserId = "user-1",
+                    note = null,
+                ),
+            )
+
+            advanceUntilIdle()
+
+            coVerify { completionDao.deleteById("stale-completion") }
+        }
 }
 
 private fun buildSnapshot(
