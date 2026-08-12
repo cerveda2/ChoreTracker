@@ -141,6 +141,8 @@ class LocalSyncRepositoryTest {
         coEvery { completionParticipantDao.deleteByCompletionId(any()) } just Runs
         every { remoteHouseholdDataSource.observeMembers(any(), any()) } returns MutableStateFlow(emptyList())
         every { remoteHouseholdDataSource.observeCompletions(any()) } returns MutableStateFlow(emptyList())
+        every { remoteHouseholdDataSource.observeInvites(any()) } returns MutableStateFlow(emptyList())
+        every { remoteHouseholdDataSource.observeChores(any()) } returns MutableStateFlow(emptyList())
         // ensureEmailSynced runs on first authenticated sync; return null so it exits early
         coEvery { householdDao.getCurrentHouseholdForUser(any()) } returns null
         // Real-time subscription init block — paused dispatcher means this never runs unless a
@@ -569,6 +571,48 @@ class LocalSyncRepositoryTest {
 
             coVerify { completionDao.deleteById("stale-completion") }
         }
+
+    @Test
+    fun `real-time sync upserts invites received from the remote listener`() = runTest(coroutineRule.dispatcher) {
+        val invite = sampleInvite()
+        every { householdDao.observeHouseholdForUser("user-1") } returns MutableStateFlow(householdEntity)
+        every { remoteHouseholdDataSource.observeInvites("household-1") } returns MutableStateFlow(listOf(invite))
+
+        advanceUntilIdle()
+
+        coVerify { inviteDao.upsert(match { it.id == invite.id && it.consumedAt == invite.consumedAt }) }
+    }
+
+    @Test
+    fun `real-time sync prunes invites no longer present in the remote listener`() =
+        runTest(coroutineRule.dispatcher) {
+            every { householdDao.observeHouseholdForUser("user-1") } returns MutableStateFlow(householdEntity)
+            every { remoteHouseholdDataSource.observeInvites("household-1") } returns MutableStateFlow(emptyList())
+            coEvery { inviteDao.getInvites("household-1") } returns listOf(
+                InviteEntity(
+                    id = "stale-invite",
+                    householdId = "household-1",
+                    code = "STALE123",
+                    createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+                    consumedAt = null,
+                ),
+            )
+
+            advanceUntilIdle()
+
+            coVerify { inviteDao.deleteById("stale-invite") }
+        }
+
+    @Test
+    fun `real-time sync upserts chores received from the remote listener`() = runTest(coroutineRule.dispatcher) {
+        val chore = sampleChore()
+        every { householdDao.observeHouseholdForUser("user-1") } returns MutableStateFlow(householdEntity)
+        every { remoteHouseholdDataSource.observeChores("household-1") } returns MutableStateFlow(listOf(chore))
+
+        advanceUntilIdle()
+
+        coVerify { choreDao.upsert(match { it.id == chore.id && it.name == chore.name }) }
+    }
 }
 
 private fun buildSnapshot(

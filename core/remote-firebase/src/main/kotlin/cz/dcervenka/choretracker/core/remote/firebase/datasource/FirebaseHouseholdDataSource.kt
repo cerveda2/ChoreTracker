@@ -90,6 +90,42 @@ class FirebaseHouseholdDataSource @Inject constructor(
         awaitClose { registration.remove() }
     }
 
+    override fun observeInvites(householdId: String): Flow<List<Invite>> = callbackFlow {
+        val db = firestore
+        if (db == null) {
+            close()
+            return@callbackFlow
+        }
+        val registration = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
+            .collection(INVITES_COLLECTION)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Timber.e(error, "observeInvites: listen failed householdId=$householdId")
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.documents?.map { it.asInvite(householdId) }.orEmpty())
+            }
+        awaitClose { registration.remove() }
+    }
+
+    override fun observeChores(householdId: String): Flow<List<Chore>> = callbackFlow {
+        val db = firestore
+        if (db == null) {
+            close()
+            return@callbackFlow
+        }
+        val registration = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
+            .collection(CHORES_COLLECTION)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Timber.e(error, "observeChores: listen failed householdId=$householdId")
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.documents?.map { it.asChore(householdId) }.orEmpty())
+            }
+        awaitClose { registration.remove() }
+    }
+
     override suspend fun upsertHouseholdSnapshot(snapshot: HouseholdSnapshot, userId: String): EmptyResult {
         Timber.d(
             "upsertHouseholdSnapshot: householdId=${snapshot.household.id} " +

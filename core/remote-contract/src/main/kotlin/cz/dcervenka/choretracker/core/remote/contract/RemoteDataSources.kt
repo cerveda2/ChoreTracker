@@ -3,6 +3,7 @@ package cz.dcervenka.choretracker.core.remote.contract
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.Invite
@@ -27,6 +28,10 @@ interface RemoteHouseholdDataSource {
     fun observeMembers(householdId: String, currentUserId: String): Flow<List<HouseholdMember>>
 
     fun observeCompletions(householdId: String): Flow<List<ChoreCompletion>>
+
+    fun observeInvites(householdId: String): Flow<List<Invite>>
+
+    fun observeChores(householdId: String): Flow<List<Chore>>
 
     suspend fun upsertHouseholdSnapshot(snapshot: HouseholdSnapshot, userId: String): EmptyResult
 
