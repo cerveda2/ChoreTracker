@@ -9,6 +9,7 @@ import cz.dcervenka.choretracker.core.notifications.repository.FcmTokenRegistrar
 import cz.dcervenka.choretracker.core.notifications.service.NotificationChannels
 import cz.dcervenka.choretracker.core.reminders.notification.ReminderNotificationChannels
 import cz.dcervenka.choretracker.core.reminders.scheduler.ChoreReminderScheduler
+import dagger.Lazy
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 import javax.inject.Inject
@@ -22,12 +23,19 @@ class ChoreTrackerApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var fcmTokenRegistrar: FcmTokenRegistrar
 
-    // Same pattern as fcmTokenRegistrar above - force-starts the reactive scheduling loop in
-    // core/reminders. To fully remove chore reminders, delete this field, hiltWorkerFactory below
-    // (and the Configuration.Provider override), the ReminderNotificationChannels.ensureCreated()
-    // call, the WorkManager <provider> override in AndroidManifest.xml, and core/reminders itself.
+    // dagger.Lazy, not an eagerly-injected field like fcmTokenRegistrar above: constructing
+    // ChoreReminderScheduler resolves a WorkManager (see RemindersModule), which triggers
+    // WorkManager's on-demand init - that reads workManagerConfiguration below, which needs
+    // hiltWorkerFactory already set. Eager field injection races Hilt's member-injection order
+    // (fields are injected in declaration order) against hiltWorkerFactory's own injection and
+    // crashes on startup with "lateinit property hiltWorkerFactory has not been initialized".
+    // get() is called explicitly in onCreate() below, once every field on this class is
+    // guaranteed already injected. To fully remove chore reminders, delete this field,
+    // hiltWorkerFactory below (and the Configuration.Provider override), the
+    // ReminderNotificationChannels.ensureCreated() call, the WorkManager <provider> override in
+    // AndroidManifest.xml, and core/reminders itself.
     @Inject
-    lateinit var choreReminderScheduler: ChoreReminderScheduler
+    lateinit var choreReminderScheduler: Lazy<ChoreReminderScheduler>
 
     @Inject
     lateinit var hiltWorkerFactory: HiltWorkerFactory
@@ -45,6 +53,7 @@ class ChoreTrackerApplication : Application(), Configuration.Provider {
         FirebaseAnalytics.getInstance(this).setAnalyticsCollectionEnabled(true)
         NotificationChannels.ensureCreated(this)
         ReminderNotificationChannels.ensureCreated(this)
+        choreReminderScheduler.get()
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
