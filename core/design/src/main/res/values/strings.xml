@@ -189,7 +189,8 @@
     <string name="settings_language_description">App display language</string>
     <string name="settings_notifications_title">Notifications</string>
     <string name="settings_notifications_description">Chore reminder settings</string>
-    <string name="settings_notifications_enabled_label">Chore reminders</string>
+    <string name="settings_notifications_reminders_section">Chore reminders</string>
+    <string name="settings_notifications_enabled_label">Enable reminders</string>
     <string name="settings_notifications_enabled_description">Get a daily reminder when chores need attention</string>
     <string name="settings_notifications_time_label">Reminder time</string>
     <string name="settings_notifications_time_confirm">Set</string>

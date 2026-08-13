@@ -21,6 +21,7 @@ fun SettingsListItem(
     subtitle: String? = null,
     trailingIcon: ImageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
     onClick: (() -> Unit)? = null,
+    trailingContent: @Composable () -> Unit = { Icon(imageVector = trailingIcon, contentDescription = null) },
 ) {
     ListItem(
         modifier = modifier
@@ -34,7 +35,7 @@ fun SettingsListItem(
             ),
         headlineContent = { Text(title) },
         supportingContent = subtitle?.let { { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) } },
-        trailingContent = { Icon(imageVector = trailingIcon, contentDescription = null) },
+        trailingContent = trailingContent,
         colors = ListItemDefaults.colors(
             containerColor = Color.Transparent,
         ),

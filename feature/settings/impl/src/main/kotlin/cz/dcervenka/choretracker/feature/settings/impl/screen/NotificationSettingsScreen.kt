@@ -3,10 +3,8 @@ package cz.dcervenka.choretracker.feature.settings.impl.screen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,7 +16,6 @@ import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
-import cz.dcervenka.choretracker.core.design.components.SectionCard
 import cz.dcervenka.choretracker.core.design.components.SettingsListItem
 import cz.dcervenka.choretracker.feature.settings.impl.contract.NotificationSettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.NotificationSettingsUiState
@@ -46,15 +43,10 @@ fun NotificationSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(spacing.medium),
         ) {
             item {
-                SectionCard(title = stringResource(R.string.settings_notifications_title)) {
-                    ListItem(
-                        headlineContent = { Text(stringResource(R.string.settings_notifications_enabled_label)) },
-                        supportingContent = {
-                            Text(
-                                stringResource(R.string.settings_notifications_enabled_description),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        },
+                SettingsGroup(title = stringResource(R.string.settings_notifications_reminders_section)) {
+                    SettingsListItem(
+                        title = stringResource(R.string.settings_notifications_enabled_label),
+                        subtitle = stringResource(R.string.settings_notifications_enabled_description),
                         trailingContent = {
                             Switch(
                                 checked = uiState.enabled,
@@ -63,6 +55,7 @@ fun NotificationSettingsScreen(
                         },
                     )
                     if (uiState.enabled) {
+                        HorizontalDivider()
                         SettingsListItem(
                             title = stringResource(R.string.settings_notifications_time_label),
                             subtitle = "%02d:%02d".format(uiState.hour, uiState.minute),
