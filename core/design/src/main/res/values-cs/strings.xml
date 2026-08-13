@@ -187,6 +187,12 @@
     <string name="settings_account_description">Odhlášení a předvolby aplikace</string>
     <string name="settings_language_title">Jazyk</string>
     <string name="settings_language_description">Jazyk zobrazení aplikace</string>
+    <string name="settings_notifications_title">Oznámení</string>
+    <string name="settings_notifications_description">Nastavení připomenutí úkolů</string>
+    <string name="settings_notifications_enabled_label">Připomenutí úkolů</string>
+    <string name="settings_notifications_enabled_description">Denní připomenutí, když je třeba se věnovat úkolům</string>
+    <string name="settings_notifications_time_label">Čas připomenutí</string>
+    <string name="settings_notifications_time_confirm">Nastavit</string>
     <string name="settings_household_empty_title">Žádná domácnost není vybrána</string>
     <string name="settings_household_empty_message">Vytvořte nebo se připojte k domácnosti při prvním spuštění a poté spravujte název a pozvánkový kód zde.</string>
     <string name="settings_members_empty_title">Zatím žádní členové</string>

@@ -259,7 +259,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
             )
         }
 
-    private fun buildStaleness(
+    fun buildStaleness(
         chores: List<Chore>,
         completions: List<ChoreCompletion>,
         timeZone: TimeZone,

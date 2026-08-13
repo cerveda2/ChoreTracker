@@ -30,6 +30,7 @@ fun SettingsScreen(
     onOpenChores: () -> Unit,
     onOpenAccount: () -> Unit,
     onOpenLanguage: () -> Unit,
+    onOpenNotifications: () -> Unit,
 ) {
     val spacing = LocalSpacing.current
     val profileSummary = uiState.userLabel ?: when {
@@ -95,6 +96,12 @@ fun SettingsScreen(
                         subtitle = stringResource(R.string.settings_language_description),
                         onClick = onOpenLanguage,
                     )
+                    androidx.compose.material3.HorizontalDivider()
+                    SettingsListItem(
+                        title = stringResource(R.string.settings_notifications_title),
+                        subtitle = stringResource(R.string.settings_notifications_description),
+                        onClick = onOpenNotifications,
+                    )
                 }
             }
         }
@@ -139,6 +146,7 @@ private fun SettingsScreenPreview() {
             onOpenChores = {},
             onOpenAccount = {},
             onOpenLanguage = {},
+            onOpenNotifications = {},
         )
     }
 }

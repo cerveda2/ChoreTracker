@@ -12,6 +12,7 @@ import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.domain.HouseholdStatisticsCalculator
 import cz.dcervenka.choretracker.core.model.household.Household
+import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.DashboardSnapshot
 import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
 import kotlinx.coroutines.flow.Flow
@@ -81,4 +82,16 @@ class OfflineFirstStatsRepository @Inject constructor(
                 today = Clock.System.todayIn(TimeZone.currentSystemDefault()),
             )
         }
+
+    override suspend fun getStaleChores(householdId: String): List<ChoreStaleness> {
+        val chores = choreDao.getChores(householdId)
+        val completions = completionDao.getCompletions(householdId)
+        val participants = participantDao.getParticipants(householdId)
+        return statisticsCalculator.buildStaleness(
+            chores = chores.map(ChoreEntity::asModel),
+            completions = completions.asModels(participants),
+            timeZone = TimeZone.currentSystemDefault(),
+            today = Clock.System.todayIn(TimeZone.currentSystemDefault()),
+        )
+    }
 }
