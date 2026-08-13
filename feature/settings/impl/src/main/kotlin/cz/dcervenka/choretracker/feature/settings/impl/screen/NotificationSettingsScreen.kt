@@ -49,12 +49,14 @@ fun NotificationSettingsScreen(
                         subtitle = stringResource(R.string.settings_notifications_enabled_description),
                         trailingContent = {
                             Switch(
-                                checked = uiState.enabled,
-                                onCheckedChange = { onIntent(NotificationSettingsUiIntent.SetEnabled(it)) },
+                                checked = uiState.remindersEnabled,
+                                onCheckedChange = {
+                                    onIntent(NotificationSettingsUiIntent.SetRemindersEnabled(it))
+                                },
                             )
                         },
                     )
-                    if (uiState.enabled) {
+                    if (uiState.remindersEnabled) {
                         HorizontalDivider()
                         SettingsListItem(
                             title = stringResource(R.string.settings_notifications_time_label),
@@ -62,6 +64,22 @@ fun NotificationSettingsScreen(
                             onClick = { showTimePicker = true },
                         )
                     }
+                }
+            }
+            item {
+                SettingsGroup(title = stringResource(R.string.settings_notifications_invite_section)) {
+                    SettingsListItem(
+                        title = stringResource(R.string.settings_notifications_invite_enabled_label),
+                        subtitle = stringResource(R.string.settings_notifications_invite_enabled_description),
+                        trailingContent = {
+                            Switch(
+                                checked = uiState.inviteNotificationsEnabled,
+                                onCheckedChange = {
+                                    onIntent(NotificationSettingsUiIntent.SetInviteNotificationsEnabled(it))
+                                },
+                            )
+                        },
+                    )
                 }
             }
         }

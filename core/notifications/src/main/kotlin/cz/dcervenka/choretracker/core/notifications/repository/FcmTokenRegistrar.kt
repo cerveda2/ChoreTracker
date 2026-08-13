@@ -1,14 +1,16 @@
 package cz.dcervenka.choretracker.core.notifications.repository
 
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
+import cz.dcervenka.choretracker.core.data.contract.InviteNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.notifications.di.NotificationScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -18,11 +20,16 @@ import javax.inject.Singleton
  * so the "invite accepted" Cloud Function can push a notification to a household owner. Mirrors
  * LocalSyncRepository's authState.flatMapLatest {...}.launchIn(scope) pattern - see
  * core/sync/.../repository/LocalSyncRepository.kt.
+ *
+ * Also reacts to [InviteNotificationSettingsRepository]'s on/off toggle: when disabled, the token
+ * is actively cleared (not just left unregistered) so the Cloud Function's existing "missing
+ * fcmToken -> skip silently" behavior takes effect immediately - no server-side changes needed.
  */
 @Singleton
 class FcmTokenRegistrar @Inject constructor(
     private val authRepository: AuthRepository,
     private val tokenWriter: FcmTokenWriter,
+    private val inviteNotificationSettingsRepository: InviteNotificationSettingsRepository,
     @NotificationScope private val scope: CoroutineScope,
 ) {
 
@@ -33,9 +40,10 @@ class FcmTokenRegistrar @Inject constructor(
                 if (user == null || user.isPreview) {
                     emptyFlow()
                 } else {
-                    flow { emit(registerCurrentToken(user.id)) }
+                    inviteNotificationSettingsRepository.observeEnabled().map { enabled -> user.id to enabled }
                 }
             }
+            .onEach { (userId, enabled) -> applyTokenState(userId, enabled) }
             .launchIn(scope)
     }
 
@@ -46,7 +54,18 @@ class FcmTokenRegistrar @Inject constructor(
     fun onTokenRefreshed(token: String) {
         scope.launch {
             val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
-            if (user != null && !user.isPreview) tokenWriter.writeToken(user.id, token)
+            if (user == null || user.isPreview) return@launch
+            if (inviteNotificationSettingsRepository.isEnabled()) {
+                tokenWriter.writeToken(user.id, token)
+            }
+        }
+    }
+
+    private suspend fun applyTokenState(userId: String, enabled: Boolean) {
+        if (enabled) {
+            registerCurrentToken(userId)
+        } else {
+            tokenWriter.clearToken(userId)
         }
     }
 

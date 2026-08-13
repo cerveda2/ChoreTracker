@@ -9,8 +9,10 @@ import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.ChoreCompletionRepository
 import cz.dcervenka.choretracker.core.data.contract.ChoreRepository
 import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
+import cz.dcervenka.choretracker.core.data.contract.InviteNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.data.contract.ReminderSettingsRepository
 import cz.dcervenka.choretracker.core.data.contract.StatsRepository
+import cz.dcervenka.choretracker.core.data.repository.DataStoreInviteNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.DataStoreReminderSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstChoreCompletionRepository
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstChoreRepository
@@ -23,7 +25,16 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Qualifier
 import javax.inject.Singleton
+
+@Qualifier
+@Retention(AnnotationRetention.RUNTIME)
+annotation class ReminderSettingsDataStore
+
+@Qualifier
+@Retention(AnnotationRetention.RUNTIME)
+annotation class InviteNotificationSettingsDataStore
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -50,12 +61,27 @@ abstract class DataRepositoryModule {
         impl: DataStoreReminderSettingsRepository,
     ): ReminderSettingsRepository
 
+    @Binds
+    abstract fun bindInviteNotificationSettingsRepository(
+        impl: DataStoreInviteNotificationSettingsRepository,
+    ): InviteNotificationSettingsRepository
+
     companion object {
         @Provides
         @Singleton
+        @ReminderSettingsDataStore
         fun provideReminderSettingsDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
             PreferenceDataStoreFactory.create(
                 produceFile = { context.preferencesDataStoreFile("reminder_settings") },
             )
+
+        @Provides
+        @Singleton
+        @InviteNotificationSettingsDataStore
+        fun provideInviteNotificationSettingsDataStore(
+            @ApplicationContext context: Context,
+        ): DataStore<Preferences> = PreferenceDataStoreFactory.create(
+            produceFile = { context.preferencesDataStoreFile("invite_notification_settings") },
+        )
     }
 }

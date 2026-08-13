@@ -194,6 +194,9 @@
     <string name="settings_notifications_enabled_description">Get a daily reminder when chores need attention</string>
     <string name="settings_notifications_time_label">Reminder time</string>
     <string name="settings_notifications_time_confirm">Set</string>
+    <string name="settings_notifications_invite_section">Household invites</string>
+    <string name="settings_notifications_invite_enabled_label">Notify me when someone joins</string>
+    <string name="settings_notifications_invite_enabled_description">Get a push notification when someone accepts your invite</string>
     <string name="settings_household_empty_title">No household selected</string>
     <string name="settings_household_empty_message">Create or join a household during onboarding to manage its name and invite code here.</string>
     <string name="settings_members_empty_title">No members yet</string>

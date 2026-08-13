@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import cz.dcervenka.choretracker.core.data.contract.ReminderSettingsRepository
+import cz.dcervenka.choretracker.core.data.di.ReminderSettingsDataStore
 import cz.dcervenka.choretracker.core.model.settings.ReminderSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -19,7 +20,7 @@ private val MINUTE_KEY = intPreferencesKey("minute")
 
 @Singleton
 class DataStoreReminderSettingsRepository @Inject constructor(
-    private val dataStore: DataStore<Preferences>,
+    @ReminderSettingsDataStore private val dataStore: DataStore<Preferences>,
 ) : ReminderSettingsRepository {
 
     override fun observeSettings(): Flow<ReminderSettings> = dataStore.data.map(::toReminderSettings)
