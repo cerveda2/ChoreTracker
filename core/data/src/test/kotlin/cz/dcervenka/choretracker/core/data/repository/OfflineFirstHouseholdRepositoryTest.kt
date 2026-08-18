@@ -171,7 +171,7 @@ class OfflineFirstHouseholdRepositoryTest {
         val claimedMember = placeholder.copy(userId = "user-1", isCurrentUser = true)
         coEvery { inviteDao.findByCode("ABCD1234") } returns invite
         coEvery { memberDao.findById("household-1", "placeholder-id") } returns placeholder
-        coEvery { memberDao.claimPlaceholder(any(), any(), any(), any()) } just Runs
+        coEvery { memberDao.claimPlaceholder(any(), any(), any(), any(), any()) } just Runs
         coEvery { memberDao.findByUserId("household-1", "user-1") } returns claimedMember
         coEvery { inviteDao.markConsumed(any(), any(), any()) } just Runs
         coEvery { pendingSyncOperationDao.upsert(any()) } just Runs
@@ -181,7 +181,7 @@ class OfflineFirstHouseholdRepositoryTest {
 
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
         coVerify {
-            memberDao.claimPlaceholder("placeholder-id", "user-1", "dana@example.com", "UserTypedName")
+            memberDao.claimPlaceholder("placeholder-id", "user-1", "dana@example.com", "UserTypedName", "invite-1")
         }
     }
 }

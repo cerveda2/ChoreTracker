@@ -117,6 +117,7 @@ class LocalSyncRepository @Inject constructor(
                     role = member.role.name,
                     isCurrentUser = member.isCurrentUser,
                     email = member.email,
+                    joinedViaInviteId = member.joinedViaInviteId,
                 ),
             )
         }
@@ -293,6 +294,7 @@ class LocalSyncRepository @Inject constructor(
                     role = member.role.name,
                     isCurrentUser = member.isCurrentUser,
                     email = member.email,
+                    joinedViaInviteId = member.joinedViaInviteId,
                 ),
             )
         }

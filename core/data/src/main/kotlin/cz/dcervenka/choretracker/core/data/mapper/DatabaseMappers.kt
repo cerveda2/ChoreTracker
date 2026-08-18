@@ -30,6 +30,7 @@ internal fun MemberEntity.asModel(): HouseholdMember = HouseholdMember(
     role = runCatching { HouseholdRole.valueOf(role) }.getOrDefault(HouseholdRole.MEMBER),
     isCurrentUser = isCurrentUser,
     email = email,
+    joinedViaInviteId = joinedViaInviteId,
 )
 
 internal fun ChoreEntity.asModel(): Chore = Chore(
