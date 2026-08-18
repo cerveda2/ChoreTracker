@@ -5,17 +5,19 @@ import cz.dcervenka.choretracker.core.data.contract.InviteNotificationSettingsRe
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.notifications.di.NotificationScope
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Keeps this device's FCM token written onto the signed-in user's `users/{uid}.fcmToken` field,
@@ -46,7 +48,14 @@ class FcmTokenRegistrar @Inject constructor(
                 }
             }
             .onEach { (userId, enabled) -> applyTokenState(userId, enabled) }
-            .catch { error -> Timber.e(error, "FcmTokenRegistrar: token-state subscription failed") }
+            // retry, not catch: catch would let an unexpected exception permanently end this
+            // subscription with only a debug-only log line - retry logs and re-subscribes instead,
+            // so a transient failure doesn't silently and permanently stop FCM token registration.
+            .retry { error ->
+                Timber.e(error, "FcmTokenRegistrar: token-state subscription failed, retrying")
+                delay(5.seconds)
+                true
+            }
             .launchIn(scope)
     }
 

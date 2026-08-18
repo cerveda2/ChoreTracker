@@ -13,12 +13,15 @@ class RefreshHouseholdUseCase @Inject constructor(
     private val syncRepository: SyncRepository,
 ) {
     suspend operator fun invoke(): EmptyResult {
-        syncRepository.syncPendingOperations()
+        // Kept even if it fails: a failed push shouldn't skip the pull, which still surfaces
+        // whatever the rest of the household changed. The push failure itself is still reported
+        // below, unless the pull also fails, in which case that failure takes precedence.
+        val pushResult = syncRepository.syncPendingOperations()
         val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
-        if (user == null || user.isPreview) return AppResult.Success(Unit)
-        return when (val result = syncRepository.restoreHouseholdForUser(user.id)) {
-            is AppResult.Error -> AppResult.Error(result.message, result.cause)
-            is AppResult.Success -> AppResult.Success(Unit)
+        if (user == null || user.isPreview) return pushResult
+        return when (val pullResult = syncRepository.restoreHouseholdForUser(user.id)) {
+            is AppResult.Error -> AppResult.Error(pullResult.message, pullResult.cause)
+            is AppResult.Success -> pushResult
         }
     }
 }
