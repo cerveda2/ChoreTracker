@@ -35,7 +35,13 @@ interface MemberDao {
         "UPDATE members SET userId = :userId, email = :email, isCurrentUser = 1, " +
             "displayName = :displayName, joinedViaInviteId = :inviteId WHERE id = :memberId",
     )
-    suspend fun claimPlaceholder(memberId: String, userId: String, email: String?, displayName: String, inviteId: String)
+    suspend fun claimPlaceholder(
+        memberId: String,
+        userId: String,
+        email: String?,
+        displayName: String,
+        inviteId: String,
+    )
 
     @Query("UPDATE members SET isCurrentUser = 0 WHERE isCurrentUser = 1")
     suspend fun clearCurrentUser()

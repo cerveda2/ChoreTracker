@@ -49,7 +49,9 @@ object DatabaseModule {
         context,
         ChoreTrackerDatabase::class.java,
         "chore-tracker.db",
-    ).addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9).fallbackToDestructiveMigration(dropAllTables = true).build()
+    ).addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+        .fallbackToDestructiveMigration(dropAllTables = true)
+        .build()
 
     @Provides
     fun provideHouseholdDao(database: ChoreTrackerDatabase): HouseholdDao = database.householdDao()
