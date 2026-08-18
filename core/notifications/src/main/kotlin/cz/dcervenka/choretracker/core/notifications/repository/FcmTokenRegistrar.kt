@@ -20,10 +20,10 @@ import javax.inject.Singleton
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * Keeps this device's FCM token written onto the signed-in user's `users/{uid}.fcmToken` field,
- * so the "invite accepted" Cloud Function can push a notification to a household owner. Mirrors
- * LocalSyncRepository's authState.flatMapLatest {...}.launchIn(scope) pattern - see
- * core/sync/.../repository/LocalSyncRepository.kt.
+ * Keeps this device's FCM installation ID written onto the signed-in user's
+ * `users/{uid}.fcmToken` field, so the "invite accepted" Cloud Function can push a notification to
+ * a household owner. Mirrors LocalSyncRepository's authState.flatMapLatest {...}.launchIn(scope)
+ * pattern - see core/sync/.../repository/LocalSyncRepository.kt.
  *
  * Also reacts to [InviteNotificationSettingsRepository]'s on/off toggle: when disabled, the token
  * is actively cleared (not just left unregistered) so the Cloud Function's existing "missing
@@ -61,28 +61,24 @@ class FcmTokenRegistrar @Inject constructor(
 
     /**
      * Called by [cz.dcervenka.choretracker.core.notifications.service.InviteAcceptedMessagingService]
-     * when FCM rotates the device token.
+     * when FCM (re-)registers this device's installation ID - either in response to
+     * [applyTokenState] calling [FcmTokenWriter.requestRegistration], or on a later auto-rotation.
      */
-    fun onTokenRefreshed(token: String) {
+    fun onIdRegistered(installationId: String) {
         scope.launch {
             val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
             if (user == null || user.isPreview) return@launch
             if (inviteNotificationSettingsRepository.isEnabled(user.id)) {
-                tokenWriter.writeToken(user.id, token)
+                tokenWriter.writeToken(user.id, installationId)
             }
         }
     }
 
     private suspend fun applyTokenState(userId: String, enabled: Boolean) {
         if (enabled) {
-            registerCurrentToken(userId)
+            tokenWriter.requestRegistration()
         } else {
             tokenWriter.clearToken(userId)
         }
-    }
-
-    private suspend fun registerCurrentToken(userId: String) {
-        val token = tokenWriter.fetchCurrentDeviceToken() ?: return
-        tokenWriter.writeToken(userId, token)
     }
 }
