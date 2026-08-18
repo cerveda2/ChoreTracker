@@ -2,6 +2,7 @@ package cz.dcervenka.choretracker.core.notifications.repository
 
 import com.google.android.gms.tasks.Task
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.messaging.FirebaseMessaging
@@ -52,6 +53,26 @@ class FirebaseFcmTokenWriter @Inject constructor() : FcmTokenWriter {
             Timber.d("FirebaseFcmTokenWriter: registered fcmToken for userId=$userId")
         }.rethrowCancellation().onFailure { error ->
             Timber.w(error, "FirebaseFcmTokenWriter: failed to write fcmToken")
+        }
+    }
+
+    override suspend fun clearToken(userId: String) {
+        runCatching {
+            awaitTask(
+                FirebaseFirestore.getInstance()
+                    .collection(USERS_COLLECTION)
+                    .document(userId)
+                    .set(
+                        mapOf(
+                            FCM_TOKEN_FIELD to FieldValue.delete(),
+                            "updatedAt" to Timestamp.now(),
+                        ),
+                        SetOptions.merge(),
+                    ),
+            )
+            Timber.d("FirebaseFcmTokenWriter: cleared fcmToken for userId=$userId")
+        }.rethrowCancellation().onFailure { error ->
+            Timber.w(error, "FirebaseFcmTokenWriter: failed to clear fcmToken")
         }
     }
 }

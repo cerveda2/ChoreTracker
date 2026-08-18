@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="reminder_notification_title">
+        <item quantity="one">%d úkol vyžaduje pozornost</item>
+        <item quantity="few">%d úkoly vyžadují pozornost</item>
+        <item quantity="many">%d úkolu vyžaduje pozornost</item>
+        <item quantity="other">%d úkolů vyžaduje pozornost</item>
+    </plurals>
+</resources>

@@ -1,6 +1,7 @@
 package cz.dcervenka.choretracker.core.notifications.repository
 
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
+import cz.dcervenka.choretracker.core.data.contract.InviteNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
@@ -29,7 +30,11 @@ class FcmTokenRegistrarTest {
     @MockK
     lateinit var tokenWriter: FcmTokenWriter
 
+    @MockK
+    lateinit var inviteNotificationSettingsRepository: InviteNotificationSettingsRepository
+
     private val authState = MutableStateFlow<AuthState>(AuthState.SignedOut)
+    private val inviteNotificationsEnabled = MutableStateFlow(true)
 
     private lateinit var registrar: FcmTokenRegistrar
 
@@ -37,14 +42,18 @@ class FcmTokenRegistrarTest {
     fun setUp() {
         MockKAnnotations.init(this)
         every { authRepository.authState } returns authState
+        every { inviteNotificationSettingsRepository.observeEnabled(any()) } returns inviteNotificationsEnabled
+        coEvery { inviteNotificationSettingsRepository.isEnabled(any()) } answers { inviteNotificationsEnabled.value }
         coEvery { tokenWriter.fetchCurrentDeviceToken() } returns "token-abc"
         coEvery { tokenWriter.writeToken(any(), any()) } returns Unit
+        coEvery { tokenWriter.clearToken(any()) } returns Unit
     }
 
     private fun createRegistrar() {
         registrar = FcmTokenRegistrar(
             authRepository = authRepository,
             tokenWriter = tokenWriter,
+            inviteNotificationSettingsRepository = inviteNotificationSettingsRepository,
             scope = CoroutineScope(SupervisorJob() + coroutineRule.dispatcher),
         )
     }
@@ -102,6 +111,51 @@ class FcmTokenRegistrarTest {
     }
 
     @Test
+    fun `clears the token instead of registering when notifications are disabled at sign-in`() =
+        runTest(coroutineRule.dispatcher) {
+            inviteNotificationsEnabled.value = false
+            authState.value = AuthState.Authenticated(
+                AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
+            )
+            createRegistrar()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { tokenWriter.clearToken("user-1") }
+            coVerify(exactly = 0) { tokenWriter.writeToken(any(), any()) }
+        }
+
+    @Test
+    fun `clears the token when the setting is turned off while signed in`() = runTest(coroutineRule.dispatcher) {
+        authState.value = AuthState.Authenticated(
+            AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
+        )
+        createRegistrar()
+        advanceUntilIdle()
+        coVerify(exactly = 1) { tokenWriter.writeToken("user-1", "token-abc") }
+
+        inviteNotificationsEnabled.value = false
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { tokenWriter.clearToken("user-1") }
+    }
+
+    @Test
+    fun `re-registers the token when the setting is turned back on`() = runTest(coroutineRule.dispatcher) {
+        inviteNotificationsEnabled.value = false
+        authState.value = AuthState.Authenticated(
+            AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
+        )
+        createRegistrar()
+        advanceUntilIdle()
+        coVerify(exactly = 1) { tokenWriter.clearToken("user-1") }
+
+        inviteNotificationsEnabled.value = true
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { tokenWriter.writeToken("user-1", "token-abc") }
+    }
+
+    @Test
     fun `onTokenRefreshed writes the rotated token for the current user`() = runTest(coroutineRule.dispatcher) {
         authState.value = AuthState.Authenticated(
             AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
@@ -117,6 +171,21 @@ class FcmTokenRegistrarTest {
 
     @Test
     fun `onTokenRefreshed does nothing while signed out`() = runTest(coroutineRule.dispatcher) {
+        createRegistrar()
+        advanceUntilIdle()
+
+        registrar.onTokenRefreshed("token-rotated")
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { tokenWriter.writeToken(any(), "token-rotated") }
+    }
+
+    @Test
+    fun `onTokenRefreshed does not write while notifications are disabled`() = runTest(coroutineRule.dispatcher) {
+        inviteNotificationsEnabled.value = false
+        authState.value = AuthState.Authenticated(
+            AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
+        )
         createRegistrar()
         advanceUntilIdle()
 

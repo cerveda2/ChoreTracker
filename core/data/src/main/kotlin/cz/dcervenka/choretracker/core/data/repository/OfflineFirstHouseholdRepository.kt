@@ -112,6 +112,15 @@ class OfflineFirstHouseholdRepository @Inject constructor(
 
     override fun observeRestoreStatus(): Flow<HouseholdRestoreStatus> = restoreStatus
 
+    override suspend fun getCurrentHousehold(): Household? {
+        val user = currentUser()
+        return if (user == null || user.isPreview) {
+            null
+        } else {
+            householdDao.getCurrentHouseholdForUser(user.id)?.asModel()
+        }
+    }
+
     override fun observeMembers(householdId: String): Flow<List<HouseholdMember>> =
         memberDao.observeMembers(householdId).map { members -> members.map(MemberEntity::asModel) }
 

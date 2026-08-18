@@ -22,7 +22,9 @@ import cz.dcervenka.choretracker.feature.settings.impl.screen.ChoresSettingsScre
 import cz.dcervenka.choretracker.feature.settings.impl.screen.HouseholdSettingsScreen
 import cz.dcervenka.choretracker.feature.settings.impl.screen.LanguageBottomSheetContent
 import cz.dcervenka.choretracker.feature.settings.impl.screen.MembersSettingsScreen
+import cz.dcervenka.choretracker.feature.settings.impl.screen.NotificationSettingsScreen
 import cz.dcervenka.choretracker.feature.settings.impl.screen.SettingsScreen
+import cz.dcervenka.choretracker.feature.settings.impl.viewmodel.NotificationSettingsViewModel
 import cz.dcervenka.choretracker.feature.settings.impl.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,6 +45,7 @@ fun NavGraphBuilder.settingsScreen(
             onOpenChores = { navController.navigate(ChoresSettingsDestination.route) },
             onOpenAccount = { navController.navigate(AccountSettingsDestination.route) },
             onOpenLanguage = { showLanguageSheet = true },
+            onOpenNotifications = { navController.navigate(NotificationSettingsDestination.route) },
         )
 
         if (showLanguageSheet) {
@@ -122,6 +125,17 @@ fun NavGraphBuilder.settingsScreen(
         AccountSettingsScreen(
             uiState = uiState.value,
             events = viewModel.events,
+            onBack = { navController.popBackStack() },
+            onIntent = viewModel::dispatch,
+        )
+    }
+
+    composable(route = NotificationSettingsDestination.route) {
+        val viewModel: NotificationSettingsViewModel = hiltViewModel()
+        val uiState = viewModel.uiState.collectAsStateWithLifecycle()
+
+        NotificationSettingsScreen(
+            uiState = uiState.value,
             onBack = { navController.popBackStack() },
             onIntent = viewModel::dispatch,
         )
