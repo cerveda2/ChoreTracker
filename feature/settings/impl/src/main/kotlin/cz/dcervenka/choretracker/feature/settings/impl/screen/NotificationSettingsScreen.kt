@@ -16,6 +16,7 @@ import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
+import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.SettingsListItem
 import cz.dcervenka.choretracker.feature.settings.impl.contract.NotificationSettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.NotificationSettingsUiState
@@ -26,6 +27,11 @@ fun NotificationSettingsScreen(
     onBack: () -> Unit,
     onIntent: (NotificationSettingsUiIntent) -> Unit,
 ) {
+    if (uiState.isLoading) {
+        LoadingState(message = stringResource(R.string.settings_notifications_loading))
+        return
+    }
+
     val spacing = LocalSpacing.current
     var showTimePicker by remember { mutableStateOf(false) }
 

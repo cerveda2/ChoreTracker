@@ -34,24 +34,32 @@ class DataStoreInviteNotificationSettingsRepositoryTest {
 
     @Test
     fun `defaults to enabled when nothing has been persisted yet`() = runTest {
-        assertThat(repository.isEnabled()).isTrue()
+        assertThat(repository.isEnabled("user-1")).isTrue()
     }
 
     @Test
     fun `setEnabled persists and is reflected by isEnabled`() = runTest {
-        repository.setEnabled(false)
+        repository.setEnabled("user-1", false)
 
-        assertThat(repository.isEnabled()).isFalse()
+        assertThat(repository.isEnabled("user-1")).isFalse()
     }
 
     @Test
     fun `observeEnabled emits the latest persisted value`() = runTest {
-        repository.setEnabled(false)
+        repository.setEnabled("user-1", false)
 
-        assertThat(repository.observeEnabled().first()).isFalse()
+        assertThat(repository.observeEnabled("user-1").first()).isFalse()
 
-        repository.setEnabled(true)
+        repository.setEnabled("user-1", true)
 
-        assertThat(repository.observeEnabled().first()).isTrue()
+        assertThat(repository.observeEnabled("user-1").first()).isTrue()
+    }
+
+    @Test
+    fun `settings are scoped independently per user`() = runTest {
+        repository.setEnabled("user-1", false)
+
+        assertThat(repository.isEnabled("user-1")).isFalse()
+        assertThat(repository.isEnabled("user-2")).isTrue()
     }
 }

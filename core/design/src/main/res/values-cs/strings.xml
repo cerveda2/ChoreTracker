@@ -189,6 +189,7 @@
     <string name="settings_language_description">Jazyk zobrazení aplikace</string>
     <string name="settings_notifications_title">Oznámení</string>
     <string name="settings_notifications_description">Nastavení připomenutí úkolů</string>
+    <string name="settings_notifications_loading">Načítám nastavení oznámení…</string>
     <string name="settings_notifications_reminders_section">Připomenutí úkolů</string>
     <string name="settings_notifications_enabled_label">Zapnout připomenutí</string>
     <string name="settings_notifications_enabled_description">Denní připomenutí, když je třeba se věnovat úkolům</string>

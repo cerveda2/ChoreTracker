@@ -42,8 +42,8 @@ class FcmTokenRegistrarTest {
     fun setUp() {
         MockKAnnotations.init(this)
         every { authRepository.authState } returns authState
-        every { inviteNotificationSettingsRepository.observeEnabled() } returns inviteNotificationsEnabled
-        coEvery { inviteNotificationSettingsRepository.isEnabled() } answers { inviteNotificationsEnabled.value }
+        every { inviteNotificationSettingsRepository.observeEnabled(any()) } returns inviteNotificationsEnabled
+        coEvery { inviteNotificationSettingsRepository.isEnabled(any()) } answers { inviteNotificationsEnabled.value }
         coEvery { tokenWriter.fetchCurrentDeviceToken() } returns "token-abc"
         coEvery { tokenWriter.writeToken(any(), any()) } returns Unit
         coEvery { tokenWriter.clearToken(any()) } returns Unit

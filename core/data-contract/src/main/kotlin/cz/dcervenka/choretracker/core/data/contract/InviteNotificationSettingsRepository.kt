@@ -3,9 +3,9 @@ package cz.dcervenka.choretracker.core.data.contract
 import kotlinx.coroutines.flow.Flow
 
 interface InviteNotificationSettingsRepository {
-    fun observeEnabled(): Flow<Boolean>
+    fun observeEnabled(userId: String): Flow<Boolean>
 
-    suspend fun isEnabled(): Boolean
+    suspend fun isEnabled(userId: String): Boolean
 
-    suspend fun setEnabled(enabled: Boolean)
+    suspend fun setEnabled(userId: String, enabled: Boolean)
 }

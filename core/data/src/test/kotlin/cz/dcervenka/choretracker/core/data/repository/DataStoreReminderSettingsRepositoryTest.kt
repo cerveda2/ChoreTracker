@@ -33,10 +33,10 @@ class DataStoreReminderSettingsRepositoryTest {
     }
 
     @Test
-    fun `defaults to enabled at 09_00 when nothing has been persisted yet`() = runTest {
+    fun `defaults to disabled at 09_00 when nothing has been persisted yet`() = runTest {
         val settings = repository.getSettings()
 
-        assertThat(settings.enabled).isTrue()
+        assertThat(settings.enabled).isFalse()
         assertThat(settings.hour).isEqualTo(9)
         assertThat(settings.minute).isEqualTo(0)
     }
@@ -50,6 +50,7 @@ class DataStoreReminderSettingsRepositoryTest {
 
     @Test
     fun `setReminderTime persists hour and minute independently of enabled`() = runTest {
+        repository.setEnabled(true)
         repository.setReminderTime(hour = 20, minute = 30)
 
         val settings = repository.getSettings()

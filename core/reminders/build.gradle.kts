@@ -21,6 +21,7 @@ dependencies {
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.timber)
+    implementation(libs.kotlinx.datetime)
 
     testImplementation(projects.core.test)
     testImplementation(libs.kotlinx.datetime)

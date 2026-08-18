@@ -15,6 +15,8 @@ import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.DashboardSnapshot
 import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.datetime.TimeZone
@@ -83,13 +85,13 @@ class OfflineFirstStatsRepository @Inject constructor(
             )
         }
 
-    override suspend fun getStaleChores(householdId: String): List<ChoreStaleness> {
-        val chores = choreDao.getChores(householdId)
-        val completions = completionDao.getCompletions(householdId)
-        val participants = participantDao.getParticipants(householdId)
-        return statisticsCalculator.buildStaleness(
-            chores = chores.map(ChoreEntity::asModel),
-            completions = completions.asModels(participants),
+    override suspend fun getStaleChores(householdId: String): List<ChoreStaleness> = coroutineScope {
+        val chores = async { choreDao.getChores(householdId) }
+        val completions = async { completionDao.getCompletions(householdId) }
+        val participants = async { participantDao.getParticipants(householdId) }
+        statisticsCalculator.buildStaleness(
+            chores = chores.await().map(ChoreEntity::asModel),
+            completions = completions.await().asModels(participants.await()),
             timeZone = TimeZone.currentSystemDefault(),
             today = Clock.System.todayIn(TimeZone.currentSystemDefault()),
         )

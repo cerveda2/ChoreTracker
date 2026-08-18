@@ -33,7 +33,7 @@ class ChoreReminderSchedulerTest {
     @MockK
     lateinit var reminderSettingsRepository: ReminderSettingsRepository
 
-    private val settingsFlow = MutableStateFlow(ReminderSettings())
+    private val settingsFlow = MutableStateFlow(ReminderSettings(enabled = true))
     private lateinit var scope: CoroutineScope
 
     @Before
@@ -51,14 +51,18 @@ class ChoreReminderSchedulerTest {
     private fun createScheduler() = ChoreReminderScheduler(workManager, reminderSettingsRepository, scope)
 
     @Test
-    fun `enqueues unique work on init when reminders are enabled by default`() = runTest(coroutineRule.dispatcher) {
-        createScheduler()
-        advanceUntilIdle()
+    fun `enqueues unique work with KEEP on init so it doesn't clobber already-scheduled work`() =
+        runTest(coroutineRule.dispatcher) {
+            createScheduler()
+            advanceUntilIdle()
 
-        verify(exactly = 1) {
-            workManager.enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.REPLACE, any<OneTimeWorkRequest>())
+            verify(exactly = 1) {
+                workManager.enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP, any<OneTimeWorkRequest>())
+            }
+            verify(exactly = 0) {
+                workManager.enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.REPLACE, any<OneTimeWorkRequest>())
+            }
         }
-    }
 
     @Test
     fun `cancels unique work when settings flip to disabled`() = runTest(coroutineRule.dispatcher) {
@@ -72,27 +76,34 @@ class ChoreReminderSchedulerTest {
     }
 
     @Test
-    fun `rescheduleNow reads current settings and re-enqueues`() = runTest(coroutineRule.dispatcher) {
+    fun `rescheduleNow reads current settings and re-enqueues with REPLACE`() = runTest(coroutineRule.dispatcher) {
         val scheduler = createScheduler()
         advanceUntilIdle()
 
         scheduler.rescheduleNow()
 
-        verify(exactly = 2) {
+        verify(exactly = 1) {
+            workManager.enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP, any<OneTimeWorkRequest>())
+        }
+        verify(exactly = 1) {
             workManager.enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.REPLACE, any<OneTimeWorkRequest>())
         }
     }
 
     @Test
-    fun `reschedules to the new time when settings change while still enabled`() = runTest(coroutineRule.dispatcher) {
-        createScheduler()
-        advanceUntilIdle()
+    fun `reschedules to the new time with REPLACE when settings change while still enabled`() =
+        runTest(coroutineRule.dispatcher) {
+            createScheduler()
+            advanceUntilIdle()
 
-        settingsFlow.value = ReminderSettings(enabled = true, hour = 20, minute = 30)
-        advanceUntilIdle()
+            settingsFlow.value = ReminderSettings(enabled = true, hour = 20, minute = 30)
+            advanceUntilIdle()
 
-        verify(exactly = 2) {
-            workManager.enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.REPLACE, any<OneTimeWorkRequest>())
+            verify(exactly = 1) {
+                workManager.enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP, any<OneTimeWorkRequest>())
+            }
+            verify(exactly = 1) {
+                workManager.enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.REPLACE, any<OneTimeWorkRequest>())
+            }
         }
-    }
 }

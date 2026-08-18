@@ -1,5 +1,6 @@
 package cz.dcervenka.choretracker.core.reminders.worker
 
+import android.app.NotificationManager
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.ListenableWorker
@@ -21,6 +22,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 // Robolectric 4.16.1's newest supported SDK is 36; targetSdk is 37, ahead of what
@@ -110,6 +112,31 @@ class ChoreReminderWorkerTest {
 
         runCatching { buildWorker().doWork() }
 
+        coVerify(exactly = 1) { scheduler.rescheduleNow() }
+    }
+
+    @Test
+    fun `does not post a notification once reminders are disabled after the staleness check completes`() = runTest {
+        coEvery { reminderSettingsRepository.getSettings() } returnsMany listOf(
+            ReminderSettings(enabled = true),
+            ReminderSettings(enabled = false),
+        )
+        coEvery { checkStaleChoresUseCase() } returns listOf(
+            ChoreStaleness(
+                choreId = "chore-1",
+                choreName = "Kitchen",
+                lastCompletedDate = null,
+                daysSinceLastCompletion = 10,
+                frequencyDays = 7,
+                status = ChoreStatus.NEEDS_ATTENTION,
+            ),
+        )
+
+        val result = buildWorker().doWork()
+
+        assertThat(result).isEqualTo(ListenableWorker.Result.success())
+        val notificationManager = context.getSystemService(NotificationManager::class.java)
+        assertThat(shadowOf(notificationManager).allNotifications).isEmpty()
         coVerify(exactly = 1) { scheduler.rescheduleNow() }
     }
 }

@@ -5,6 +5,7 @@ import cz.dcervenka.choretracker.core.data.contract.InviteNotificationSettingsRe
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.notifications.di.NotificationScope
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -40,10 +42,11 @@ class FcmTokenRegistrar @Inject constructor(
                 if (user == null || user.isPreview) {
                     emptyFlow()
                 } else {
-                    inviteNotificationSettingsRepository.observeEnabled().map { enabled -> user.id to enabled }
+                    inviteNotificationSettingsRepository.observeEnabled(user.id).map { enabled -> user.id to enabled }
                 }
             }
             .onEach { (userId, enabled) -> applyTokenState(userId, enabled) }
+            .catch { error -> Timber.e(error, "FcmTokenRegistrar: token-state subscription failed") }
             .launchIn(scope)
     }
 
@@ -55,7 +58,7 @@ class FcmTokenRegistrar @Inject constructor(
         scope.launch {
             val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
             if (user == null || user.isPreview) return@launch
-            if (inviteNotificationSettingsRepository.isEnabled()) {
+            if (inviteNotificationSettingsRepository.isEnabled(user.id)) {
                 tokenWriter.writeToken(user.id, token)
             }
         }

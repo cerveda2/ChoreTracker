@@ -1,7 +1,7 @@
 package cz.dcervenka.choretracker.core.model.settings
 
 data class ReminderSettings(
-    val enabled: Boolean = true,
+    val enabled: Boolean = false,
     val hour: Int = 9,
     val minute: Int = 0,
 )

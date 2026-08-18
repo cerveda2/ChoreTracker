@@ -19,6 +19,8 @@ import cz.dcervenka.choretracker.core.reminders.notification.CHORE_REMINDER_CHAN
 import cz.dcervenka.choretracker.core.reminders.scheduler.ChoreReminderScheduler
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 private const val REMINDER_NOTIFICATION_ID = 2001
@@ -36,14 +38,24 @@ class ChoreReminderWorker @AssistedInject constructor(
         try {
             if (reminderSettingsRepository.getSettings().enabled) {
                 val staleChores = checkStaleChoresUseCase()
-                if (staleChores.isNotEmpty()) {
+                // Re-read enabled rather than reusing the check above: checkStaleChoresUseCase()
+                // syncs with the remote household first, which can take long enough for the user
+                // to have toggled reminders off from this same run.
+                if (staleChores.isNotEmpty() && reminderSettingsRepository.getSettings().enabled) {
                     postGroupedNotification(staleChores)
                 }
             }
             return Result.success()
         } finally {
             // Always chain tomorrow's run, whether this one succeeded, failed, or was skipped.
-            scheduler.rescheduleNow()
+            // NonCancellable: WorkManager may have already cancelled this worker's Job by the time
+            // we get here (execution timeout, or a REPLACE targeting this same unique work name),
+            // and rescheduleNow() suspends on a DataStore read before touching WorkManager - without
+            // NonCancellable that suspension point would throw CancellationException immediately
+            // and the reschedule would silently never happen.
+            withContext(NonCancellable) {
+                scheduler.rescheduleNow()
+            }
         }
     }
 

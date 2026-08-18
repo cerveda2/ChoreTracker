@@ -10,9 +10,19 @@ import cz.dcervenka.choretracker.core.notifications.service.NotificationChannels
 import cz.dcervenka.choretracker.core.reminders.notification.ReminderNotificationChannels
 import cz.dcervenka.choretracker.core.reminders.scheduler.ChoreReminderScheduler
 import dagger.Lazy
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.HiltAndroidApp
+import dagger.hilt.components.SingletonComponent
 import timber.log.Timber
 import javax.inject.Inject
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface WorkerFactoryEntryPoint {
+    fun hiltWorkerFactory(): HiltWorkerFactory
+}
 
 @HiltAndroidApp
 class ChoreTrackerApplication : Application(), Configuration.Provider {
@@ -25,23 +35,28 @@ class ChoreTrackerApplication : Application(), Configuration.Provider {
 
     // dagger.Lazy, not an eagerly-injected field like fcmTokenRegistrar above: constructing
     // ChoreReminderScheduler resolves a WorkManager (see RemindersModule), which triggers
-    // WorkManager's on-demand init - that reads workManagerConfiguration below, which needs
-    // hiltWorkerFactory already set. Eager field injection races Hilt's member-injection order
-    // (fields are injected in declaration order) against hiltWorkerFactory's own injection and
-    // crashes on startup with "lateinit property hiltWorkerFactory has not been initialized".
-    // get() is called explicitly in onCreate() below, once every field on this class is
-    // guaranteed already injected. To fully remove chore reminders, delete this field,
-    // hiltWorkerFactory below (and the Configuration.Provider override), the
+    // WorkManager's on-demand init. get() is called explicitly at the end of onCreate() below
+    // so reminder scheduling starts only after the notification channel it posts into exists.
+    // To fully remove chore reminders, delete this field, the
     // ReminderNotificationChannels.ensureCreated() call, the WorkManager <provider> override in
     // AndroidManifest.xml, and core/reminders itself.
     @Inject
     lateinit var choreReminderScheduler: Lazy<ChoreReminderScheduler>
 
-    @Inject
-    lateinit var hiltWorkerFactory: HiltWorkerFactory
-
+    // Resolved via EntryPoint rather than a member-injected lateinit field: WorkManager's
+    // on-demand init can read workManagerConfiguration at any point - including before Hilt
+    // finishes field-injecting this class - so it must not depend on Hilt's field-injection
+    // order. A lateinit var here previously crashed with "hiltWorkerFactory has not been
+    // initialized" whenever some other field's construction (e.g. choreReminderScheduler,
+    // before it became Lazy) triggered WorkManager init ahead of its turn in declaration order.
+    // EntryPointAccessors resolves straight from the already-ready SingletonComponent instead,
+    // so no future field ordering can reintroduce that crash.
     override val workManagerConfiguration: Configuration
-        get() = Configuration.Builder().setWorkerFactory(hiltWorkerFactory).build()
+        get() = Configuration.Builder()
+            .setWorkerFactory(
+                EntryPointAccessors.fromApplication(this, WorkerFactoryEntryPoint::class.java).hiltWorkerFactory(),
+            )
+            .build()
 
     override fun onCreate() {
         super.onCreate()
