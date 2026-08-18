@@ -269,6 +269,39 @@ class LocalSyncRepositoryTest {
         }
 
     @Test
+    fun `syncPendingOperations keeps a pending op and returns Error when the remote delete is rejected`() =
+        runTest(coroutineRule.dispatcher) {
+            val op = PendingSyncOperationEntity(
+                id = "op-2",
+                entityType = "completion",
+                entityId = "completion-1",
+                operationType = "delete",
+                payload = "household-1",
+                createdAt = Instant.parse("2026-01-04T10:00:00Z"),
+            )
+            coEvery { pendingSyncOperationDao.getAll() } returns listOf(op)
+            coEvery { householdDao.getHousehold("household-1") } returns householdEntity
+            coEvery { memberDao.findByUserId("household-1", "user-1") } returns memberEntity
+            coEvery { completionParticipantDao.getParticipants("household-1") } returns emptyList()
+            coEvery { choreDao.getChores("household-1") } returns emptyList()
+            coEvery { completionDao.getCompletions("household-1") } returns emptyList()
+            coEvery { inviteDao.getInvites("household-1") } returns emptyList()
+            coEvery { memberDao.getMembers("household-1") } returns listOf(memberEntity)
+            coEvery { remoteHouseholdDataSource.upsertHouseholdSnapshot(any(), any()) } returns AppResult.Success(Unit)
+            coEvery { remoteHouseholdDataSource.deleteCompletion(any(), any()) } returns
+                AppResult.Error("Missing or insufficient permissions.")
+            coEvery { pendingSyncOperationDao.delete(any()) } just Runs
+
+            val resultDeferred = async { repository.syncPendingOperations() }
+            advanceUntilIdle()
+            val result = resultDeferred.await()
+
+            assertThat(result).isInstanceOf(AppResult.Error::class.java)
+            coVerify(exactly = 0) { pendingSyncOperationDao.delete("op-2") }
+            coVerify { syncStateDao.upsert(match { it.pendingOperations == 1 && it.lastErrorMessage != null }) }
+        }
+
+    @Test
     fun `syncPendingOperations returns Error and records lastSyncAttemptAt when remote fails`() =
         runTest(coroutineRule.dispatcher) {
             val op = PendingSyncOperationEntity(

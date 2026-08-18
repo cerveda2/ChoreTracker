@@ -381,20 +381,31 @@ class LocalSyncRepository @Inject constructor(
             }
             is AppResult.Success -> {
                 Timber.d("syncPendingOperations: synced ${operationIds.size} operations for household=$householdId")
-                if (isOwner) deleteRemoteMembers(householdId, operations, operationIds.toSet())
-                deleteRemoteCompletions(householdId, operations, operationIds.toSet())
-                consumeRemoteInvites(householdId, operations, operationIds.toSet())
-                operationIds.forEach { pendingSyncOperationDao.delete(it) }
+                val operationIdSet = operationIds.toSet()
+                val failedOperationIds = buildSet {
+                    if (isOwner) addAll(deleteRemoteMembers(householdId, operations, operationIdSet))
+                    addAll(deleteRemoteCompletions(householdId, operations, operationIdSet))
+                    addAll(consumeRemoteInvites(householdId, operations, operationIdSet))
+                }
+                // Only operations that actually landed remotely are cleared from the queue -
+                // anything that failed (e.g. a delete/consume Firestore rejected) stays pending
+                // and is retried on the next sync, instead of being silently dropped.
+                operationIds.filterNot { it in failedOperationIds }.forEach { pendingSyncOperationDao.delete(it) }
+                val errorMessage = if (failedOperationIds.isEmpty()) {
+                    null
+                } else {
+                    "${failedOperationIds.size} change(s) couldn't be applied remotely and will retry."
+                }
                 syncStateDao.upsert(
                     SyncStateEntity(
                         householdId = householdId,
                         lastSyncedAt = now,
                         lastSyncAttemptAt = now,
-                        pendingOperations = 0,
-                        lastErrorMessage = null,
+                        pendingOperations = failedOperationIds.size,
+                        lastErrorMessage = errorMessage,
                     ),
                 )
-                null
+                errorMessage?.let { AppResult.Error(it) }
             }
         }
     }
@@ -441,7 +452,8 @@ class LocalSyncRepository @Inject constructor(
         householdId: String,
         operations: List<PendingSyncOperationEntity>,
         operationIdSet: Set<String>,
-    ) {
+    ): Set<String> {
+        val failedOperationIds = mutableSetOf<String>()
         operations
             .filter { it.id in operationIdSet && it.entityType == "member" && it.operationType == "delete" }
             .forEach { op ->
@@ -450,15 +462,18 @@ class LocalSyncRepository @Inject constructor(
                     Timber.e(
                         "syncPendingOperations: remote member delete failed for ${op.payload} — ${result.message}",
                     )
+                    failedOperationIds += op.id
                 }
             }
+        return failedOperationIds
     }
 
     private suspend fun deleteRemoteCompletions(
         householdId: String,
         operations: List<PendingSyncOperationEntity>,
         operationIdSet: Set<String>,
-    ) {
+    ): Set<String> {
+        val failedOperationIds = mutableSetOf<String>()
         operations
             .filter { it.id in operationIdSet && it.entityType == "completion" && it.operationType == "delete" }
             .forEach { op ->
@@ -467,8 +482,10 @@ class LocalSyncRepository @Inject constructor(
                     Timber.e(
                         "syncPendingOperations: remote completion delete failed for ${op.entityId} — ${result.message}",
                     )
+                    failedOperationIds += op.id
                 }
             }
+        return failedOperationIds
     }
 
     override suspend fun ensureInviteLocal(code: String): EmptyResult {
@@ -524,7 +541,8 @@ class LocalSyncRepository @Inject constructor(
         householdId: String,
         operations: List<PendingSyncOperationEntity>,
         operationIdSet: Set<String>,
-    ) {
+    ): Set<String> {
+        val failedOperationIds = mutableSetOf<String>()
         operations
             .filter { it.id in operationIdSet && it.entityType == "invite" && it.operationType == "consumed" }
             .forEach { op ->
@@ -541,8 +559,10 @@ class LocalSyncRepository @Inject constructor(
                     Timber.e(
                         "syncPendingOperations: remote invite consumed failed for ${op.payload} — ${result.message}",
                     )
+                    failedOperationIds += op.id
                 }
             }
+        return failedOperationIds
     }
 
     private suspend fun resolveHouseholdId(
