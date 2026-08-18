@@ -265,7 +265,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         timeZone: TimeZone,
         today: LocalDate,
     ): List<ChoreStaleness> = chores
-        .filter { it.deletedAt == null }
+        .filter { it.isActive && it.deletedAt == null }
         .sortedBy(Chore::name)
         .map { chore ->
             val lastCompletionDate = completions

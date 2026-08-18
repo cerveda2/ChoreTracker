@@ -122,6 +122,26 @@ class HouseholdStatisticsCalculatorTest {
     }
 
     @Test
+    fun `buildStaleness excludes paused chores so they don't trigger reminders`() {
+        val pausedChore = Chore(
+            id = "chore-paused",
+            householdId = household.id,
+            name = "Paused chore",
+            isActive = false,
+            createdAt = Instant.parse("2026-01-05T09:00:00Z"),
+        )
+
+        val staleness = calculator.buildStaleness(
+            chores = chores + pausedChore,
+            completions = emptyList(),
+            timeZone = timeZone,
+            today = today,
+        )
+
+        assertThat(staleness.map { it.choreName }).doesNotContain("Paused chore")
+    }
+
+    @Test
     fun `stats comparison handles ties and monthly breakdown stays sorted`() {
         val completions = listOf(
             completion(
