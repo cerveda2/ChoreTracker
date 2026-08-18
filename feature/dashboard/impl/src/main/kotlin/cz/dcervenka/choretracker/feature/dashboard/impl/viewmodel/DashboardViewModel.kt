@@ -47,6 +47,9 @@ class DashboardViewModel @Inject constructor(
     private val _undoChannel = Channel<UndoEvent>(Channel.BUFFERED)
     val undoEvents: Flow<UndoEvent> = _undoChannel.receiveAsFlow()
 
+    private val _errorChannel = Channel<String>(Channel.BUFFERED)
+    val errorEvents: Flow<String> = _errorChannel.receiveAsFlow()
+
     private val isRefreshing = MutableStateFlow(false)
 
     val uiState: StateFlow<DashboardUiState> = observeCurrentHouseholdUseCase()
@@ -118,13 +121,19 @@ class DashboardViewModel @Inject constructor(
 
     private fun updateCompletion(completionId: String, note: String?, participantIds: List<String>) {
         viewModelScope.launch {
-            updateCompletionUseCase(completionId, note, participantIds)
+            val result = updateCompletionUseCase(completionId, note, participantIds)
+            if (result is AppResult.Error) {
+                _errorChannel.send(result.message)
+            }
         }
     }
 
     private fun deleteCompletion(completionId: String) {
         viewModelScope.launch {
-            deleteCompletionUseCase(completionId)
+            val result = deleteCompletionUseCase(completionId)
+            if (result is AppResult.Error) {
+                _errorChannel.send(result.message)
+            }
         }
     }
 

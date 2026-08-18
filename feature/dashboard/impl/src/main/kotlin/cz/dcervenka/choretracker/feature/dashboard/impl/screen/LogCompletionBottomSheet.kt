@@ -48,19 +48,24 @@ internal fun LogCompletionBottomSheet(
     val spacing = LocalSpacing.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showDatePicker by remember { mutableStateOf(false) }
+    // null means "use the actual confirm-time instant", not "today at midnight" - only set once
+    // the user explicitly confirms a pick in the date dialog below, so opening (or never opening)
+    // the sheet doesn't backdate the completion to whenever the sheet happened to be composed.
+    var completedAt by remember { mutableStateOf<Instant?>(null) }
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = Clock.System.now().toEpochMilliseconds(),
+        initialSelectedDateMillis = completedAt?.toEpochMilliseconds() ?: Clock.System.now().toEpochMilliseconds(),
     )
-    val selectedDateMillis = datePickerState.selectedDateMillis
-    val completedAt = selectedDateMillis
-        ?.takeIf { it != midnightUtcToday() }
-        ?.let { Instant.fromEpochMilliseconds(it) }
 
     if (showDatePicker) {
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(onClick = { showDatePicker = false }) {
+                TextButton(
+                    onClick = {
+                        completedAt = datePickerState.selectedDateMillis?.let(Instant::fromEpochMilliseconds)
+                        showDatePicker = false
+                    },
+                ) {
                     Text(text = stringResource(R.string.common_save))
                 }
             },
@@ -129,8 +134,9 @@ internal fun LogCompletionBottomSheet(
                     onClick = { showDatePicker = true },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    val dateLabel = if (completedAt != null) {
-                        formatInstantForLocale(completedAt, "yMMMd")
+                    val pickedDate = completedAt
+                    val dateLabel = if (pickedDate != null) {
+                        formatInstantForLocale(pickedDate, "yMMMd")
                     } else {
                         stringResource(R.string.dashboard_log_date_today)
                     }
@@ -144,11 +150,4 @@ internal fun LogCompletionBottomSheet(
             )
         }
     }
-}
-
-private const val MILLIS_PER_DAY = 86_400_000L
-
-private fun midnightUtcToday(): Long {
-    val millis = Clock.System.now().toEpochMilliseconds()
-    return millis - (millis % MILLIS_PER_DAY)
 }

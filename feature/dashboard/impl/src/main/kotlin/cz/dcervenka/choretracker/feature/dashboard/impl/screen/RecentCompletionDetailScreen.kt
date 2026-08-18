@@ -10,9 +10,11 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,11 +30,13 @@ import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.SectionCard
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
+import kotlinx.coroutines.flow.Flow
 
 @Composable
 fun RecentCompletionDetailScreen(
     completion: RecentCompletion?,
     uiState: DashboardUiState,
+    errorEvents: Flow<String>,
     onBack: () -> Unit,
     onDelete: () -> Unit,
     onUpdate: (note: String?, participantIds: List<String>) -> Unit,
@@ -42,6 +46,13 @@ fun RecentCompletionDetailScreen(
     var showEditSheet by remember { mutableStateOf(false) }
     val editSelectedMembers = remember { SnapshotStateList<String>() }
     var editNote by remember { mutableStateOf("") }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val fallbackErrorMessage = stringResource(R.string.dashboard_completion_action_error)
+    LaunchedEffect(errorEvents) {
+        errorEvents.collect { message ->
+            snackbarHostState.showSnackbar(message.ifBlank { fallbackErrorMessage })
+        }
+    }
 
     if (completion == null) {
         LoadingState(message = stringResource(R.string.dashboard_completion_loading))
@@ -82,6 +93,7 @@ fun RecentCompletionDetailScreen(
     }
 
     ChoreScaffold(
+        snackbarHostState = snackbarHostState,
         topBar = {
             ChoreTopAppBar(
                 title = completion.choreName,
