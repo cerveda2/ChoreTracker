@@ -179,8 +179,8 @@ class HouseholdStatisticsCalculatorTest {
         assertThat(comparisons["Dusting"]?.leader).isEqualTo(ChoreLeaderResult.NoData)
 
         assertThat(stats.monthlyBreakdown.map { it.monthLabel }).containsExactly("2026-03", "2026-02").inOrder()
-        assertThat(stats.monthlyBreakdown.first().countsByMember["Alice"]).isEqualTo(1)
-        assertThat(stats.monthlyBreakdown.first().countsByMember["Bob"]).isEqualTo(1)
+        assertThat(stats.monthlyBreakdown.first().countsByMemberId["member-alice"]).isEqualTo(1)
+        assertThat(stats.monthlyBreakdown.first().countsByMemberId["member-bob"]).isEqualTo(1)
         assertThat(stats.monthlyBreakdown.first().totalCount).isEqualTo(2)
 
         // 3 completions, Alice has 1, Bob has 2 → 33% and 66%
@@ -190,6 +190,51 @@ class HouseholdStatisticsCalculatorTest {
         val contribByName = stats.memberContributions.associateBy { it.displayName }
         assertThat(contribByName["Alice"]?.sharePercent).isEqualTo(33)
         assertThat(contribByName["Bob"]?.sharePercent).isEqualTo(66)
+    }
+
+    @Test
+    fun `countsByMemberId keeps two members with the same display name separate`() {
+        val duplicateNameMembers = members + HouseholdMember(
+            id = "member-carol",
+            householdId = household.id,
+            userId = "user-carol",
+            displayName = "Bob",
+            role = HouseholdRole.MEMBER,
+        )
+        val completions = listOf(
+            completion(
+                id = "completion-1",
+                choreId = "chore-dishes",
+                createdAt = "2026-03-28T18:00:00Z",
+                participantMemberIds = listOf("member-bob"),
+            ),
+            completion(
+                id = "completion-2",
+                choreId = "chore-dishes",
+                createdAt = "2026-03-27T18:00:00Z",
+                participantMemberIds = listOf("member-carol"),
+            ),
+            completion(
+                id = "completion-3",
+                choreId = "chore-dishes",
+                createdAt = "2026-03-26T18:00:00Z",
+                participantMemberIds = listOf("member-carol"),
+            ),
+        )
+
+        val stats = calculator.statsSnapshot(
+            household = household,
+            members = duplicateNameMembers,
+            chores = chores,
+            completions = completions,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        val dishes = stats.comparisons.first { it.choreName == "Dishes" }
+        assertThat(dishes.countsByMemberId["member-bob"]).isEqualTo(1)
+        assertThat(dishes.countsByMemberId["member-carol"]).isEqualTo(2)
+        assertThat(dishes.leader).isEqualTo(ChoreLeaderResult.Leader("Bob"))
     }
 
     @Test

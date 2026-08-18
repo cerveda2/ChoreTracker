@@ -51,9 +51,11 @@ fun ByChoreTab(
                 )
             }
         } else {
+            val nameByMemberId = stats.memberContributions.associate { it.memberId to it.displayName }
             items(stats.comparisons, key = { it.choreId }) { comparison ->
                 ChoreComparisonCard(
                     comparison = comparison,
+                    nameByMemberId = nameByMemberId,
                     onClick = { onChoreClick(comparison.choreId, comparison.choreName) },
                 )
             }
@@ -62,10 +64,14 @@ fun ByChoreTab(
 }
 
 @Composable
-private fun ChoreComparisonCard(comparison: ChoreComparison, onClick: () -> Unit) {
+private fun ChoreComparisonCard(
+    comparison: ChoreComparison,
+    nameByMemberId: Map<String, String>,
+    onClick: () -> Unit,
+) {
     val spacing = LocalSpacing.current
     val memberColors = memberColorPalette()
-    val maxCount = comparison.countsByMember.values.maxOrNull()?.coerceAtLeast(1) ?: 1
+    val maxCount = comparison.countsByMemberId.values.maxOrNull()?.coerceAtLeast(1) ?: 1
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
 
     SectionCard(title = comparison.choreName, onClick = onClick) {
@@ -74,7 +80,7 @@ private fun ChoreComparisonCard(comparison: ChoreComparison, onClick: () -> Unit
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        comparison.countsByMember.entries.forEachIndexed { index, (member, count) ->
+        comparison.countsByMemberId.entries.forEachIndexed { index, (memberId, count) ->
             val barColor = memberColors[index % memberColors.size]
             val fraction = (count.toFloat() / maxCount).coerceIn(0.02f, 1f)
 
@@ -85,7 +91,7 @@ private fun ChoreComparisonCard(comparison: ChoreComparison, onClick: () -> Unit
                 horizontalArrangement = Arrangement.spacedBy(spacing.small),
             ) {
                 Text(
-                    text = member,
+                    text = nameByMemberId[memberId].orEmpty(),
                     modifier = Modifier.width(88.dp),
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
