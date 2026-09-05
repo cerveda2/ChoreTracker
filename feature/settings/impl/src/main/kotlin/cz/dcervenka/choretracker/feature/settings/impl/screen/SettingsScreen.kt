@@ -1,5 +1,6 @@
 package cz.dcervenka.choretracker.feature.settings.impl.screen
 
+import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -91,12 +92,18 @@ fun SettingsScreen(
             }
             item {
                 SettingsGroup(title = stringResource(R.string.settings_account_section)) {
-                    SettingsListItem(
-                        title = stringResource(R.string.settings_language_title),
-                        subtitle = stringResource(R.string.settings_language_description),
-                        onClick = onOpenLanguage,
-                    )
-                    androidx.compose.material3.HorizontalDivider()
+                    // Per-app language preferences (LocaleManager) are only available from
+                    // Android 13 (TIRAMISU); below that, SettingsNavigation has no backport and
+                    // silently does nothing, so the row is hidden rather than offering a picker
+                    // that appears to work but has no effect.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        SettingsListItem(
+                            title = stringResource(R.string.settings_language_title),
+                            subtitle = stringResource(R.string.settings_language_description),
+                            onClick = onOpenLanguage,
+                        )
+                        androidx.compose.material3.HorizontalDivider()
+                    }
                     SettingsListItem(
                         title = stringResource(R.string.settings_notifications_title),
                         subtitle = stringResource(R.string.settings_notifications_description),
