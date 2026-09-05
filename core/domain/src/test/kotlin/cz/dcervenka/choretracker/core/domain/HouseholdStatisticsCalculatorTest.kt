@@ -122,6 +122,39 @@ class HouseholdStatisticsCalculatorTest {
     }
 
     @Test
+    fun `last30DaysCount is exactly a 30-day window, inclusive of both endpoints`() {
+        val completions = listOf(
+            // Exactly 29 days before today - the oldest day that should still count.
+            completion(
+                id = "completion-in-window",
+                choreId = "chore-dishes",
+                createdAt = "2026-02-28T18:00:00Z",
+                participantMemberIds = listOf("member-alice"),
+            ),
+            // One day older than that - the boundary case the original off-by-one bug miscounted.
+            completion(
+                id = "completion-out-of-window",
+                choreId = "chore-dishes",
+                createdAt = "2026-02-27T18:00:00Z",
+                participantMemberIds = listOf("member-alice"),
+            ),
+        )
+
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members,
+            chores = chores,
+            completions = completions,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        val alice = dashboard.memberContributions.first { it.displayName == "Alice" }
+        assertThat(alice.totalCount).isEqualTo(2)
+        assertThat(alice.last30DaysCount).isEqualTo(1)
+    }
+
+    @Test
     fun `buildStaleness excludes paused chores so they don't trigger reminders`() {
         val pausedChore = Chore(
             id = "chore-paused",

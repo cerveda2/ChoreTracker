@@ -137,7 +137,8 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         timeZone: TimeZone,
         today: LocalDate,
     ): List<MemberContribution> {
-        val thirtyDaysAgo = today.minus(DatePeriod(days = 30))
+        // 29, not 30: today counts as day 0, so today - 29 is a 30-day window inclusive of today.
+        val thirtyDaysAgo = today.minus(DatePeriod(days = 29))
         val totalAcrossAll = completions.sumOf { it.participantMemberIds.size }
         return members.map { member ->
             val memberCompletions = completions.filter { completion ->
