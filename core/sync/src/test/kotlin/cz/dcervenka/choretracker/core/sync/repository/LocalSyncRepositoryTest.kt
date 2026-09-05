@@ -238,6 +238,89 @@ class LocalSyncRepositoryTest {
         }
 
     @Test
+    fun `syncPendingOperations includes joinedViaInviteId in the owner's pushed snapshot`() =
+        runTest(coroutineRule.dispatcher) {
+            val op = PendingSyncOperationEntity(
+                id = "op-1",
+                entityType = "member",
+                entityId = "household-1",
+                operationType = "join",
+                payload = "user-1",
+                createdAt = Instant.parse("2026-01-04T10:00:00Z"),
+            )
+            val joinedMember = memberEntity.copy(joinedViaInviteId = "invite-1")
+            coEvery { pendingSyncOperationDao.getAll() } returns listOf(op)
+            coEvery { householdDao.getHousehold("household-1") } returns householdEntity
+            coEvery { completionParticipantDao.getParticipants("household-1") } returns emptyList()
+            coEvery { choreDao.getChores("household-1") } returns emptyList()
+            coEvery { completionDao.getCompletions("household-1") } returns emptyList()
+            coEvery { inviteDao.getInvites("household-1") } returns emptyList()
+            coEvery { memberDao.getMembers("household-1") } returns listOf(joinedMember)
+            coEvery { remoteHouseholdDataSource.upsertHouseholdSnapshot(any(), any()) } returns AppResult.Success(Unit)
+            coEvery { pendingSyncOperationDao.delete(any()) } just Runs
+
+            val resultDeferred = async { repository.syncPendingOperations() }
+            advanceUntilIdle()
+            val result = resultDeferred.await()
+
+            assertThat(result).isInstanceOf(AppResult.Success::class.java)
+            coVerify {
+                remoteHouseholdDataSource.upsertHouseholdSnapshot(
+                    match { snapshot -> snapshot.members.any { it.joinedViaInviteId == "invite-1" } },
+                    "user-1",
+                )
+            }
+        }
+
+    @Test
+    fun `syncPendingOperations pushes joinedViaInviteId when a non-owner member syncs their own join`() =
+        runTest(coroutineRule.dispatcher) {
+            authState.value = AuthState.Authenticated(
+                AppUser(id = "user-2", email = "joiner@example.com", displayName = "Joiner"),
+            )
+            val op = PendingSyncOperationEntity(
+                id = "op-1",
+                entityType = "member",
+                entityId = "household-1",
+                operationType = "join",
+                payload = "user-2",
+                createdAt = Instant.parse("2026-01-04T10:00:00Z"),
+            )
+            val joinedMember = MemberEntity(
+                id = "member-2",
+                householdId = "household-1",
+                userId = "user-2",
+                displayName = "Joiner",
+                role = HouseholdRole.MEMBER.name,
+                isCurrentUser = true,
+                joinedViaInviteId = "invite-1",
+            )
+            coEvery { pendingSyncOperationDao.getAll() } returns listOf(op)
+            coEvery { householdDao.getHousehold("household-1") } returns householdEntity
+            coEvery { memberDao.findByUserId("household-1", "user-2") } returns joinedMember
+            coEvery { completionParticipantDao.getParticipants("household-1") } returns emptyList()
+            coEvery { completionDao.getCompletions("household-1") } returns emptyList()
+            coEvery {
+                remoteHouseholdDataSource.upsertMemberSnapshot(any(), any(), any(), any())
+            } returns AppResult.Success(Unit)
+            coEvery { pendingSyncOperationDao.delete(any()) } just Runs
+
+            val resultDeferred = async { repository.syncPendingOperations() }
+            advanceUntilIdle()
+            val result = resultDeferred.await()
+
+            assertThat(result).isInstanceOf(AppResult.Success::class.java)
+            coVerify {
+                remoteHouseholdDataSource.upsertMemberSnapshot(
+                    householdId = "household-1",
+                    member = match { it.joinedViaInviteId == "invite-1" && it.id == "member-2" },
+                    completions = any(),
+                    userId = "user-2",
+                )
+            }
+        }
+
+    @Test
     fun `syncPendingOperations resolves householdId for completion delete from payload`() =
         runTest(coroutineRule.dispatcher) {
             val op = PendingSyncOperationEntity(

@@ -594,6 +594,7 @@ class LocalSyncRepository @Inject constructor(
                 role = runCatching { HouseholdRole.valueOf(member.role) }.getOrDefault(HouseholdRole.MEMBER),
                 isCurrentUser = member.isCurrentUser,
                 email = if (member.userId == currentUserId) currentUserEmail else member.email,
+                joinedViaInviteId = member.joinedViaInviteId,
             )
         }
         val completions = completionDao.getCompletions(householdId).map { completion ->
@@ -673,6 +674,7 @@ class LocalSyncRepository @Inject constructor(
             displayName = memberEntity.displayName,
             role = runCatching { HouseholdRole.valueOf(memberEntity.role) }.getOrDefault(HouseholdRole.MEMBER),
             isCurrentUser = memberEntity.isCurrentUser,
+            joinedViaInviteId = memberEntity.joinedViaInviteId,
         )
         return member to ownCompletions
     }

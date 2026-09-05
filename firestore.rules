@@ -48,23 +48,34 @@ service cloud.firestore {
     // this household - otherwise isSelfMemberWrite alone would let any signed-in user join any
     // household they merely know the ID of. The client stamps joinedViaInviteId on the member
     // doc at join time (see MemberEntity.joinedViaInviteId / OfflineFirstHouseholdRepository).
-    function isUnconsumedInviteForMember(invite, memberId) {
+    //
+    // A targeted (per-member) invite's targetMemberId is the logical member id (member.id -
+    // e.g. a placeholder row's id, see MembersSettingsScreen's GenerateMemberInvite / member.id),
+    // NOT the uid the member document is keyed by (memberDocumentId = member.userId ?: member.id
+    // in FirebaseHouseholdDataSource). So this must compare against the joining member's own
+    // logical id field on the write (request.resource.data.id), never against the {memberId}
+    // path segment - those only coincide for a brand-new member with no placeholder to claim.
+    function isUnconsumedInviteForMember(invite, memberLogicalId) {
       return invite.get('consumedAt', null) == null &&
-        (invite.get('targetMemberId', null) == null || invite.get('targetMemberId', null) == memberId);
+        (invite.get('targetMemberId', null) == null || invite.get('targetMemberId', null) == memberLogicalId);
     }
 
-    function isValidJoinInvite(householdId, inviteId, memberId) {
+    function isValidJoinInvite(householdId, inviteId, memberLogicalId) {
       return inviteId is string && inviteId.size() > 0 &&
         exists(/databases/$(database)/documents/households/$(householdId)/invites/$(inviteId)) &&
         isUnconsumedInviteForMember(
           get(/databases/$(database)/documents/households/$(householdId)/invites/$(inviteId)).data,
-          memberId,
+          memberLogicalId,
         );
     }
 
     function isSelfJoinWithValidInvite(householdId, memberId) {
       return isSelfMemberWrite(householdId, memberId) &&
-        isValidJoinInvite(householdId, request.resource.data.get('joinedViaInviteId', ''), memberId);
+        isValidJoinInvite(
+          householdId,
+          request.resource.data.get('joinedViaInviteId', ''),
+          request.resource.data.get('id', ''),
+        );
     }
 
     function isOwnMembershipRecord() {
