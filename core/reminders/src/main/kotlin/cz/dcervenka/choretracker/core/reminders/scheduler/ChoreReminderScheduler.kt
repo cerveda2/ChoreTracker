@@ -8,10 +8,11 @@ import cz.dcervenka.choretracker.core.model.settings.ReminderSettings
 import cz.dcervenka.choretracker.core.reminders.di.ReminderScope
 import cz.dcervenka.choretracker.core.reminders.worker.ChoreReminderWorker
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.retry
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -25,6 +26,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 private const val UNIQUE_WORK_NAME = "chore_reminder_work"
@@ -51,7 +53,15 @@ class ChoreReminderScheduler @Inject constructor(
                 val policy = if (hasScheduledSinceProcessStart) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP
                 reschedule(settings, policy)
             }
-            .catch { error -> Timber.e(error, "ChoreReminderScheduler: settings subscription failed") }
+            // retry, not catch: catch would let an unexpected exception permanently end this
+            // subscription with only a debug-only log line - retry logs and re-subscribes instead,
+            // so a transient failure doesn't silently and permanently stop reminders from
+            // rescheduling when settings change.
+            .retry { error ->
+                Timber.e(error, "ChoreReminderScheduler: settings subscription failed, retrying")
+                delay(5.seconds)
+                true
+            }
             .launchIn(scope)
     }
 

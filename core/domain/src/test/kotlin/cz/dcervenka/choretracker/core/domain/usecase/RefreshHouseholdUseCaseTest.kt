@@ -78,4 +78,26 @@ class RefreshHouseholdUseCaseTest {
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
         assertThat((result as AppResult.Error).message).isEqualTo("Network error")
     }
+
+    @Test
+    fun `surfaces an error from the push even when the pull succeeds`() = runTest {
+        coEvery { syncRepository.syncPendingOperations() } returns AppResult.Error("Push failed")
+
+        val result = useCase()
+
+        coVerify(exactly = 1) { syncRepository.restoreHouseholdForUser("user-1") }
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        assertThat((result as AppResult.Error).message).isEqualTo("Push failed")
+    }
+
+    @Test
+    fun `a pull failure takes precedence over a push failure`() = runTest {
+        coEvery { syncRepository.syncPendingOperations() } returns AppResult.Error("Push failed")
+        coEvery { syncRepository.restoreHouseholdForUser(any()) } returns AppResult.Error("Pull failed")
+
+        val result = useCase()
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        assertThat((result as AppResult.Error).message).isEqualTo("Pull failed")
+    }
 }

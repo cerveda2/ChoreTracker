@@ -106,7 +106,7 @@ class CheckStaleChoresUseCaseTest {
     }
 
     @Test
-    fun `filters out chores that are not yet stale, but keeps never-completed chores`() = runTest {
+    fun `filters out chores that are not yet stale, including never-completed ones`() = runTest {
         coEvery { statsRepository.getStaleChores("household-1") } returns listOf(
             staleness("chore-1", ChoreStatus.NEEDS_ATTENTION),
             staleness("chore-2", ChoreStatus.SOON),
@@ -116,6 +116,6 @@ class CheckStaleChoresUseCaseTest {
 
         val result = useCase()
 
-        assertThat(result.map(ChoreStaleness::choreId)).containsExactly("chore-1", "chore-4")
+        assertThat(result.map(ChoreStaleness::choreId)).containsExactly("chore-1")
     }
 }

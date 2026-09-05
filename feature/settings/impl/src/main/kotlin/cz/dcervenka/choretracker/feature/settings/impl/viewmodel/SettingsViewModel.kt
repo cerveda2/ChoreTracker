@@ -169,7 +169,7 @@ class SettingsViewModel @Inject constructor(
                 householdUiState.copy(
                     userLabel = resolvedName,
                     userEmail = state.user.email,
-                    accountDisplayNameInput = accountDisplayNameInput.value.ifBlank { resolvedName },
+                    accountDisplayNameInput = accountDisplayNameInput.value,
                 )
             }
             AuthState.RequiresConfiguration -> householdUiState.copy(requiresConfiguration = true)

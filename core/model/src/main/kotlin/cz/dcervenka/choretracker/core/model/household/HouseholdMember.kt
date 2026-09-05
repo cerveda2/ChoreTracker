@@ -8,4 +8,5 @@ data class HouseholdMember(
     val role: HouseholdRole,
     val isCurrentUser: Boolean = false,
     val email: String? = null,
+    val joinedViaInviteId: String? = null,
 )

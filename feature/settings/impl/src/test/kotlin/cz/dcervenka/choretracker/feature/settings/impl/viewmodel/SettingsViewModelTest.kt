@@ -161,6 +161,27 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `clearing the display name field does not snap back to the resolved name`() =
+        runTest(coroutineRule.dispatcher) {
+            val viewModel = createViewModel()
+            authStateFlow.value = sampleAuthenticatedState()
+            householdFlow.value = sampleHousehold()
+            membersFlow.value = sampleMembers()
+            choresFlow.value = listOf(sampleChore())
+
+            viewModel.uiState.test {
+                awaitItem()
+                val hydrated = awaitItem()
+                assertThat(hydrated.accountDisplayNameInput).isEqualTo("Dana")
+
+                viewModel.dispatch(SettingsUiIntent.AccountDisplayNameChanged(""))
+
+                assertThat(awaitItem().accountDisplayNameInput).isEmpty()
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
     fun `sign out delegates to use case`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
 

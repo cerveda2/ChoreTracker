@@ -156,14 +156,14 @@ object PreviewData {
             CategoryComparison(
                 category = ChoreCategory.CLEANING,
                 choreCount = 1,
-                countsByMember = mapOf("Dana" to 14, "Alex" to 11),
+                countsByMemberId = mapOf("member-1" to 14, "member-2" to 11),
                 totalCount = 25,
                 leader = ChoreLeaderResult.Leader("Dana"),
             ),
             CategoryComparison(
                 category = ChoreCategory.OTHER,
                 choreCount = 1,
-                countsByMember = mapOf("Dana" to 8, "Alex" to 10),
+                countsByMemberId = mapOf("member-1" to 8, "member-2" to 10),
                 totalCount = 18,
                 leader = ChoreLeaderResult.Leader("Alex"),
             ),
@@ -172,14 +172,14 @@ object PreviewData {
             ChoreComparison(
                 choreId = "chore-1",
                 choreName = "Kitchen cleanup",
-                countsByMember = mapOf("Dana" to 14, "Alex" to 11),
+                countsByMemberId = mapOf("member-1" to 14, "member-2" to 11),
                 leader = ChoreLeaderResult.Leader("Dana"),
                 totalCount = 25,
             ),
             ChoreComparison(
                 choreId = "chore-2",
                 choreName = "Laundry",
-                countsByMember = mapOf("Dana" to 8, "Alex" to 10),
+                countsByMemberId = mapOf("member-1" to 8, "member-2" to 10),
                 leader = ChoreLeaderResult.Leader("Alex"),
                 totalCount = 18,
             ),
@@ -187,12 +187,12 @@ object PreviewData {
         monthlyBreakdown = listOf(
             MonthlyBreakdown(
                 monthLabel = "March 2026",
-                countsByMember = mapOf("Dana" to 7, "Alex" to 6),
+                countsByMemberId = mapOf("member-1" to 7, "member-2" to 6),
                 totalCount = 13,
             ),
             MonthlyBreakdown(
                 monthLabel = "February 2026",
-                countsByMember = mapOf("Dana" to 5, "Alex" to 4),
+                countsByMemberId = mapOf("member-1" to 5, "member-2" to 4),
                 totalCount = 9,
             ),
         ),

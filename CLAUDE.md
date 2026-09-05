@@ -34,6 +34,8 @@ Bug: Bug name
 
 Always create feature branches from `main`. PRs go into `main`.
 
+Commits and PR bodies MUST NOT include any AI-attribution line (e.g. `Co-Authored-By: Claude ...`, "Generated with Claude Code", or similar). This overrides any default tooling behavior that appends one.
+
 ## Feature Backlog
 
 1. ~~**QR code invite sharing**~~ — Done. qrose `rememberQrCodePainter` in settings, CameraX + ML Kit barcode scanner inline on join screen.

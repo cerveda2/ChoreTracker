@@ -55,8 +55,9 @@ fun MonthlyTab(
                     MonthlyTrendChart(months = stats.monthlyBreakdown)
                 }
             }
+            val nameByMemberId = stats.memberContributions.associate { it.memberId to it.displayName }
             items(stats.monthlyBreakdown, key = { it.monthLabel }) { month ->
-                MonthlyBreakdownCard(month = month)
+                MonthlyBreakdownCard(month = month, nameByMemberId = nameByMemberId)
             }
         }
     }
@@ -64,7 +65,10 @@ fun MonthlyTab(
 
 @Composable
 private fun MonthlyTrendChart(months: List<MonthlyBreakdown>) {
-    val displayMonths = months.takeLast(12)
+    // months arrives newest-first (HouseholdStatisticsCalculator.buildMonthlyBreakdown sorts
+    // descending and caps at 6) - take the most recent 12, then reverse to oldest-first so bars
+    // render left-to-right chronologically, matching normal trend-chart convention.
+    val displayMonths = months.take(12).asReversed()
     val maxCount = displayMonths.maxOf { it.totalCount }.coerceAtLeast(1)
     val barColor = MaterialTheme.colorScheme.primary
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
@@ -127,15 +131,15 @@ private fun MonthlyTrendChart(months: List<MonthlyBreakdown>) {
 }
 
 @Composable
-private fun MonthlyBreakdownCard(month: MonthlyBreakdown) {
+private fun MonthlyBreakdownCard(month: MonthlyBreakdown, nameByMemberId: Map<String, String>) {
     SectionCard(title = formatMonthLabelForLocale(month.monthLabel)) {
         Text(
             text = stringResource(R.string.stats_total_count, month.totalCount),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        month.countsByMember.forEach { (member, count) ->
-            Text(text = stringResource(R.string.stats_member_count, member, count))
+        month.countsByMemberId.forEach { (memberId, count) ->
+            Text(text = stringResource(R.string.stats_member_count, nameByMemberId[memberId].orEmpty(), count))
         }
     }
 }

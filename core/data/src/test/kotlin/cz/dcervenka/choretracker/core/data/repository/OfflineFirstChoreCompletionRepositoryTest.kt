@@ -7,10 +7,12 @@ import cz.dcervenka.choretracker.core.data.contract.SyncRepository
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
+import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntity
+import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import io.mockk.MockKAnnotations
@@ -42,6 +44,9 @@ class OfflineFirstChoreCompletionRepositoryTest {
     lateinit var memberDao: MemberDao
 
     @MockK
+    lateinit var householdDao: HouseholdDao
+
+    @MockK
     lateinit var pendingSyncOperationDao: PendingSyncOperationDao
 
     @MockK
@@ -71,6 +76,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
             participantDao = participantDao,
             choreDao = choreDao,
             memberDao = memberDao,
+            householdDao = householdDao,
             pendingSyncOperationDao = pendingSyncOperationDao,
             authRepository = authRepository,
             syncRepository = syncRepository,
@@ -168,5 +174,82 @@ class OfflineFirstChoreCompletionRepositoryTest {
         )
 
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
+    }
+
+    private fun completion(createdByUserId: String) = CompletionEntity(
+        id = "completion-1",
+        householdId = "household-1",
+        choreId = "chore-1",
+        createdAt = Instant.parse("2026-01-10T08:00:00Z"),
+        createdByUserId = createdByUserId,
+        note = "Original note",
+    )
+
+    private fun household(ownerUserId: String) = HouseholdEntity(
+        id = "household-1",
+        name = "Home",
+        ownerUserId = ownerUserId,
+        inviteCode = "ABC123",
+        createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+    )
+
+    @Test
+    fun `updateCompletion succeeds when the caller is the original author`() = runBlocking {
+        coEvery { completionDao.getCompletion("completion-1") } returns completion(createdByUserId = "user-1")
+        coEvery { participantDao.deleteByCompletionId(any()) } just Runs
+
+        val result = repository.updateCompletion("completion-1", note = "Edited", participantMemberIds = emptyList())
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify(exactly = 1) { completionDao.upsert(any()) }
+    }
+
+    @Test
+    fun `updateCompletion succeeds when the caller is the household owner`() = runBlocking {
+        coEvery { completionDao.getCompletion("completion-1") } returns completion(createdByUserId = "other-user")
+        coEvery { householdDao.getHousehold("household-1") } returns household(ownerUserId = "user-1")
+        coEvery { participantDao.deleteByCompletionId(any()) } just Runs
+
+        val result = repository.updateCompletion("completion-1", note = "Edited", participantMemberIds = emptyList())
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify(exactly = 1) { completionDao.upsert(any()) }
+    }
+
+    @Test
+    fun `updateCompletion fails when the caller is neither the author nor the owner`() = runBlocking {
+        coEvery { completionDao.getCompletion("completion-1") } returns completion(createdByUserId = "other-user")
+        coEvery { householdDao.getHousehold("household-1") } returns household(ownerUserId = "yet-another-user")
+
+        val result = repository.updateCompletion("completion-1", note = "Edited", participantMemberIds = emptyList())
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        coVerify(exactly = 0) { completionDao.upsert(any()) }
+        coVerify(exactly = 0) { syncRepository.syncPendingOperations() }
+    }
+
+    @Test
+    fun `deleteCompletion succeeds when the caller is the original author`() = runBlocking {
+        coEvery { completionDao.getCompletion("completion-1") } returns completion(createdByUserId = "user-1")
+        coEvery { completionDao.deleteById(any()) } just Runs
+        coEvery { participantDao.deleteByCompletionId(any()) } just Runs
+        coEvery { pendingSyncOperationDao.deleteByEntityId(any()) } just Runs
+
+        val result = repository.deleteCompletion("completion-1")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify(exactly = 1) { completionDao.deleteById("completion-1") }
+    }
+
+    @Test
+    fun `deleteCompletion fails when the caller is neither the author nor the owner`() = runBlocking {
+        coEvery { completionDao.getCompletion("completion-1") } returns completion(createdByUserId = "other-user")
+        coEvery { householdDao.getHousehold("household-1") } returns household(ownerUserId = "yet-another-user")
+
+        val result = repository.deleteCompletion("completion-1")
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        coVerify(exactly = 0) { completionDao.deleteById(any()) }
+        coVerify(exactly = 0) { syncRepository.syncPendingOperations() }
     }
 }

@@ -137,7 +137,8 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         timeZone: TimeZone,
         today: LocalDate,
     ): List<MemberContribution> {
-        val thirtyDaysAgo = today.minus(DatePeriod(days = 30))
+        // 29, not 30: today counts as day 0, so today - 29 is a 30-day window inclusive of today.
+        val thirtyDaysAgo = today.minus(DatePeriod(days = 29))
         val totalAcrossAll = completions.sumOf { it.participantMemberIds.size }
         return members.map { member ->
             val memberCompletions = completions.filter { completion ->
@@ -168,6 +169,32 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         topContributor = contributions.maxByOrNull { it.totalCount }?.takeIf { it.totalCount > 0 },
     )
 
+    // Keyed by member id, not display name: two members sharing a display name would otherwise
+    // silently collapse into one entry (Map can't have two different values under one key).
+    private fun buildCountsByMemberId(
+        members: List<HouseholdMember>,
+        relevantCompletions: List<ChoreCompletion>,
+    ): Map<String, Int> = members.associate { member ->
+        member.id to relevantCompletions.count { completion -> member.id in completion.participantMemberIds }
+    }
+
+    private fun computeLeader(
+        countsByMemberId: Map<String, Int>,
+        hasRelevantCompletions: Boolean,
+        members: List<HouseholdMember>,
+    ): ChoreLeaderResult {
+        val topCount = countsByMemberId.values.maxOrNull() ?: 0
+        return when {
+            !hasRelevantCompletions || topCount == 0 -> ChoreLeaderResult.NoData
+            countsByMemberId.values.count { it == topCount } > 1 -> ChoreLeaderResult.Tie
+            else -> countsByMemberId.maxByOrNull { it.value }
+                ?.key
+                ?.let { leaderId -> members.find { it.id == leaderId }?.displayName }
+                ?.let(ChoreLeaderResult::Leader)
+                ?: ChoreLeaderResult.NoData
+        }
+    }
+
     private fun buildCategoryComparisons(
         chores: List<Chore>,
         members: List<HouseholdMember>,
@@ -180,26 +207,13 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         .map { (category, categoryChores) ->
             val choreIds = categoryChores.map { it.id }.toSet()
             val categoryCompletions = completions.filter { it.choreId in choreIds }
-            val countsByMember = members.associate { member ->
-                member.displayName to categoryCompletions.count { completion ->
-                    member.id in completion.participantMemberIds
-                }
-            }
-            val topCount = countsByMember.values.maxOrNull() ?: 0
-            val leader: ChoreLeaderResult = when {
-                categoryCompletions.isEmpty() || topCount == 0 -> ChoreLeaderResult.NoData
-                countsByMember.values.count { it == topCount } > 1 -> ChoreLeaderResult.Tie
-                else -> countsByMember.maxByOrNull { it.value }
-                    ?.key
-                    ?.let(ChoreLeaderResult::Leader)
-                    ?: ChoreLeaderResult.NoData
-            }
+            val counts = buildCountsByMemberId(members, categoryCompletions)
             CategoryComparison(
                 category = category,
                 choreCount = categoryChores.size,
-                countsByMember = countsByMember,
+                countsByMemberId = counts,
                 totalCount = categoryCompletions.size,
-                leader = leader,
+                leader = computeLeader(counts, categoryCompletions.isNotEmpty(), members),
             )
         }
 
@@ -212,25 +226,12 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         .sortedBy(Chore::name)
         .map { chore ->
             val choreCompletions = completions.filter { it.choreId == chore.id }
-            val countsByMember = members.associate { member ->
-                member.displayName to choreCompletions.count { completion ->
-                    member.id in completion.participantMemberIds
-                }
-            }
-            val topCount = countsByMember.values.maxOrNull() ?: 0
-            val leader: ChoreLeaderResult = when {
-                choreCompletions.isEmpty() || topCount == 0 -> ChoreLeaderResult.NoData
-                countsByMember.values.count { it == topCount } > 1 -> ChoreLeaderResult.Tie
-                else -> countsByMember.maxByOrNull { it.value }
-                    ?.key
-                    ?.let(ChoreLeaderResult::Leader)
-                    ?: ChoreLeaderResult.NoData
-            }
+            val counts = buildCountsByMemberId(members, choreCompletions)
             ChoreComparison(
                 choreId = chore.id,
                 choreName = chore.name,
-                countsByMember = countsByMember,
-                leader = leader,
+                countsByMemberId = counts,
+                leader = computeLeader(counts, choreCompletions.isNotEmpty(), members),
                 totalCount = choreCompletions.size,
             )
         }
@@ -250,11 +251,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         .map { (monthLabel, monthCompletions) ->
             MonthlyBreakdown(
                 monthLabel = monthLabel,
-                countsByMember = members.associate { member ->
-                    member.displayName to monthCompletions.count { completion ->
-                        member.id in completion.participantMemberIds
-                    }
-                },
+                countsByMemberId = buildCountsByMemberId(members, monthCompletions),
                 totalCount = monthCompletions.size,
             )
         }
@@ -265,7 +262,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         timeZone: TimeZone,
         today: LocalDate,
     ): List<ChoreStaleness> = chores
-        .filter { it.deletedAt == null }
+        .filter { it.isActive && it.deletedAt == null }
         .sortedBy(Chore::name)
         .map { chore ->
             val lastCompletionDate = completions

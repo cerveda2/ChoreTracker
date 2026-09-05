@@ -138,13 +138,15 @@ fun DashboardScreen(
             PullToRefreshBox(
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = { onIntent(DashboardUiIntent.Refresh) },
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = innerPadding.calculateTopPadding()),
             ) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
                         start = spacing.large,
-                        top = innerPadding.calculateTopPadding() + spacing.large,
+                        top = spacing.large,
                         end = spacing.large,
                         bottom = innerPadding.calculateBottomPadding() + spacing.large,
                     ),

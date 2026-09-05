@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.google.mlkit.vision.barcode.BarcodeScanner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -29,6 +30,9 @@ fun QrCodeScanner(
     val lifecycleOwner = LocalLifecycleOwner.current
     val enabledRef = remember { mutableStateOf(enabled) }
     SideEffect { enabledRef.value = enabled }
+    // Created asynchronously inside the factory's camera-provider listener below, so onRelease
+    // (which needs to close it) can't reference it directly - held here instead.
+    val scannerRef = remember { mutableStateOf<BarcodeScanner?>(null) }
 
     AndroidView(
         factory = { ctx ->
@@ -46,6 +50,7 @@ fun QrCodeScanner(
                         .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
                         .build(),
                 )
+                scannerRef.value = scanner
 
                 val analysis = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
@@ -86,5 +91,6 @@ fun QrCodeScanner(
             previewView
         },
         modifier = modifier,
+        onRelease = { scannerRef.value?.close() },
     )
 }

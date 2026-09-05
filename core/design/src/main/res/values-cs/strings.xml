@@ -75,6 +75,7 @@
     <string name="dashboard_completion_loading">Načítám splnění…</string>
     <string name="dashboard_completion_delete_title">Smazat toto splnění?</string>
     <string name="dashboard_completion_delete_message">Tím se odstraní zaznamenaný záznam. Samotný úkol není ovlivněn.</string>
+    <string name="dashboard_completion_action_error">Něco se pokazilo</string>
     <string name="dashboard_needs_attention">Vyžaduje pozornost</string>
     <string name="dashboard_stale_chip">%1$s: %2$s</string>
     <string name="dashboard_stale_last_done">Naposledy splněno %1$s (před %2$d dny)</string>

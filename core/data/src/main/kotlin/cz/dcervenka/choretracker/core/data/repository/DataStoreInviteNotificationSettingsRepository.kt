@@ -17,6 +17,11 @@ import javax.inject.Singleton
 
 private const val DEFAULT_ENABLED = true
 
+// Pre-per-user-scoping, this was the only key this DataStore file ever wrote (see git history).
+// Kept as a read-only fallback so a device that already had this toggled off doesn't silently
+// revert to DEFAULT_ENABLED just because it has no "enabled_$userId" entry yet.
+private val LEGACY_GLOBAL_ENABLED_KEY = booleanPreferencesKey("enabled")
+
 @Singleton
 class DataStoreInviteNotificationSettingsRepository @Inject constructor(
     @InviteNotificationSettingsDataStore private val dataStore: DataStore<Preferences>,
@@ -29,14 +34,17 @@ class DataStoreInviteNotificationSettingsRepository @Inject constructor(
     }
 
     override fun observeEnabled(userId: String): Flow<Boolean> =
-        safeData.map { preferences -> preferences[enabledKey(userId)] ?: DEFAULT_ENABLED }
+        safeData.map { preferences -> resolveEnabled(preferences, userId) }
 
     override suspend fun isEnabled(userId: String): Boolean =
-        safeData.first()[enabledKey(userId)] ?: DEFAULT_ENABLED
+        resolveEnabled(safeData.first(), userId)
 
     override suspend fun setEnabled(userId: String, enabled: Boolean) {
         dataStore.edit { preferences -> preferences[enabledKey(userId)] = enabled }
     }
+
+    private fun resolveEnabled(preferences: Preferences, userId: String): Boolean =
+        preferences[enabledKey(userId)] ?: preferences[LEGACY_GLOBAL_ENABLED_KEY] ?: DEFAULT_ENABLED
 
     private fun enabledKey(userId: String) = booleanPreferencesKey("enabled_$userId")
 }

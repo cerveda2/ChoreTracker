@@ -11,6 +11,5 @@ data class DashboardUiState(
     val members: List<HouseholdMember> = emptyList(),
     val allCompletions: List<RecentCompletion> = emptyList(),
     val syncState: SyncState? = null,
-    val errorMessage: String? = null,
     val isRefreshing: Boolean = false,
 ) : UiState

@@ -3,6 +3,8 @@ package cz.dcervenka.choretracker.core.data.repository
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -61,5 +63,21 @@ class DataStoreInviteNotificationSettingsRepositoryTest {
 
         assertThat(repository.isEnabled("user-1")).isFalse()
         assertThat(repository.isEnabled("user-2")).isTrue()
+    }
+
+    @Test
+    fun `falls back to the pre-per-user-scoping legacy key when no per-user value is set`() = runTest {
+        dataStore.edit { preferences -> preferences[booleanPreferencesKey("enabled")] = false }
+
+        assertThat(repository.isEnabled("user-1")).isFalse()
+        assertThat(repository.observeEnabled("user-1").first()).isFalse()
+    }
+
+    @Test
+    fun `a per-user value takes precedence over the legacy key once set`() = runTest {
+        dataStore.edit { preferences -> preferences[booleanPreferencesKey("enabled")] = false }
+        repository.setEnabled("user-1", true)
+
+        assertThat(repository.isEnabled("user-1")).isTrue()
     }
 }

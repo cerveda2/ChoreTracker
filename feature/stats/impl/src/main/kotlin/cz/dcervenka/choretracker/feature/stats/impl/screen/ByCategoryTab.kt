@@ -39,15 +39,16 @@ fun ByCategoryTab(
                 )
             }
         } else {
+            val nameByMemberId = stats.memberContributions.associate { it.memberId to it.displayName }
             items(stats.categoryComparisons, key = { it.category.name }) { comparison ->
-                CategoryComparisonCard(comparison = comparison)
+                CategoryComparisonCard(comparison = comparison, nameByMemberId = nameByMemberId)
             }
         }
     }
 }
 
 @Composable
-private fun CategoryComparisonCard(comparison: CategoryComparison) {
+private fun CategoryComparisonCard(comparison: CategoryComparison, nameByMemberId: Map<String, String>) {
     SectionCard(title = stringResource(comparison.category.toStringRes())) {
         Text(
             text = stringResource(R.string.stats_total_count, comparison.totalCount),
@@ -59,8 +60,8 @@ private fun CategoryComparisonCard(comparison: CategoryComparison) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        comparison.countsByMember.forEach { (member, count) ->
-            Text(text = stringResource(R.string.stats_member_count, member, count))
+        comparison.countsByMemberId.forEach { (memberId, count) ->
+            Text(text = stringResource(R.string.stats_member_count, nameByMemberId[memberId].orEmpty(), count))
         }
         Text(
             text = stringResource(R.string.stats_leader, leaderLabel(comparison.leader)),

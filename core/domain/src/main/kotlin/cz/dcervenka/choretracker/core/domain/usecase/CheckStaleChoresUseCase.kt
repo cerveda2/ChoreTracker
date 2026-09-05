@@ -28,7 +28,7 @@ class CheckStaleChoresUseCase @Inject constructor(
             emptyList()
         } else {
             statsRepository.getStaleChores(household.id)
-                .filter { it.status == ChoreStatus.NEEDS_ATTENTION || it.status == ChoreStatus.NEVER }
+                .filter { it.status == ChoreStatus.NEEDS_ATTENTION }
         }
     }
 }

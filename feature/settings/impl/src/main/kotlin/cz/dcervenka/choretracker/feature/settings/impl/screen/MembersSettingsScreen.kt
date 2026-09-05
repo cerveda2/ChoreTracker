@@ -2,7 +2,9 @@ package cz.dcervenka.choretracker.feature.settings.impl.screen
 
 import android.content.ClipData
 import android.content.Intent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -55,6 +57,7 @@ import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
+import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
@@ -111,6 +114,16 @@ fun MembersSettingsScreen(
                     text = stringResource(R.string.settings_invite_code, code),
                     style = MaterialTheme.typography.bodyLarge,
                 )
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        painter = rememberQrCodePainter(code),
+                        contentDescription = null,
+                        modifier = Modifier.size(180.dp),
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.small)) {
                     TextButton(onClick = {
                         scope.launch {

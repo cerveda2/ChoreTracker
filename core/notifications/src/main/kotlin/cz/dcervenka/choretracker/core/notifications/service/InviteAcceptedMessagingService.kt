@@ -20,10 +20,10 @@ class InviteAcceptedMessagingService : FirebaseMessagingService() {
     @Inject
     lateinit var tokenRegistrar: FcmTokenRegistrar
 
-    override fun onNewToken(token: String) {
-        super.onNewToken(token)
-        Timber.d("InviteAcceptedMessagingService: onNewToken")
-        tokenRegistrar.onTokenRefreshed(token)
+    override fun onRegistered(installationId: String) {
+        super.onRegistered(installationId)
+        Timber.d("InviteAcceptedMessagingService: onRegistered")
+        tokenRegistrar.onIdRegistered(installationId)
     }
 
     // Only reached while the app is in the foreground - FCM auto-displays "notification"-payload

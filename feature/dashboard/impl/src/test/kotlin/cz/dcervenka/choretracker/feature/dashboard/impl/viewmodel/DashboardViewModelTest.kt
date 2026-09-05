@@ -89,6 +89,7 @@ class DashboardViewModelTest {
         every { observeRecentCompletionsUseCase(any(), any()) } answers { completionsFlow }
         every { observeSyncStateUseCase(any()) } answers { syncStateFlow }
         coEvery { logCompletionUseCase(any(), any(), any(), any()) } returns AppResult.Success("completion-id")
+        coEvery { updateCompletionUseCase(any(), any(), any()) } returns AppResult.Success(Unit)
         coEvery { deleteCompletionUseCase(any()) } returns AppResult.Success(Unit)
         coEvery { retryPendingSyncUseCase() } returns AppResult.Success(Unit)
         coEvery { refreshHouseholdUseCase() } returns AppResult.Success(Unit)
@@ -203,6 +204,46 @@ class DashboardViewModelTest {
 
             assertThat(awaitItem()).isEqualTo(UndoEvent("completion-id", "Kitchen"))
             stateJob.cancel()
+        }
+    }
+
+    @Test
+    fun `update completion emits an error event when the use case fails`() = runTest(coroutineRule.dispatcher) {
+        coEvery { updateCompletionUseCase(any(), any(), any()) } returns
+            AppResult.Error("Only the household owner or the person who logged this can edit it.")
+        val viewModel = createViewModel()
+
+        viewModel.errorEvents.test {
+            viewModel.dispatch(DashboardUiIntent.UpdateCompletion("completion-1", "Note", listOf("member-1")))
+            advanceUntilIdle()
+
+            assertThat(awaitItem()).isEqualTo("Only the household owner or the person who logged this can edit it.")
+        }
+    }
+
+    @Test
+    fun `delete completion emits an error event when the use case fails`() = runTest(coroutineRule.dispatcher) {
+        coEvery { deleteCompletionUseCase(any()) } returns
+            AppResult.Error("Only the household owner or the person who logged this can delete it.")
+        val viewModel = createViewModel()
+
+        viewModel.errorEvents.test {
+            viewModel.dispatch(DashboardUiIntent.DeleteCompletion("completion-1"))
+            advanceUntilIdle()
+
+            assertThat(awaitItem()).isEqualTo("Only the household owner or the person who logged this can delete it.")
+        }
+    }
+
+    @Test
+    fun `update completion emits no error event when the use case succeeds`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.errorEvents.test {
+            viewModel.dispatch(DashboardUiIntent.UpdateCompletion("completion-1", "Note", listOf("member-1")))
+            advanceUntilIdle()
+
+            expectNoEvents()
         }
     }
 }

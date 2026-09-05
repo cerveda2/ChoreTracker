@@ -378,6 +378,7 @@ private suspend fun MemberDao.resolveMemberForInvite(
                     user.id,
                     user.email,
                     currentUserDisplayName.ifBlank { user.displayName },
+                    invite.id,
                 )
             findByUserId(invite.householdId, user.id) == null ->
                 upsert(
@@ -389,6 +390,7 @@ private suspend fun MemberDao.resolveMemberForInvite(
                         role = HouseholdRole.MEMBER.name,
                         isCurrentUser = true,
                         email = user.email,
+                        joinedViaInviteId = invite.id,
                     ),
                 )
         }
@@ -402,6 +404,7 @@ private suspend fun MemberDao.resolveMemberForInvite(
                 role = HouseholdRole.MEMBER.name,
                 isCurrentUser = true,
                 email = user.email,
+                joinedViaInviteId = invite.id,
             ),
         )
     }

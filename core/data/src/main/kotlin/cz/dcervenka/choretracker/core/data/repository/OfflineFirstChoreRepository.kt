@@ -27,7 +27,9 @@ class OfflineFirstChoreRepository @Inject constructor(
 ) : ChoreRepository {
 
     override fun observeChores(householdId: String): Flow<List<Chore>> =
-        choreDao.observeChores(householdId).map { chores -> chores.map(ChoreEntity::asModel) }
+        choreDao.observeChores(householdId).map { chores ->
+            chores.filter { it.deletedAt == null }.map(ChoreEntity::asModel)
+        }
 
     override suspend fun addChore(
         householdId: String,

@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.SecondaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
@@ -79,22 +79,20 @@ fun StatsScreen(
                     bottom = innerPadding.calculateBottomPadding(),
                 ),
         ) {
-            ScrollableTabRow(
+            SecondaryScrollableTabRow(
                 selectedTabIndex = selectedTabIndex,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = spacing.large),
                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                indicator = { tabPositions ->
-                    with(TabRowDefaults) {
-                        TabRowDefaults.SecondaryIndicator(
-                            modifier = Modifier
-                                .tabIndicatorOffset(tabPositions[selectedTabIndex])
-                                .padding(horizontal = spacing.medium),
-                            height = spacing.xSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
+                indicator = {
+                    TabRowDefaults.SecondaryIndicator(
+                        modifier = Modifier
+                            .tabIndicatorOffset(selectedTabIndex, matchContentSize = false)
+                            .padding(horizontal = spacing.medium),
+                        height = spacing.xSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                 },
                 divider = {},
                 edgePadding = 0.dp,

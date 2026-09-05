@@ -80,10 +80,14 @@ fun NavGraphBuilder.dashboardScreen(
         RecentCompletionDetailScreen(
             completion = completion,
             uiState = uiState.value,
+            errorEvents = viewModel.errorEvents,
             onBack = { navController.popBackStack() },
             onDelete = {
+                // Deliberately doesn't pop back here - the LaunchedEffect above already does that
+                // reactively once `completion` actually disappears from uiState, which only
+                // happens on a successful delete. Popping back unconditionally here would leave
+                // no screen around to show the error snackbar if the delete is rejected.
                 viewModel.dispatch(DashboardUiIntent.DeleteCompletion(completionId))
-                navController.popBackStack()
             },
             onUpdate = { note, participantIds ->
                 viewModel.dispatch(DashboardUiIntent.UpdateCompletion(completionId, note, participantIds))

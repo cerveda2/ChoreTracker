@@ -44,18 +44,61 @@ service cloud.firestore {
         request.resource.data.householdId == householdId;
     }
 
+    // A self-join (member create, not update) must reference a real, still-valid invite for
+    // this household - otherwise isSelfMemberWrite alone would let any signed-in user join any
+    // household they merely know the ID of. The client stamps joinedViaInviteId on the member
+    // doc at join time (see MemberEntity.joinedViaInviteId / OfflineFirstHouseholdRepository).
+    //
+    // A targeted (per-member) invite's targetMemberId is the logical member id (member.id -
+    // e.g. a placeholder row's id, see MembersSettingsScreen's GenerateMemberInvite / member.id),
+    // NOT the uid the member document is keyed by (memberDocumentId = member.userId ?: member.id
+    // in FirebaseHouseholdDataSource). So this must compare against the joining member's own
+    // logical id field on the write (request.resource.data.id), never against the {memberId}
+    // path segment - those only coincide for a brand-new member with no placeholder to claim.
+    function isUnconsumedInviteForMember(invite, memberLogicalId) {
+      return invite.get('consumedAt', null) == null &&
+        (invite.get('targetMemberId', null) == null || invite.get('targetMemberId', null) == memberLogicalId);
+    }
+
+    function isValidJoinInvite(householdId, inviteId, memberLogicalId) {
+      return inviteId is string && inviteId.size() > 0 &&
+        exists(/databases/$(database)/documents/households/$(householdId)/invites/$(inviteId)) &&
+        isUnconsumedInviteForMember(
+          get(/databases/$(database)/documents/households/$(householdId)/invites/$(inviteId)).data,
+          memberLogicalId,
+        );
+    }
+
+    function isSelfJoinWithValidInvite(householdId, memberId) {
+      return isSelfMemberWrite(householdId, memberId) &&
+        isValidJoinInvite(
+          householdId,
+          request.resource.data.get('joinedViaInviteId', ''),
+          request.resource.data.get('id', ''),
+        );
+    }
+
     function isOwnMembershipRecord() {
       return isSignedIn() &&
         resource.data.userId == request.auth.uid;
     }
 
+    // The household-owner branch is for upsertMembershipData's batched sync, which re-confirms
+    // users/{uid} for members who already have a member doc in that household (a brand new
+    // membership only ever gets its userId - and so a users/ write for it - via the joining
+    // user's own isSelfJoinWithValidInvite-gated write, never via the owner). Requiring that
+    // member doc to already exist here closes the gap where an attacker could otherwise own a
+    // throwaway household and use it to overwrite an arbitrary victim's users/{uid} document
+    // (e.g. hijacking their fcmToken).
     function canManageUserDocument(userId) {
       return isUserDocument(userId) ||
         (
           isSignedIn() &&
           request.resource.data.userId == userId &&
           request.resource.data.householdId != null &&
-          isHouseholdOwner(request.resource.data.householdId)
+          isHouseholdOwner(request.resource.data.householdId) &&
+          memberDocExists(request.resource.data.householdId, userId) &&
+          memberDoc(request.resource.data.householdId, userId).data.userId == userId
         );
     }
 
@@ -88,7 +131,7 @@ service cloud.firestore {
       match /members/{memberId} {
         allow read: if isHouseholdMember(householdId) || isOwnMembershipRecord();
         allow create: if isHouseholdOwner(householdId) ||
-          isSelfMemberWrite(householdId, memberId);
+          isSelfJoinWithValidInvite(householdId, memberId);
         allow update: if isHouseholdOwner(householdId) ||
           isSelfMemberWrite(householdId, memberId);
         allow delete: if isHouseholdOwner(householdId);

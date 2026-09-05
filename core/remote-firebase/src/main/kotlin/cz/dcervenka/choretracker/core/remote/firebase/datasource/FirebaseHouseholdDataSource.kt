@@ -189,6 +189,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     put("role", member.role.name)
                     put("active", true)
                     member.email?.let { put("email", it) }
+                    member.joinedViaInviteId?.let { put("joinedViaInviteId", it) }
                 },
                 SetOptions.merge(),
             )
@@ -290,6 +291,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     put("role", member.role.name)
                     put("active", true)
                     member.email?.let { put("email", it) }
+                    member.joinedViaInviteId?.let { put("joinedViaInviteId", it) }
                 },
                 SetOptions.merge(),
             )
@@ -515,6 +517,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             ?: HouseholdRole.MEMBER,
         isCurrentUser = getString("userId") == currentUserId,
         email = getString("email"),
+        joinedViaInviteId = getString("joinedViaInviteId"),
     )
 
     private fun DocumentSnapshot.asChore(householdId: String): Chore = Chore(

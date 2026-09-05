@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.data.contract.SyncRepository
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
+import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
@@ -31,6 +32,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
     private val participantDao: CompletionParticipantDao,
     private val choreDao: ChoreDao,
     private val memberDao: MemberDao,
+    private val householdDao: HouseholdDao,
     private val pendingSyncOperationDao: PendingSyncOperationDao,
     private val authRepository: AuthRepository,
     private val syncRepository: SyncRepository,
@@ -139,47 +141,73 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
     ): EmptyResult {
         Timber.d("updateCompletion: completionId=$completionId participants=${participantMemberIds.size}")
         val existing = completionDao.getCompletion(completionId)
-            ?: return AppResult.Error("Completion not found")
-        completionDao.upsert(existing.copy(note = note?.takeIf(String::isNotBlank)))
-        participantDao.deleteByCompletionId(completionId)
-        participantDao.insertAll(
-            participantMemberIds.distinct().map { memberId ->
-                CompletionParticipantEntity(completionId = completionId, memberId = memberId)
-            },
-        )
-        pendingSyncOperationDao.upsert(
-            PendingSyncOperationEntity(
-                id = UUID.randomUUID().toString(),
-                entityType = "completion",
-                entityId = completionId,
-                operationType = "upsert",
-                payload = note.orEmpty(),
-                createdAt = Clock.System.now(),
-            ),
-        )
-        syncRepository.syncPendingOperations()
-        return AppResult.Success(Unit)
+        val currentUserId = (authRepository.authState.first() as? AuthState.Authenticated)?.user?.id
+        return when {
+            existing == null -> AppResult.Error("Completion not found")
+            currentUserId == null -> AppResult.Error("Sign in or continue in preview mode first.")
+            !canModifyCompletion(existing, currentUserId) -> {
+                Timber.w("updateCompletion failed: userId=$currentUserId is not the owner or the author")
+                AppResult.Error("Only the household owner or the person who logged this can edit it.")
+            }
+            else -> {
+                completionDao.upsert(existing.copy(note = note?.takeIf(String::isNotBlank)))
+                participantDao.deleteByCompletionId(completionId)
+                participantDao.insertAll(
+                    participantMemberIds.distinct().map { memberId ->
+                        CompletionParticipantEntity(completionId = completionId, memberId = memberId)
+                    },
+                )
+                pendingSyncOperationDao.upsert(
+                    PendingSyncOperationEntity(
+                        id = UUID.randomUUID().toString(),
+                        entityType = "completion",
+                        entityId = completionId,
+                        operationType = "upsert",
+                        payload = note.orEmpty(),
+                        createdAt = Clock.System.now(),
+                    ),
+                )
+                syncRepository.syncPendingOperations()
+                AppResult.Success(Unit)
+            }
+        }
     }
 
     override suspend fun deleteCompletion(completionId: String): EmptyResult {
         Timber.d("deleteCompletion: completionId=$completionId")
-        val householdId = completionDao.getCompletion(completionId)?.householdId
-        completionDao.deleteById(completionId)
-        participantDao.deleteByCompletionId(completionId)
-        pendingSyncOperationDao.deleteByEntityId(completionId)
-        if (householdId != null) {
-            pendingSyncOperationDao.upsert(
-                PendingSyncOperationEntity(
-                    id = UUID.randomUUID().toString(),
-                    entityType = "completion",
-                    entityId = completionId,
-                    operationType = "delete",
-                    payload = householdId,
-                    createdAt = Clock.System.now(),
-                ),
-            )
-            syncRepository.syncPendingOperations()
+        val existing = completionDao.getCompletion(completionId)
+        val currentUserId = (authRepository.authState.first() as? AuthState.Authenticated)?.user?.id
+        return when {
+            existing == null -> AppResult.Success(Unit)
+            currentUserId == null -> AppResult.Error("Sign in or continue in preview mode first.")
+            !canModifyCompletion(existing, currentUserId) -> {
+                Timber.w("deleteCompletion failed: userId=$currentUserId is not the owner or the author")
+                AppResult.Error("Only the household owner or the person who logged this can delete it.")
+            }
+            else -> {
+                completionDao.deleteById(completionId)
+                participantDao.deleteByCompletionId(completionId)
+                pendingSyncOperationDao.deleteByEntityId(completionId)
+                pendingSyncOperationDao.upsert(
+                    PendingSyncOperationEntity(
+                        id = UUID.randomUUID().toString(),
+                        entityType = "completion",
+                        entityId = completionId,
+                        operationType = "delete",
+                        payload = existing.householdId,
+                        createdAt = Clock.System.now(),
+                    ),
+                )
+                syncRepository.syncPendingOperations()
+                AppResult.Success(Unit)
+            }
         }
-        return AppResult.Success(Unit)
+    }
+
+    // Mirrors firestore.rules' completions update/delete rule: the household owner can modify
+    // any completion; a regular member can only modify one they authored themselves.
+    private suspend fun canModifyCompletion(completion: CompletionEntity, currentUserId: String): Boolean {
+        if (completion.createdByUserId == currentUserId) return true
+        return householdDao.getHousehold(completion.householdId)?.ownerUserId == currentUserId
     }
 }

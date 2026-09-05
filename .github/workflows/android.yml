@@ -85,7 +85,10 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest
+        # 'test' (not 'testDebugUnitTest') so the plain-JVM modules (core:domain, core:model,
+        # core:common, ...) are covered too - testDebugUnitTest only exists on Android modules
+        # and silently skips those, so their tests never gated a PR.
+        run: ./gradlew test
 
       - name: Upload unit test reports
         if: always()

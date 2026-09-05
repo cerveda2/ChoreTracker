@@ -5,23 +5,25 @@ import cz.dcervenka.choretracker.core.data.contract.InviteNotificationSettingsRe
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.notifications.di.NotificationScope
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.seconds
 
 /**
- * Keeps this device's FCM token written onto the signed-in user's `users/{uid}.fcmToken` field,
- * so the "invite accepted" Cloud Function can push a notification to a household owner. Mirrors
- * LocalSyncRepository's authState.flatMapLatest {...}.launchIn(scope) pattern - see
- * core/sync/.../repository/LocalSyncRepository.kt.
+ * Keeps this device's FCM installation ID written onto the signed-in user's
+ * `users/{uid}.fcmToken` field, so the "invite accepted" Cloud Function can push a notification to
+ * a household owner. Mirrors LocalSyncRepository's authState.flatMapLatest {...}.launchIn(scope)
+ * pattern - see core/sync/.../repository/LocalSyncRepository.kt.
  *
  * Also reacts to [InviteNotificationSettingsRepository]'s on/off toggle: when disabled, the token
  * is actively cleared (not just left unregistered) so the Cloud Function's existing "missing
@@ -46,34 +48,37 @@ class FcmTokenRegistrar @Inject constructor(
                 }
             }
             .onEach { (userId, enabled) -> applyTokenState(userId, enabled) }
-            .catch { error -> Timber.e(error, "FcmTokenRegistrar: token-state subscription failed") }
+            // retry, not catch: catch would let an unexpected exception permanently end this
+            // subscription with only a debug-only log line - retry logs and re-subscribes instead,
+            // so a transient failure doesn't silently and permanently stop FCM token registration.
+            .retry { error ->
+                Timber.e(error, "FcmTokenRegistrar: token-state subscription failed, retrying")
+                delay(5.seconds)
+                true
+            }
             .launchIn(scope)
     }
 
     /**
      * Called by [cz.dcervenka.choretracker.core.notifications.service.InviteAcceptedMessagingService]
-     * when FCM rotates the device token.
+     * when FCM (re-)registers this device's installation ID - either in response to
+     * [applyTokenState] calling [FcmTokenWriter.requestRegistration], or on a later auto-rotation.
      */
-    fun onTokenRefreshed(token: String) {
+    fun onIdRegistered(installationId: String) {
         scope.launch {
             val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
             if (user == null || user.isPreview) return@launch
             if (inviteNotificationSettingsRepository.isEnabled(user.id)) {
-                tokenWriter.writeToken(user.id, token)
+                tokenWriter.writeToken(user.id, installationId)
             }
         }
     }
 
     private suspend fun applyTokenState(userId: String, enabled: Boolean) {
         if (enabled) {
-            registerCurrentToken(userId)
+            tokenWriter.requestRegistration()
         } else {
             tokenWriter.clearToken(userId)
         }
-    }
-
-    private suspend fun registerCurrentToken(userId: String) {
-        val token = tokenWriter.fetchCurrentDeviceToken() ?: return
-        tokenWriter.writeToken(userId, token)
     }
 }

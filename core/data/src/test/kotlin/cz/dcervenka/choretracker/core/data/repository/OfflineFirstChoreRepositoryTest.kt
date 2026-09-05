@@ -12,12 +12,16 @@ import io.mockk.MockKAnnotations
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.just
 import io.mockk.slot
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test
+import kotlin.time.Instant
 
 class OfflineFirstChoreRepositoryTest {
 
@@ -99,6 +103,33 @@ class OfflineFirstChoreRepositoryTest {
 
         coVerify(exactly = 1) { syncRepository.syncPendingOperations() }
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
+    }
+
+    // observeChores
+
+    @Test
+    fun `observeChores filters out soft-deleted chores`(): Unit = runBlocking {
+        val active = ChoreEntity(
+            id = "chore-1",
+            householdId = "household-1",
+            name = "Dishes",
+            isActive = true,
+            createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+            deletedAt = null,
+        )
+        val deleted = ChoreEntity(
+            id = "chore-2",
+            householdId = "household-1",
+            name = "Vacuum",
+            isActive = false,
+            createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+            deletedAt = Instant.parse("2026-02-01T00:00:00Z"),
+        )
+        every { choreDao.observeChores("household-1") } returns MutableStateFlow(listOf(active, deleted))
+
+        val result = repository.observeChores("household-1").first()
+
+        assertThat(result.map { it.id }).containsExactly("chore-1")
     }
 
     // deleteChore
