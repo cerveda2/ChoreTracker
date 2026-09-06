@@ -336,7 +336,11 @@ class HouseholdStatisticsCalculator @Inject constructor() {
             DEFAULT_NEEDS_ATTENTION_THRESHOLD_DAYS
         }
         val soonThreshold = if (frequencyDays != null && frequencyDays > 0) {
-            (frequencyDays * SOON_THRESHOLD_RATIO).roundToInt()
+            // For a 1- or 2-day frequency, rounding frequencyDays * SOON_THRESHOLD_RATIO lands on
+            // attentionThreshold itself (e.g. frequencyDays=2 → round(1.6)=2), which made the
+            // NEEDS_ATTENTION branch below always win first and SOON unreachable. Clamping below
+            // attentionThreshold keeps SOON reachable for short frequencies too.
+            (frequencyDays * SOON_THRESHOLD_RATIO).roundToInt().coerceAtMost(attentionThreshold - 1)
         } else {
             DEFAULT_SOON_THRESHOLD_DAYS
         }

@@ -454,6 +454,37 @@ class HouseholdStatisticsCalculatorTest {
             .isEqualTo(ChoreStatus.NEEDS_ATTENTION)
     }
 
+    @Test
+    fun `SOON is still reachable for a chore due every 1-2 days`() {
+        val everyOtherDayChore = Chore(
+            id = "chore-plants",
+            householdId = household.id,
+            name = "Water plants",
+            isActive = true,
+            createdAt = Instant.parse("2026-01-01T09:00:00Z"),
+            frequencyDays = 2,
+        )
+        val completions = listOf(
+            completion(
+                id = "c1",
+                choreId = "chore-plants",
+                createdAt = "2026-03-28T12:00:00Z", // 1 day ago, frequency 2 → SOON, not NEEDS_ATTENTION
+                participantMemberIds = listOf("member-alice"),
+            ),
+        )
+
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members,
+            chores = listOf(everyOtherDayChore),
+            completions = completions,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        assertThat(dashboard.staleChores.single().status).isEqualTo(ChoreStatus.SOON)
+    }
+
     private fun completion(
         id: String,
         choreId: String,
