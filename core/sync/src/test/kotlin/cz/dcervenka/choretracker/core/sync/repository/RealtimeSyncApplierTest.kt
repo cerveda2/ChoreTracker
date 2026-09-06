@@ -22,7 +22,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
 import io.mockk.just
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
 import kotlin.time.Instant
@@ -90,7 +90,7 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
-    fun `applyMembers upserts members received from the remote listener`() = runBlocking {
+    fun `applyMembers upserts members received from the remote listener`() = runTest {
         applier.applyMembers("household-1", "user-1", sampleMembers())
 
         coVerify { memberDao.upsert(match { it.id == "member-1" }) }
@@ -98,7 +98,7 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
-    fun `applyMembers prunes members no longer present in the remote listener`() = runBlocking {
+    fun `applyMembers prunes members no longer present in the remote listener`() = runTest {
         val staleMember = MemberEntity(
             id = "stale-member",
             householdId = "household-1",
@@ -116,7 +116,7 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
-    fun `applyMembers skips pruning when the household has a pending member operation`() = runBlocking {
+    fun `applyMembers skips pruning when the household has a pending member operation`() = runTest {
         val staleMember = MemberEntity(
             id = "stale-member",
             householdId = "household-1",
@@ -143,7 +143,7 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
-    fun `applyMembers clears local data when current user missing from remote members`() = runBlocking {
+    fun `applyMembers clears local data when current user missing from remote members`() = runTest {
         applier.applyMembers("household-1", "user-1", listOf(sampleMembers()[1]))
 
         coVerify { database.clearAll() }
@@ -151,7 +151,7 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
-    fun `applyCompletions upserts completions and replaces their participants`() = runBlocking {
+    fun `applyCompletions upserts completions and replaces their participants`() = runTest {
         val completion = ChoreCompletion(
             id = "completion-1",
             householdId = "household-1",
@@ -174,7 +174,7 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
-    fun `applyCompletions prunes completions no longer present in the remote listener`() = runBlocking {
+    fun `applyCompletions prunes completions no longer present in the remote listener`() = runTest {
         coEvery { completionDao.getCompletions("household-1") } returns listOf(
             CompletionEntity(
                 id = "stale-completion",
@@ -192,7 +192,7 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
-    fun `applyCompletions does not prune a completion with a pending sync operation`() = runBlocking {
+    fun `applyCompletions does not prune a completion with a pending sync operation`() = runTest {
         coEvery { completionDao.getCompletions("household-1") } returns listOf(
             CompletionEntity(
                 id = "unsynced-completion",
@@ -220,7 +220,7 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
-    fun `applyInvites upserts invites received from the remote listener`() = runBlocking {
+    fun `applyInvites upserts invites received from the remote listener`() = runTest {
         val invite = sampleInvite()
 
         applier.applyInvites("household-1", listOf(invite))
@@ -229,7 +229,7 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
-    fun `applyInvites prunes invites no longer present in the remote listener`() = runBlocking {
+    fun `applyInvites prunes invites no longer present in the remote listener`() = runTest {
         coEvery { inviteDao.getInvites("household-1") } returns listOf(
             InviteEntity(
                 id = "stale-invite",
@@ -246,7 +246,7 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
-    fun `applyInvites skips pruning when the household has a pending invite operation`() = runBlocking {
+    fun `applyInvites skips pruning when the household has a pending invite operation`() = runTest {
         coEvery { inviteDao.getInvites("household-1") } returns listOf(
             InviteEntity(
                 id = "unsynced-invite",
@@ -273,7 +273,7 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
-    fun `applyChores upserts chores received from the remote listener`() = runBlocking {
+    fun `applyChores upserts chores received from the remote listener`() = runTest {
         val chore = sampleChore()
 
         applier.applyChores(listOf(chore))

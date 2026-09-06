@@ -41,7 +41,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
@@ -446,7 +445,7 @@ class LocalSyncRepositoryTest {
     // restoreHouseholdForUser
 
     @Test
-    fun `restoreHouseholdForUser returns Error when fetch fails`() = runBlocking {
+    fun `restoreHouseholdForUser returns Error when fetch fails`() = runTest(coroutineRule.dispatcher) {
         coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns
             AppResult.Error("Network error")
 
@@ -457,7 +456,7 @@ class LocalSyncRepositoryTest {
     }
 
     @Test
-    fun `restoreHouseholdForUser returns Success(false) when no remote snapshot`() = runBlocking {
+    fun `restoreHouseholdForUser returns Success(false) when no remote snapshot`() = runTest(coroutineRule.dispatcher) {
         coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(null)
 
         val result = repository.restoreHouseholdForUser("user-1")
@@ -468,7 +467,9 @@ class LocalSyncRepositoryTest {
     }
 
     @Test
-    fun `restoreHouseholdForUser upserts all snapshot entities and returns Success(true)`() = runBlocking {
+    fun `restoreHouseholdForUser upserts all snapshot entities and returns Success(true)`() = runTest(
+        coroutineRule.dispatcher,
+    ) {
         val snapshot = buildSnapshot()
         coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
 
@@ -484,7 +485,9 @@ class LocalSyncRepositoryTest {
     }
 
     @Test
-    fun `restoreHouseholdForUser clears stale participants before re-inserting a completion's`() = runBlocking {
+    fun `restoreHouseholdForUser clears stale participants before re-inserting a completion's`() = runTest(
+        coroutineRule.dispatcher,
+    ) {
         val snapshot = buildSnapshot()
         coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
 
@@ -497,7 +500,9 @@ class LocalSyncRepositoryTest {
     }
 
     @Test
-    fun `restoreHouseholdForUser deduplicates members keeping userId-linked entry`() = runBlocking {
+    fun `restoreHouseholdForUser deduplicates members keeping userId-linked entry`() = runTest(
+        coroutineRule.dispatcher,
+    ) {
         val members = sampleMembers()
         val duplicateWithoutUserId = members[0].copy(userId = null)
         val snapshot = buildSnapshot(members = listOf(duplicateWithoutUserId, members[0], members[1]))
@@ -510,7 +515,7 @@ class LocalSyncRepositoryTest {
     }
 
     @Test
-    fun `restoreHouseholdForUser prunes members not in snapshot`() = runBlocking {
+    fun `restoreHouseholdForUser prunes members not in snapshot`() = runTest(coroutineRule.dispatcher) {
         val snapshot = buildSnapshot()
         val staleLocal = MemberEntity(
             id = "stale-member",
@@ -531,7 +536,7 @@ class LocalSyncRepositoryTest {
 
     @Test
     fun `restoreHouseholdForUser does not prune members when the household has a pending member op`() =
-        runBlocking {
+        runTest(coroutineRule.dispatcher) {
             val snapshot = buildSnapshot()
             val staleLocal = MemberEntity(
                 id = "stale-member",
@@ -560,7 +565,9 @@ class LocalSyncRepositoryTest {
         }
 
     @Test
-    fun `restoreHouseholdForUser does not prune a completion with a pending sync operation`() = runBlocking {
+    fun `restoreHouseholdForUser does not prune a completion with a pending sync operation`() = runTest(
+        coroutineRule.dispatcher,
+    ) {
         val snapshot = buildSnapshot()
         coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
         coEvery { completionDao.getCompletions("household-1") } returns listOf(
@@ -591,7 +598,7 @@ class LocalSyncRepositoryTest {
 
     @Test
     fun `restoreHouseholdForUser does not prune invites when the household has a pending invite op`() =
-        runBlocking {
+        runTest(coroutineRule.dispatcher) {
             val snapshot = buildSnapshot()
             coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
             coEvery { inviteDao.getInvites("household-1") } returns listOf(
@@ -620,7 +627,9 @@ class LocalSyncRepositoryTest {
         }
 
     @Test
-    fun `restoreHouseholdForUser deduplicates members preferring placeholder displayName`() = runBlocking {
+    fun `restoreHouseholdForUser deduplicates members preferring placeholder displayName`() = runTest(
+        coroutineRule.dispatcher,
+    ) {
         val claimed = sampleMembers()[0]
         val placeholder = claimed.copy(userId = null, displayName = "UserChosenName")
         val snapshot = buildSnapshot(members = listOf(claimed, placeholder))
@@ -637,7 +646,9 @@ class LocalSyncRepositoryTest {
     }
 
     @Test
-    fun `restoreHouseholdForUser clears local data when current user missing from snapshot members`() = runBlocking {
+    fun `restoreHouseholdForUser clears local data when current user missing from snapshot members`() = runTest(
+        coroutineRule.dispatcher,
+    ) {
         val snapshot = buildSnapshot(members = listOf(sampleMembers()[1]))
         coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
         coEvery { householdDao.getCurrentHouseholdForUser("user-1") } returns householdEntity
@@ -652,7 +663,7 @@ class LocalSyncRepositoryTest {
     }
 
     @Test
-    fun `restoreHouseholdForUser does not clear when no local household existed`() = runBlocking {
+    fun `restoreHouseholdForUser does not clear when no local household existed`() = runTest(coroutineRule.dispatcher) {
         val snapshot = buildSnapshot(members = listOf(sampleMembers()[1]))
         coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
         coEvery { householdDao.getCurrentHouseholdForUser("user-1") } returns null

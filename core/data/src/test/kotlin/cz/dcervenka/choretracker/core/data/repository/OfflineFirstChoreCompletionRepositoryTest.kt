@@ -24,7 +24,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.just
 import io.mockk.slot
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
 import kotlin.time.Instant
@@ -84,7 +84,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
     }
 
     @Test
-    fun `logCompletion returns error when not authenticated`() = runBlocking {
+    fun `logCompletion returns error when not authenticated`() = runTest {
         authState.value = AuthState.SignedOut
 
         val result = repository.logCompletion(
@@ -100,7 +100,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
     }
 
     @Test
-    fun `logCompletion deduplicates participant ids`() = runBlocking<Unit> {
+    fun `logCompletion deduplicates participant ids`() = runTest {
         val participantsSlot = slot<List<CompletionParticipantEntity>>()
         coEvery { participantDao.insertAll(capture(participantsSlot)) } just Runs
 
@@ -117,7 +117,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
     }
 
     @Test
-    fun `logCompletion stores null for blank note`() = runBlocking {
+    fun `logCompletion stores null for blank note`() = runTest {
         val completionSlot = slot<CompletionEntity>()
         coEvery { completionDao.upsert(capture(completionSlot)) } just Runs
 
@@ -133,7 +133,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
     }
 
     @Test
-    fun `logCompletion uses provided completedAt timestamp`() = runBlocking {
+    fun `logCompletion uses provided completedAt timestamp`() = runTest {
         val completionSlot = slot<CompletionEntity>()
         coEvery { completionDao.upsert(capture(completionSlot)) } just Runs
         val backdatedAt = Instant.parse("2026-01-10T08:00:00Z")
@@ -150,7 +150,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
     }
 
     @Test
-    fun `logCompletion queues pending sync operation and triggers sync`() = runBlocking {
+    fun `logCompletion queues pending sync operation and triggers sync`() = runTest {
         repository.logCompletion(
             householdId = "household-1",
             choreId = "chore-1",
@@ -164,7 +164,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
     }
 
     @Test
-    fun `logCompletion returns success for authenticated user`() = runBlocking {
+    fun `logCompletion returns success for authenticated user`() = runTest {
         val result = repository.logCompletion(
             householdId = "household-1",
             choreId = "chore-1",
@@ -194,7 +194,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
     )
 
     @Test
-    fun `updateCompletion succeeds when the caller is the original author`() = runBlocking {
+    fun `updateCompletion succeeds when the caller is the original author`() = runTest {
         coEvery { completionDao.getCompletion("completion-1") } returns completion(createdByUserId = "user-1")
         coEvery { participantDao.deleteByCompletionId(any()) } just Runs
 
@@ -205,7 +205,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
     }
 
     @Test
-    fun `updateCompletion succeeds when the caller is the household owner`() = runBlocking {
+    fun `updateCompletion succeeds when the caller is the household owner`() = runTest {
         coEvery { completionDao.getCompletion("completion-1") } returns completion(createdByUserId = "other-user")
         coEvery { householdDao.getHousehold("household-1") } returns household(ownerUserId = "user-1")
         coEvery { participantDao.deleteByCompletionId(any()) } just Runs
@@ -217,7 +217,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
     }
 
     @Test
-    fun `updateCompletion fails when the caller is neither the author nor the owner`() = runBlocking {
+    fun `updateCompletion fails when the caller is neither the author nor the owner`() = runTest {
         coEvery { completionDao.getCompletion("completion-1") } returns completion(createdByUserId = "other-user")
         coEvery { householdDao.getHousehold("household-1") } returns household(ownerUserId = "yet-another-user")
 
@@ -229,7 +229,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
     }
 
     @Test
-    fun `deleteCompletion succeeds when the caller is the original author`() = runBlocking {
+    fun `deleteCompletion succeeds when the caller is the original author`() = runTest {
         coEvery { completionDao.getCompletion("completion-1") } returns completion(createdByUserId = "user-1")
         coEvery { completionDao.deleteById(any()) } just Runs
         coEvery { participantDao.deleteByCompletionId(any()) } just Runs
@@ -242,7 +242,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
     }
 
     @Test
-    fun `deleteCompletion fails when the caller is neither the author nor the owner`() = runBlocking {
+    fun `deleteCompletion fails when the caller is neither the author nor the owner`() = runTest {
         coEvery { completionDao.getCompletion("completion-1") } returns completion(createdByUserId = "other-user")
         coEvery { householdDao.getHousehold("household-1") } returns household(ownerUserId = "yet-another-user")
 

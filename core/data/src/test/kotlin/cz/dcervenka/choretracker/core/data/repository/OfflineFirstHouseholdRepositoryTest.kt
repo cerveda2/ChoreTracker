@@ -24,7 +24,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.just
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
 import kotlin.time.Instant
@@ -96,13 +96,13 @@ class OfflineFirstHouseholdRepositoryTest {
     }
 
     @Test
-    fun `observeCurrentHousehold restores remote data before emitting null for authenticated user`() = runBlocking {
+    fun `observeCurrentHousehold restores remote data before emitting null for authenticated user`() = runTest {
         assertThat(repository.observeCurrentHousehold().first()?.id).isEqualTo("household-1")
         coVerify(exactly = 1) { syncRepository.restoreHouseholdForUser("user-1") }
     }
 
     @Test
-    fun `observeCurrentHousehold stamps member displayName when auth displayName differs`() = runBlocking {
+    fun `observeCurrentHousehold stamps member displayName when auth displayName differs`() = runTest {
         val household = HouseholdEntity(
             id = "household-1",
             name = "Home",
@@ -132,7 +132,7 @@ class OfflineFirstHouseholdRepositoryTest {
     }
 
     @Test
-    fun `observeCurrentHousehold skips displayName stamp when auth displayName is email fallback`() = runBlocking {
+    fun `observeCurrentHousehold skips displayName stamp when auth displayName is email fallback`() = runTest {
         authState.value = AuthState.Authenticated(
             AppUser("user-1", "dana@example.com", "dana@example.com"),
         )
@@ -143,7 +143,7 @@ class OfflineFirstHouseholdRepositoryTest {
     }
 
     @Test
-    fun `joinHousehold claims placeholder member with joining user displayName`() = runBlocking {
+    fun `joinHousehold claims placeholder member with joining user displayName`() = runTest {
         val household = HouseholdEntity(
             id = "household-1",
             name = "Home",

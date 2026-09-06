@@ -18,7 +18,7 @@ import io.mockk.just
 import io.mockk.slot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
 import kotlin.time.Instant
@@ -57,7 +57,7 @@ class OfflineFirstChoreRepositoryTest {
     // addChore
 
     @Test
-    fun `addChore upserts entity with correct fields`() = runBlocking {
+    fun `addChore upserts entity with correct fields`() = runTest {
         val slot = slot<ChoreEntity>()
         coEvery { choreDao.upsert(capture(slot)) } just Runs
 
@@ -74,7 +74,7 @@ class OfflineFirstChoreRepositoryTest {
     }
 
     @Test
-    fun `addChore passes frequencyDays through to the entity`() = runBlocking {
+    fun `addChore passes frequencyDays through to the entity`() = runTest {
         val slot = slot<ChoreEntity>()
         coEvery { choreDao.upsert(capture(slot)) } just Runs
 
@@ -84,7 +84,7 @@ class OfflineFirstChoreRepositoryTest {
     }
 
     @Test
-    fun `addChore queues upsert pending sync operation`() = runBlocking {
+    fun `addChore queues upsert pending sync operation`() = runTest {
         val slot = slot<PendingSyncOperationEntity>()
         coEvery { pendingSyncOperationDao.upsert(capture(slot)) } just Runs
 
@@ -98,7 +98,7 @@ class OfflineFirstChoreRepositoryTest {
     }
 
     @Test
-    fun `addChore triggers sync and returns Success`() = runBlocking {
+    fun `addChore triggers sync and returns Success`() = runTest {
         val result = repository.addChore("household-1", "Kitchen", ChoreCategory.OTHER)
 
         coVerify(exactly = 1) { syncRepository.syncPendingOperations() }
@@ -108,7 +108,7 @@ class OfflineFirstChoreRepositoryTest {
     // observeChores
 
     @Test
-    fun `observeChores filters out soft-deleted chores`(): Unit = runBlocking {
+    fun `observeChores filters out soft-deleted chores`() = runTest {
         val active = ChoreEntity(
             id = "chore-1",
             householdId = "household-1",
@@ -135,7 +135,7 @@ class OfflineFirstChoreRepositoryTest {
     // deleteChore
 
     @Test
-    fun `deleteChore soft-deletes via markDeleted`() = runBlocking {
+    fun `deleteChore soft-deletes via markDeleted`() = runTest {
         repository.deleteChore("chore-1")
 
         coVerify(exactly = 1) { choreDao.markDeleted("chore-1", any()) }
@@ -143,7 +143,7 @@ class OfflineFirstChoreRepositoryTest {
     }
 
     @Test
-    fun `deleteChore queues delete pending sync operation with choreId as payload`() = runBlocking {
+    fun `deleteChore queues delete pending sync operation with choreId as payload`() = runTest {
         val slot = slot<PendingSyncOperationEntity>()
         coEvery { pendingSyncOperationDao.upsert(capture(slot)) } just Runs
 
@@ -158,7 +158,7 @@ class OfflineFirstChoreRepositoryTest {
     }
 
     @Test
-    fun `deleteChore triggers sync and returns Success`() = runBlocking {
+    fun `deleteChore triggers sync and returns Success`() = runTest {
         val result = repository.deleteChore("chore-1")
 
         coVerify(exactly = 1) { syncRepository.syncPendingOperations() }
@@ -168,7 +168,7 @@ class OfflineFirstChoreRepositoryTest {
     // updateChoreActive
 
     @Test
-    fun `updateChoreActive queues reactivate operation when isActive true`() = runBlocking {
+    fun `updateChoreActive queues reactivate operation when isActive true`() = runTest {
         val slot = slot<PendingSyncOperationEntity>()
         coEvery { pendingSyncOperationDao.upsert(capture(slot)) } just Runs
 
@@ -178,7 +178,7 @@ class OfflineFirstChoreRepositoryTest {
     }
 
     @Test
-    fun `updateChoreActive queues deactivate operation when isActive false`() = runBlocking {
+    fun `updateChoreActive queues deactivate operation when isActive false`() = runTest {
         val slot = slot<PendingSyncOperationEntity>()
         coEvery { pendingSyncOperationDao.upsert(capture(slot)) } just Runs
 
@@ -190,7 +190,7 @@ class OfflineFirstChoreRepositoryTest {
     // updateChoreName
 
     @Test
-    fun `updateChoreName trims whitespace in dao call and pending op payload`() = runBlocking {
+    fun `updateChoreName trims whitespace in dao call and pending op payload`() = runTest {
         val choreSlot = slot<String>()
         val opSlot = slot<PendingSyncOperationEntity>()
         coEvery { choreDao.updateName("chore-1", capture(choreSlot)) } just Runs
@@ -206,7 +206,7 @@ class OfflineFirstChoreRepositoryTest {
     // updateChoreFrequencyDays
 
     @Test
-    fun `updateChoreFrequencyDays stores empty string payload for null frequency`() = runBlocking {
+    fun `updateChoreFrequencyDays stores empty string payload for null frequency`() = runTest {
         val slot = slot<PendingSyncOperationEntity>()
         coEvery { pendingSyncOperationDao.upsert(capture(slot)) } just Runs
 
@@ -217,7 +217,7 @@ class OfflineFirstChoreRepositoryTest {
     }
 
     @Test
-    fun `updateChoreFrequencyDays stores frequency as string payload`() = runBlocking {
+    fun `updateChoreFrequencyDays stores frequency as string payload`() = runTest {
         val slot = slot<PendingSyncOperationEntity>()
         coEvery { pendingSyncOperationDao.upsert(capture(slot)) } just Runs
 
@@ -229,7 +229,7 @@ class OfflineFirstChoreRepositoryTest {
     // updateChoreCategory
 
     @Test
-    fun `updateChoreCategory queues operation with category name as payload`() = runBlocking {
+    fun `updateChoreCategory queues operation with category name as payload`() = runTest {
         val slot = slot<PendingSyncOperationEntity>()
         coEvery { pendingSyncOperationDao.upsert(capture(slot)) } just Runs
 
