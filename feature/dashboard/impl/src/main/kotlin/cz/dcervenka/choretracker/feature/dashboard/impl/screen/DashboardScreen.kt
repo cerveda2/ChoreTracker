@@ -33,9 +33,9 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +53,7 @@ import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.SectionCard
 import cz.dcervenka.choretracker.core.design.components.TopLevelBottomBarSpacer
+import cz.dcervenka.choretracker.core.design.rememberSaveableStringList
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.formatters.formatLocalDateForLocale
@@ -100,10 +101,10 @@ fun DashboardScreen(
         }
     }
 
-    var selectedChoreId by remember { mutableStateOf<String?>(null) }
-    var selectedNote by remember { mutableStateOf("") }
+    var selectedChoreId by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedNote by rememberSaveable { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<ChoreCategory?>(null) }
-    val selectedMembers = remember { mutableStateListOf<String>() }
+    val selectedMembers = rememberSaveableStringList()
     val currentUserId = uiState.members.firstOrNull { it.isCurrentUser }?.id
     val openLogSheet: (String) -> Unit = { choreId ->
         selectedChoreId = choreId

@@ -20,7 +20,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
@@ -29,6 +29,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
+import cz.dcervenka.choretracker.core.design.rememberSaveableInstant
 import cz.dcervenka.choretracker.core.formatters.formatInstantForLocale
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 import kotlin.time.Clock
@@ -47,11 +48,11 @@ internal fun LogCompletionBottomSheet(
 ) {
     val spacing = LocalSpacing.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var showDatePicker by remember { mutableStateOf(false) }
+    var showDatePicker by rememberSaveable { mutableStateOf(false) }
     // null means "use the actual confirm-time instant", not "today at midnight" - only set once
     // the user explicitly confirms a pick in the date dialog below, so opening (or never opening)
     // the sheet doesn't backdate the completion to whenever the sheet happened to be composed.
-    var completedAt by remember { mutableStateOf<Instant?>(null) }
+    var completedAt by rememberSaveableInstant()
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = completedAt?.toEpochMilliseconds() ?: Clock.System.now().toEpochMilliseconds(),
     )

@@ -37,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,13 +90,13 @@ fun ChoresSettingsScreen(
             snackbarHostState.showSnackbar(msg)
         }
     }
-    var pendingDeleteChoreId by remember { mutableStateOf<String?>(null) }
+    var pendingDeleteChoreId by rememberSaveable { mutableStateOf<String?>(null) }
     val pendingDeleteChore = uiState.chores.firstOrNull { it.id == pendingDeleteChoreId }
-    var pendingFrequencyChoreId by remember { mutableStateOf<String?>(null) }
+    var pendingFrequencyChoreId by rememberSaveable { mutableStateOf<String?>(null) }
     val pendingFrequencyChore = uiState.chores.firstOrNull { it.id == pendingFrequencyChoreId }
-    var pendingRenameChoreId by remember { mutableStateOf<String?>(null) }
+    var pendingRenameChoreId by rememberSaveable { mutableStateOf<String?>(null) }
     val pendingRenameChore = uiState.chores.firstOrNull { it.id == pendingRenameChoreId }
-    var pendingCategoryChoreId by remember { mutableStateOf<String?>(null) }
+    var pendingCategoryChoreId by rememberSaveable { mutableStateOf<String?>(null) }
     val pendingCategoryChore = uiState.chores.firstOrNull { it.id == pendingCategoryChoreId }
     var searchQuery by remember { mutableStateOf("") }
     var groupBy by remember { mutableStateOf(ChoreGroupBy.NONE) }

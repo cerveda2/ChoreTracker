@@ -18,8 +18,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import cz.dcervenka.choretracker.core.design.LocalSpacing
@@ -28,6 +28,7 @@ import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.SectionCard
+import cz.dcervenka.choretracker.core.design.rememberSaveableStringList
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 import kotlinx.coroutines.flow.Flow
@@ -42,10 +43,10 @@ fun RecentCompletionDetailScreen(
     onUpdate: (note: String?, participantIds: List<String>) -> Unit,
 ) {
     val spacing = LocalSpacing.current
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var showEditSheet by remember { mutableStateOf(false) }
-    val editSelectedMembers = remember { SnapshotStateList<String>() }
-    var editNote by remember { mutableStateOf("") }
+    var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
+    var showEditSheet by rememberSaveable { mutableStateOf(false) }
+    val editSelectedMembers = rememberSaveableStringList()
+    var editNote by rememberSaveable { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
     val fallbackErrorMessage = stringResource(R.string.dashboard_completion_action_error)
     LaunchedEffect(errorEvents) {

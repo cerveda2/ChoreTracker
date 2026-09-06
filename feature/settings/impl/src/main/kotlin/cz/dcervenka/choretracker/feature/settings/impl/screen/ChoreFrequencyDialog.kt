@@ -9,7 +9,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -23,7 +23,7 @@ internal fun ChoreFrequencyDialog(
     onSave: (Int?) -> Unit,
     onClear: () -> Unit,
 ) {
-    var frequencyInput by remember(choreId) {
+    var frequencyInput by rememberSaveable(choreId) {
         mutableStateOf(initialFrequencyDays?.toString().orEmpty())
     }
 
