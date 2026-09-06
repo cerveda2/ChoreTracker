@@ -5,6 +5,7 @@ import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
+import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
@@ -31,6 +32,7 @@ internal class RealtimeSyncApplier(
     private val completionDao: CompletionDao,
     private val completionParticipantDao: CompletionParticipantDao,
     private val inviteDao: InviteDao,
+    private val pendingSyncOperationDao: PendingSyncOperationDao,
     private val database: ChoreTrackerDatabase,
 ) {
 
@@ -64,10 +66,19 @@ internal class RealtimeSyncApplier(
                     ),
                 )
             }
-            val memberIds = members.map { it.id }.toSet()
-            memberDao.getMembers(householdId)
-                .filter { it.id !in memberIds }
-                .forEach { memberDao.deleteById(it.id) }
+            // Pending member operations are keyed by householdId, not their own member id (see
+            // enqueueOperation call sites in OfflineFirstHouseholdRepository), so a household
+            // with any pending member operation skips this reconciliation entirely rather than
+            // risk deleting a not-yet-synced local member row (e.g. one just added locally,
+            // ahead of an unrelated snapshot for the same household arriving first).
+            val hasPendingMemberOps = pendingSyncOperationDao.getAll()
+                .any { it.entityType == "member" && it.entityId == householdId }
+            if (!hasPendingMemberOps) {
+                val memberIds = members.map { it.id }.toSet()
+                memberDao.getMembers(householdId)
+                    .filter { it.id !in memberIds }
+                    .forEach { memberDao.deleteById(it.id) }
+            }
         }
 
     suspend fun applyCompletions(householdId: String, completions: List<ChoreCompletion>) = mutex.withLock {
@@ -92,9 +103,16 @@ internal class RealtimeSyncApplier(
                 },
             )
         }
+        // Completions are enqueued with their own id as entityId (see
+        // OfflineFirstChoreCompletionRepository), so a not-yet-synced completion is excluded
+        // individually rather than skipping reconciliation for the whole household.
+        val pendingCompletionIds = pendingSyncOperationDao.getAll()
+            .filter { it.entityType == "completion" }
+            .map { it.entityId }
+            .toSet()
         val completionIds = completions.map { it.id }.toSet()
         completionDao.getCompletions(householdId)
-            .filter { it.id !in completionIds }
+            .filter { it.id !in completionIds && it.id !in pendingCompletionIds }
             .forEach { completionDao.deleteById(it.id) }
     }
 
@@ -112,10 +130,17 @@ internal class RealtimeSyncApplier(
                 ),
             )
         }
-        val inviteIds = invites.map { it.id }.toSet()
-        inviteDao.getInvites(householdId)
-            .filter { it.id !in inviteIds }
-            .forEach { inviteDao.deleteById(it.id) }
+        // Pending invite operations are keyed by householdId, not their own invite id (see
+        // enqueueOperation call sites in OfflineFirstHouseholdRepository) - same reasoning as
+        // applyMembers above.
+        val hasPendingInviteOps = pendingSyncOperationDao.getAll()
+            .any { it.entityType == "invite" && it.entityId == householdId }
+        if (!hasPendingInviteOps) {
+            val inviteIds = invites.map { it.id }.toSet()
+            inviteDao.getInvites(householdId)
+                .filter { it.id !in inviteIds }
+                .forEach { inviteDao.deleteById(it.id) }
+        }
     }
 
     // No prune step: chores are soft-deleted (isActive/deletedAt fields, see ChoreEntity), never

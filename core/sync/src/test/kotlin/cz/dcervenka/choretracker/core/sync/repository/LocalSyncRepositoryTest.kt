@@ -13,6 +13,7 @@ import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
+import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
 import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
@@ -527,6 +528,96 @@ class LocalSyncRepositoryTest {
         coVerify { memberDao.deleteById("stale-member") }
         coVerify(exactly = 0) { memberDao.deleteById("member-1") }
     }
+
+    @Test
+    fun `restoreHouseholdForUser does not prune members when the household has a pending member op`() =
+        runBlocking {
+            val snapshot = buildSnapshot()
+            val staleLocal = MemberEntity(
+                id = "stale-member",
+                householdId = "household-1",
+                userId = null,
+                displayName = "Gone",
+                role = HouseholdRole.MEMBER.name,
+                isCurrentUser = false,
+            )
+            coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
+            coEvery { memberDao.getMembers("household-1") } returns listOf(memberEntity, staleLocal)
+            coEvery { pendingSyncOperationDao.getAll() } returns listOf(
+                PendingSyncOperationEntity(
+                    id = "op-1",
+                    entityType = "member",
+                    entityId = "household-1",
+                    operationType = "upsert",
+                    payload = "New Member",
+                    createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+                ),
+            )
+
+            repository.restoreHouseholdForUser("user-1")
+
+            coVerify(exactly = 0) { memberDao.deleteById(any()) }
+        }
+
+    @Test
+    fun `restoreHouseholdForUser does not prune a completion with a pending sync operation`() = runBlocking {
+        val snapshot = buildSnapshot()
+        coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
+        coEvery { completionDao.getCompletions("household-1") } returns listOf(
+            CompletionEntity(
+                id = "unsynced-completion",
+                householdId = "household-1",
+                choreId = "chore-1",
+                createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+                createdByUserId = "user-1",
+                note = null,
+            ),
+        )
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(
+            PendingSyncOperationEntity(
+                id = "op-1",
+                entityType = "completion",
+                entityId = "unsynced-completion",
+                operationType = "upsert",
+                payload = "",
+                createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+            ),
+        )
+
+        repository.restoreHouseholdForUser("user-1")
+
+        coVerify(exactly = 0) { completionDao.deleteById("unsynced-completion") }
+    }
+
+    @Test
+    fun `restoreHouseholdForUser does not prune invites when the household has a pending invite op`() =
+        runBlocking {
+            val snapshot = buildSnapshot()
+            coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
+            coEvery { inviteDao.getInvites("household-1") } returns listOf(
+                InviteEntity(
+                    id = "unsynced-invite",
+                    householdId = "household-1",
+                    code = "NEW12345",
+                    createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+                    consumedAt = null,
+                ),
+            )
+            coEvery { pendingSyncOperationDao.getAll() } returns listOf(
+                PendingSyncOperationEntity(
+                    id = "op-1",
+                    entityType = "invite",
+                    entityId = "household-1",
+                    operationType = "upsert",
+                    payload = "NEW12345",
+                    createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+                ),
+            )
+
+            repository.restoreHouseholdForUser("user-1")
+
+            coVerify(exactly = 0) { inviteDao.deleteById(any()) }
+        }
 
     @Test
     fun `restoreHouseholdForUser deduplicates members preferring placeholder displayName`() = runBlocking {

@@ -78,6 +78,7 @@ class LocalSyncRepository @Inject constructor(
         completionDao = completionDao,
         completionParticipantDao = completionParticipantDao,
         inviteDao = inviteDao,
+        pendingSyncOperationDao = pendingSyncOperationDao,
         database = database,
     )
 
@@ -448,19 +449,39 @@ class LocalSyncRepository @Inject constructor(
         }
     }
 
+    // A row absent from the pulled snapshot might just not have synced yet, not actually be
+    // deleted remotely - pruning it here would discard local data that a pending operation is
+    // still waiting to push. member/invite pending operations are keyed by householdId (not
+    // their own id - see enqueueOperation call sites), so those two are skipped as a whole
+    // for a household with any pending operation of that type; completions are enqueued with
+    // their own id as entityId, so those are excluded from pruning individually.
     private suspend fun pruneStaleLocalRows(snapshot: HouseholdSnapshot) {
         val householdId = snapshot.household.id
+        val pendingOperations = pendingSyncOperationDao.getAll()
+
         val memberIds = snapshot.members.map { it.id }.toSet()
-        memberDao.getMembers(householdId)
-            .filter { it.id !in memberIds }
-            .forEach { memberDao.deleteById(it.id) }
+        val hasPendingMemberOps = pendingOperations.any { it.entityType == "member" && it.entityId == householdId }
+        if (!hasPendingMemberOps) {
+            memberDao.getMembers(householdId)
+                .filter { it.id !in memberIds }
+                .forEach { memberDao.deleteById(it.id) }
+        }
+
         val inviteIds = snapshot.invites.map { it.id }.toSet()
-        inviteDao.getInvites(householdId)
-            .filter { it.id !in inviteIds }
-            .forEach { inviteDao.deleteById(it.id) }
+        val hasPendingInviteOps = pendingOperations.any { it.entityType == "invite" && it.entityId == householdId }
+        if (!hasPendingInviteOps) {
+            inviteDao.getInvites(householdId)
+                .filter { it.id !in inviteIds }
+                .forEach { inviteDao.deleteById(it.id) }
+        }
+
         val completionIds = snapshot.completions.map { it.id }.toSet()
+        val pendingCompletionIds = pendingOperations
+            .filter { it.entityType == "completion" }
+            .map { it.entityId }
+            .toSet()
         completionDao.getCompletions(householdId)
-            .filter { it.id !in completionIds }
+            .filter { it.id !in completionIds && it.id !in pendingCompletionIds }
             .forEach { completionDao.deleteById(it.id) }
     }
 

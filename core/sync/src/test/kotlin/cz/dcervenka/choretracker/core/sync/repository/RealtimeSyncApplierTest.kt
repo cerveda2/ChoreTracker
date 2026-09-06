@@ -5,10 +5,12 @@ import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
+import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
+import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.test.mock.sampleChore
@@ -43,6 +45,9 @@ class RealtimeSyncApplierTest {
     lateinit var inviteDao: InviteDao
 
     @MockK
+    lateinit var pendingSyncOperationDao: PendingSyncOperationDao
+
+    @MockK
     lateinit var database: ChoreTrackerDatabase
 
     private lateinit var applier: RealtimeSyncApplier
@@ -71,6 +76,7 @@ class RealtimeSyncApplierTest {
         coEvery { inviteDao.upsert(any()) } just Runs
         coEvery { inviteDao.getInvites(any()) } returns emptyList()
         coEvery { inviteDao.deleteById(any()) } just Runs
+        coEvery { pendingSyncOperationDao.getAll() } returns emptyList()
         coEvery { database.clearAll() } just Runs
         applier = RealtimeSyncApplier(
             memberDao = memberDao,
@@ -78,6 +84,7 @@ class RealtimeSyncApplierTest {
             completionDao = completionDao,
             completionParticipantDao = completionParticipantDao,
             inviteDao = inviteDao,
+            pendingSyncOperationDao = pendingSyncOperationDao,
             database = database,
         )
     }
@@ -106,6 +113,33 @@ class RealtimeSyncApplierTest {
 
         coVerify { memberDao.deleteById("stale-member") }
         coVerify(exactly = 0) { memberDao.deleteById("member-1") }
+    }
+
+    @Test
+    fun `applyMembers skips pruning when the household has a pending member operation`() = runBlocking {
+        val staleMember = MemberEntity(
+            id = "stale-member",
+            householdId = "household-1",
+            userId = null,
+            displayName = "Gone",
+            role = HouseholdRole.MEMBER.name,
+            isCurrentUser = false,
+        )
+        coEvery { memberDao.getMembers("household-1") } returns listOf(memberEntity, staleMember)
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(
+            PendingSyncOperationEntity(
+                id = "op-1",
+                entityType = "member",
+                entityId = "household-1",
+                operationType = "upsert",
+                payload = "New Member",
+                createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+            ),
+        )
+
+        applier.applyMembers("household-1", "user-1", listOf(sampleMembers()[0]))
+
+        coVerify(exactly = 0) { memberDao.deleteById(any()) }
     }
 
     @Test
@@ -158,6 +192,34 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
+    fun `applyCompletions does not prune a completion with a pending sync operation`() = runBlocking {
+        coEvery { completionDao.getCompletions("household-1") } returns listOf(
+            CompletionEntity(
+                id = "unsynced-completion",
+                householdId = "household-1",
+                choreId = "chore-1",
+                createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+                createdByUserId = "user-1",
+                note = null,
+            ),
+        )
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(
+            PendingSyncOperationEntity(
+                id = "op-1",
+                entityType = "completion",
+                entityId = "unsynced-completion",
+                operationType = "upsert",
+                payload = "",
+                createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+            ),
+        )
+
+        applier.applyCompletions("household-1", emptyList())
+
+        coVerify(exactly = 0) { completionDao.deleteById("unsynced-completion") }
+    }
+
+    @Test
     fun `applyInvites upserts invites received from the remote listener`() = runBlocking {
         val invite = sampleInvite()
 
@@ -181,6 +243,33 @@ class RealtimeSyncApplierTest {
         applier.applyInvites("household-1", emptyList())
 
         coVerify { inviteDao.deleteById("stale-invite") }
+    }
+
+    @Test
+    fun `applyInvites skips pruning when the household has a pending invite operation`() = runBlocking {
+        coEvery { inviteDao.getInvites("household-1") } returns listOf(
+            InviteEntity(
+                id = "unsynced-invite",
+                householdId = "household-1",
+                code = "NEW12345",
+                createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+                consumedAt = null,
+            ),
+        )
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(
+            PendingSyncOperationEntity(
+                id = "op-1",
+                entityType = "invite",
+                entityId = "household-1",
+                operationType = "upsert",
+                payload = "NEW12345",
+                createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+            ),
+        )
+
+        applier.applyInvites("household-1", emptyList())
+
+        coVerify(exactly = 0) { inviteDao.deleteById(any()) }
     }
 
     @Test
