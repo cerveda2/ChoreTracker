@@ -140,6 +140,32 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
+  functions-typecheck:
+    name: Cloud Functions typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install functions dependencies
+        working-directory: functions
+        run: npm ci
+
+      - name: Build (typecheck)
+        # Same command deploy-functions' predeploy hook runs - catches a broken TypeScript
+        # change during PR review instead of only when it fails the deploy after merging to main.
+        working-directory: functions
+        run: npm run build
+
   deploy-firestore:
     name: Deploy Firestore rules and indexes
     runs-on: ubuntu-latest
