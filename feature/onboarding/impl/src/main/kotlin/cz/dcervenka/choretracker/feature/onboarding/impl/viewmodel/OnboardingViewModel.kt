@@ -79,6 +79,7 @@ class OnboardingViewModel @Inject constructor(
             is OnboardingUiIntent.InviteCodeChanged -> inviteCode.value = intent.value
             OnboardingUiIntent.CreateHousehold -> createHousehold()
             OnboardingUiIntent.JoinHousehold -> joinHousehold()
+            OnboardingUiIntent.ClearError -> errorMessage.value = null
         }
     }
 

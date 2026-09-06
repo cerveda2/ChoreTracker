@@ -8,4 +8,5 @@ sealed interface OnboardingUiIntent : UiIntent {
     data class InviteCodeChanged(val value: String) : OnboardingUiIntent
     data object CreateHousehold : OnboardingUiIntent
     data object JoinHousehold : OnboardingUiIntent
+    data object ClearError : OnboardingUiIntent
 }

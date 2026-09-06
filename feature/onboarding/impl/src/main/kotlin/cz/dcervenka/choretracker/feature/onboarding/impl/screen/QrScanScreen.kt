@@ -72,7 +72,9 @@ fun QrScanScreen(
                     onIntent(OnboardingUiIntent.InviteCodeChanged(code))
                     onIntent(OnboardingUiIntent.JoinHousehold)
                 },
-                enabled = !uiState.isWorking,
+                // Latches on a failed attempt instead of immediately re-scanning the same code
+                // still sitting in frame, which looped a rejected/invalid code indefinitely.
+                enabled = !uiState.isWorking && uiState.errorMessage == null,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -102,6 +104,12 @@ fun QrScanScreen(
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                TextButton(onClick = { onIntent(OnboardingUiIntent.ClearError) }) {
+                    Text(
+                        text = stringResource(R.string.onboarding_qr_scan_retry),
+                        color = Color.White,
+                    )
+                }
             }
             TextButton(onClick = onEnterManually) {
                 Text(
