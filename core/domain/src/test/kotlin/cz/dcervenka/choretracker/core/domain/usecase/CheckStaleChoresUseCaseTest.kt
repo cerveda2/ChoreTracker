@@ -5,10 +5,12 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
 import cz.dcervenka.choretracker.core.data.contract.StatsRepository
+import cz.dcervenka.choretracker.core.domain.HouseholdStatisticsCalculator
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
+import cz.dcervenka.choretracker.core.model.stats.HouseholdStatsInput
 import cz.dcervenka.choretracker.core.test.mock.sampleAuthenticatedState
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import io.mockk.MockKAnnotations
@@ -30,6 +32,13 @@ private fun staleness(choreId: String, status: ChoreStatus) = ChoreStaleness(
     status = status,
 )
 
+private val emptyStatsInput = HouseholdStatsInput(
+    household = sampleHousehold(),
+    members = emptyList(),
+    chores = emptyList(),
+    completions = emptyList(),
+)
+
 class CheckStaleChoresUseCaseTest {
 
     @MockK
@@ -44,6 +53,9 @@ class CheckStaleChoresUseCaseTest {
     @MockK
     lateinit var statsRepository: StatsRepository
 
+    @MockK
+    lateinit var statisticsCalculator: HouseholdStatisticsCalculator
+
     private val authStateFlow = MutableStateFlow<AuthState>(sampleAuthenticatedState())
 
     private lateinit var useCase: CheckStaleChoresUseCase
@@ -54,8 +66,15 @@ class CheckStaleChoresUseCaseTest {
         every { authRepository.authState } returns authStateFlow
         coEvery { refreshHouseholdUseCase() } returns AppResult.Success(Unit)
         coEvery { householdRepository.getCurrentHousehold() } returns sampleHousehold()
-        coEvery { statsRepository.getStaleChores(any()) } returns emptyList()
-        useCase = CheckStaleChoresUseCase(authRepository, refreshHouseholdUseCase, householdRepository, statsRepository)
+        coEvery { statsRepository.getHouseholdStatsInput(any()) } returns emptyStatsInput
+        every { statisticsCalculator.buildStaleness(any(), any(), any(), any()) } returns emptyList()
+        useCase = CheckStaleChoresUseCase(
+            authRepository,
+            refreshHouseholdUseCase,
+            householdRepository,
+            statsRepository,
+            statisticsCalculator,
+        )
     }
 
     @Test
@@ -69,7 +88,7 @@ class CheckStaleChoresUseCaseTest {
         assertThat(result).isEmpty()
         coVerify(exactly = 0) { refreshHouseholdUseCase() }
         coVerify(exactly = 0) { householdRepository.getCurrentHousehold() }
-        coVerify(exactly = 0) { statsRepository.getStaleChores(any()) }
+        coVerify(exactly = 0) { statsRepository.getHouseholdStatsInput(any()) }
     }
 
     @Test
@@ -85,13 +104,14 @@ class CheckStaleChoresUseCaseTest {
     @Test
     fun `still checks staleness from local data when the remote sync fails`() = runTest {
         coEvery { refreshHouseholdUseCase() } returns AppResult.Error("Network error")
-        coEvery { statsRepository.getStaleChores("household-1") } returns
+        coEvery { statsRepository.getHouseholdStatsInput("household-1") } returns emptyStatsInput
+        every { statisticsCalculator.buildStaleness(any(), any(), any(), any()) } returns
             listOf(staleness("chore-1", ChoreStatus.NEEDS_ATTENTION))
 
         val result = useCase()
 
         coVerify(exactly = 1) { refreshHouseholdUseCase() }
-        coVerify(exactly = 1) { statsRepository.getStaleChores("household-1") }
+        coVerify(exactly = 1) { statsRepository.getHouseholdStatsInput("household-1") }
         assertThat(result).hasSize(1)
     }
 
@@ -102,12 +122,13 @@ class CheckStaleChoresUseCaseTest {
         val result = useCase()
 
         assertThat(result).isEmpty()
-        coVerify(exactly = 0) { statsRepository.getStaleChores(any()) }
+        coVerify(exactly = 0) { statsRepository.getHouseholdStatsInput(any()) }
     }
 
     @Test
     fun `filters out chores that are not yet stale, including never-completed ones`() = runTest {
-        coEvery { statsRepository.getStaleChores("household-1") } returns listOf(
+        coEvery { statsRepository.getHouseholdStatsInput("household-1") } returns emptyStatsInput
+        every { statisticsCalculator.buildStaleness(any(), any(), any(), any()) } returns listOf(
             staleness("chore-1", ChoreStatus.NEEDS_ATTENTION),
             staleness("chore-2", ChoreStatus.SOON),
             staleness("chore-3", ChoreStatus.OK),
