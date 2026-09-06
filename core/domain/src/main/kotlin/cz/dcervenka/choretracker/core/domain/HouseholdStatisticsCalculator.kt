@@ -15,6 +15,7 @@ import cz.dcervenka.choretracker.core.model.stats.MemberContribution
 import cz.dcervenka.choretracker.core.model.stats.MonthlyBreakdown
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
+import cz.dcervenka.choretracker.core.model.stats.TopContributorResult
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -192,10 +193,16 @@ class HouseholdStatisticsCalculator @Inject constructor() {
     private fun buildSummary(
         contributions: List<MemberContribution>,
         completions: List<ChoreCompletion>,
-    ): HouseholdSummary = HouseholdSummary(
-        totalCompletions = completions.size,
-        topContributor = contributions.maxByOrNull { it.totalCount }?.takeIf { it.totalCount > 0 },
-    )
+    ): HouseholdSummary {
+        val topCount = contributions.maxOfOrNull { it.totalCount } ?: 0
+        val topContributor = when {
+            topCount == 0 -> TopContributorResult.NoData
+            contributions.count { it.totalCount == topCount } > 1 -> TopContributorResult.Tie
+            else -> contributions.first { it.totalCount == topCount }
+                .let { TopContributorResult.Leader(it.displayName, it.sharePercent) }
+        }
+        return HouseholdSummary(totalCompletions = completions.size, topContributor = topContributor)
+    }
 
     // Keyed by member id, not display name: two members sharing a display name would otherwise
     // silently collapse into one entry (Map can't have two different values under one key).

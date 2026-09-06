@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
+import cz.dcervenka.choretracker.core.model.stats.TopContributorResult
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import org.junit.Test
@@ -115,7 +116,8 @@ class HouseholdStatisticsCalculatorTest {
         // already use, not the sum of each member's own totalCount (which double-counts a shared
         // completion once per participant).
         assertThat(dashboard.summary.totalCompletions).isEqualTo(3)
-        assertThat(dashboard.summary.topContributor?.displayName).isAnyOf("Alice", "Bob")
+        // Alice and Bob both have totalCount 2 - a genuine tie, not an arbitrary pick.
+        assertThat(dashboard.summary.topContributor).isEqualTo(TopContributorResult.Tie)
 
         assertThat(dashboard.recentCompletions.first().participantNames).containsExactly("Alice", "Bob").inOrder()
 
@@ -204,6 +206,21 @@ class HouseholdStatisticsCalculatorTest {
         assertThat(stats.summary.totalCompletions).isEqualTo(1)
         assertThat(stats.memberContributions.first { it.displayName == "Alice" }.totalCount).isEqualTo(1)
         assertThat(stats.monthlyBreakdown.single().totalCount).isEqualTo(1)
+    }
+
+    @Test
+    fun `topContributor is NoData when nobody has completed anything yet`() {
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members,
+            chores = chores,
+            completions = emptyList(),
+            timeZone = timeZone,
+            today = today,
+        )
+
+        assertThat(dashboard.summary.totalCompletions).isEqualTo(0)
+        assertThat(dashboard.summary.topContributor).isEqualTo(TopContributorResult.NoData)
     }
 
     @Test
@@ -310,7 +327,7 @@ class HouseholdStatisticsCalculatorTest {
         // 3 completions, Alice has 1, Bob has 2 → 33% and 66%
         val contributions = stats.summary
         assertThat(contributions.totalCompletions).isEqualTo(3)
-        assertThat(contributions.topContributor?.displayName).isEqualTo("Bob")
+        assertThat(contributions.topContributor).isEqualTo(TopContributorResult.Leader("Bob", 66))
         val contribByName = stats.memberContributions.associateBy { it.displayName }
         assertThat(contribByName["Alice"]?.sharePercent).isEqualTo(33)
         assertThat(contribByName["Bob"]?.sharePercent).isEqualTo(66)

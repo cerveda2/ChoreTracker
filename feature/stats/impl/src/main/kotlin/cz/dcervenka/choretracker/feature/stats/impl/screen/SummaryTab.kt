@@ -31,6 +31,7 @@ import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import cz.dcervenka.choretracker.core.model.stats.HouseholdSummary
 import cz.dcervenka.choretracker.core.model.stats.MemberContribution
 import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
+import cz.dcervenka.choretracker.core.model.stats.TopContributorResult
 
 @Composable
 fun SummaryTab(
@@ -86,8 +87,8 @@ private fun SummaryCard(summary: HouseholdSummary) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            summary.topContributor?.let { top ->
-                Text(
+            when (val top = summary.topContributor) {
+                is TopContributorResult.Leader -> Text(
                     text = stringResource(
                         R.string.stats_summary_top_contributor,
                         top.displayName,
@@ -95,6 +96,11 @@ private fun SummaryCard(summary: HouseholdSummary) {
                     ),
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                TopContributorResult.Tie -> Text(
+                    text = stringResource(R.string.stats_summary_tie),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                TopContributorResult.NoData -> Unit
             }
         }
     }
