@@ -208,6 +208,28 @@ class DashboardViewModelTest {
     }
 
     @Test
+    fun `log completion emits an error event when the use case fails`() = runTest(coroutineRule.dispatcher) {
+        coEvery { logCompletionUseCase(any(), any(), any(), any()) } returns
+            AppResult.Error("At least one participant is required.")
+        val viewModel = createViewModel()
+
+        viewModel.errorEvents.test {
+            viewModel.dispatch(
+                DashboardUiIntent.LogCompletion(
+                    householdId = "household-1",
+                    choreId = "chore-1",
+                    participantIds = emptyList(),
+                    note = null,
+                    completedAt = null,
+                )
+            )
+            advanceUntilIdle()
+
+            assertThat(awaitItem()).isEqualTo("At least one participant is required.")
+        }
+    }
+
+    @Test
     fun `update completion emits an error event when the use case fails`() = runTest(coroutineRule.dispatcher) {
         coEvery { updateCompletionUseCase(any(), any(), any()) } returns
             AppResult.Error("Only the household owner or the person who logged this can edit it.")

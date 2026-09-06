@@ -93,4 +93,12 @@ class LogCompletionUseCaseTest {
 
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
     }
+
+    @Test
+    fun `rejects a completion with no participants without calling the repository`() = runTest {
+        val result = useCase("h", "c", emptyList(), null)
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        coVerify(exactly = 0) { choreCompletionRepository.logCompletion(any(), any(), any(), any(), any()) }
+    }
 }

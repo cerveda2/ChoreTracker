@@ -14,11 +14,16 @@ class LogCompletionUseCase @Inject constructor(
         participantMemberIds: List<String>,
         note: String?,
         completedAt: Instant? = null,
-    ): AppResult<String> = choreCompletionRepository.logCompletion(
-        householdId = householdId,
-        choreId = choreId,
-        participantMemberIds = participantMemberIds,
-        note = note,
-        completedAt = completedAt,
-    )
+    ): AppResult<String> {
+        if (participantMemberIds.isEmpty()) {
+            return AppResult.Error("At least one participant is required.")
+        }
+        return choreCompletionRepository.logCompletion(
+            householdId = householdId,
+            choreId = choreId,
+            participantMemberIds = participantMemberIds,
+            note = note,
+            completedAt = completedAt,
+        )
+    }
 }

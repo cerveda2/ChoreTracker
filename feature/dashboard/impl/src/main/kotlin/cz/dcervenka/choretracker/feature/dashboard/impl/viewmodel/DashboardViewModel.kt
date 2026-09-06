@@ -111,10 +111,13 @@ class DashboardViewModel @Inject constructor(
                 note = note,
                 completedAt = completedAt,
             )
-            if (result is AppResult.Success) {
-                val choreName = uiState.value.snapshot?.activeChores
-                    ?.find { it.id == choreId }?.name.orEmpty()
-                _undoChannel.send(UndoEvent(result.value, choreName))
+            when (result) {
+                is AppResult.Success -> {
+                    val choreName = uiState.value.snapshot?.activeChores
+                        ?.find { it.id == choreId }?.name.orEmpty()
+                    _undoChannel.send(UndoEvent(result.value, choreName))
+                }
+                is AppResult.Error -> _errorChannel.send(result.message)
             }
         }
     }
