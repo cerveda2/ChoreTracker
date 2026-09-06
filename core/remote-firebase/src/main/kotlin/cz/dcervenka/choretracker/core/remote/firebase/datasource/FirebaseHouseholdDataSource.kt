@@ -22,15 +22,19 @@ import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import cz.dcervenka.choretracker.core.remote.firebase.runtime.FirebaseRuntimeConfigurator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.withTimeout
 import timber.log.Timber
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 private const val USERS_COLLECTION = "users"
@@ -40,6 +44,7 @@ private const val CHORES_COLLECTION = "chores"
 private const val COMPLETIONS_COLLECTION = "completions"
 private const val INVITES_COLLECTION = "invites"
 private const val FIRESTORE_BATCH_LIMIT = 500
+private val FIRESTORE_TASK_TIMEOUT = 20.seconds
 
 @Suppress("TooManyFunctions")
 @Singleton
@@ -556,8 +561,20 @@ class FirebaseHouseholdDataSource @Inject constructor(
     )
 }
 
+// Firestore's offline persistence queues a write locally and its Task simply never completes
+// until connectivity returns - without a timeout, every await here (and therefore every
+// repository write, which all funnel through syncPendingOperations) would hang indefinitely
+// while offline. TimeoutCancellationException is itself a CancellationException, so it's
+// converted to a plain TimeoutException here rather than left to propagate -
+// rethrowCancellation() (below) would otherwise treat a timeout as structured-concurrency
+// cancellation instead of a business error, and it would never reach the AppResult.Error the
+// caller is waiting for.
 private suspend fun <T> awaitTask(task: Task<T>): T =
-    suspendCancellableCoroutineCompat(task)
+    try {
+        withTimeout(FIRESTORE_TASK_TIMEOUT) { suspendCancellableCoroutineCompat(task) }
+    } catch (e: TimeoutCancellationException) {
+        throw IOException("Sync timed out - check your connection and try again.", e)
+    }
 
 // Result.getOrElse/getOrNull don't special-case CancellationException - without this, a coroutine
 // cancelled mid-Firestore-call (e.g. its scope torn down) gets misreported as a business-logic
