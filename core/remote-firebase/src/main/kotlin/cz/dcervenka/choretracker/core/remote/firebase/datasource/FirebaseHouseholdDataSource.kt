@@ -513,7 +513,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
         userId = getString("userId"),
         displayName = getString("displayName").orEmpty(),
         role = getString("role")
-            ?.let(HouseholdRole::valueOf)
+            ?.let { runCatching { HouseholdRole.valueOf(it) }.getOrNull() }
             ?: HouseholdRole.MEMBER,
         isCurrentUser = getString("userId") == currentUserId,
         email = getString("email"),
