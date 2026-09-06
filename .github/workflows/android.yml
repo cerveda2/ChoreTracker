@@ -47,7 +47,11 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Detekt
-        run: ./gradlew detekt
+        # detektMain/detektTest add type-resolution-aware analysis (a stricter rule set) for the
+        # plain-Kotlin/JVM modules (core:domain, core:model, ...) - detekt's Gradle plugin only
+        # auto-generates those type-resolution tasks for Kotlin JVM source sets, not for Android
+        # modules, so the Android modules are still covered by the classic `detekt` task only.
+        run: ./gradlew detekt detektMain detektTest
 
       - name: Run Android lint
         run: ./gradlew lintDebug
