@@ -87,6 +87,26 @@ Firebase is optional. Without configuration the auth screen shows a banner and l
 
 Full setup: [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
 
+### Deploying rules, indexes, and Cloud Functions
+
+CI deploys `firestore.rules`, `firestore.indexes.json`, and `functions/` automatically on every push to `main` — merging a PR *is* the deploy, there's no separate release step or maintenance window to pick.
+
+To try a rules, index, or function change against the real project before merging (the project id is already set in `.firebaserc`, so no `--project` flag is needed):
+
+```bash
+npm install -g firebase-tools   # once, if you don't already have it
+firebase login
+
+# Rules and indexes together
+firebase deploy --only firestore
+
+# Cloud Functions (installs dependencies; firebase.json's predeploy hook builds the TypeScript)
+npm --prefix functions ci
+firebase deploy --only functions
+```
+
+Manually deploying affects the real `choretracker-fb576` project this app runs against day to day. Prefer the [Firestore Emulator Suite](docs/FIREBASE_SETUP.md#6-emulator-first-development) first for anything rules-related — it never touches production data.
+
 ## CI
 
-GitHub Actions workflow runs `assembleDebug` and unit tests on push.
+GitHub Actions runs Detekt, Android lint, the full test suite (`./gradlew test`), and `assembleDebug` on every push and pull request. On push to `main`, it also deploys `firestore.rules`, `firestore.indexes.json`, and `functions/` to the live Firebase project — see [Deploying rules, indexes, and Cloud Functions](#deploying-rules-indexes-and-cloud-functions) above.
