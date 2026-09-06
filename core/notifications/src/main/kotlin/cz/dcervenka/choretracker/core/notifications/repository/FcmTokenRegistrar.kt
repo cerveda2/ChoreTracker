@@ -9,6 +9,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -37,13 +38,22 @@ class FcmTokenRegistrar @Inject constructor(
     @NotificationScope private val scope: CoroutineScope,
 ) {
 
+    // Tracks the last signed-in, non-preview user so signing out can clear that user's token
+    // (see below) instead of just abandoning the subscription - otherwise a stale token keeps
+    // this device registered for the signed-out user's household push notifications, which
+    // matters on a shared/reused device (e.g. two household members testing on one phone).
+    private var lastAuthenticatedUserId: String? = null
+
     init {
         authRepository.authState
             .flatMapLatest { authState ->
                 val user = (authState as? AuthState.Authenticated)?.user
                 if (user == null || user.isPreview) {
-                    emptyFlow()
+                    val previousUserId = lastAuthenticatedUserId
+                    lastAuthenticatedUserId = null
+                    if (previousUserId != null) flowOf(previousUserId to false) else emptyFlow()
                 } else {
+                    lastAuthenticatedUserId = user.id
                     inviteNotificationSettingsRepository.observeEnabled(user.id).map { enabled -> user.id to enabled }
                 }
             }

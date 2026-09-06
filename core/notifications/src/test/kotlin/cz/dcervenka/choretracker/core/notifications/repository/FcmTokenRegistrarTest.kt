@@ -86,6 +86,21 @@ class FcmTokenRegistrarTest {
     }
 
     @Test
+    fun `clears the previous user's token on sign-out`() = runTest(coroutineRule.dispatcher) {
+        authState.value = AuthState.Authenticated(
+            AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
+        )
+        createRegistrar()
+        advanceUntilIdle()
+        coVerify(exactly = 1) { tokenWriter.requestRegistration() }
+
+        authState.value = AuthState.SignedOut
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { tokenWriter.clearToken("user-1") }
+    }
+
+    @Test
     fun `requests registration for the newly signed-in user after sign-out then sign-in`() =
         runTest(coroutineRule.dispatcher) {
             createRegistrar()
