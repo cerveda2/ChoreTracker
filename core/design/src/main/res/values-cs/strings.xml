@@ -47,14 +47,24 @@
     <string name="dashboard_sync_failed_permissions">Nepodařilo se nahrát vaše poslední změny, protože server žádost zamítl. Vaše změny jsou stále uloženy na tomto zařízení.</string>
     <string name="dashboard_sync_failed_generic">Nepodařilo se nahrát vaše poslední změny. Jsou uloženy na zařízení a budeme to zkoušet znovu.</string>
     <string name="dashboard_sync_pending_title">Čekají změny k nahrání</string>
-    <string name="dashboard_sync_pending_message">Ještě je třeba nahrát %1$d lokální změn(u/y) do vaší domácnosti.</string>
+    <plurals name="dashboard_sync_pending_message">
+        <item quantity="one">Ještě je třeba nahrát %1$d lokální změnu do vaší domácnosti.</item>
+        <item quantity="few">Ještě je třeba nahrát %1$d lokální změny do vaší domácnosti.</item>
+        <item quantity="many">Ještě je třeba nahrát %1$d lokální změny do vaší domácnosti.</item>
+        <item quantity="other">Ještě je třeba nahrát %1$d lokálních změn do vaší domácnosti.</item>
+    </plurals>
     <string name="dashboard_last_30d">posl. 30 dní: %1$d</string>
     <string name="dashboard_share_percent">%1$d%%</string>
     <string name="dashboard_days_ago">před %1$d d.</string>
     <string name="dashboard_never_done">nikdy</string>
     <string name="dashboard_log_date">Datum: %1$s</string>
     <string name="dashboard_log_date_today">dnes</string>
-    <string name="stats_summary_total">%1$d splnění celkem</string>
+    <plurals name="stats_summary_total">
+        <item quantity="one">%1$d splnění celkem</item>
+        <item quantity="few">%1$d splnění celkem</item>
+        <item quantity="many">%1$d splnění celkem</item>
+        <item quantity="other">%1$d splnění celkem</item>
+    </plurals>
     <string name="stats_summary_top_contributor">Nejvíce přispívá: %1$s (%2$d%%)</string>
     <string name="stats_summary_tie">Nejvíce přispívá: remíza</string>
     <string name="stats_summary_no_data">Zatím žádná splnění</string>
@@ -79,7 +89,12 @@
     <string name="dashboard_completion_action_error">Něco se pokazilo</string>
     <string name="dashboard_needs_attention">Vyžaduje pozornost</string>
     <string name="dashboard_stale_chip">%1$s: %2$s</string>
-    <string name="dashboard_stale_last_done">Naposledy splněno %1$s (před %2$d dny)</string>
+    <plurals name="dashboard_stale_last_done">
+        <item quantity="one">Naposledy splněno %1$s (před %2$d dnem)</item>
+        <item quantity="few">Naposledy splněno %1$s (před %2$d dny)</item>
+        <item quantity="many">Naposledy splněno %1$s (před %2$d dne)</item>
+        <item quantity="other">Naposledy splněno %1$s (před %2$d dny)</item>
+    </plurals>
     <string name="dashboard_stale_never_done">Tento úkol ještě nebyl splněn.</string>
     <string name="dashboard_needs_attention_empty">Vše je teď aktuální.</string>
     <string name="dashboard_log_completion">Zaznamenat splnění</string>
@@ -112,8 +127,18 @@
     <string name="household_delete_member">Odebrat člena</string>
     <string name="household_delete_member_title">Odebrat tohoto člena?</string>
     <string name="household_delete_member_message">Tím se člen odstraní z domácnosti. Jeho historie splnění zůstane viditelná.</string>
-    <string name="household_member_count">%1$d členů</string>
-    <string name="household_chore_count">%1$d úkolů</string>
+    <plurals name="household_member_count">
+        <item quantity="one">%1$d člen</item>
+        <item quantity="few">%1$d členové</item>
+        <item quantity="many">%1$d člena</item>
+        <item quantity="other">%1$d členů</item>
+    </plurals>
+    <plurals name="household_chore_count">
+        <item quantity="one">%1$d úkol</item>
+        <item quantity="few">%1$d úkoly</item>
+        <item quantity="many">%1$d úkolu</item>
+        <item quantity="other">%1$d úkolů</item>
+    </plurals>
     <string name="household_invite_section">Pozvánka</string>
     <string name="settings_invite_none">Žádný aktivní kód pozvánky. Klepnutím na Obnovit pozvánku vygenerujte nový.</string>
     <string name="settings_invite_copy">Kopírovat kód</string>
@@ -155,10 +180,20 @@
     <string name="stats_summary_attention_empty">Žádné zastaralé úkoly momentálně.</string>
     <string name="stats_summary_attention_line">%1$s • %2$s</string>
     <string name="stats_stale_never">Nikdy nesplněno</string>
-    <string name="stats_stale_days_ago">před %1$d dny</string>
+    <plurals name="stats_stale_days_ago">
+        <item quantity="one">před %1$d dnem</item>
+        <item quantity="few">před %1$d dny</item>
+        <item quantity="many">před %1$d dne</item>
+        <item quantity="other">před %1$d dny</item>
+    </plurals>
     <string name="stats_stale_soon">Brzy splatné</string>
     <string name="stats_stale_ok">V pořádku</string>
-    <string name="stats_category_chore_count">%1$d úkol(ů)</string>
+    <plurals name="stats_category_chore_count">
+        <item quantity="one">%1$d úkol</item>
+        <item quantity="few">%1$d úkoly</item>
+        <item quantity="many">%1$d úkolu</item>
+        <item quantity="other">%1$d úkolů</item>
+    </plurals>
     <string name="stats_category_empty_title">Zatím žádná data kategorií</string>
     <string name="stats_category_empty_message">Zaznamnejte několik úkolů a trendy podle kategorií se zobrazí zde.</string>
     <string name="stats_chore_history_empty_title">Zatím žádná splnění</string>
@@ -184,8 +219,18 @@
     <string name="settings_account_email_supporting">Přihlašovací e-mail zde nelze změnit.</string>
     <string name="settings_save_display_name">Uložit zobrazované jméno</string>
     <string name="settings_household_description">%1$s</string>
-    <string name="settings_members_description">%1$d aktivních členů domácnosti</string>
-    <string name="settings_chores_description">%1$d úkolů dostupných ke sledování</string>
+    <plurals name="settings_members_description">
+        <item quantity="one">%1$d aktivní člen domácnosti</item>
+        <item quantity="few">%1$d aktivní členové domácnosti</item>
+        <item quantity="many">%1$d aktivního člena domácnosti</item>
+        <item quantity="other">%1$d aktivních členů domácnosti</item>
+    </plurals>
+    <plurals name="settings_chores_description">
+        <item quantity="one">%1$d dostupný úkol ke sledování</item>
+        <item quantity="few">%1$d dostupné úkoly ke sledování</item>
+        <item quantity="many">%1$d dostupného úkolu ke sledování</item>
+        <item quantity="other">%1$d dostupných úkolů ke sledování</item>
+    </plurals>
     <string name="settings_account_description">Odhlášení a předvolby aplikace</string>
     <string name="settings_language_title">Jazyk</string>
     <string name="settings_language_description">Jazyk zobrazení aplikace</string>
@@ -218,7 +263,12 @@
     <string name="settings_management_section">Správa domácnosti</string>
     <string name="settings_account_section">Předvolby</string>
 
-    <string name="settings_chore_frequency_every_n_days">Každých %1$d dní</string>
+    <plurals name="settings_chore_frequency_every_n_days">
+        <item quantity="one">Každý %1$d den</item>
+        <item quantity="few">Každé %1$d dny</item>
+        <item quantity="many">Každých %1$d dne</item>
+        <item quantity="other">Každých %1$d dní</item>
+    </plurals>
     <string name="settings_chore_frequency_not_set">Bez frekvence</string>
     <string name="settings_chore_set_frequency_title">Nastavit frekvenci</string>
     <string name="settings_chore_set_frequency_hint">Dny mezi splněními</string>

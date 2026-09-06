@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -125,7 +126,11 @@ fun ChoresSettingsScreen(
             item {
                 ScreenHeader(
                     title = stringResource(R.string.household_chores),
-                    subtitle = stringResource(R.string.household_chore_count, uiState.chores.size),
+                    subtitle = pluralStringResource(
+                        R.plurals.household_chore_count,
+                        uiState.chores.size,
+                        uiState.chores.size,
+                    ),
                 )
             }
             if (uiState.chores.isNotEmpty()) {
@@ -448,7 +453,7 @@ private fun ChoreRow(
             Text(text = chore.name)
             chore.frequencyDays?.let { days ->
                 Text(
-                    text = stringResource(R.string.settings_chore_frequency_every_n_days, days),
+                    text = pluralStringResource(R.plurals.settings_chore_frequency_every_n_days, days, days),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

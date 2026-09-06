@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
@@ -56,7 +57,11 @@ private fun CategoryComparisonCard(comparison: CategoryComparison, nameByMemberI
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            text = stringResource(R.string.stats_category_chore_count, comparison.choreCount),
+            text = pluralStringResource(
+                R.plurals.stats_category_chore_count,
+                comparison.choreCount,
+                comparison.choreCount,
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

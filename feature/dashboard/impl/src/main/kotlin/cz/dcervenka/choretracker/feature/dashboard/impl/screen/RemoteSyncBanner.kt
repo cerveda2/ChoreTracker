@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
@@ -73,8 +74,9 @@ private fun syncBannerMessage(syncState: SyncState): String {
             stringResource(R.string.dashboard_sync_failed_permissions)
         errorMessage.isNotBlank() ->
             stringResource(R.string.dashboard_sync_failed_generic)
-        else -> stringResource(
-            R.string.dashboard_sync_pending_message,
+        else -> pluralStringResource(
+            R.plurals.dashboard_sync_pending_message,
+            syncState.pendingOperations,
             syncState.pendingOperations,
         )
     }

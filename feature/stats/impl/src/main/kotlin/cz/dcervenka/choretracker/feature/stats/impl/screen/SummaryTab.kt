@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -83,7 +84,11 @@ private fun SummaryCard(summary: HouseholdSummary) {
             )
         } else {
             Text(
-                text = stringResource(R.string.stats_summary_total, summary.totalCompletions),
+                text = pluralStringResource(
+                    R.plurals.stats_summary_total,
+                    summary.totalCompletions,
+                    summary.totalCompletions,
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -219,7 +224,10 @@ private fun StaleChoresCard(staleChores: List<ChoreStaleness>) {
 @Composable
 private fun stalenessLabel(chore: ChoreStaleness): String = when (chore.status) {
     ChoreStatus.NEVER -> stringResource(R.string.stats_stale_never)
-    ChoreStatus.NEEDS_ATTENTION -> stringResource(R.string.stats_stale_days_ago, chore.daysSinceLastCompletion ?: 0)
+    ChoreStatus.NEEDS_ATTENTION -> {
+        val days = chore.daysSinceLastCompletion ?: 0
+        pluralStringResource(R.plurals.stats_stale_days_ago, days, days)
+    }
     ChoreStatus.SOON -> stringResource(R.string.stats_stale_soon)
     ChoreStatus.OK -> stringResource(R.string.stats_stale_ok)
 }

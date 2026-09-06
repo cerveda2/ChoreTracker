@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
@@ -79,13 +80,21 @@ fun SettingsScreen(
                     androidx.compose.material3.HorizontalDivider()
                     SettingsListItem(
                         title = stringResource(R.string.settings_manage_members_title),
-                        subtitle = stringResource(R.string.settings_members_description, uiState.members.size),
+                        subtitle = pluralStringResource(
+                            R.plurals.settings_members_description,
+                            uiState.members.size,
+                            uiState.members.size,
+                        ),
                         onClick = onOpenMembers,
                     )
                     androidx.compose.material3.HorizontalDivider()
                     SettingsListItem(
                         title = stringResource(R.string.settings_manage_chores_title),
-                        subtitle = stringResource(R.string.settings_chores_description, uiState.chores.size),
+                        subtitle = pluralStringResource(
+                            R.plurals.settings_chores_description,
+                            uiState.chores.size,
+                            uiState.chores.size,
+                        ),
                         onClick = onOpenChores,
                     )
                 }

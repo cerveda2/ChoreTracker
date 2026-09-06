@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -369,11 +370,15 @@ private fun StaleChoreRow(
                 Text(
                     text = when (val lastCompletedDate = stale.lastCompletedDate) {
                         null -> stringResource(R.string.dashboard_stale_never_done)
-                        else -> stringResource(
-                            R.string.dashboard_stale_last_done,
-                            formatLocalDateForLocale(date = lastCompletedDate, skeleton = "yMMMd"),
-                            stale.daysSinceLastCompletion ?: 0,
-                        )
+                        else -> {
+                            val days = stale.daysSinceLastCompletion ?: 0
+                            pluralStringResource(
+                                R.plurals.dashboard_stale_last_done,
+                                days,
+                                formatLocalDateForLocale(date = lastCompletedDate, skeleton = "yMMMd"),
+                                days,
+                            )
+                        }
                     },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
