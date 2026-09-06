@@ -184,6 +184,19 @@ class DashboardViewModelTest {
     }
 
     @Test
+    fun `retry sync emits an error event when the use case fails`() = runTest(coroutineRule.dispatcher) {
+        coEvery { retryPendingSyncUseCase() } returns AppResult.Error("Network error")
+        val viewModel = createViewModel()
+
+        viewModel.errorEvents.test {
+            viewModel.dispatch(DashboardUiIntent.RetrySync)
+            advanceUntilIdle()
+
+            assertThat(awaitItem()).isEqualTo("Network error")
+        }
+    }
+
+    @Test
     fun `refresh delegates to use case and toggles isRefreshing`() = runTest(coroutineRule.dispatcher) {
         householdFlow.value = sampleHousehold()
         val viewModel = createViewModel()

@@ -314,7 +314,10 @@ class SettingsViewModel @Inject constructor(
 
     private fun updateChoreActive(choreId: String, isActive: Boolean) {
         viewModelScope.launch {
-            updateChoreActiveUseCase(choreId, isActive)
+            val result = updateChoreActiveUseCase(choreId, isActive)
+            if (result is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(result.message))
+            }
         }
     }
 

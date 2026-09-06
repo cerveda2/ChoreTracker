@@ -28,6 +28,7 @@ import cz.dcervenka.choretracker.core.test.mock.sampleChore
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
+import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
@@ -228,6 +229,29 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         coVerify { updateChoreFrequencyUseCase("chore-1", 7) }
+    }
+
+    @Test
+    fun `updateChoreActive delegates to use case`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.dispatch(SettingsUiIntent.UpdateChoreActive("chore-1", false))
+        advanceUntilIdle()
+
+        coVerify { updateChoreActiveUseCase("chore-1", false) }
+    }
+
+    @Test
+    fun `updateChoreActive emits an error event when the use case fails`() = runTest(coroutineRule.dispatcher) {
+        coEvery { updateChoreActiveUseCase(any(), any()) } returns AppResult.Error("Sync failed")
+        val viewModel = createViewModel()
+
+        viewModel.events.test {
+            viewModel.dispatch(SettingsUiIntent.UpdateChoreActive("chore-1", false))
+            advanceUntilIdle()
+
+            assertThat(awaitItem()).isEqualTo(SettingsUiEvent.Error("Sync failed"))
+        }
     }
 
     @Test

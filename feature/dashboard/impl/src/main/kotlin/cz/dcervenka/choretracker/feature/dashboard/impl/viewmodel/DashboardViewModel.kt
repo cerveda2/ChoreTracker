@@ -159,7 +159,7 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             val result = retryPendingSyncUseCase()
             if (result is AppResult.Error) {
-                // The persistent sync banner already communicates the latest failure state.
+                _errorChannel.send(result.message)
             }
         }
     }
