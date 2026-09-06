@@ -37,10 +37,17 @@ export const onInviteAccepted = onDocumentUpdated(
       return;
     }
 
-    const memberSnap = await db
-      .doc(`households/${householdId}/members/${consumedByMemberId}`)
+    // consumedByMemberId is the member's logical id (HouseholdMember.id), not the Firestore
+    // document id - member docs are keyed by uid (see upsertMemberSnapshot/memberDocumentId on
+    // the client), which isn't known here without the join actually completing first. Query by
+    // the "id" field instead of doc(...) by path, which would silently miss every join.
+    const memberQuery = await db
+      .collection(`households/${householdId}/members`)
+      .where("id", "==", consumedByMemberId)
+      .limit(1)
       .get();
-    const joiningMemberUserId: string | undefined = memberSnap.get("userId");
+    const memberSnap = memberQuery.docs[0];
+    const joiningMemberUserId: string | undefined = memberSnap?.get("userId");
 
     // Self-join edge case: the owner consuming their own invite (e.g. reclaiming a placeholder
     // member). Don't notify yourself.
@@ -62,7 +69,7 @@ export const onInviteAccepted = onDocumentUpdated(
       return;
     }
 
-    const joiningDisplayName: string = memberSnap.get("displayName") || "Someone";
+    const joiningDisplayName: string = memberSnap?.get("displayName") || "Someone";
 
     try {
       await getMessaging().send({
