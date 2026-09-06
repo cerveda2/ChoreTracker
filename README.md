@@ -74,12 +74,12 @@ app
 
 | Tool | Version |
 |------|---------|
-| AGP | 9.1.0 |
-| Gradle | 9.3.1 |
-| Kotlin | 2.3.20 |
-| Compose BOM | 2026.03.01 |
+| AGP | 9.4.0 |
+| Gradle | 9.7.1 |
+| Kotlin | 2.4.10 |
+| Compose BOM | 2026.08.00 |
 | Room | 2.8.4 |
-| Hilt | 2.59.2 |
+| Hilt | 2.60.1 |
 
 ## Firebase
 
@@ -109,4 +109,4 @@ Manually deploying affects the real `choretracker-fb576` project this app runs a
 
 ## CI
 
-GitHub Actions runs Detekt, Android lint, the full test suite (`./gradlew test`), and `assembleDebug` on every push and pull request. On push to `main`, it also deploys `firestore.rules`, `firestore.indexes.json`, and `functions/` to the live Firebase project — see [Deploying rules, indexes, and Cloud Functions](#deploying-rules-indexes-and-cloud-functions) above.
+GitHub Actions runs Detekt, Android lint, the full test suite (`./gradlew test`), `assembleDebug`, and a Cloud Functions typecheck (`npm run build` in `functions/`) on every push and pull request. On push to `main`, it also deploys `firestore.rules`, `firestore.indexes.json`, and `functions/` to the live Firebase project — see [Deploying rules, indexes, and Cloud Functions](#deploying-rules-indexes-and-cloud-functions) above.
