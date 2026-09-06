@@ -36,6 +36,7 @@ import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import cz.dcervenka.choretracker.core.sync.di.SyncScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
@@ -45,10 +46,12 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.retry
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 
 @Suppress("TooManyFunctions", "LongParameterList")
 @Singleton
@@ -92,6 +95,16 @@ class LocalSyncRepository @Inject constructor(
                             if (householdId == null) emptyFlow() else observeRealtimeUpdates(householdId, user.id)
                         }
                 }
+            }
+            // retry, not catch: an unexpected exception here (e.g. a malformed document a
+            // future change to asMember/asChore/etc. lets through) would otherwise permanently
+            // end this subscription with only a log line - every real-time update after that
+            // point would be silently missed for the rest of the process's lifetime. Mirrors
+            // FcmTokenRegistrar's identical reasoning for the same shape of subscription.
+            .retry { error ->
+                Timber.e(error, "LocalSyncRepository: real-time sync subscription failed, retrying")
+                delay(5.seconds)
+                true
             }
             .launchIn(syncScope)
     }
