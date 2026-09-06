@@ -43,6 +43,7 @@ private const val MEMBERS_COLLECTION = "members"
 private const val CHORES_COLLECTION = "chores"
 private const val COMPLETIONS_COLLECTION = "completions"
 private const val INVITES_COLLECTION = "invites"
+private const val INVITE_CODES_COLLECTION = "inviteCodes"
 private const val FIRESTORE_BATCH_LIMIT = 500
 private val FIRESTORE_TASK_TIMEOUT = 20.seconds
 
@@ -264,6 +265,14 @@ class FirebaseHouseholdDataSource @Inject constructor(
                         invite.consumedByMemberId?.let { put("consumedByMemberId", it) }
                     },
                 )
+                // Lets fetchInviteByCode resolve a code to (householdId, id) with a single get()
+                // instead of a listable collectionGroup query - see this doc's own rule.
+                add(
+                    db.collection(INVITE_CODES_COLLECTION).document(invite.code) to mapOf(
+                        "householdId" to invite.householdId,
+                        "inviteId" to invite.id,
+                    ),
+                )
             }
         }
 
@@ -359,13 +368,23 @@ class FirebaseHouseholdDataSource @Inject constructor(
         Timber.d("fetchInviteByCode: code=$code")
         val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
         return runCatching {
-            val doc = awaitTask(
-                db.collectionGroup(INVITES_COLLECTION)
-                    .whereEqualTo("code", code)
-                    .limit(1)
-                    .get(),
-            ).documents.firstOrNull()
-            AppResult.Success(doc?.asInvite(doc.getString("householdId").orEmpty()))
+            // Two gets instead of the old collectionGroup(INVITES_COLLECTION).whereEqualTo("code",
+            // ...) query: a joining user isn't a household member yet, so they can't be granted a
+            // listable query over every household's invites without letting anyone enumerate
+            // every code. inviteCodes/{code} is a "get"-only pointer - see its rule.
+            val pointer = awaitTask(db.collection(INVITE_CODES_COLLECTION).document(code).get())
+            val householdId = pointer.getString("householdId")
+            val inviteId = pointer.getString("inviteId")
+            if (householdId == null || inviteId == null) {
+                AppResult.Success(null)
+            } else {
+                val inviteDoc = awaitTask(
+                    db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
+                        .collection(INVITES_COLLECTION).document(inviteId)
+                        .get(),
+                )
+                AppResult.Success(inviteDoc.takeIf { it.exists() }?.asInvite(householdId))
+            }
         }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "fetchInviteByCode: failed")
             AppResult.Error(error.message ?: "Unable to fetch invite.", error)
