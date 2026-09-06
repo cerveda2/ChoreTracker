@@ -40,15 +40,16 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         today: LocalDate,
         recentLimit: Int = 8,
     ): DashboardSnapshot {
+        val activeCompletions = activeChoreCompletions(chores, completions)
         val contributions = buildContributions(
             members = members,
-            completions = completions,
+            completions = activeCompletions,
             timeZone = timeZone,
             today = today,
         )
         return DashboardSnapshot(
             household = household,
-            summary = buildSummary(contributions),
+            summary = buildSummary(contributions, activeCompletions),
             memberContributions = contributions,
             activeChores = chores.filter { it.isActive && it.deletedAt == null }.sortedBy(Chore::name),
             recentCompletions = buildRecent(
@@ -74,29 +75,30 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         timeZone: TimeZone = TimeZone.currentSystemDefault(),
         today: LocalDate,
     ): StatsSnapshot {
+        val activeCompletions = activeChoreCompletions(chores, completions)
         val contributions = buildContributions(
             members = members,
-            completions = completions,
+            completions = activeCompletions,
             timeZone = timeZone,
             today = today,
         )
         return StatsSnapshot(
             household = household,
-            summary = buildSummary(contributions),
+            summary = buildSummary(contributions, activeCompletions),
             memberContributions = contributions,
             comparisons = buildComparisons(
                 chores = chores,
                 members = members,
-                completions = completions,
+                completions = activeCompletions,
             ),
             categoryComparisons = buildCategoryComparisons(
                 chores = chores,
                 members = members,
-                completions = completions,
+                completions = activeCompletions,
             ),
             monthlyBreakdown = buildMonthlyBreakdown(
                 members = members,
-                completions = completions,
+                completions = activeCompletions,
                 timeZone = timeZone,
             ),
             staleChores = buildStaleness(
@@ -106,6 +108,18 @@ class HouseholdStatisticsCalculator @Inject constructor() {
                 today = today,
             ),
         )
+    }
+
+    // buildComparisons/buildCategoryComparisons already exclude a deleted chore's completions
+    // (they only iterate non-deleted chores); buildContributions/buildSummary/buildMonthlyBreakdown
+    // didn't, so a deleted chore's completions were counted in the household total and each
+    // member's personal total but silently absent from every per-chore/category/month breakdown -
+    // the numbers could never be cross-checked against each other. buildRecent and buildStaleness
+    // intentionally keep the raw, unfiltered completions - chore history and past-chore names
+    // should still show up after the chore itself is deleted.
+    private fun activeChoreCompletions(chores: List<Chore>, completions: List<ChoreCompletion>): List<ChoreCompletion> {
+        val activeChoreIds = chores.filter { it.deletedAt == null }.map { it.id }.toSet()
+        return completions.filter { it.choreId in activeChoreIds }
     }
 
     private fun buildRecent(
@@ -171,8 +185,15 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         }
     }
 
-    private fun buildSummary(contributions: List<MemberContribution>): HouseholdSummary = HouseholdSummary(
-        totalCompletions = contributions.sumOf { it.totalCount },
+    // totalCompletions counts completions (a shared one counts once), matching
+    // ChoreComparison/CategoryComparison/MonthlyBreakdown.totalCount - not
+    // contributions.sumOf { it.totalCount }, which counts participant slots (a shared completion
+    // counts once per participant) and could never be reconciled against those other totals.
+    private fun buildSummary(
+        contributions: List<MemberContribution>,
+        completions: List<ChoreCompletion>,
+    ): HouseholdSummary = HouseholdSummary(
+        totalCompletions = completions.size,
         topContributor = contributions.maxByOrNull { it.totalCount }?.takeIf { it.totalCount > 0 },
     )
 
