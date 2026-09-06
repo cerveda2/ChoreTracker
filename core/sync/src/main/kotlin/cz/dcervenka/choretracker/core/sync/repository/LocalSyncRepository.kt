@@ -362,7 +362,19 @@ class LocalSyncRepository @Inject constructor(
     ): AppResult.Error? {
         val now = Clock.System.now()
         val isOwner = householdDao.getHousehold(householdId)?.ownerUserId == authenticatedUser.id
-        val result = performRemoteSync(householdId, isOwner, authenticatedUser) ?: return null
+        val result = performRemoteSync(householdId, isOwner, authenticatedUser)
+        if (result == null) {
+            // buildSnapshot/buildMemberSync found no local household or member row to sync from -
+            // these operations can never succeed from this state, so discard them instead of
+            // leaving them queued forever and retried on every future sync with no way to
+            // resolve and no error ever surfaced to the user.
+            Timber.w(
+                "syncHousehold: no local data to sync for household=$householdId - discarding " +
+                    "${operationIds.size} orphaned pending operation(s)",
+            )
+            operationIds.forEach { pendingSyncOperationDao.delete(it) }
+            return null
+        }
         return when (result) {
             is AppResult.Error -> {
                 Timber.e(
