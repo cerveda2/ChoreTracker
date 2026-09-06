@@ -15,7 +15,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
@@ -84,14 +83,16 @@ class PreviewAwareAuthRepositoryTest {
     // which reads previewState.value directly (not via the stateIn flow)
 
     @Test
-    fun `continueInPreviewMode returns Success`() = runBlocking {
+    fun `continueInPreviewMode returns Success`() = runTest(coroutineRule.dispatcher) {
         val result = repository.continueInPreviewMode("Dana")
 
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
     }
 
     @Test
-    fun `continueInPreviewMode activates preview branch for subsequent updateDisplayName`() = runBlocking {
+    fun `continueInPreviewMode activates preview branch for subsequent updateDisplayName`() = runTest(
+        coroutineRule.dispatcher,
+    ) {
         repository.continueInPreviewMode("Dana")
 
         repository.updateDisplayName("New Name")
@@ -100,7 +101,7 @@ class PreviewAwareAuthRepositoryTest {
     }
 
     @Test
-    fun `continueInPreviewMode with blank name uses Preview User fallback`() = runBlocking {
+    fun `continueInPreviewMode with blank name uses Preview User fallback`() = runTest(coroutineRule.dispatcher) {
         repository.continueInPreviewMode("   ")
 
         // updateDisplayName in preview reads previewState.value directly;
@@ -112,7 +113,9 @@ class PreviewAwareAuthRepositoryTest {
     // clearPreviewState
 
     @Test
-    fun `clearPreviewState deactivates preview branch so updateDisplayName calls remote`() = runBlocking {
+    fun `clearPreviewState deactivates preview branch so updateDisplayName calls remote`() = runTest(
+        coroutineRule.dispatcher,
+    ) {
         coEvery { remoteAuthDataSource.updateDisplayName(any()) } returns AppResult.Success(Unit)
         repository.continueInPreviewMode("Dana")
 
@@ -123,7 +126,7 @@ class PreviewAwareAuthRepositoryTest {
     }
 
     @Test
-    fun `clearPreviewState on non-preview session is a no-op`() = runBlocking {
+    fun `clearPreviewState on non-preview session is a no-op`() = runTest(coroutineRule.dispatcher) {
         coEvery { remoteAuthDataSource.updateDisplayName(any()) } returns AppResult.Success(Unit)
 
         repository.clearPreviewState()
@@ -135,7 +138,7 @@ class PreviewAwareAuthRepositoryTest {
     // updateDisplayName
 
     @Test
-    fun `updateDisplayName delegates to remote when not in preview`() = runBlocking {
+    fun `updateDisplayName delegates to remote when not in preview`() = runTest(coroutineRule.dispatcher) {
         coEvery { remoteAuthDataSource.updateDisplayName(any()) } returns AppResult.Success(Unit)
 
         repository.updateDisplayName("Dana")
@@ -144,7 +147,7 @@ class PreviewAwareAuthRepositoryTest {
     }
 
     @Test
-    fun `updateDisplayName trims whitespace before delegating to remote`() = runBlocking {
+    fun `updateDisplayName trims whitespace before delegating to remote`() = runTest(coroutineRule.dispatcher) {
         coEvery { remoteAuthDataSource.updateDisplayName(any()) } returns AppResult.Success(Unit)
 
         repository.updateDisplayName("  Dana  ")
@@ -153,7 +156,7 @@ class PreviewAwareAuthRepositoryTest {
     }
 
     @Test
-    fun `updateDisplayName in preview uses fallback name for blank input`() = runBlocking {
+    fun `updateDisplayName in preview uses fallback name for blank input`() = runTest(coroutineRule.dispatcher) {
         repository.continueInPreviewMode("Dana")
 
         // blank input → "Preview User"; subsequent call still goes to preview branch

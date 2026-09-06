@@ -37,8 +37,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
+      # setup-gradle below already caches the Gradle User Home - setup-java's own `cache: gradle`
+      # would duplicate that with a separate, less precise cache of the same paths.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
@@ -46,7 +47,11 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run Detekt
-        run: ./gradlew detekt
+        # detektMain/detektTest add type-resolution-aware analysis (a stricter rule set) for the
+        # plain-Kotlin/JVM modules (core:domain, core:model, ...) - detekt's Gradle plugin only
+        # auto-generates those type-resolution tasks for Kotlin JVM source sets, not for Android
+        # modules, so the Android modules are still covered by the classic `detekt` task only.
+        run: ./gradlew detekt detektMain detektTest
 
       - name: Run Android lint
         run: ./gradlew lintDebug
@@ -76,8 +81,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
+      # setup-gradle below already caches the Gradle User Home - setup-java's own `cache: gradle`
+      # would duplicate that with a separate, less precise cache of the same paths.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
@@ -114,8 +120,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
+      # setup-gradle below already caches the Gradle User Home - setup-java's own `cache: gradle`
+      # would duplicate that with a separate, less precise cache of the same paths.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
@@ -132,6 +139,32 @@ jobs:
           name: choretracker-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+  functions-typecheck:
+    name: Cloud Functions typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install functions dependencies
+        working-directory: functions
+        run: npm ci
+
+      - name: Build (typecheck)
+        # Same command deploy-functions' predeploy hook runs - catches a broken TypeScript
+        # change during PR review instead of only when it fails the deploy after merging to main.
+        working-directory: functions
+        run: npm run build
 
   deploy-firestore:
     name: Deploy Firestore rules and indexes
@@ -162,7 +195,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: functions/package-lock.json
 

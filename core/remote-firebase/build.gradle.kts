@@ -26,6 +26,18 @@ android {
         buildConfigField("String", "FIREBASE_FIRESTORE_EMULATOR_HOST", "\"$firestoreHost\"")
         buildConfigField("int", "FIREBASE_FIRESTORE_EMULATOR_PORT", firestorePort.toString())
     }
+
+    buildTypes {
+        release {
+            // USE_FIREBASE_EMULATORS above is driven by a Gradle property meant for local dev
+            // only - it applies to every build type via defaultConfig, so a release build
+            // compiled in an environment that happens to have that property set (e.g. a
+            // developer's local gradle.properties) would silently try to talk to a
+            // loopback-only emulator instead of real Firebase. Hardcode it off for release so
+            // that can't happen regardless of the environment it's built in.
+            buildConfigField("boolean", "USE_FIREBASE_EMULATORS", "false")
+        }
+    }
 }
 
 dependencies {
