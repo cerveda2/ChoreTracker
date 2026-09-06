@@ -60,9 +60,12 @@ class ChoreTrackerApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        val isRelease = !BuildConfig.DEBUG
-        FirebaseCrashlytics.getInstance().isCrashlyticsCollectionEnabled = isRelease
-        FirebaseAnalytics.getInstance(this).setAnalyticsCollectionEnabled(isRelease)
+        // Crashlytics stays on in debug too - a crash on a device that isn't attached to a
+        // debugger (e.g. casual testing away from a computer) is still worth capturing, and
+        // unlike analytics it doesn't corrupt an aggregate metric by being there. Analytics
+        // stays release-only since dev sessions would otherwise skew DAU/retention/funnels.
+        FirebaseCrashlytics.getInstance().isCrashlyticsCollectionEnabled = true
+        FirebaseAnalytics.getInstance(this).setAnalyticsCollectionEnabled(!BuildConfig.DEBUG)
         NotificationChannels.ensureCreated(this)
         ReminderNotificationChannels.ensureCreated(this)
         choreReminderScheduler.get()
