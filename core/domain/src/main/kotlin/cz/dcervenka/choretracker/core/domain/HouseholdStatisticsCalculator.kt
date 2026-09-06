@@ -139,7 +139,14 @@ class HouseholdStatisticsCalculator @Inject constructor() {
     ): List<MemberContribution> {
         // 29, not 30: today counts as day 0, so today - 29 is a 30-day window inclusive of today.
         val thirtyDaysAgo = today.minus(DatePeriod(days = 29))
-        val totalAcrossAll = completions.sumOf { it.participantMemberIds.size }
+        // A removed member's completion_participants rows aren't cleaned up (see
+        // OfflineFirstHouseholdRepository.deleteMember), so participantMemberIds can still
+        // reference a member no longer in this list. Counting those in the denominator would
+        // make the remaining members' shares never add up to 100%.
+        val currentMemberIds = members.map { it.id }.toSet()
+        val totalAcrossAll = completions.sumOf { completion ->
+            completion.participantMemberIds.count { it in currentMemberIds }
+        }
         return members.map { member ->
             val memberCompletions = completions.filter { completion ->
                 member.id in completion.participantMemberIds

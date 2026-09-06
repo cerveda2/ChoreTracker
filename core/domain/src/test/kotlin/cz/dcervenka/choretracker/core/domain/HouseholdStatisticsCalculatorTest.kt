@@ -155,6 +155,45 @@ class HouseholdStatisticsCalculatorTest {
     }
 
     @Test
+    fun `sharePercent sums to 100 across current members even after a member is removed`() {
+        // "member-removed" no longer appears in `members` (as if deleteMember ran), but its old
+        // completion_participants rows survive - completions still reference it.
+        val completions = listOf(
+            completion(
+                id = "completion-1",
+                choreId = "chore-dishes",
+                createdAt = "2026-03-28T18:00:00Z",
+                participantMemberIds = listOf("member-alice"),
+            ),
+            completion(
+                id = "completion-2",
+                choreId = "chore-dishes",
+                createdAt = "2026-03-27T18:00:00Z",
+                participantMemberIds = listOf("member-bob"),
+            ),
+            completion(
+                id = "completion-3",
+                choreId = "chore-dishes",
+                createdAt = "2026-03-26T18:00:00Z",
+                participantMemberIds = listOf("member-removed"),
+            ),
+        )
+
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members,
+            chores = chores,
+            completions = completions,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        val contributions = dashboard.memberContributions.associateBy { it.displayName }
+        assertThat(contributions["Alice"]?.sharePercent).isEqualTo(50)
+        assertThat(contributions["Bob"]?.sharePercent).isEqualTo(50)
+    }
+
+    @Test
     fun `buildStaleness excludes paused chores so they don't trigger reminders`() {
         val pausedChore = Chore(
             id = "chore-paused",
