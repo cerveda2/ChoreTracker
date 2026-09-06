@@ -36,6 +36,7 @@ import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import cz.dcervenka.choretracker.core.sync.di.SyncScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
@@ -45,10 +46,12 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.retry
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 
 @Suppress("TooManyFunctions", "LongParameterList")
 @Singleton
@@ -69,6 +72,16 @@ class LocalSyncRepository @Inject constructor(
 
     private var emailSyncedThisSession = false
 
+    private val realtimeSyncApplier = RealtimeSyncApplier(
+        memberDao = memberDao,
+        choreDao = choreDao,
+        completionDao = completionDao,
+        completionParticipantDao = completionParticipantDao,
+        inviteDao = inviteDao,
+        pendingSyncOperationDao = pendingSyncOperationDao,
+        database = database,
+    )
+
     init {
         authRepository.authState
             .flatMapLatest { authState ->
@@ -84,116 +97,29 @@ class LocalSyncRepository @Inject constructor(
                         }
                 }
             }
+            // retry, not catch: an unexpected exception here (e.g. a malformed document a
+            // future change to asMember/asChore/etc. lets through) would otherwise permanently
+            // end this subscription with only a log line - every real-time update after that
+            // point would be silently missed for the rest of the process's lifetime. Mirrors
+            // FcmTokenRegistrar's identical reasoning for the same shape of subscription.
+            .retry { error ->
+                Timber.e(error, "LocalSyncRepository: real-time sync subscription failed, retrying")
+                delay(5.seconds)
+                true
+            }
             .launchIn(syncScope)
     }
 
     private fun observeRealtimeUpdates(householdId: String, userId: String): Flow<Unit> = merge(
         remoteHouseholdDataSource.observeMembers(householdId, userId)
-            .onEach { applyRealtimeMembers(householdId, userId, it) },
+            .onEach { realtimeSyncApplier.applyMembers(householdId, userId, it) },
         remoteHouseholdDataSource.observeCompletions(householdId)
-            .onEach { applyRealtimeCompletions(householdId, it) },
+            .onEach { realtimeSyncApplier.applyCompletions(householdId, it) },
         remoteHouseholdDataSource.observeInvites(householdId)
-            .onEach { applyRealtimeInvites(householdId, it) },
+            .onEach { realtimeSyncApplier.applyInvites(householdId, it) },
         remoteHouseholdDataSource.observeChores(householdId)
-            .onEach { applyRealtimeChores(it) },
+            .onEach { realtimeSyncApplier.applyChores(it) },
     ).map { }
-
-    private suspend fun applyRealtimeMembers(householdId: String, userId: String, members: List<HouseholdMember>) {
-        if (members.none { it.userId == userId }) {
-            Timber.w(
-                "applyRealtimeMembers: userId=$userId no longer a member of household=$householdId - " +
-                    "clearing local data",
-            )
-            database.clearAll()
-            return
-        }
-        deduplicateMembers(members).forEach { member ->
-            memberDao.upsert(
-                MemberEntity(
-                    id = member.id,
-                    householdId = member.householdId,
-                    userId = member.userId,
-                    displayName = member.displayName,
-                    role = member.role.name,
-                    isCurrentUser = member.isCurrentUser,
-                    email = member.email,
-                    joinedViaInviteId = member.joinedViaInviteId,
-                ),
-            )
-        }
-        val memberIds = members.map { it.id }.toSet()
-        memberDao.getMembers(householdId)
-            .filter { it.id !in memberIds }
-            .forEach { memberDao.deleteById(it.id) }
-    }
-
-    private suspend fun applyRealtimeCompletions(householdId: String, completions: List<ChoreCompletion>) {
-        completions.forEach { completion ->
-            completionDao.upsert(
-                CompletionEntity(
-                    id = completion.id,
-                    householdId = completion.householdId,
-                    choreId = completion.choreId,
-                    createdAt = completion.createdAt,
-                    createdByUserId = completion.createdByUserId,
-                    note = completion.note,
-                ),
-            )
-            completionParticipantDao.deleteByCompletionId(completion.id)
-            completionParticipantDao.insertAll(
-                completion.participantMemberIds.map { memberId ->
-                    CompletionParticipantEntity(
-                        completionId = completion.id,
-                        memberId = memberId,
-                    )
-                },
-            )
-        }
-        val completionIds = completions.map { it.id }.toSet()
-        completionDao.getCompletions(householdId)
-            .filter { it.id !in completionIds }
-            .forEach { completionDao.deleteById(it.id) }
-    }
-
-    private suspend fun applyRealtimeInvites(householdId: String, invites: List<Invite>) {
-        invites.forEach { invite ->
-            inviteDao.upsert(
-                InviteEntity(
-                    id = invite.id,
-                    householdId = invite.householdId,
-                    code = invite.code,
-                    createdAt = invite.createdAt,
-                    consumedAt = invite.consumedAt,
-                    targetMemberId = invite.targetMemberId,
-                    consumedByMemberId = invite.consumedByMemberId,
-                ),
-            )
-        }
-        val inviteIds = invites.map { it.id }.toSet()
-        inviteDao.getInvites(householdId)
-            .filter { it.id !in inviteIds }
-            .forEach { inviteDao.deleteById(it.id) }
-    }
-
-    // No prune step: chores are soft-deleted (isActive/deletedAt fields, see ChoreEntity), never
-    // removed from Firestore - same as the existing pull-based sync (pruneStaleLocalRows doesn't
-    // touch chores either), so there's nothing stale to reconcile here.
-    private suspend fun applyRealtimeChores(chores: List<Chore>) {
-        chores.forEach { chore ->
-            choreDao.upsert(
-                ChoreEntity(
-                    id = chore.id,
-                    householdId = chore.householdId,
-                    name = chore.name,
-                    isActive = chore.isActive,
-                    createdAt = chore.createdAt,
-                    deletedAt = chore.deletedAt,
-                    frequencyDays = chore.frequencyDays,
-                    category = chore.category.name,
-                ),
-            )
-        }
-    }
 
     override fun observeSyncState(householdId: String): Flow<SyncState?> =
         syncStateDao.observeSyncState(householdId).map { state ->
@@ -323,6 +249,7 @@ class LocalSyncRepository @Inject constructor(
                     note = completion.note,
                 ),
             )
+            completionParticipantDao.deleteByCompletionId(completion.id)
             completionParticipantDao.insertAll(
                 completion.participantMemberIds.map { memberId ->
                     CompletionParticipantEntity(
@@ -361,7 +288,19 @@ class LocalSyncRepository @Inject constructor(
     ): AppResult.Error? {
         val now = Clock.System.now()
         val isOwner = householdDao.getHousehold(householdId)?.ownerUserId == authenticatedUser.id
-        val result = performRemoteSync(householdId, isOwner, authenticatedUser) ?: return null
+        val result = performRemoteSync(householdId, isOwner, authenticatedUser)
+        if (result == null) {
+            // buildSnapshot/buildMemberSync found no local household or member row to sync from -
+            // these operations can never succeed from this state, so discard them instead of
+            // leaving them queued forever and retried on every future sync with no way to
+            // resolve and no error ever surfaced to the user.
+            Timber.w(
+                "syncHousehold: no local data to sync for household=$householdId - discarding " +
+                    "${operationIds.size} orphaned pending operation(s)",
+            )
+            operationIds.forEach { pendingSyncOperationDao.delete(it) }
+            return null
+        }
         return when (result) {
             is AppResult.Error -> {
                 Timber.e(
@@ -510,30 +449,39 @@ class LocalSyncRepository @Inject constructor(
         }
     }
 
-    private fun deduplicateMembers(members: List<HouseholdMember>): List<HouseholdMember> =
-        members.groupBy { it.id }.values.map { group ->
-            val claimed = group.firstOrNull { it.userId != null }
-            val placeholder = group.firstOrNull { it.userId == null }
-            when {
-                claimed != null && placeholder != null ->
-                    claimed.copy(displayName = placeholder.displayName.ifBlank { claimed.displayName })
-                else -> group.maxByOrNull { if (it.userId != null) 1 else 0 }!!
-            }
-        }
-
+    // A row absent from the pulled snapshot might just not have synced yet, not actually be
+    // deleted remotely - pruning it here would discard local data that a pending operation is
+    // still waiting to push. member/invite pending operations are keyed by householdId (not
+    // their own id - see enqueueOperation call sites), so those two are skipped as a whole
+    // for a household with any pending operation of that type; completions are enqueued with
+    // their own id as entityId, so those are excluded from pruning individually.
     private suspend fun pruneStaleLocalRows(snapshot: HouseholdSnapshot) {
         val householdId = snapshot.household.id
+        val pendingOperations = pendingSyncOperationDao.getAll()
+
         val memberIds = snapshot.members.map { it.id }.toSet()
-        memberDao.getMembers(householdId)
-            .filter { it.id !in memberIds }
-            .forEach { memberDao.deleteById(it.id) }
+        val hasPendingMemberOps = pendingOperations.any { it.entityType == "member" && it.entityId == householdId }
+        if (!hasPendingMemberOps) {
+            memberDao.getMembers(householdId)
+                .filter { it.id !in memberIds }
+                .forEach { memberDao.deleteById(it.id) }
+        }
+
         val inviteIds = snapshot.invites.map { it.id }.toSet()
-        inviteDao.getInvites(householdId)
-            .filter { it.id !in inviteIds }
-            .forEach { inviteDao.deleteById(it.id) }
+        val hasPendingInviteOps = pendingOperations.any { it.entityType == "invite" && it.entityId == householdId }
+        if (!hasPendingInviteOps) {
+            inviteDao.getInvites(householdId)
+                .filter { it.id !in inviteIds }
+                .forEach { inviteDao.deleteById(it.id) }
+        }
+
         val completionIds = snapshot.completions.map { it.id }.toSet()
+        val pendingCompletionIds = pendingOperations
+            .filter { it.entityType == "completion" }
+            .map { it.entityId }
+            .toSet()
         completionDao.getCompletions(householdId)
-            .filter { it.id !in completionIds }
+            .filter { it.id !in completionIds && it.id !in pendingCompletionIds }
             .forEach { completionDao.deleteById(it.id) }
     }
 

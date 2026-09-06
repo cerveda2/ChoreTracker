@@ -114,13 +114,14 @@ service cloud.firestore {
       allow read: if isOwnMembershipRecord();
     }
 
-    // Required for collectionGroup("invites") queries in fetchInviteByCode.
-    // Any authenticated user can read invites — needed so a joining user (not yet
-    // a member) can look up an invite by code. The 8-char random code is the access
-    // token; resource.data checks are omitted because Firestore rejects collection
-    // group queries whose rules reference document data without a matching query filter.
-    match /{path=**}/invites/{inviteId} {
-      allow read: if isSignedIn();
+    // Maps a shared invite code to the (householdId, inviteId) it belongs to, so a joining
+    // user (not yet a member) can look an invite up by code without a listable query over
+    // every household's invites - see fetchInviteByCode / this collection's own rule below.
+    // "get" only: knowing one exact code lets you fetch that one document, but the collection
+    // itself is never listable, so codes can't be enumerated.
+    match /inviteCodes/{code} {
+      allow get: if isSignedIn();
+      allow create, update: if isHouseholdOwner(request.resource.data.householdId);
     }
 
     match /households/{householdId} {
@@ -132,8 +133,14 @@ service cloud.firestore {
         allow read: if isHouseholdMember(householdId) || isOwnMembershipRecord();
         allow create: if isHouseholdOwner(householdId) ||
           isSelfJoinWithValidInvite(householdId, memberId);
+        // isSelfMemberWrite alone only pins userId/householdId - without the diff check below, a
+        // member could self-update their own role to OWNER (undeletable, full write access) or
+        // rewrite their logical id (colliding with another member's). displayName/email are the
+        // only fields a member's own sync push legitimately changes after the initial join.
         allow update: if isHouseholdOwner(householdId) ||
-          isSelfMemberWrite(householdId, memberId);
+          (isSelfMemberWrite(householdId, memberId) &&
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['displayName', 'email']));
         allow delete: if isHouseholdOwner(householdId);
       }
 
@@ -156,7 +163,12 @@ service cloud.firestore {
       }
 
       match /invites/{inviteId} {
-        allow read: if isHouseholdMember(householdId);
+        // Household members can list/browse the invite history; a non-member joining via
+        // inviteCodes/{code} above needs to fetch this one specific document (a random uuid
+        // path, not something to brute-force) before they're a member, so "get" is broader
+        // than "list" - see the removed collectionGroup rule this used to need instead.
+        allow get: if isSignedIn();
+        allow list: if isHouseholdMember(householdId);
         allow create, delete: if isHouseholdOwner(householdId);
         allow update: if isHouseholdOwner(householdId) ||
           (isHouseholdMember(householdId) &&

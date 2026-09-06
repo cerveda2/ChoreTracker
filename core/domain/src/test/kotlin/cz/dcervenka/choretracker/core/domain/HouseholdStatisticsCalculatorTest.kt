@@ -110,7 +110,11 @@ class HouseholdStatisticsCalculatorTest {
         assertThat(contributions["Bob"]?.last30DaysCount).isEqualTo(2)
         assertThat(contributions["Bob"]?.currentMonthCount).isEqualTo(2)
         assertThat(contributions["Bob"]?.sharePercent).isEqualTo(50)
-        assertThat(dashboard.summary.totalCompletions).isEqualTo(4)
+        // 3 completions total (completion-1 is shared, so it's one completion, not two) -
+        // matches the definition ChoreComparison/CategoryComparison/MonthlyBreakdown.totalCount
+        // already use, not the sum of each member's own totalCount (which double-counts a shared
+        // completion once per participant).
+        assertThat(dashboard.summary.totalCompletions).isEqualTo(3)
         assertThat(dashboard.summary.topContributor?.displayName).isAnyOf("Alice", "Bob")
 
         assertThat(dashboard.recentCompletions.first().participantNames).containsExactly("Alice", "Bob").inOrder()
@@ -152,6 +156,93 @@ class HouseholdStatisticsCalculatorTest {
         val alice = dashboard.memberContributions.first { it.displayName == "Alice" }
         assertThat(alice.totalCount).isEqualTo(2)
         assertThat(alice.last30DaysCount).isEqualTo(1)
+    }
+
+    @Test
+    fun `a deleted chore's completions are excluded from the summary and monthly breakdown too`() {
+        val activeChore = Chore(
+            id = "chore-active",
+            householdId = household.id,
+            name = "Dishes",
+            isActive = true,
+            createdAt = Instant.parse("2026-01-02T09:00:00Z"),
+        )
+        val deletedChore = Chore(
+            id = "chore-deleted",
+            householdId = household.id,
+            name = "Old chore",
+            isActive = false,
+            createdAt = Instant.parse("2026-01-02T09:00:00Z"),
+            deletedAt = Instant.parse("2026-02-01T09:00:00Z"),
+        )
+        val completions = listOf(
+            completion(
+                id = "completion-active",
+                choreId = "chore-active",
+                createdAt = "2026-03-28T18:00:00Z",
+                participantMemberIds = listOf("member-alice"),
+            ),
+            completion(
+                id = "completion-deleted",
+                choreId = "chore-deleted",
+                createdAt = "2026-03-27T18:00:00Z",
+                participantMemberIds = listOf("member-alice"),
+            ),
+        )
+
+        val stats = calculator.statsSnapshot(
+            household = household,
+            members = members,
+            chores = listOf(activeChore, deletedChore),
+            completions = completions,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        // Matches comparisons/categoryComparisons, which already only iterate non-deleted
+        // chores - before this fix, the summary/monthly totals below would have been 2, not 1.
+        assertThat(stats.summary.totalCompletions).isEqualTo(1)
+        assertThat(stats.memberContributions.first { it.displayName == "Alice" }.totalCount).isEqualTo(1)
+        assertThat(stats.monthlyBreakdown.single().totalCount).isEqualTo(1)
+    }
+
+    @Test
+    fun `sharePercent sums to 100 across current members even after a member is removed`() {
+        // "member-removed" no longer appears in `members` (as if deleteMember ran), but its old
+        // completion_participants rows survive - completions still reference it.
+        val completions = listOf(
+            completion(
+                id = "completion-1",
+                choreId = "chore-dishes",
+                createdAt = "2026-03-28T18:00:00Z",
+                participantMemberIds = listOf("member-alice"),
+            ),
+            completion(
+                id = "completion-2",
+                choreId = "chore-dishes",
+                createdAt = "2026-03-27T18:00:00Z",
+                participantMemberIds = listOf("member-bob"),
+            ),
+            completion(
+                id = "completion-3",
+                choreId = "chore-dishes",
+                createdAt = "2026-03-26T18:00:00Z",
+                participantMemberIds = listOf("member-removed"),
+            ),
+        )
+
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members,
+            chores = chores,
+            completions = completions,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        val contributions = dashboard.memberContributions.associateBy { it.displayName }
+        assertThat(contributions["Alice"]?.sharePercent).isEqualTo(50)
+        assertThat(contributions["Bob"]?.sharePercent).isEqualTo(50)
     }
 
     @Test

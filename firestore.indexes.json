@@ -2,8 +2,8 @@
   "indexes": [],
   "fieldOverrides": [
     {
-      "collectionGroup": "invites",
-      "fieldPath": "code",
+      "collectionGroup": "members",
+      "fieldPath": "userId",
       "indexes": [
         {
           "order": "ASCENDING",
