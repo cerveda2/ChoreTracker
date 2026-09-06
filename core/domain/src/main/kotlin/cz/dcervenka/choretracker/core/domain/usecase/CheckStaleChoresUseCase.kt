@@ -19,6 +19,7 @@ class CheckStaleChoresUseCase @Inject constructor(
     private val householdRepository: HouseholdRepository,
     private val statsRepository: StatsRepository,
     private val statisticsCalculator: HouseholdStatisticsCalculator,
+    private val clock: Clock,
 ) {
     suspend operator fun invoke(): List<ChoreStaleness> {
         val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
@@ -37,7 +38,7 @@ class CheckStaleChoresUseCase @Inject constructor(
                 chores = input.chores,
                 completions = input.completions,
                 timeZone = TimeZone.currentSystemDefault(),
-                today = Clock.System.todayIn(TimeZone.currentSystemDefault()),
+                today = clock.todayIn(TimeZone.currentSystemDefault()),
             ).filter { it.status == ChoreStatus.NEEDS_ATTENTION }
         }
     }

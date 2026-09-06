@@ -17,6 +17,7 @@ class ObserveCurrentStatsUseCase @Inject constructor(
     private val householdRepository: HouseholdRepository,
     private val statsRepository: StatsRepository,
     private val statisticsCalculator: HouseholdStatisticsCalculator,
+    private val clock: Clock,
 ) {
     operator fun invoke(): Flow<StatsSnapshot> =
         householdRepository.observeCurrentHousehold()
@@ -28,7 +29,7 @@ class ObserveCurrentStatsUseCase @Inject constructor(
                         members = input.members,
                         chores = input.chores,
                         completions = input.completions,
-                        today = Clock.System.todayIn(TimeZone.currentSystemDefault()),
+                        today = clock.todayIn(TimeZone.currentSystemDefault()),
                     )
                 }
             }

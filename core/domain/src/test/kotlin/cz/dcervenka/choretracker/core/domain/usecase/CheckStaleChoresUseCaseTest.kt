@@ -11,6 +11,7 @@ import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import cz.dcervenka.choretracker.core.model.stats.HouseholdStatsInput
+import cz.dcervenka.choretracker.core.test.clock.FixedClock
 import cz.dcervenka.choretracker.core.test.mock.sampleAuthenticatedState
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import io.mockk.MockKAnnotations
@@ -20,8 +21,11 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.junit.Before
 import org.junit.Test
+import kotlin.time.Instant
 
 private fun staleness(choreId: String, status: ChoreStatus) = ChoreStaleness(
     choreId = choreId,
@@ -58,6 +62,13 @@ class CheckStaleChoresUseCaseTest {
 
     private val authStateFlow = MutableStateFlow<AuthState>(sampleAuthenticatedState())
 
+    // A FixedClock lets the injected `today` be asserted exactly, derived the same way
+    // production code derives it (rather than a hardcoded LocalDate literal), so this stays
+    // correct regardless of the test runner's default timezone.
+    private val fixedInstant = Instant.parse("2026-03-15T12:00:00Z")
+    private val clock = FixedClock(fixedInstant)
+    private val expectedToday = fixedInstant.toLocalDateTime(TimeZone.currentSystemDefault()).date
+
     private lateinit var useCase: CheckStaleChoresUseCase
 
     @Before
@@ -67,13 +78,14 @@ class CheckStaleChoresUseCaseTest {
         coEvery { refreshHouseholdUseCase() } returns AppResult.Success(Unit)
         coEvery { householdRepository.getCurrentHousehold() } returns sampleHousehold()
         coEvery { statsRepository.getHouseholdStatsInput(any()) } returns emptyStatsInput
-        every { statisticsCalculator.buildStaleness(any(), any(), any(), any()) } returns emptyList()
+        every { statisticsCalculator.buildStaleness(any(), any(), any(), expectedToday) } returns emptyList()
         useCase = CheckStaleChoresUseCase(
             authRepository,
             refreshHouseholdUseCase,
             householdRepository,
             statsRepository,
             statisticsCalculator,
+            clock,
         )
     }
 
@@ -105,7 +117,7 @@ class CheckStaleChoresUseCaseTest {
     fun `still checks staleness from local data when the remote sync fails`() = runTest {
         coEvery { refreshHouseholdUseCase() } returns AppResult.Error("Network error")
         coEvery { statsRepository.getHouseholdStatsInput("household-1") } returns emptyStatsInput
-        every { statisticsCalculator.buildStaleness(any(), any(), any(), any()) } returns
+        every { statisticsCalculator.buildStaleness(any(), any(), any(), expectedToday) } returns
             listOf(staleness("chore-1", ChoreStatus.NEEDS_ATTENTION))
 
         val result = useCase()
@@ -128,7 +140,7 @@ class CheckStaleChoresUseCaseTest {
     @Test
     fun `filters out chores that are not yet stale, including never-completed ones`() = runTest {
         coEvery { statsRepository.getHouseholdStatsInput("household-1") } returns emptyStatsInput
-        every { statisticsCalculator.buildStaleness(any(), any(), any(), any()) } returns listOf(
+        every { statisticsCalculator.buildStaleness(any(), any(), any(), expectedToday) } returns listOf(
             staleness("chore-1", ChoreStatus.NEEDS_ATTENTION),
             staleness("chore-2", ChoreStatus.SOON),
             staleness("chore-3", ChoreStatus.OK),
