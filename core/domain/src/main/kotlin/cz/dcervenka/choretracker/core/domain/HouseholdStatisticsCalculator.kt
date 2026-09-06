@@ -101,6 +101,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
                 members = members,
                 completions = activeCompletions,
                 timeZone = timeZone,
+                today = today,
             ),
             staleChores = buildStaleness(
                 chores = chores,
@@ -271,25 +272,32 @@ class HouseholdStatisticsCalculator @Inject constructor() {
             )
         }
 
+    // The trailing MONTHLY_BREAKDOWN_LIMIT calendar months ending at `today`, zero-filled - not
+    // "the most recent N months that happen to have a completion in them", which could skip
+    // months entirely or (for a household with sparse history) reach back years, and made the
+    // chart's x-axis non-contiguous.
     private fun buildMonthlyBreakdown(
         members: List<HouseholdMember>,
         completions: List<ChoreCompletion>,
         timeZone: TimeZone,
-    ): List<MonthlyBreakdown> = completions
-        .groupBy { completion ->
-            val date = completion.createdAt.toLocalDateTime(timeZone).date
-            "${date.year}-${(date.month.ordinal + 1).toString().padStart(2, '0')}"
+        today: LocalDate,
+    ): List<MonthlyBreakdown> {
+        val completionsByMonth = completions.groupBy { completion ->
+            monthLabel(completion.createdAt.toLocalDateTime(timeZone).date)
         }
-        .entries
-        .sortedByDescending { it.key }
-        .take(MONTHLY_BREAKDOWN_LIMIT)
-        .map { (monthLabel, monthCompletions) ->
+        return (0 until MONTHLY_BREAKDOWN_LIMIT).map { monthsAgo ->
+            val label = monthLabel(today.minus(DatePeriod(months = monthsAgo)))
+            val monthCompletions = completionsByMonth[label].orEmpty()
             MonthlyBreakdown(
-                monthLabel = monthLabel,
+                monthLabel = label,
                 countsByMemberId = buildCountsByMemberId(members, monthCompletions),
                 totalCount = monthCompletions.size,
             )
         }
+    }
+
+    private fun monthLabel(date: LocalDate): String =
+        "${date.year}-${(date.month.ordinal + 1).toString().padStart(2, '0')}"
 
     fun buildStaleness(
         chores: List<Chore>,

@@ -205,7 +205,7 @@ class HouseholdStatisticsCalculatorTest {
         // chores - before this fix, the summary/monthly totals below would have been 2, not 1.
         assertThat(stats.summary.totalCompletions).isEqualTo(1)
         assertThat(stats.memberContributions.first { it.displayName == "Alice" }.totalCount).isEqualTo(1)
-        assertThat(stats.monthlyBreakdown.single().totalCount).isEqualTo(1)
+        assertThat(stats.monthlyBreakdown.first().totalCount).isEqualTo(1)
     }
 
     @Test
@@ -319,10 +319,15 @@ class HouseholdStatisticsCalculatorTest {
         assertThat(comparisons["Vacuum"]?.leader).isEqualTo(ChoreLeaderResult.Leader("Bob"))
         assertThat(comparisons["Dusting"]?.leader).isEqualTo(ChoreLeaderResult.NoData)
 
-        assertThat(stats.monthlyBreakdown.map { it.monthLabel }).containsExactly("2026-03", "2026-02").inOrder()
+        // Six contiguous calendar months ending at `today`'s month (2026-03), zero-filled - not
+        // just the two months that happen to have a completion.
+        assertThat(stats.monthlyBreakdown.map { it.monthLabel })
+            .containsExactly("2026-03", "2026-02", "2026-01", "2025-12", "2025-11", "2025-10").inOrder()
         assertThat(stats.monthlyBreakdown.first().countsByMemberId["member-alice"]).isEqualTo(1)
         assertThat(stats.monthlyBreakdown.first().countsByMemberId["member-bob"]).isEqualTo(1)
         assertThat(stats.monthlyBreakdown.first().totalCount).isEqualTo(2)
+        assertThat(stats.monthlyBreakdown[1].totalCount).isEqualTo(1)
+        assertThat(stats.monthlyBreakdown[2].totalCount).isEqualTo(0)
 
         // 3 completions, Alice has 1, Bob has 2 → 33% and 66%
         val contributions = stats.summary
