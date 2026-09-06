@@ -37,8 +37,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
+      # setup-gradle below already caches the Gradle User Home - setup-java's own `cache: gradle`
+      # would duplicate that with a separate, less precise cache of the same paths.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
@@ -76,8 +77,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
+      # setup-gradle below already caches the Gradle User Home - setup-java's own `cache: gradle`
+      # would duplicate that with a separate, less precise cache of the same paths.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
@@ -114,8 +116,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
+      # setup-gradle below already caches the Gradle User Home - setup-java's own `cache: gradle`
+      # would duplicate that with a separate, less precise cache of the same paths.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
