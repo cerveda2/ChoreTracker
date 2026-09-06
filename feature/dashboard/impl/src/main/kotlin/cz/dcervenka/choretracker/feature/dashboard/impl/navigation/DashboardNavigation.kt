@@ -26,6 +26,7 @@ fun NavGraphBuilder.dashboardScreen(
             uiState = uiState.value,
             onIntent = viewModel::dispatch,
             undoEvents = viewModel.undoEvents,
+            errorEvents = viewModel.errorEvents,
             onLogChore = { navController.navigate(DashboardLogChoreDestination.route) },
             onSeeAllCompletions = {
                 navController.navigate(DashboardCompletionsDestination.route)
@@ -44,6 +45,7 @@ fun NavGraphBuilder.dashboardScreen(
             uiState = uiState.value,
             onIntent = viewModel::dispatch,
             undoEvents = viewModel.undoEvents,
+            errorEvents = viewModel.errorEvents,
             onBack = { navController.popBackStack() },
         )
     }

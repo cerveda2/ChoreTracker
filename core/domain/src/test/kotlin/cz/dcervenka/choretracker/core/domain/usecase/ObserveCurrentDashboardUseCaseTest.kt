@@ -4,6 +4,8 @@ import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
 import cz.dcervenka.choretracker.core.data.contract.StatsRepository
+import cz.dcervenka.choretracker.core.domain.HouseholdStatisticsCalculator
+import cz.dcervenka.choretracker.core.model.stats.HouseholdStatsInput
 import cz.dcervenka.choretracker.core.test.mock.sampleDashboardSnapshot
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import io.mockk.MockKAnnotations
@@ -22,6 +24,9 @@ class ObserveCurrentDashboardUseCaseTest {
     @MockK
     lateinit var statsRepository: StatsRepository
 
+    @MockK
+    lateinit var statisticsCalculator: HouseholdStatisticsCalculator
+
     private val householdFlow = MutableStateFlow<cz.dcervenka.choretracker.core.model.household.Household?>(null)
     private lateinit var useCase: ObserveCurrentDashboardUseCase
 
@@ -33,14 +38,30 @@ class ObserveCurrentDashboardUseCaseTest {
         useCase = ObserveCurrentDashboardUseCase(
             householdRepository = householdRepository,
             statsRepository = statsRepository,
+            statisticsCalculator = statisticsCalculator,
         )
     }
 
     @Test
     fun `starts observing dashboard only after a household is available`() = runTest {
         val household = sampleHousehold(id = "household-42")
+        val input = HouseholdStatsInput(
+            household = household,
+            members = emptyList(),
+            chores = emptyList(),
+            completions = emptyList(),
+        )
         val snapshot = sampleDashboardSnapshot().copy(household = household)
-        every { statsRepository.observeDashboard(household.id) } returns MutableStateFlow(snapshot)
+        every { statsRepository.observeHouseholdStatsInput(household.id) } returns MutableStateFlow(input)
+        every {
+            statisticsCalculator.dashboardSnapshot(
+                household = input.household,
+                members = input.members,
+                chores = input.chores,
+                completions = input.completions,
+                today = any(),
+            )
+        } returns snapshot
 
         useCase().test {
             householdFlow.value = household

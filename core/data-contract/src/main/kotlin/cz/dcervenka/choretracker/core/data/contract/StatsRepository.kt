@@ -1,14 +1,10 @@
 package cz.dcervenka.choretracker.core.data.contract
 
-import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
-import cz.dcervenka.choretracker.core.model.stats.DashboardSnapshot
-import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
+import cz.dcervenka.choretracker.core.model.stats.HouseholdStatsInput
 import kotlinx.coroutines.flow.Flow
 
 interface StatsRepository {
-    fun observeDashboard(householdId: String): Flow<DashboardSnapshot>
+    fun observeHouseholdStatsInput(householdId: String): Flow<HouseholdStatsInput>
 
-    fun observeStats(householdId: String): Flow<StatsSnapshot>
-
-    suspend fun getStaleChores(householdId: String): List<ChoreStaleness>
+    suspend fun getHouseholdStatsInput(householdId: String): HouseholdStatsInput
 }

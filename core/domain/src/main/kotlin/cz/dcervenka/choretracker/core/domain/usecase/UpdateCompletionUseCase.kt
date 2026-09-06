@@ -1,5 +1,6 @@
 package cz.dcervenka.choretracker.core.domain.usecase
 
+import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.data.contract.ChoreCompletionRepository
 import javax.inject.Inject
@@ -11,9 +12,14 @@ class UpdateCompletionUseCase @Inject constructor(
         completionId: String,
         note: String?,
         participantMemberIds: List<String>,
-    ): EmptyResult = choreCompletionRepository.updateCompletion(
-        completionId = completionId,
-        note = note,
-        participantMemberIds = participantMemberIds,
-    )
+    ): EmptyResult {
+        if (participantMemberIds.isEmpty()) {
+            return AppResult.Error("At least one participant is required.")
+        }
+        return choreCompletionRepository.updateCompletion(
+            completionId = completionId,
+            note = note,
+            participantMemberIds = participantMemberIds,
+        )
+    }
 }

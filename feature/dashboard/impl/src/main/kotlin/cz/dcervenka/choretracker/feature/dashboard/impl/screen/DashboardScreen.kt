@@ -69,6 +69,7 @@ fun DashboardScreen(
     uiState: DashboardUiState,
     onIntent: (DashboardUiIntent) -> Unit,
     undoEvents: Flow<UndoEvent>,
+    errorEvents: Flow<String>,
     onLogChore: () -> Unit,
     onSeeAllCompletions: () -> Unit,
     onOpenCompletion: (String) -> Unit,
@@ -77,6 +78,7 @@ fun DashboardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val undoLabel = stringResource(R.string.common_undo)
     val loggedMessage = stringResource(R.string.dashboard_logged_snackbar)
+    val fallbackErrorMessage = stringResource(R.string.dashboard_completion_action_error)
 
     LaunchedEffect(undoEvents) {
         undoEvents.collect { event ->
@@ -88,6 +90,12 @@ fun DashboardScreen(
             if (result == SnackbarResult.ActionPerformed) {
                 onIntent(DashboardUiIntent.DeleteCompletion(event.completionId))
             }
+        }
+    }
+
+    LaunchedEffect(errorEvents) {
+        errorEvents.collect { message ->
+            snackbarHostState.showSnackbar(message.ifBlank { fallbackErrorMessage })
         }
     }
 
@@ -389,6 +397,7 @@ private fun DashboardScreenPreview() {
             ),
             onIntent = {},
             undoEvents = kotlinx.coroutines.flow.emptyFlow(),
+            errorEvents = kotlinx.coroutines.flow.emptyFlow(),
             onLogChore = {},
             onSeeAllCompletions = {},
             onOpenCompletion = {},

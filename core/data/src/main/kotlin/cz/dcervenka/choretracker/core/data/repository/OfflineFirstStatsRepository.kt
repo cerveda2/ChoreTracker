@@ -9,18 +9,14 @@ import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
 import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
+import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
-import cz.dcervenka.choretracker.core.domain.HouseholdStatisticsCalculator
 import cz.dcervenka.choretracker.core.model.household.Household
-import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
-import cz.dcervenka.choretracker.core.model.stats.DashboardSnapshot
-import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
+import cz.dcervenka.choretracker.core.model.stats.HouseholdStatsInput
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.todayIn
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Clock
@@ -32,10 +28,9 @@ class OfflineFirstStatsRepository @Inject constructor(
     private val choreDao: ChoreDao,
     private val completionDao: CompletionDao,
     private val participantDao: CompletionParticipantDao,
-    private val statisticsCalculator: HouseholdStatisticsCalculator,
 ) : StatsRepository {
 
-    override fun observeDashboard(householdId: String): Flow<DashboardSnapshot> =
+    override fun observeHouseholdStatsInput(householdId: String): Flow<HouseholdStatsInput> =
         combine(
             householdDao.observeHousehold(householdId),
             memberDao.observeMembers(householdId),
@@ -43,57 +38,37 @@ class OfflineFirstStatsRepository @Inject constructor(
             completionDao.observeCompletions(householdId),
             participantDao.observeParticipants(householdId),
         ) { household, members, chores, completions, participants ->
-            val safeHousehold = household?.asModel()
-                ?: Household(
-                    id = householdId,
-                    name = "Household",
-                    ownerUserId = "",
-                    inviteCode = "",
-                    createdAt = Clock.System.now(),
-                )
-            statisticsCalculator.dashboardSnapshot(
-                household = safeHousehold,
+            HouseholdStatsInput(
+                household = household.asModelOrPlaceholder(householdId),
                 members = members.map(MemberEntity::asModel),
                 chores = chores.map(ChoreEntity::asModel),
                 completions = completions.asModels(participants),
-                today = Clock.System.todayIn(TimeZone.currentSystemDefault()),
             )
         }
 
-    override fun observeStats(householdId: String): Flow<StatsSnapshot> =
-        combine(
-            householdDao.observeHousehold(householdId),
-            memberDao.observeMembers(householdId),
-            choreDao.observeChores(householdId),
-            completionDao.observeCompletions(householdId),
-            participantDao.observeParticipants(householdId),
-        ) { household, members, chores, completions, participants ->
-            val safeHousehold = household?.asModel()
-                ?: Household(
-                    id = householdId,
-                    name = "Household",
-                    ownerUserId = "",
-                    inviteCode = "",
-                    createdAt = Clock.System.now(),
-                )
-            statisticsCalculator.statsSnapshot(
-                household = safeHousehold,
-                members = members.map(MemberEntity::asModel),
-                chores = chores.map(ChoreEntity::asModel),
-                completions = completions.asModels(participants),
-                today = Clock.System.todayIn(TimeZone.currentSystemDefault()),
-            )
-        }
-
-    override suspend fun getStaleChores(householdId: String): List<ChoreStaleness> = coroutineScope {
+    override suspend fun getHouseholdStatsInput(householdId: String): HouseholdStatsInput = coroutineScope {
+        val household = async { householdDao.getHousehold(householdId) }
+        val members = async { memberDao.getMembers(householdId) }
         val chores = async { choreDao.getChores(householdId) }
         val completions = async { completionDao.getCompletions(householdId) }
         val participants = async { participantDao.getParticipants(householdId) }
-        statisticsCalculator.buildStaleness(
+        HouseholdStatsInput(
+            household = household.await().asModelOrPlaceholder(householdId),
+            members = members.await().map(MemberEntity::asModel),
             chores = chores.await().map(ChoreEntity::asModel),
             completions = completions.await().asModels(participants.await()),
-            timeZone = TimeZone.currentSystemDefault(),
-            today = Clock.System.todayIn(TimeZone.currentSystemDefault()),
         )
     }
+
+    // Stats can be requested (e.g. by the reminder worker) before the household row has finished
+    // its first sync - a placeholder keeps the calculation running on whatever local data already
+    // exists instead of surfacing an error for a purely transient local-data gap.
+    private fun HouseholdEntity?.asModelOrPlaceholder(householdId: String): Household =
+        this?.asModel() ?: Household(
+            id = householdId,
+            name = "Household",
+            ownerUserId = "",
+            inviteCode = "",
+            createdAt = Clock.System.now(),
+        )
 }

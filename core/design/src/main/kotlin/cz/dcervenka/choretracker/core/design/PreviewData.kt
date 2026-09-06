@@ -17,6 +17,7 @@ import cz.dcervenka.choretracker.core.model.stats.MemberContribution
 import cz.dcervenka.choretracker.core.model.stats.MonthlyBreakdown
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
+import cz.dcervenka.choretracker.core.model.stats.TopContributorResult
 import kotlinx.datetime.LocalDate
 import kotlin.time.Clock
 
@@ -103,7 +104,9 @@ object PreviewData {
         household = household,
         summary = HouseholdSummary(
             totalCompletions = 49,
-            topContributor = previewContributions.first(),
+            topContributor = previewContributions.first().let {
+                TopContributorResult.Leader(it.displayName, it.sharePercent)
+            },
         ),
         memberContributions = previewContributions,
         activeChores = chores.filter { it.isActive },
@@ -149,7 +152,9 @@ object PreviewData {
         household = household,
         summary = HouseholdSummary(
             totalCompletions = 49,
-            topContributor = previewContributions.first(),
+            topContributor = previewContributions.first().let {
+                TopContributorResult.Leader(it.displayName, it.sharePercent)
+            },
         ),
         memberContributions = previewContributions,
         categoryComparisons = listOf(

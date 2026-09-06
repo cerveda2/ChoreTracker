@@ -3,17 +3,22 @@ package cz.dcervenka.choretracker.core.domain.usecase
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
 import cz.dcervenka.choretracker.core.data.contract.StatsRepository
+import cz.dcervenka.choretracker.core.domain.HouseholdStatisticsCalculator
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import kotlinx.coroutines.flow.first
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 import javax.inject.Inject
+import kotlin.time.Clock
 
 class CheckStaleChoresUseCase @Inject constructor(
     private val authRepository: AuthRepository,
     private val refreshHouseholdUseCase: RefreshHouseholdUseCase,
     private val householdRepository: HouseholdRepository,
     private val statsRepository: StatsRepository,
+    private val statisticsCalculator: HouseholdStatisticsCalculator,
 ) {
     suspend operator fun invoke(): List<ChoreStaleness> {
         val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
@@ -27,8 +32,13 @@ class CheckStaleChoresUseCase @Inject constructor(
         return if (household == null) {
             emptyList()
         } else {
-            statsRepository.getStaleChores(household.id)
-                .filter { it.status == ChoreStatus.NEEDS_ATTENTION }
+            val input = statsRepository.getHouseholdStatsInput(household.id)
+            statisticsCalculator.buildStaleness(
+                chores = input.chores,
+                completions = input.completions,
+                timeZone = TimeZone.currentSystemDefault(),
+                today = Clock.System.todayIn(TimeZone.currentSystemDefault()),
+            ).filter { it.status == ChoreStatus.NEEDS_ATTENTION }
         }
     }
 }

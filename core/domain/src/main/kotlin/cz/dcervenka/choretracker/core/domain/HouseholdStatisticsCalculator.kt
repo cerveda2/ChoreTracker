@@ -15,6 +15,7 @@ import cz.dcervenka.choretracker.core.model.stats.MemberContribution
 import cz.dcervenka.choretracker.core.model.stats.MonthlyBreakdown
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
+import cz.dcervenka.choretracker.core.model.stats.TopContributorResult
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -100,6 +101,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
                 members = members,
                 completions = activeCompletions,
                 timeZone = timeZone,
+                today = today,
             ),
             staleChores = buildStaleness(
                 chores = chores,
@@ -192,10 +194,16 @@ class HouseholdStatisticsCalculator @Inject constructor() {
     private fun buildSummary(
         contributions: List<MemberContribution>,
         completions: List<ChoreCompletion>,
-    ): HouseholdSummary = HouseholdSummary(
-        totalCompletions = completions.size,
-        topContributor = contributions.maxByOrNull { it.totalCount }?.takeIf { it.totalCount > 0 },
-    )
+    ): HouseholdSummary {
+        val topCount = contributions.maxOfOrNull { it.totalCount } ?: 0
+        val topContributor = when {
+            topCount == 0 -> TopContributorResult.NoData
+            contributions.count { it.totalCount == topCount } > 1 -> TopContributorResult.Tie
+            else -> contributions.first { it.totalCount == topCount }
+                .let { TopContributorResult.Leader(it.displayName, it.sharePercent) }
+        }
+        return HouseholdSummary(totalCompletions = completions.size, topContributor = topContributor)
+    }
 
     // Keyed by member id, not display name: two members sharing a display name would otherwise
     // silently collapse into one entry (Map can't have two different values under one key).
@@ -264,25 +272,32 @@ class HouseholdStatisticsCalculator @Inject constructor() {
             )
         }
 
+    // The trailing MONTHLY_BREAKDOWN_LIMIT calendar months ending at `today`, zero-filled - not
+    // "the most recent N months that happen to have a completion in them", which could skip
+    // months entirely or (for a household with sparse history) reach back years, and made the
+    // chart's x-axis non-contiguous.
     private fun buildMonthlyBreakdown(
         members: List<HouseholdMember>,
         completions: List<ChoreCompletion>,
         timeZone: TimeZone,
-    ): List<MonthlyBreakdown> = completions
-        .groupBy { completion ->
-            val date = completion.createdAt.toLocalDateTime(timeZone).date
-            "${date.year}-${(date.month.ordinal + 1).toString().padStart(2, '0')}"
+        today: LocalDate,
+    ): List<MonthlyBreakdown> {
+        val completionsByMonth = completions.groupBy { completion ->
+            monthLabel(completion.createdAt.toLocalDateTime(timeZone).date)
         }
-        .entries
-        .sortedByDescending { it.key }
-        .take(MONTHLY_BREAKDOWN_LIMIT)
-        .map { (monthLabel, monthCompletions) ->
+        return (0 until MONTHLY_BREAKDOWN_LIMIT).map { monthsAgo ->
+            val label = monthLabel(today.minus(DatePeriod(months = monthsAgo)))
+            val monthCompletions = completionsByMonth[label].orEmpty()
             MonthlyBreakdown(
-                monthLabel = monthLabel,
+                monthLabel = label,
                 countsByMemberId = buildCountsByMemberId(members, monthCompletions),
                 totalCount = monthCompletions.size,
             )
         }
+    }
+
+    private fun monthLabel(date: LocalDate): String =
+        "${date.year}-${(date.month.ordinal + 1).toString().padStart(2, '0')}"
 
     fun buildStaleness(
         chores: List<Chore>,
@@ -321,7 +336,11 @@ class HouseholdStatisticsCalculator @Inject constructor() {
             DEFAULT_NEEDS_ATTENTION_THRESHOLD_DAYS
         }
         val soonThreshold = if (frequencyDays != null && frequencyDays > 0) {
-            (frequencyDays * SOON_THRESHOLD_RATIO).roundToInt()
+            // For a 1- or 2-day frequency, rounding frequencyDays * SOON_THRESHOLD_RATIO lands on
+            // attentionThreshold itself (e.g. frequencyDays=2 → round(1.6)=2), which made the
+            // NEEDS_ATTENTION branch below always win first and SOON unreachable. Clamping below
+            // attentionThreshold keeps SOON reachable for short frequencies too.
+            (frequencyDays * SOON_THRESHOLD_RATIO).roundToInt().coerceAtMost(attentionThreshold - 1)
         } else {
             DEFAULT_SOON_THRESHOLD_DAYS
         }

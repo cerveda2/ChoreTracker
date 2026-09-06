@@ -12,6 +12,7 @@ import cz.dcervenka.choretracker.core.model.stats.HouseholdSummary
 import cz.dcervenka.choretracker.core.model.stats.MemberContribution
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
+import cz.dcervenka.choretracker.core.model.stats.TopContributorResult
 import kotlin.time.Instant
 
 fun sampleHousehold(
@@ -76,7 +77,10 @@ private val sampleContribution = MemberContribution(
 
 fun sampleDashboardSnapshot() = DashboardSnapshot(
     household = sampleHousehold(),
-    summary = HouseholdSummary(totalCompletions = 5, topContributor = sampleContribution),
+    summary = HouseholdSummary(
+        totalCompletions = 5,
+        topContributor = TopContributorResult.Leader(sampleContribution.displayName, sampleContribution.sharePercent),
+    ),
     memberContributions = listOf(sampleContribution),
     activeChores = emptyList(),
     recentCompletions = listOf(
@@ -94,7 +98,7 @@ fun sampleDashboardSnapshot() = DashboardSnapshot(
 
 fun sampleStatsSnapshot() = StatsSnapshot(
     household = sampleHousehold(),
-    summary = HouseholdSummary(totalCompletions = 0, topContributor = null),
+    summary = HouseholdSummary(totalCompletions = 0, topContributor = TopContributorResult.NoData),
     memberContributions = emptyList(),
     comparisons = emptyList(),
     categoryComparisons = emptyList(),

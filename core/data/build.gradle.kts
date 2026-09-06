@@ -14,8 +14,6 @@ dependencies {
     implementation(projects.core.databaseRoom)
     implementation(libs.room.runtime)
     implementation(projects.core.remoteContract)
-    implementation(projects.core.domain)
-    implementation(libs.kotlinx.datetime)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.timber)

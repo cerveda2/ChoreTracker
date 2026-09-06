@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
+import cz.dcervenka.choretracker.core.model.stats.TopContributorResult
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import org.junit.Test
@@ -115,7 +116,8 @@ class HouseholdStatisticsCalculatorTest {
         // already use, not the sum of each member's own totalCount (which double-counts a shared
         // completion once per participant).
         assertThat(dashboard.summary.totalCompletions).isEqualTo(3)
-        assertThat(dashboard.summary.topContributor?.displayName).isAnyOf("Alice", "Bob")
+        // Alice and Bob both have totalCount 2 - a genuine tie, not an arbitrary pick.
+        assertThat(dashboard.summary.topContributor).isEqualTo(TopContributorResult.Tie)
 
         assertThat(dashboard.recentCompletions.first().participantNames).containsExactly("Alice", "Bob").inOrder()
 
@@ -203,7 +205,22 @@ class HouseholdStatisticsCalculatorTest {
         // chores - before this fix, the summary/monthly totals below would have been 2, not 1.
         assertThat(stats.summary.totalCompletions).isEqualTo(1)
         assertThat(stats.memberContributions.first { it.displayName == "Alice" }.totalCount).isEqualTo(1)
-        assertThat(stats.monthlyBreakdown.single().totalCount).isEqualTo(1)
+        assertThat(stats.monthlyBreakdown.first().totalCount).isEqualTo(1)
+    }
+
+    @Test
+    fun `topContributor is NoData when nobody has completed anything yet`() {
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members,
+            chores = chores,
+            completions = emptyList(),
+            timeZone = timeZone,
+            today = today,
+        )
+
+        assertThat(dashboard.summary.totalCompletions).isEqualTo(0)
+        assertThat(dashboard.summary.topContributor).isEqualTo(TopContributorResult.NoData)
     }
 
     @Test
@@ -302,15 +319,20 @@ class HouseholdStatisticsCalculatorTest {
         assertThat(comparisons["Vacuum"]?.leader).isEqualTo(ChoreLeaderResult.Leader("Bob"))
         assertThat(comparisons["Dusting"]?.leader).isEqualTo(ChoreLeaderResult.NoData)
 
-        assertThat(stats.monthlyBreakdown.map { it.monthLabel }).containsExactly("2026-03", "2026-02").inOrder()
+        // Six contiguous calendar months ending at `today`'s month (2026-03), zero-filled - not
+        // just the two months that happen to have a completion.
+        assertThat(stats.monthlyBreakdown.map { it.monthLabel })
+            .containsExactly("2026-03", "2026-02", "2026-01", "2025-12", "2025-11", "2025-10").inOrder()
         assertThat(stats.monthlyBreakdown.first().countsByMemberId["member-alice"]).isEqualTo(1)
         assertThat(stats.monthlyBreakdown.first().countsByMemberId["member-bob"]).isEqualTo(1)
         assertThat(stats.monthlyBreakdown.first().totalCount).isEqualTo(2)
+        assertThat(stats.monthlyBreakdown[1].totalCount).isEqualTo(1)
+        assertThat(stats.monthlyBreakdown[2].totalCount).isEqualTo(0)
 
         // 3 completions, Alice has 1, Bob has 2 → 33% and 66%
         val contributions = stats.summary
         assertThat(contributions.totalCompletions).isEqualTo(3)
-        assertThat(contributions.topContributor?.displayName).isEqualTo("Bob")
+        assertThat(contributions.topContributor).isEqualTo(TopContributorResult.Leader("Bob", 66))
         val contribByName = stats.memberContributions.associateBy { it.displayName }
         assertThat(contribByName["Alice"]?.sharePercent).isEqualTo(33)
         assertThat(contribByName["Bob"]?.sharePercent).isEqualTo(66)
@@ -430,6 +452,37 @@ class HouseholdStatisticsCalculatorTest {
         )
         assertThat(dashboard2.staleChores.first { it.choreName == "Laundry" }.status)
             .isEqualTo(ChoreStatus.NEEDS_ATTENTION)
+    }
+
+    @Test
+    fun `SOON is still reachable for a chore due every 1-2 days`() {
+        val everyOtherDayChore = Chore(
+            id = "chore-plants",
+            householdId = household.id,
+            name = "Water plants",
+            isActive = true,
+            createdAt = Instant.parse("2026-01-01T09:00:00Z"),
+            frequencyDays = 2,
+        )
+        val completions = listOf(
+            completion(
+                id = "c1",
+                choreId = "chore-plants",
+                createdAt = "2026-03-28T12:00:00Z", // 1 day ago, frequency 2 → SOON, not NEEDS_ATTENTION
+                participantMemberIds = listOf("member-alice"),
+            ),
+        )
+
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members,
+            chores = listOf(everyOtherDayChore),
+            completions = completions,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        assertThat(dashboard.staleChores.single().status).isEqualTo(ChoreStatus.SOON)
     }
 
     private fun completion(
