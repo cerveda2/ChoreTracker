@@ -323,6 +323,7 @@ class LocalSyncRepository @Inject constructor(
                     note = completion.note,
                 ),
             )
+            completionParticipantDao.deleteByCompletionId(completion.id)
             completionParticipantDao.insertAll(
                 completion.participantMemberIds.map { memberId ->
                     CompletionParticipantEntity(

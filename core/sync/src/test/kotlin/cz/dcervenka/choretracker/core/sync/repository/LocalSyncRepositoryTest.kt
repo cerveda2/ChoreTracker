@@ -33,6 +33,7 @@ import io.mockk.MockKAnnotations
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.just
@@ -453,6 +454,19 @@ class LocalSyncRepositoryTest {
         coVerify { choreDao.upsert(match { it.id == "chore-1" }) }
         coVerify { completionDao.upsert(match { it.id == "completion-1" }) }
         coVerify { inviteDao.upsert(match { it.id == "invite-1" }) }
+    }
+
+    @Test
+    fun `restoreHouseholdForUser clears stale participants before re-inserting a completion's`() = runBlocking {
+        val snapshot = buildSnapshot()
+        coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
+
+        repository.restoreHouseholdForUser("user-1")
+
+        coVerifyOrder {
+            completionParticipantDao.deleteByCompletionId("completion-1")
+            completionParticipantDao.insertAll(match { it.all { p -> p.completionId == "completion-1" } })
+        }
     }
 
     @Test
