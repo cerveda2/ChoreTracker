@@ -144,6 +144,8 @@
     <string name="settings_invite_copy">Kopírovat kód</string>
     <string name="settings_invite_share">Sdílet pozvánku</string>
     <string name="settings_invite_share_message">Připoj se k mé domácnosti v ChoreTrackeru! Použij kód pozvánky: %s</string>
+    <string name="settings_invite_expand_qr">Zobrazit QR kód</string>
+    <string name="settings_invite_collapse_qr">Skrýt QR kód</string>
     <string name="settings_invite_history_title">Kódy pozvánek</string>
     <string name="settings_invite_label_open">Otevřená pozvánka</string>
     <string name="settings_invite_label_for_member">Pro %1$s</string>

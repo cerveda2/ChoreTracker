@@ -284,7 +284,7 @@ private fun InviteRow(
             IconButton(onClick = onCopy) {
                 Icon(
                     imageVector = Icons.Outlined.ContentCopy,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.settings_invite_copy),
                     modifier = Modifier.size(16.dp),
                 )
             }
@@ -292,7 +292,9 @@ private fun InviteRow(
                 IconButton(onClick = { expanded = !expanded }) {
                     Icon(
                         imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                        contentDescription = null,
+                        contentDescription = stringResource(
+                            if (expanded) R.string.settings_invite_collapse_qr else R.string.settings_invite_expand_qr,
+                        ),
                         modifier = Modifier.size(16.dp),
                     )
                 }
