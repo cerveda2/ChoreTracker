@@ -36,6 +36,7 @@ class ChoreReminderScheduler @Inject constructor(
     private val workManager: WorkManager,
     private val reminderSettingsRepository: ReminderSettingsRepository,
     @ReminderScope private val scope: CoroutineScope,
+    private val clock: Clock,
 ) {
     // Guards against the cold-start race: when WorkManager itself starts the app process to run
     // the due work, this class's init subscription fires its first reschedule concurrently with
@@ -85,7 +86,7 @@ class ChoreReminderScheduler @Inject constructor(
     // toInstant(timeZone) correctly yields a 23h or 25h gap instead of assuming every day is 24h.
     private fun computeInitialDelay(hour: Int, minute: Int): Duration {
         val timeZone = TimeZone.currentSystemDefault()
-        val now: Instant = Clock.System.now()
+        val now: Instant = clock.now()
         val today = now.toLocalDateTime(timeZone).date
         var next = LocalDateTime(today, LocalTime(hour, minute)).toInstant(timeZone)
         if (next <= now) {

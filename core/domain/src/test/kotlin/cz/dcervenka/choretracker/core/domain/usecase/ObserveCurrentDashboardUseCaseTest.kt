@@ -6,6 +6,7 @@ import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
 import cz.dcervenka.choretracker.core.data.contract.StatsRepository
 import cz.dcervenka.choretracker.core.domain.HouseholdStatisticsCalculator
 import cz.dcervenka.choretracker.core.model.stats.HouseholdStatsInput
+import cz.dcervenka.choretracker.core.test.clock.FixedClock
 import cz.dcervenka.choretracker.core.test.mock.sampleDashboardSnapshot
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import io.mockk.MockKAnnotations
@@ -13,8 +14,11 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.junit.Before
 import org.junit.Test
+import kotlin.time.Instant
 
 class ObserveCurrentDashboardUseCaseTest {
 
@@ -28,6 +32,13 @@ class ObserveCurrentDashboardUseCaseTest {
     lateinit var statisticsCalculator: HouseholdStatisticsCalculator
 
     private val householdFlow = MutableStateFlow<cz.dcervenka.choretracker.core.model.household.Household?>(null)
+
+    // Derived the same way production code derives `today`, so this stays correct regardless
+    // of the test runner's default timezone.
+    private val fixedInstant = Instant.parse("2026-03-15T12:00:00Z")
+    private val clock = FixedClock(fixedInstant)
+    private val expectedToday = fixedInstant.toLocalDateTime(TimeZone.currentSystemDefault()).date
+
     private lateinit var useCase: ObserveCurrentDashboardUseCase
 
     @Before
@@ -39,6 +50,7 @@ class ObserveCurrentDashboardUseCaseTest {
             householdRepository = householdRepository,
             statsRepository = statsRepository,
             statisticsCalculator = statisticsCalculator,
+            clock = clock,
         )
     }
 
@@ -59,7 +71,7 @@ class ObserveCurrentDashboardUseCaseTest {
                 members = input.members,
                 chores = input.chores,
                 completions = input.completions,
-                today = any(),
+                today = expectedToday,
             )
         } returns snapshot
 
