@@ -60,12 +60,9 @@ class ChoreTrackerApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        // TODO - enable crashlytics and analytics only for release builds
-        /*val isRelease = !BuildConfig.DEBUG
-        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(isRelease)
-        FirebaseAnalytics.getInstance(this).setAnalyticsCollectionEnabled(isRelease)*/
-        FirebaseCrashlytics.getInstance().isCrashlyticsCollectionEnabled = true
-        FirebaseAnalytics.getInstance(this).setAnalyticsCollectionEnabled(true)
+        val isRelease = !BuildConfig.DEBUG
+        FirebaseCrashlytics.getInstance().isCrashlyticsCollectionEnabled = isRelease
+        FirebaseAnalytics.getInstance(this).setAnalyticsCollectionEnabled(isRelease)
         NotificationChannels.ensureCreated(this)
         ReminderNotificationChannels.ensureCreated(this)
         choreReminderScheduler.get()
