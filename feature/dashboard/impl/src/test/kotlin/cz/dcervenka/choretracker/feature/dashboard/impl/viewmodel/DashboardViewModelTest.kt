@@ -27,6 +27,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
+import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -134,6 +135,23 @@ class DashboardViewModelTest {
             assertThat(state.syncState?.lastErrorMessage).contains("permissions")
         }
     }
+
+    @Test
+    fun `completionHistory observes the full history, uncapped, independent of uiState`() =
+        runTest(coroutineRule.dispatcher) {
+            val household = sampleHousehold()
+            val viewModel = createViewModel()
+
+            viewModel.completionHistory.test {
+                assertThat(awaitItem()).isNull()
+
+                householdFlow.value = household
+
+                assertThat(awaitItem()).isEqualTo(completionsFlow.value)
+            }
+
+            verify { observeRecentCompletionsUseCase(household.id, limit = Int.MAX_VALUE) }
+        }
 
     @Test
     fun `log completion delegates to use case`() = runTest(coroutineRule.dispatcher) {

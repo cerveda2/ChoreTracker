@@ -13,6 +13,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RefreshHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCompletionUseCase
+import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -74,6 +75,20 @@ class DashboardViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = DashboardUiState(),
+        )
+
+    // uiState.allCompletions is capped at 25 for the dashboard's own 3-item preview - the
+    // dedicated "see all" screen and the completion-detail lookup both need the full history
+    // instead, so they observe this separately rather than sharing that capped list. Null (not
+    // emptyList()) means "hasn't loaded yet", same convention as DashboardUiState.snapshot - a
+    // household that genuinely has zero completions must not be mistaken for still-loading.
+    val completionHistory: StateFlow<List<RecentCompletion>?> = observeCurrentHouseholdUseCase()
+        .filterNotNull()
+        .flatMapLatest { household -> observeRecentCompletionsUseCase(household.id, limit = Int.MAX_VALUE) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = null,
         )
 
     fun dispatch(intent: DashboardUiIntent) {
