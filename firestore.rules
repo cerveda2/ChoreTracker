@@ -132,8 +132,14 @@ service cloud.firestore {
         allow read: if isHouseholdMember(householdId) || isOwnMembershipRecord();
         allow create: if isHouseholdOwner(householdId) ||
           isSelfJoinWithValidInvite(householdId, memberId);
+        // isSelfMemberWrite alone only pins userId/householdId - without the diff check below, a
+        // member could self-update their own role to OWNER (undeletable, full write access) or
+        // rewrite their logical id (colliding with another member's). displayName/email are the
+        // only fields a member's own sync push legitimately changes after the initial join.
         allow update: if isHouseholdOwner(householdId) ||
-          isSelfMemberWrite(householdId, memberId);
+          (isSelfMemberWrite(householdId, memberId) &&
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['displayName', 'email']));
         allow delete: if isHouseholdOwner(householdId);
       }
 
