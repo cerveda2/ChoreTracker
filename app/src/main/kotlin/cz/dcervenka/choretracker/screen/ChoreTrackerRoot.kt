@@ -53,8 +53,10 @@ fun ChoreTrackerRoot(
 
     LaunchedEffect(rootDestination) {
         if (rootDestination == RootDestination.Loading) return@LaunchedEffect
-        val activeRoute = navController.currentDestination?.route ?: navController.graph.findStartDestination().route
-        if (activeRoute == rootDestination.route) return@LaunchedEffect
+        // NavHost is always composed with a matching startDestination by the time this effect
+        // runs (it renders in the same composition pass that computed `startDestination` above),
+        // so currentDestination is never null here - no fallback to findStartDestination() needed.
+        if (navController.currentDestination?.route == rootDestination.route) return@LaunchedEffect
         navController.navigate(rootDestination.route) {
             popUpTo(navController.graph.findStartDestination().id) {
                 saveState = false
