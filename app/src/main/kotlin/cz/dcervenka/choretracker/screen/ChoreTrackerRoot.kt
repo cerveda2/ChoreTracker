@@ -14,7 +14,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -51,10 +54,19 @@ fun ChoreTrackerRoot(
     val currentRoute = currentDestination?.route
     val showBottomBar = topLevelDestinations.any { destination -> currentRoute == destination.route }
 
+    // The most recent RootDestination this effect has already navigated for. Seeded with
+    // whatever rootDestination already is on this composition's first frame (rememberSaveable
+    // restores that same value across a config change), so a rotation that doesn't cross a
+    // section boundary - e.g. while several screens deep in Settings - isn't mistaken for a
+    // fresh Auth/Onboarding/Main transition. Comparing against navController.currentDestination
+    // instead would force-navigate back to that section's start route on every rotation,
+    // clobbering the NavController's own restored back stack.
+    var lastHandledRootDestination by rememberSaveable { mutableStateOf(rootDestination) }
+
     LaunchedEffect(rootDestination) {
         if (rootDestination == RootDestination.Loading) return@LaunchedEffect
-        val activeRoute = navController.currentDestination?.route ?: navController.graph.findStartDestination().route
-        if (activeRoute == rootDestination.route) return@LaunchedEffect
+        if (rootDestination == lastHandledRootDestination) return@LaunchedEffect
+        lastHandledRootDestination = rootDestination
         navController.navigate(rootDestination.route) {
             popUpTo(navController.graph.findStartDestination().id) {
                 saveState = false

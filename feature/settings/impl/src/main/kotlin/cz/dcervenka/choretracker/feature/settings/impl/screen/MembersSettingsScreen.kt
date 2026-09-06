@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -175,7 +176,11 @@ fun MembersSettingsScreen(
             item {
                 ScreenHeader(
                     title = stringResource(R.string.household_members),
-                    subtitle = stringResource(R.string.household_member_count, uiState.members.size),
+                    subtitle = pluralStringResource(
+                        R.plurals.household_member_count,
+                        uiState.members.size,
+                        uiState.members.size,
+                    ),
                 )
             }
             item {

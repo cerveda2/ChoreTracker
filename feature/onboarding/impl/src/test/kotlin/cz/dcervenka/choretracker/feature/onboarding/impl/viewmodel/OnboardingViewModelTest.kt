@@ -107,6 +107,10 @@ class OnboardingViewModelTest {
         coVerify { joinHouseholdUseCase("BADCODE", "Dana") }
         assertThat(viewModel.uiState.value.isWorking).isFalse()
         assertThat(viewModel.uiState.value.errorMessage).isEqualTo("Invite code is invalid")
+
+        viewModel.dispatch(OnboardingUiIntent.ClearError)
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.errorMessage).isNull()
     }
 
     @Test

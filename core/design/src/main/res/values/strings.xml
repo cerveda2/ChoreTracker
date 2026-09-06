@@ -39,6 +39,7 @@
     <string name="onboarding_join_household">Join household</string>
     <string name="onboarding_scan_qr_code">Scan QR code</string>
     <string name="onboarding_enter_code_manually">Enter code manually</string>
+    <string name="onboarding_qr_scan_retry">Tap to scan again</string>
 
     <string name="dashboard_loading">Loading dashboard…</string>
     <string name="dashboard_recent_balance">Recent balance and task flow</string>
@@ -47,14 +48,20 @@
     <string name="dashboard_sync_failed_permissions">We couldn\'t upload your latest changes because the server rejected the request. Your changes are still saved on this device.</string>
     <string name="dashboard_sync_failed_generic">We couldn\'t upload your latest changes. Your changes are still saved on this device and we\'ll keep trying.</string>
     <string name="dashboard_sync_pending_title">Changes waiting to upload</string>
-    <string name="dashboard_sync_pending_message">We still need to upload %1$d local change(s) to your household.</string>
+    <plurals name="dashboard_sync_pending_message">
+        <item quantity="one">We still need to upload %1$d local change to your household.</item>
+        <item quantity="other">We still need to upload %1$d local changes to your household.</item>
+    </plurals>
     <string name="dashboard_last_30d">last 30d: %1$d</string>
     <string name="dashboard_share_percent">%1$d%%</string>
     <string name="dashboard_days_ago">%1$dd ago</string>
     <string name="dashboard_never_done">never</string>
     <string name="dashboard_log_date">Date: %1$s</string>
     <string name="dashboard_log_date_today">today</string>
-    <string name="stats_summary_total">%1$d total completions</string>
+    <plurals name="stats_summary_total">
+        <item quantity="one">%1$d total completion</item>
+        <item quantity="other">%1$d total completions</item>
+    </plurals>
     <string name="stats_summary_top_contributor">Top contributor: %1$s (%2$d%%)</string>
     <string name="stats_summary_tie">Top contributor: tied</string>
     <string name="stats_summary_no_data">No completions yet</string>
@@ -79,7 +86,10 @@
     <string name="dashboard_completion_action_error">Something went wrong</string>
     <string name="dashboard_needs_attention">Needs attention</string>
     <string name="dashboard_stale_chip">%1$s: %2$s</string>
-    <string name="dashboard_stale_last_done">Last done %1$s (%2$d days ago)</string>
+    <plurals name="dashboard_stale_last_done">
+        <item quantity="one">Last done %1$s (%2$d day ago)</item>
+        <item quantity="other">Last done %1$s (%2$d days ago)</item>
+    </plurals>
     <string name="dashboard_stale_never_done">This chore has not been completed yet.</string>
     <string name="dashboard_needs_attention_empty">Everything looks up to date right now.</string>
     <string name="dashboard_log_completion">Log completion</string>
@@ -112,13 +122,21 @@
     <string name="household_delete_member">Remove member</string>
     <string name="household_delete_member_title">Remove this member?</string>
     <string name="household_delete_member_message">This removes the member from the household. Their completion history remains visible.</string>
-    <string name="household_member_count">%1$d members</string>
-    <string name="household_chore_count">%1$d chores</string>
+    <plurals name="household_member_count">
+        <item quantity="one">%1$d member</item>
+        <item quantity="other">%1$d members</item>
+    </plurals>
+    <plurals name="household_chore_count">
+        <item quantity="one">%1$d chore</item>
+        <item quantity="other">%1$d chores</item>
+    </plurals>
     <string name="household_invite_section">Invite</string>
     <string name="settings_invite_none">No active invite code. Tap Refresh invite to generate one.</string>
     <string name="settings_invite_copy">Copy code</string>
     <string name="settings_invite_share">Share invite</string>
     <string name="settings_invite_share_message">Join my household in ChoreTracker! Use invite code: %s</string>
+    <string name="settings_invite_expand_qr">Show QR code</string>
+    <string name="settings_invite_collapse_qr">Hide QR code</string>
     <string name="settings_invite_history_title">Invite codes</string>
     <string name="settings_invite_label_open">Open invite</string>
     <string name="settings_invite_label_for_member">For %1$s</string>
@@ -155,10 +173,16 @@
     <string name="stats_summary_attention_empty">No stale chores right now.</string>
     <string name="stats_summary_attention_line">%1$s • %2$s</string>
     <string name="stats_stale_never">Never completed</string>
-    <string name="stats_stale_days_ago">%1$d days ago</string>
+    <plurals name="stats_stale_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
     <string name="stats_stale_soon">Due soon</string>
     <string name="stats_stale_ok">On track</string>
-    <string name="stats_category_chore_count">%1$d chore(s)</string>
+    <plurals name="stats_category_chore_count">
+        <item quantity="one">%1$d chore</item>
+        <item quantity="other">%1$d chores</item>
+    </plurals>
     <string name="stats_category_empty_title">No category data yet</string>
     <string name="stats_category_empty_message">Log some chores and category trends will appear here.</string>
     <string name="stats_chore_history_empty_title">No completions yet</string>
@@ -184,8 +208,14 @@
     <string name="settings_account_email_supporting">Your sign-in email can’t be changed here.</string>
     <string name="settings_save_display_name">Save display name</string>
     <string name="settings_household_description">%1$s</string>
-    <string name="settings_members_description">%1$d active household members</string>
-    <string name="settings_chores_description">%1$d chores available for tracking</string>
+    <plurals name="settings_members_description">
+        <item quantity="one">%1$d active household member</item>
+        <item quantity="other">%1$d active household members</item>
+    </plurals>
+    <plurals name="settings_chores_description">
+        <item quantity="one">%1$d chore available for tracking</item>
+        <item quantity="other">%1$d chores available for tracking</item>
+    </plurals>
     <string name="settings_account_description">Sign out and app preferences</string>
     <string name="settings_language_title">Language</string>
     <string name="settings_language_description">App display language</string>
@@ -218,7 +248,10 @@
     <string name="settings_management_section">Household management</string>
     <string name="settings_account_section">Preferences</string>
 
-    <string name="settings_chore_frequency_every_n_days">Every %1$d days</string>
+    <plurals name="settings_chore_frequency_every_n_days">
+        <item quantity="one">Every %1$d day</item>
+        <item quantity="other">Every %1$d days</item>
+    </plurals>
     <string name="settings_chore_frequency_not_set">No frequency</string>
     <string name="settings_chore_set_frequency_title">Set frequency</string>
     <string name="settings_chore_set_frequency_hint">Days between completions</string>

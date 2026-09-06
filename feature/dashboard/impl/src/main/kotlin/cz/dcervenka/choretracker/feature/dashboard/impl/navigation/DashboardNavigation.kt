@@ -53,9 +53,10 @@ fun NavGraphBuilder.dashboardScreen(
     composable(route = DashboardCompletionsDestination.route) {
         val viewModel: DashboardViewModel = hiltViewModel()
         val uiState = viewModel.uiState.collectAsStateWithLifecycle()
+        val completionHistory = viewModel.completionHistory.collectAsStateWithLifecycle()
 
         RecentCompletionsScreen(
-            completions = uiState.value.allCompletions,
+            completions = completionHistory.value.orEmpty(),
             members = uiState.value.members,
             onBack = { navController.popBackStack() },
             onOpenCompletion = { completionId ->
@@ -70,11 +71,13 @@ fun NavGraphBuilder.dashboardScreen(
     ) { backStackEntry ->
         val viewModel: DashboardViewModel = hiltViewModel()
         val uiState = viewModel.uiState.collectAsStateWithLifecycle()
+        val completionHistory = viewModel.completionHistory.collectAsStateWithLifecycle()
         val completionId = backStackEntry.arguments?.getString("completionId").orEmpty()
-        val completion = uiState.value.allCompletions.firstOrNull { it.completionId == completionId }
+        val history = completionHistory.value
+        val completion = history?.firstOrNull { it.completionId == completionId }
 
-        LaunchedEffect(uiState.value.snapshot, completion) {
-            if (uiState.value.snapshot != null && completion == null) {
+        LaunchedEffect(history, completion) {
+            if (history != null && completion == null) {
                 navController.popBackStack()
             }
         }

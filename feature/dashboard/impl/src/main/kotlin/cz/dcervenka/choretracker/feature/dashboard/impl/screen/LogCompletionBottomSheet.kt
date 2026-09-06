@@ -20,7 +20,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
@@ -29,8 +29,12 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
+import cz.dcervenka.choretracker.core.design.rememberSaveableInstant
 import cz.dcervenka.choretracker.core.formatters.formatInstantForLocale
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -47,13 +51,21 @@ internal fun LogCompletionBottomSheet(
 ) {
     val spacing = LocalSpacing.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var showDatePicker by remember { mutableStateOf(false) }
+    var showDatePicker by rememberSaveable { mutableStateOf(false) }
     // null means "use the actual confirm-time instant", not "today at midnight" - only set once
     // the user explicitly confirms a pick in the date dialog below, so opening (or never opening)
     // the sheet doesn't backdate the completion to whenever the sheet happened to be composed.
-    var completedAt by remember { mutableStateOf<Instant?>(null) }
+    var completedAt by rememberSaveableInstant()
+    // DatePickerState.selectedDateMillis is UTC midnight of the picked calendar date, not local
+    // midnight - passing it straight through as an Instant (or reading one straight back into it)
+    // shifts the completion to the wrong local day for any timezone behind UTC. Re-anchor through
+    // the local calendar date on both sides of the picker instead.
+    val timeZone = TimeZone.currentSystemDefault()
     val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = completedAt?.toEpochMilliseconds() ?: Clock.System.now().toEpochMilliseconds(),
+        initialSelectedDateMillis = (completedAt ?: Clock.System.now())
+            .toLocalDateTime(timeZone).date
+            .atStartOfDayIn(TimeZone.UTC)
+            .toEpochMilliseconds(),
     )
 
     if (showDatePicker) {
@@ -62,7 +74,11 @@ internal fun LogCompletionBottomSheet(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        completedAt = datePickerState.selectedDateMillis?.let(Instant::fromEpochMilliseconds)
+                        completedAt = datePickerState.selectedDateMillis?.let { millis ->
+                            Instant.fromEpochMilliseconds(millis)
+                                .toLocalDateTime(TimeZone.UTC).date
+                                .atStartOfDayIn(timeZone)
+                        }
                         showDatePicker = false
                     },
                 ) {

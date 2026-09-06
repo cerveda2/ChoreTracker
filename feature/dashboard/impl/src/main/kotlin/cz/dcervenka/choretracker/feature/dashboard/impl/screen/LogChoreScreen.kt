@@ -21,9 +21,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +34,7 @@ import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.EmptyState
+import cz.dcervenka.choretracker.core.design.rememberSaveableStringList
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
@@ -80,9 +81,9 @@ fun LogChoreScreen(
         }
     }
 
-    var selectedChoreId by remember { mutableStateOf<String?>(null) }
-    var selectedNote by remember { mutableStateOf("") }
-    val selectedMembers = remember { mutableStateListOf<String>() }
+    var selectedChoreId by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedNote by rememberSaveable { mutableStateOf("") }
+    val selectedMembers = rememberSaveableStringList()
     val currentUserId = uiState.members.firstOrNull { it.isCurrentUser }?.id
     val snapshot = uiState.snapshot
 
