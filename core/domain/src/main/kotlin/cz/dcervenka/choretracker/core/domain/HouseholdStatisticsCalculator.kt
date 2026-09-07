@@ -4,6 +4,7 @@ import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
+import cz.dcervenka.choretracker.core.model.stats.BalanceSummary
 import cz.dcervenka.choretracker.core.model.stats.CategoryComparison
 import cz.dcervenka.choretracker.core.model.stats.ChoreComparison
 import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
@@ -62,9 +63,11 @@ class HouseholdStatisticsCalculator @Inject constructor() {
             staleChores = buildStaleness(
                 chores = chores,
                 completions = completions,
+                members = members,
                 timeZone = timeZone,
                 today = today,
             ),
+            balance = buildBalance(contributions),
         )
     }
 
@@ -106,6 +109,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
             staleChores = buildStaleness(
                 chores = chores,
                 completions = completions,
+                members = members,
                 timeZone = timeZone,
                 today = today,
             ),
@@ -302,31 +306,42 @@ class HouseholdStatisticsCalculator @Inject constructor() {
     fun buildStaleness(
         chores: List<Chore>,
         completions: List<ChoreCompletion>,
+        members: List<HouseholdMember>,
         timeZone: TimeZone,
         today: LocalDate,
-    ): List<ChoreStaleness> = chores
-        .filter { it.isActive && it.deletedAt == null }
-        .sortedBy(Chore::name)
-        .map { chore ->
-            val lastCompletionDate = completions
-                .filter { it.choreId == chore.id }
-                .maxByOrNull(ChoreCompletion::createdAt)
-                ?.createdAt
-                ?.toLocalDateTime(timeZone)
-                ?.date
-            val daysSinceLastCompletion = lastCompletionDate?.daysUntil(today)
-            ChoreStaleness(
-                choreId = chore.id,
-                choreName = chore.name,
-                lastCompletedDate = lastCompletionDate,
-                daysSinceLastCompletion = daysSinceLastCompletion,
-                frequencyDays = chore.frequencyDays,
-                status = computeStatus(
+    ): List<ChoreStaleness> {
+        val memberMap = members.associateBy(HouseholdMember::id)
+        return chores
+            .filter { it.isActive && it.deletedAt == null }
+            .sortedBy(Chore::name)
+            .map { chore ->
+                val lastCompletion = completions
+                    .filter { it.choreId == chore.id }
+                    .maxByOrNull(ChoreCompletion::createdAt)
+                val lastCompletionDate = lastCompletion?.createdAt?.toLocalDateTime(timeZone)?.date
+                val daysSinceLastCompletion = lastCompletionDate?.daysUntil(today)
+                val frequencyDays = chore.frequencyDays
+                ChoreStaleness(
+                    choreId = chore.id,
+                    choreName = chore.name,
+                    lastCompletedDate = lastCompletionDate,
                     daysSinceLastCompletion = daysSinceLastCompletion,
-                    frequencyDays = chore.frequencyDays,
-                ),
-            )
-        }
+                    frequencyDays = frequencyDays,
+                    status = computeStatus(
+                        daysSinceLastCompletion = daysSinceLastCompletion,
+                        frequencyDays = frequencyDays,
+                    ),
+                    lastCompletedByNames = lastCompletion?.participantMemberIds
+                        ?.mapNotNull { memberId -> memberMap[memberId]?.displayName }
+                        .orEmpty(),
+                    dueInDays = if (frequencyDays != null && daysSinceLastCompletion != null) {
+                        frequencyDays - daysSinceLastCompletion
+                    } else {
+                        null
+                    },
+                )
+            }
+    }
 
     private fun computeStatus(daysSinceLastCompletion: Int?, frequencyDays: Int?): ChoreStatus {
         if (daysSinceLastCompletion == null) return ChoreStatus.NEVER
@@ -349,5 +364,25 @@ class HouseholdStatisticsCalculator @Inject constructor() {
             daysSinceLastCompletion >= soonThreshold -> ChoreStatus.SOON
             else -> ChoreStatus.OK
         }
+    }
+}
+
+// Top-level, not a method: it only reads its parameter (no instance state), and keeping it out
+// of the class avoids tripping TooManyFunctions there. Null with fewer than two members, or when
+// nobody has logged anything in the last 30 days - "who's carrying more" is meaningless either way.
+private fun buildBalance(contributions: List<MemberContribution>): BalanceSummary? {
+    if (contributions.size < 2) return null
+    val countsByMemberId = contributions.associate { it.memberId to it.last30DaysCount }
+    return if (countsByMemberId.values.all { it == 0 }) {
+        null
+    } else {
+        val leader = contributions.maxBy { it.last30DaysCount }
+        val lagging = contributions.minBy { it.last30DaysCount }
+        BalanceSummary(
+            leaderMemberId = leader.memberId,
+            laggingMemberId = lagging.memberId,
+            gap = leader.last30DaysCount - lagging.last30DaysCount,
+            countsByMemberId = countsByMemberId,
+        )
     }
 }

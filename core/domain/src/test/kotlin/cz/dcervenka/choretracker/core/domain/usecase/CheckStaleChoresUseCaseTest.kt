@@ -78,7 +78,7 @@ class CheckStaleChoresUseCaseTest {
         coEvery { refreshHouseholdUseCase() } returns AppResult.Success(Unit)
         coEvery { householdRepository.getCurrentHousehold() } returns sampleHousehold()
         coEvery { statsRepository.getHouseholdStatsInput(any()) } returns emptyStatsInput
-        every { statisticsCalculator.buildStaleness(any(), any(), any(), expectedToday) } returns emptyList()
+        every { statisticsCalculator.buildStaleness(any(), any(), any(), any(), expectedToday) } returns emptyList()
         useCase = CheckStaleChoresUseCase(
             authRepository,
             refreshHouseholdUseCase,
@@ -117,7 +117,7 @@ class CheckStaleChoresUseCaseTest {
     fun `still checks staleness from local data when the remote sync fails`() = runTest {
         coEvery { refreshHouseholdUseCase() } returns AppResult.Error("Network error")
         coEvery { statsRepository.getHouseholdStatsInput("household-1") } returns emptyStatsInput
-        every { statisticsCalculator.buildStaleness(any(), any(), any(), expectedToday) } returns
+        every { statisticsCalculator.buildStaleness(any(), any(), any(), any(), expectedToday) } returns
             listOf(staleness("chore-1", ChoreStatus.NEEDS_ATTENTION))
 
         val result = useCase()
@@ -140,7 +140,7 @@ class CheckStaleChoresUseCaseTest {
     @Test
     fun `filters out chores that are not yet stale, including never-completed ones`() = runTest {
         coEvery { statsRepository.getHouseholdStatsInput("household-1") } returns emptyStatsInput
-        every { statisticsCalculator.buildStaleness(any(), any(), any(), expectedToday) } returns listOf(
+        every { statisticsCalculator.buildStaleness(any(), any(), any(), any(), expectedToday) } returns listOf(
             staleness("chore-1", ChoreStatus.NEEDS_ATTENTION),
             staleness("chore-2", ChoreStatus.SOON),
             staleness("chore-3", ChoreStatus.OK),

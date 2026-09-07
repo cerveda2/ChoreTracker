@@ -6,6 +6,7 @@ import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.household.Invite
+import cz.dcervenka.choretracker.core.model.stats.BalanceSummary
 import cz.dcervenka.choretracker.core.model.stats.CategoryComparison
 import cz.dcervenka.choretracker.core.model.stats.ChoreComparison
 import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
@@ -136,6 +137,8 @@ object PreviewData {
                 daysSinceLastCompletion = 7,
                 frequencyDays = 3,
                 status = ChoreStatus.SOON,
+                lastCompletedByNames = listOf("Alex"),
+                dueInDays = -4,
             ),
             ChoreStaleness(
                 choreId = "chore-3",
@@ -144,7 +147,15 @@ object PreviewData {
                 daysSinceLastCompletion = 19,
                 frequencyDays = 10,
                 status = ChoreStatus.NEEDS_ATTENTION,
+                lastCompletedByNames = listOf("Dana"),
+                dueInDays = -9,
             ),
+        ),
+        balance = BalanceSummary(
+            leaderMemberId = "member-1",
+            laggingMemberId = "member-2",
+            gap = 2,
+            countsByMemberId = mapOf("member-1" to 12, "member-2" to 10),
         ),
     )
 

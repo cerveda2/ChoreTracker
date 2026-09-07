@@ -42,8 +42,6 @@
     <string name="onboarding_qr_scan_retry">Klepnutím naskenujete znovu</string>
 
     <string name="dashboard_loading">Načítám přehled…</string>
-    <string name="dashboard_recent_balance">Nedávná rovnováha a tok úkolů</string>
-    <string name="dashboard_title">Přehled</string>
     <string name="dashboard_sync_failed_title">Synchronizace vyžaduje pozornost</string>
     <string name="dashboard_sync_failed_permissions">Nepodařilo se nahrát vaše poslední změny, protože server žádost zamítl. Vaše změny jsou stále uloženy na tomto zařízení.</string>
     <string name="dashboard_sync_failed_generic">Nepodařilo se nahrát vaše poslední změny. Jsou uloženy na zařízení a budeme to zkoušet znovu.</string>
@@ -54,7 +52,6 @@
         <item quantity="many">Ještě je třeba nahrát %1$d lokální změny do vaší domácnosti.</item>
         <item quantity="other">Ještě je třeba nahrát %1$d lokálních změn do vaší domácnosti.</item>
     </plurals>
-    <string name="dashboard_last_30d">posl. 30 dní: %1$d</string>
     <string name="dashboard_share_percent">%1$d%%</string>
     <string name="dashboard_days_ago">před %1$d d.</string>
     <string name="dashboard_never_done">nikdy</string>
@@ -68,7 +65,6 @@
     <string name="stats_summary_tie">Nejvíce přispívá: remíza</string>
     <string name="stats_summary_no_data">Zatím žádná splnění</string>
     <string name="dashboard_log_chore_title">Zaznamenat úkol</string>
-    <string name="dashboard_log_chore_fab">Zaznamenat úkol</string>
     <string name="dashboard_log_chore_suggested">Navrhovaná</string>
     <string name="dashboard_quick_log">Rychlé zaznamenání</string>
     <string name="dashboard_record_prompt">Klepnutím zaznamenáte za sebe. Podržením zobrazíte možnosti.</string>
@@ -86,17 +82,42 @@
     <string name="dashboard_completion_delete_title">Smazat toto splnění?</string>
     <string name="dashboard_completion_delete_message">Tím se odstraní zaznamenaný záznam. Samotný úkol není ovlivněn.</string>
     <string name="dashboard_completion_action_error">Něco se pokazilo</string>
-    <string name="dashboard_needs_attention">Vyžaduje pozornost</string>
     <string name="dashboard_stale_chip">%1$s: %2$s</string>
-    <plurals name="dashboard_stale_last_done">
-        <item quantity="one">Naposledy splněno %1$s (před %2$d dnem)</item>
-        <item quantity="few">Naposledy splněno %1$s (před %2$d dny)</item>
-        <item quantity="many">Naposledy splněno %1$s (před %2$d dne)</item>
-        <item quantity="other">Naposledy splněno %1$s (před %2$d dny)</item>
-    </plurals>
-    <string name="dashboard_stale_never_done">Tento úkol ještě nebyl splněn.</string>
-    <string name="dashboard_needs_attention_empty">Vše je teď aktuální.</string>
     <string name="dashboard_edit_completion">Upravit splnění</string>
+    <string name="dashboard_balance_title">Bilance</string>
+    <string name="dashboard_balance_period">Posledních 30 dní</string>
+    <string name="dashboard_balance_even">Skoro vyrovnáno.</string>
+    <plurals name="dashboard_balance_behind">
+        <item quantity="one">%1$s dělá víc. %2$s má o %3$d úkol méně.</item>
+        <item quantity="few">%1$s dělá víc. %2$s má o %3$d úkoly méně.</item>
+        <item quantity="many">%1$s dělá víc. %2$s má o %3$d úkolu méně.</item>
+        <item quantity="other">%1$s dělá víc. %2$s má o %3$d úkolů méně.</item>
+    </plurals>
+    <string name="dashboard_overdue">Po termínu</string>
+    <string name="dashboard_due_soon">Blíží se termín</string>
+    <string name="dashboard_recent_activity">Nedávná aktivita</string>
+    <plurals name="dashboard_days_since_last">
+        <item quantity="one">%1$d den od posledního</item>
+        <item quantity="few">%1$d dny od posledního</item>
+        <item quantity="many">%1$d dne od posledního</item>
+        <item quantity="other">%1$d dní od posledního</item>
+    </plurals>
+    <plurals name="dashboard_due_in_days">
+        <item quantity="one">Termín za %1$d den</item>
+        <item quantity="few">Termín za %1$d dny</item>
+        <item quantity="many">Termín za %1$d dne</item>
+        <item quantity="other">Termín za %1$d dní</item>
+    </plurals>
+    <string name="dashboard_did_it_last">Naposledy: %1$s</string>
+    <string name="dashboard_not_done_yet">Zatím nesplněno</string>
+    <string name="dashboard_activity_row">%1$s \u00B7 %2$s</string>
+    <string name="dashboard_activity_note_quoted">\u201C%1$s\u201D</string>
+    <string name="dashboard_add_first_chore">Přidat úkol</string>
+    <string name="dashboard_home_empty_title">Zatím žádné úkoly</string>
+    <string name="dashboard_home_empty_message">Přidejte první úkol a začněte sledovat, kdo co dělá.</string>
+    <string name="dashboard_sync_ok">Synchronizováno</string>
+    <string name="dashboard_sync_issue">Synchronizace vyžaduje pozornost</string>
+    <string name="dashboard_open_settings">Otevřít nastavení</string>
     <string name="log_sheet_who">ÚČASTNÍCI</string>
     <string name="log_sheet_everyone">Všichni</string>
     <string name="log_sheet_when">KDY</string>

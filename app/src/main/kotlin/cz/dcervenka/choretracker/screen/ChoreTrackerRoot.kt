@@ -36,6 +36,7 @@ import cz.dcervenka.choretracker.core.notifications.ui.NotificationPermissionReq
 import cz.dcervenka.choretracker.feature.auth.impl.navigation.authScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.navigation.dashboardScreen
 import cz.dcervenka.choretracker.feature.onboarding.impl.navigation.onboardingScreen
+import cz.dcervenka.choretracker.feature.settings.impl.navigation.SettingsDestination
 import cz.dcervenka.choretracker.feature.settings.impl.navigation.settingsScreen
 import cz.dcervenka.choretracker.feature.stats.impl.navigation.statsScreen
 import cz.dcervenka.choretracker.navigation.RootDestination
@@ -56,6 +57,17 @@ fun ChoreTrackerRoot(
     val currentDestination = navBackStackEntry?.destination
     val currentRoute = currentDestination?.route
     val showBottomBar = topLevelDestinations.any { destination -> currentRoute == destination.route }
+    // Shared by the bottom nav bar's own tab switches and Home's avatar-to-Settings shortcut, so
+    // both go through the same save/restore-state semantics rather than a plain navigate(route).
+    val navigateToTab: (String) -> Unit = { route ->
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     LaunchedEffect(rootDestination) {
         if (rootDestination == RootDestination.Loading) return@LaunchedEffect
@@ -100,15 +112,7 @@ fun ChoreTrackerRoot(
                             val selected = currentRoute == destination.route
                             NavigationBarItem(
                                 selected = selected,
-                                onClick = {
-                                    navController.navigate(destination.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
+                                onClick = { navigateToTab(destination.route) },
                                 icon = { Icon(destination.icon, contentDescription = null) },
                                 label = { Text(stringResource(destination.labelRes)) },
                                 colors = NavigationBarItemDefaults.colors(
@@ -141,7 +145,10 @@ fun ChoreTrackerRoot(
                 ) {
                     authScreen()
                     onboardingScreen(navController = navController)
-                    dashboardScreen(navController = navController)
+                    dashboardScreen(
+                        navController = navController,
+                        onOpenSettings = { navigateToTab(SettingsDestination.route) },
+                    )
                     statsScreen(navController = navController)
                     settingsScreen(navController = navController)
                 }
