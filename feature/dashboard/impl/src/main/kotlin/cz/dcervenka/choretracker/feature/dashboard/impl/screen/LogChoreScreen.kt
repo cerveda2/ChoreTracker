@@ -121,6 +121,7 @@ fun LogChoreScreen(
             EmptyState(
                 title = stringResource(R.string.dashboard_quick_log_empty_title),
                 message = stringResource(R.string.dashboard_quick_log_empty_message),
+                modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
             )
         } else {
             LazyColumn(

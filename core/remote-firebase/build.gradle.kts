@@ -10,6 +10,14 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        // FirebaseFirestoreException.Code's static initializer touches android.util.SparseArray,
+        // which the default Android unit-test stub jar throws on ("not mocked") rather than
+        // returning a usable value - this makes it return a harmless default instead, since
+        // nothing here depends on that lookup table's actual contents.
+        unitTests.isReturnDefaultValues = true
+    }
+
     defaultConfig {
         val useEmulators = providers.gradleProperty("choretracker.firebase.useEmulators")
             .orNull
