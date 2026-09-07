@@ -314,7 +314,7 @@ private fun groupChores(uiState: ChoresUiState): List<Pair<ChoreCategory, List<C
         uiState.chores.filter { it.name.contains(uiState.query, ignoreCase = true) }
     }
     val filtered = when (uiState.filter) {
-        ChoreFilter.ALL -> base.filter { it.isActive }
+        ChoreFilter.ALL -> base
         ChoreFilter.OVERDUE -> base.filter {
             it.isActive && uiState.staleness[it.id]?.status == ChoreStatus.NEEDS_ATTENTION
         }

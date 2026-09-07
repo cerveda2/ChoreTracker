@@ -43,7 +43,14 @@ internal fun ChoreRow(
     modifier: Modifier = Modifier,
 ) {
     val spacing = LocalSpacing.current
-    val fraction = freshnessFraction(staleness?.daysSinceLastCompletion, chore.frequencyDays)
+    // A paused chore keeps whatever staleness it had when paused, but shouldn't read as urgent -
+    // no fraction at all means no freshness bar, no tertiary tint, and an outlined (not filled)
+    // done button below.
+    val fraction = if (chore.isActive) {
+        freshnessFraction(staleness?.daysSinceLastCompletion, chore.frequencyDays)
+    } else {
+        null
+    }
     val freshnessColor = when {
         fraction == null -> null
         fraction >= 1f -> MaterialTheme.colorScheme.tertiary
