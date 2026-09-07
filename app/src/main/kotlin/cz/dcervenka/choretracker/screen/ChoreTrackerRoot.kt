@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -13,14 +14,14 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -30,6 +31,7 @@ import androidx.navigation.compose.rememberNavController
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.LoadingState
+import cz.dcervenka.choretracker.core.model.settings.ThemeMode
 import cz.dcervenka.choretracker.core.notifications.ui.NotificationPermissionRequest
 import cz.dcervenka.choretracker.feature.auth.impl.navigation.authScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.navigation.dashboardScreen
@@ -46,6 +48,7 @@ fun ChoreTrackerRoot(
 ) {
     val navController = rememberNavController()
     val rootDestination by viewModel.rootDestination.collectAsStateWithLifecycle()
+    val themeSettings by viewModel.themeSettings.collectAsStateWithLifecycle()
     val startDestination = remember(rootDestination) {
         rootDestination.takeIf { it != RootDestination.Loading }?.route
     }
@@ -54,19 +57,10 @@ fun ChoreTrackerRoot(
     val currentRoute = currentDestination?.route
     val showBottomBar = topLevelDestinations.any { destination -> currentRoute == destination.route }
 
-    // The most recent RootDestination this effect has already navigated for. Seeded with
-    // whatever rootDestination already is on this composition's first frame (rememberSaveable
-    // restores that same value across a config change), so a rotation that doesn't cross a
-    // section boundary - e.g. while several screens deep in Settings - isn't mistaken for a
-    // fresh Auth/Onboarding/Main transition. Comparing against navController.currentDestination
-    // instead would force-navigate back to that section's start route on every rotation,
-    // clobbering the NavController's own restored back stack.
-    var lastHandledRootDestination by rememberSaveable { mutableStateOf(rootDestination) }
-
     LaunchedEffect(rootDestination) {
         if (rootDestination == RootDestination.Loading) return@LaunchedEffect
-        if (rootDestination == lastHandledRootDestination) return@LaunchedEffect
-        lastHandledRootDestination = rootDestination
+        val activeRoute = navController.currentDestination?.route ?: navController.graph.findStartDestination().route
+        if (activeRoute == rootDestination.route) return@LaunchedEffect
         navController.navigate(rootDestination.route) {
             popUpTo(navController.graph.findStartDestination().id) {
                 saveState = false
@@ -76,7 +70,23 @@ fun ChoreTrackerRoot(
         }
     }
 
-    ChoreTrackerTheme {
+    val systemDarkTheme = isSystemInDarkTheme()
+    val darkTheme = when (themeSettings.mode) {
+        ThemeMode.SYSTEM -> systemDarkTheme
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+
+    // ComponentActivity + enableEdgeToEdge() gives no AppCompat/setDefaultNightMode hook, so the
+    // status/nav bar icon appearance has to be pushed explicitly whenever the effective theme
+    // (which can differ from the system setting - see ThemeMode above) changes.
+    val view = LocalView.current
+    SideEffect {
+        val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+    }
+
+    ChoreTrackerTheme(darkTheme = darkTheme, useDynamicColor = themeSettings.dynamicColor) {
         ChoreScaffold(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
@@ -85,10 +95,7 @@ fun ChoreTrackerRoot(
                     enter = fadeIn(tween(300)),
                     exit = fadeOut(tween(300)),
                 ) {
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        tonalElevation = 0.dp,
-                    ) {
+                    NavigationBar(tonalElevation = 0.dp) {
                         topLevelDestinations.forEach { destination ->
                             val selected = currentRoute == destination.route
                             NavigationBarItem(
@@ -105,11 +112,11 @@ fun ChoreTrackerRoot(
                                 icon = { Icon(destination.icon, contentDescription = null) },
                                 label = { Text(stringResource(destination.labelRes)) },
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
                                     unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                     unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    indicatorColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                                 ),
                             )
                         }

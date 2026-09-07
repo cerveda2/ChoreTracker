@@ -304,6 +304,7 @@
     <string name="common_loading_app">Loading app…</string>
     <string name="common_retry">Retry</string>
     <string name="common_undo">Undo</string>
+    <string name="common_mark_done">Mark %1$s done</string>
 
     <string name="dashboard_logged_snackbar">Logged: %s</string>
 </resources>

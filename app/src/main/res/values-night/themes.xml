@@ -2,11 +2,11 @@
 <resources>
 
     <style name="Theme.ChoreTracker" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">#F4EEE5</item>
+        <item name="android:windowBackground">#171311</item>
     </style>
 
     <style name="Theme.ChoreTracker.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">#F4EEE5</item>
+        <item name="windowSplashScreenBackground">#171311</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
         <item name="postSplashScreenTheme">@style/Theme.ChoreTracker</item>
     </style>
