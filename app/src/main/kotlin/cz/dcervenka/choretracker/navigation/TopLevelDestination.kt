@@ -2,11 +2,13 @@ package cz.dcervenka.choretracker.navigation
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ListAlt
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 import cz.dcervenka.choretracker.core.design.R
+import cz.dcervenka.choretracker.feature.chores.impl.navigation.ChoresDestination
 import cz.dcervenka.choretracker.feature.dashboard.impl.navigation.DashboardDestination
 import cz.dcervenka.choretracker.feature.settings.impl.navigation.SettingsDestination
 import cz.dcervenka.choretracker.feature.stats.impl.navigation.StatsDestination
@@ -19,6 +21,7 @@ internal data class TopLevelDestination(
 
 internal val topLevelDestinations = listOf(
     TopLevelDestination(DashboardDestination.route, R.string.nav_home, Icons.Outlined.Home),
+    TopLevelDestination(ChoresDestination.route, R.string.nav_chores, Icons.AutoMirrored.Outlined.ListAlt),
     TopLevelDestination(StatsDestination.route, R.string.nav_stats, Icons.Outlined.Insights),
     TopLevelDestination(SettingsDestination.route, R.string.nav_settings, Icons.Outlined.Settings),
 )

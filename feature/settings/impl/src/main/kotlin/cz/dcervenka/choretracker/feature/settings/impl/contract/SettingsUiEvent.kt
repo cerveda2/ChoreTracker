@@ -1,9 +1,6 @@
 package cz.dcervenka.choretracker.feature.settings.impl.contract
 
 sealed interface SettingsUiEvent {
-    data object ChoreAdded : SettingsUiEvent
-    data object ChoreDeleted : SettingsUiEvent
-    data object ChoreSaved : SettingsUiEvent
     data object MemberAdded : SettingsUiEvent
     data object MemberDeleted : SettingsUiEvent
     data object NameSaved : SettingsUiEvent

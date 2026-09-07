@@ -1,5 +1,6 @@
 <resources>
     <string name="nav_home">Home</string>
+    <string name="nav_chores">Chores</string>
     <string name="nav_stats">Stats</string>
     <string name="nav_settings">Settings</string>
 
@@ -142,22 +143,12 @@
     <string name="household_role_member">member</string>
     <string name="household_new_member">New member</string>
     <string name="household_add_member">Add member</string>
-    <string name="household_chores">Chores</string>
-    <string name="household_new_chore">New chore</string>
-    <string name="household_add_chore">Add chore</string>
-    <string name="household_delete_chore">Delete chore</string>
-    <string name="household_delete_chore_title">Delete this chore?</string>
-    <string name="household_delete_chore_message">This removes the chore from active planning while keeping existing completion history readable.</string>
     <string name="household_delete_member">Remove member</string>
     <string name="household_delete_member_title">Remove this member?</string>
     <string name="household_delete_member_message">This removes the member from the household. Their completion history remains visible.</string>
     <plurals name="household_member_count">
         <item quantity="one">%1$d member</item>
         <item quantity="other">%1$d members</item>
-    </plurals>
-    <plurals name="household_chore_count">
-        <item quantity="one">%1$d chore</item>
-        <item quantity="other">%1$d chores</item>
     </plurals>
     <string name="household_invite_section">Invite</string>
     <string name="settings_invite_none">No active invite code. Tap Refresh invite to generate one.</string>
@@ -224,7 +215,6 @@
     <string name="settings_household_title">Household</string>
     <string name="settings_manage_household_title">Manage household</string>
     <string name="settings_manage_members_title">Manage members</string>
-    <string name="settings_manage_chores_title">Manage chores</string>
     <string name="settings_account_title">Account</string>
     <string name="settings_household_name">Household name</string>
     <string name="settings_save_household_name">Save household name</string>
@@ -240,10 +230,6 @@
     <plurals name="settings_members_description">
         <item quantity="one">%1$d active household member</item>
         <item quantity="other">%1$d active household members</item>
-    </plurals>
-    <plurals name="settings_chores_description">
-        <item quantity="one">%1$d chore available for tracking</item>
-        <item quantity="other">%1$d chores available for tracking</item>
     </plurals>
     <string name="settings_account_description">Sign out and app preferences</string>
     <string name="settings_language_title">Language</string>
@@ -263,8 +249,6 @@
     <string name="settings_household_empty_message">Create or join a household during onboarding to manage its name and invite code here.</string>
     <string name="settings_members_empty_title">No members yet</string>
     <string name="settings_members_empty_message">Invite or add household members so chores can be assigned and tracked together.</string>
-    <string name="settings_chores_empty_title">No chores yet</string>
-    <string name="settings_chores_empty_message">Create your first chore to unlock quick logging, recent activity, and household statistics.</string>
     <string name="settings_theme_note">Warm Utility is the current app theme.</string>
     <string name="settings_sign_out">Sign out</string>
     <string name="settings_sign_out_supporting">Sign out of this device and return to the authentication flow.</string>
@@ -277,28 +261,37 @@
     <string name="settings_management_section">Household management</string>
     <string name="settings_account_section">Preferences</string>
 
-    <plurals name="settings_chore_frequency_every_n_days">
-        <item quantity="one">Every %1$d day</item>
-        <item quantity="other">Every %1$d days</item>
-    </plurals>
-    <string name="settings_chore_frequency_not_set">No frequency</string>
-    <string name="settings_chore_set_frequency_title">Set frequency</string>
-    <string name="settings_chore_set_frequency_hint">Days between completions</string>
-    <string name="settings_chore_clear_frequency">Clear</string>
-    <string name="settings_chore_rename_title">Rename chore</string>
-    <string name="settings_chore_rename_hint">Chore name</string>
-    <string name="settings_chore_search_hint">Search chores</string>
-    <string name="settings_chore_group_status">Status</string>
-    <string name="settings_chore_active">Active</string>
-    <string name="settings_chore_inactive">Inactive</string>
-    <string name="settings_feedback_chore_added">Chore added</string>
-    <string name="settings_feedback_chore_deleted">Chore deleted</string>
-    <string name="settings_feedback_chore_saved">Saved</string>
     <string name="settings_feedback_member_added">Member added</string>
     <string name="settings_feedback_member_deleted">Member removed</string>
     <string name="settings_feedback_name_saved">Name saved</string>
     <string name="settings_feedback_error">Something went wrong</string>
-    <string name="settings_chore_category_title">Category</string>
+
+    <string name="chores_title">Chores</string>
+    <string name="chores_new_chore">New chore</string>
+    <string name="chores_search_hint">Search chores</string>
+    <string name="chores_empty_title">No chores yet</string>
+    <string name="chores_empty_message">Add your first chore to start tracking who does what.</string>
+    <string name="chores_filter_all">All</string>
+    <string name="chores_filter_overdue">Overdue</string>
+    <string name="chores_filter_overdue_count">Overdue · %1$d</string>
+    <string name="chores_filter_due_soon">Due soon</string>
+    <string name="chores_filter_paused">Paused</string>
+    <string name="chores_no_schedule">No schedule</string>
+    <string name="chores_editor_name_hint">Chore name</string>
+    <string name="chores_editor_category_label">Category</string>
+    <string name="chores_editor_frequency_label">Frequency</string>
+    <string name="chores_editor_frequency_none">None</string>
+    <string name="chores_editor_frequency_daily">Daily</string>
+    <string name="chores_editor_frequency_weekly">Weekly</string>
+    <string name="chores_editor_frequency_custom">Custom</string>
+    <string name="chores_editor_frequency_custom_hint">Days between completions</string>
+    <string name="chores_editor_add_action">Add chore</string>
+    <string name="chores_delete_title">Delete this chore?</string>
+    <string name="chores_delete_message">This removes the chore from active planning while keeping existing completion history readable.</string>
+    <string name="chores_feedback_added">Chore added</string>
+    <string name="chores_feedback_saved">Saved</string>
+    <string name="chores_feedback_deleted">Chore deleted</string>
+
     <string name="chore_category_cleaning">Cleaning</string>
     <string name="chore_category_cooking">Cooking</string>
     <string name="chore_category_shopping">Shopping</string>

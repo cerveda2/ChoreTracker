@@ -18,7 +18,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import cz.dcervenka.choretracker.feature.settings.impl.screen.AccountSettingsScreen
 import cz.dcervenka.choretracker.feature.settings.impl.screen.AppLanguage
-import cz.dcervenka.choretracker.feature.settings.impl.screen.ChoresSettingsScreen
 import cz.dcervenka.choretracker.feature.settings.impl.screen.HouseholdSettingsScreen
 import cz.dcervenka.choretracker.feature.settings.impl.screen.LanguageBottomSheetContent
 import cz.dcervenka.choretracker.feature.settings.impl.screen.MembersSettingsScreen
@@ -42,7 +41,6 @@ fun NavGraphBuilder.settingsScreen(
             uiState = uiState.value,
             onOpenHousehold = { navController.navigate(HouseholdSettingsDestination.route) },
             onOpenMembers = { navController.navigate(MembersSettingsDestination.route) },
-            onOpenChores = { navController.navigate(ChoresSettingsDestination.route) },
             onOpenAccount = { navController.navigate(AccountSettingsDestination.route) },
             onOpenLanguage = { showLanguageSheet = true },
             onOpenNotifications = { navController.navigate(NotificationSettingsDestination.route) },
@@ -99,18 +97,6 @@ fun NavGraphBuilder.settingsScreen(
         val uiState = viewModel.uiState.collectAsStateWithLifecycle()
 
         MembersSettingsScreen(
-            uiState = uiState.value,
-            events = viewModel.events,
-            onBack = { navController.popBackStack() },
-            onIntent = viewModel::dispatch,
-        )
-    }
-
-    composable(route = ChoresSettingsDestination.route) {
-        val viewModel: SettingsViewModel = hiltViewModel()
-        val uiState = viewModel.uiState.collectAsStateWithLifecycle()
-
-        ChoresSettingsScreen(
             uiState = uiState.value,
             events = viewModel.events,
             onBack = { navController.popBackStack() },
