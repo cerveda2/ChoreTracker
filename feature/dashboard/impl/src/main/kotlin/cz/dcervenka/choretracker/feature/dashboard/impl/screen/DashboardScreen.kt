@@ -51,6 +51,7 @@ import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.LoadingState
+import cz.dcervenka.choretracker.core.design.components.LogCompletionSheet
 import cz.dcervenka.choretracker.core.design.components.SectionCard
 import cz.dcervenka.choretracker.core.design.components.TopLevelBottomBarSpacer
 import cz.dcervenka.choretracker.core.design.rememberSaveableStringList
@@ -327,25 +328,33 @@ fun DashboardScreen(
 
     val choreId = selectedChoreId
     if (choreId != null && snapshot != null) {
-        LogCompletionBottomSheet(
-            uiState = uiState,
-            selectedMembers = selectedMembers,
-            selectedNote = selectedNote,
-            onNoteChange = { selectedNote = it },
-            onDismiss = { selectedChoreId = null },
-            onConfirm = { completedAt ->
-                onIntent(
-                    DashboardUiIntent.LogCompletion(
-                        householdId = snapshot.household.id,
-                        choreId = choreId,
-                        participantIds = selectedMembers.toList(),
-                        note = selectedNote,
-                        completedAt = completedAt,
-                    ),
-                )
-                selectedChoreId = null
-            },
-        )
+        val selectedChore = snapshot.activeChores.find { it.id == choreId }
+        if (selectedChore != null) {
+            val staleness = snapshot.staleChores.find { it.choreId == choreId }
+            LogCompletionSheet(
+                choreName = selectedChore.name,
+                category = selectedChore.category,
+                frequencyDays = selectedChore.frequencyDays,
+                daysSinceLastCompletion = staleness?.daysSinceLastCompletion,
+                members = uiState.members,
+                selectedMemberIds = selectedMembers,
+                note = selectedNote,
+                onNoteChange = { selectedNote = it },
+                onDismiss = { selectedChoreId = null },
+                onConfirm = { completedAt ->
+                    onIntent(
+                        DashboardUiIntent.LogCompletion(
+                            householdId = snapshot.household.id,
+                            choreId = choreId,
+                            participantIds = selectedMembers.toList(),
+                            note = selectedNote,
+                            completedAt = completedAt,
+                        ),
+                    )
+                    selectedChoreId = null
+                },
+            )
+        }
     }
 }
 

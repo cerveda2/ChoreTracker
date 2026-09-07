@@ -58,8 +58,6 @@
     <string name="dashboard_share_percent">%1$d%%</string>
     <string name="dashboard_days_ago">před %1$d d.</string>
     <string name="dashboard_never_done">nikdy</string>
-    <string name="dashboard_log_date">Datum: %1$s</string>
-    <string name="dashboard_log_date_today">dnes</string>
     <plurals name="stats_summary_total">
         <item quantity="one">%1$d splnění celkem</item>
         <item quantity="few">%1$d splnění celkem</item>
@@ -98,10 +96,28 @@
     </plurals>
     <string name="dashboard_stale_never_done">Tento úkol ještě nebyl splněn.</string>
     <string name="dashboard_needs_attention_empty">Vše je teď aktuální.</string>
-    <string name="dashboard_log_completion">Zaznamenat splnění</string>
     <string name="dashboard_edit_completion">Upravit splnění</string>
-    <string name="dashboard_who_completed">Kdo splnil tento úkol?</string>
-    <string name="dashboard_note">Poznámka</string>
+    <string name="log_sheet_who">ÚČASTNÍCI</string>
+    <string name="log_sheet_everyone">Všichni</string>
+    <string name="log_sheet_when">KDY</string>
+    <string name="log_sheet_today">Dnes</string>
+    <string name="log_sheet_yesterday">Včera</string>
+    <string name="log_sheet_pick_date">Vybrat datum</string>
+    <string name="log_sheet_note_hint">Přidat poznámku (nepovinné)</string>
+    <string name="log_sheet_submit">Zaznamenat %1$s</string>
+    <string name="log_sheet_meta_never_done">zatím nesplněno</string>
+    <plurals name="log_sheet_meta_frequency">
+        <item quantity="one">každý %1$d den</item>
+        <item quantity="few">každé %1$d dny</item>
+        <item quantity="many">každých %1$d dne</item>
+        <item quantity="other">každých %1$d dní</item>
+    </plurals>
+    <plurals name="log_sheet_meta_last_done">
+        <item quantity="one">naposledy dokončeno před %1$d dnem</item>
+        <item quantity="few">naposledy dokončeno před %1$d dny</item>
+        <item quantity="many">naposledy dokončeno před %1$d dne</item>
+        <item quantity="other">naposledy dokončeno před %1$d dny</item>
+    </plurals>
     <string name="dashboard_see_all">Zobrazit vše</string>
     <string name="dashboard_filter_all">Vše</string>
     <string name="dashboard_filter_action">Filtrovat</string>
