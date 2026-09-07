@@ -1,6 +1,7 @@
 package cz.dcervenka.choretracker.core.remote.firebase.datasource
 
 import com.google.common.truth.Truth.assertThat
+import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.CancellationException
 import org.junit.Test
 
@@ -41,5 +42,18 @@ class FirebaseHouseholdDataSourceTest {
         val result = successResult.rethrowCancellation()
 
         assertThat(result.getOrNull()).isEqualTo("value")
+    }
+
+    // isPermissionDenied
+
+    @Test
+    fun `isPermissionDenied is true only for a PERMISSION_DENIED FirebaseFirestoreException`() {
+        val permissionDenied = FirebaseFirestoreException("nope", FirebaseFirestoreException.Code.PERMISSION_DENIED)
+        val unavailable = FirebaseFirestoreException("offline", FirebaseFirestoreException.Code.UNAVAILABLE)
+        val unrelated = IllegalStateException("boom")
+
+        assertThat(permissionDenied.isPermissionDenied()).isTrue()
+        assertThat(unavailable.isPermissionDenied()).isFalse()
+        assertThat(unrelated.isPermissionDenied()).isFalse()
     }
 }

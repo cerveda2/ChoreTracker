@@ -7,6 +7,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.SetOptions
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
@@ -71,6 +72,13 @@ class FirebaseHouseholdDataSource @Inject constructor(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeMembers: listen failed householdId=$householdId")
+                    if (error.isPermissionDenied()) {
+                        // Rules deny this once currentUserId is no longer a member - an empty
+                        // list makes RealtimeSyncApplier.applyMembers's existing "not a member
+                        // anymore" check fire and clear local data, instead of this listener
+                        // just going silent forever.
+                        trySend(emptyList())
+                    }
                     return@addSnapshotListener
                 }
                 trySend(snapshot?.documents?.map { it.asMember(currentUserId, householdId) }.orEmpty())
@@ -442,8 +450,10 @@ class FirebaseHouseholdDataSource @Inject constructor(
     override suspend fun fetchHouseholdSnapshot(userId: String): AppResult<HouseholdSnapshot?> {
         Timber.d("fetchHouseholdSnapshot: userId=$userId")
         val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        var resolvedHouseholdId: String? = null
         return runCatching {
             val householdId = resolveHouseholdId(db, userId)
+            resolvedHouseholdId = householdId
             if (householdId == null) {
                 Timber.d("fetchHouseholdSnapshot: no household found for userId=$userId")
                 AppResult.Success(null)
@@ -479,12 +489,37 @@ class FirebaseHouseholdDataSource @Inject constructor(
             }
         }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "fetchHouseholdSnapshot: failed")
-            AppResult.Error(
-                error.message ?: "Unable to load household data.",
-                error,
-            )
+            val householdId = resolvedHouseholdId
+            if (householdId != null && error.isPermissionDenied()) {
+                // resolveHouseholdId already succeeded, so the household id itself is real - this
+                // failure is rules denying the household/subcollection reads, which only happens
+                // once userId is no longer a member. An empty-members snapshot makes
+                // restoreHouseholdForUser's existing "not a member anymore" check fire and clear
+                // local data, instead of surfacing as a generic sync error forever.
+                Timber.w("fetchHouseholdSnapshot: permission denied for householdId=$householdId, userId=$userId")
+                AppResult.Success(emptyMembersSnapshot(householdId))
+            } else {
+                AppResult.Error(
+                    error.message ?: "Unable to load household data.",
+                    error,
+                )
+            }
         }
     }
+
+    private fun emptyMembersSnapshot(householdId: String) = HouseholdSnapshot(
+        household = Household(
+            id = householdId,
+            name = "",
+            ownerUserId = "",
+            inviteCode = "",
+            createdAt = Instant.fromEpochMilliseconds(0),
+        ),
+        members = emptyList(),
+        chores = emptyList(),
+        completions = emptyList(),
+        invites = emptyList(),
+    )
 
     private suspend fun resolveHouseholdId(db: FirebaseFirestore, userId: String): String? {
         val directHouseholdId = runCatching {
@@ -600,6 +635,9 @@ private suspend fun <T> awaitTask(task: Task<T>): T =
 // AppResult.Error instead of letting the cancellation propagate as structured concurrency expects.
 internal fun <T> Result<T>.rethrowCancellation(): Result<T> =
     onFailure { if (it is CancellationException) throw it }
+
+internal fun Throwable.isPermissionDenied(): Boolean =
+    this is FirebaseFirestoreException && code == FirebaseFirestoreException.Code.PERMISSION_DENIED
 
 private fun Timestamp?.asInstant(): Instant = this?.let { firebaseTimestamp ->
     Instant.fromEpochMilliseconds(firebaseTimestamp.toDate().time)
