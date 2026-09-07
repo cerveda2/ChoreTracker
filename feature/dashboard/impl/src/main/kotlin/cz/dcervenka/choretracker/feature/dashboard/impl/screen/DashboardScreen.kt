@@ -37,6 +37,7 @@ import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreLargeTopBar
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.EmptyState
+import cz.dcervenka.choretracker.core.design.components.ExtendedFabReservedHeight
 import cz.dcervenka.choretracker.core.design.components.ExtendedLogFab
 import cz.dcervenka.choretracker.core.design.components.ListGroup
 import cz.dcervenka.choretracker.core.design.components.LoadingState
@@ -186,7 +187,10 @@ fun DashboardScreen(
                         start = spacing.large,
                         top = spacing.large,
                         end = spacing.large,
-                        bottom = innerPadding.calculateBottomPadding() + spacing.large,
+                        // The FAB floats above TopLevelBottomBarHeight's spacer, not within it -
+                        // ExtendedFabReservedHeight keeps the last row (and the FAB itself) clear
+                        // of each other rather than overlapping.
+                        bottom = innerPadding.calculateBottomPadding() + ExtendedFabReservedHeight + spacing.large,
                     ),
                     verticalArrangement = Arrangement.spacedBy(spacing.large),
                 ) {
