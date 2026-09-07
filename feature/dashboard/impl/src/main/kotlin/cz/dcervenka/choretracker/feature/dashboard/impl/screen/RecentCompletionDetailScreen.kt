@@ -27,6 +27,7 @@ import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.LoadingState
+import cz.dcervenka.choretracker.core.design.components.LogCompletionSheet
 import cz.dcervenka.choretracker.core.design.components.SectionCard
 import cz.dcervenka.choretracker.core.design.rememberSaveableStringList
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
@@ -79,10 +80,11 @@ fun RecentCompletionDetailScreen(
     }
 
     if (showEditSheet) {
-        LogCompletionBottomSheet(
-            uiState = uiState,
-            selectedMembers = editSelectedMembers,
-            selectedNote = editNote,
+        LogCompletionSheet(
+            choreName = completion.choreName,
+            members = uiState.members,
+            selectedMemberIds = editSelectedMembers,
+            note = editNote,
             onNoteChange = { editNote = it },
             onDismiss = { showEditSheet = false },
             onConfirm = { _ ->

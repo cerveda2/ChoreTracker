@@ -53,10 +53,10 @@ fun MemberAvatar(
 @Composable
 fun MemberToggle(
     label: String,
-    avatarColor: Color,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    avatarColor: Color? = null,
 ) {
     val spacing = LocalSpacing.current
     val shape = MaterialTheme.shapes.extraLarge
@@ -72,11 +72,16 @@ fun MemberToggle(
                 },
             )
             .clickable(onClick = onClick)
-            .padding(start = spacing.xSmall, end = spacing.medium),
+            .padding(
+                start = if (avatarColor != null) spacing.xSmall else spacing.medium,
+                end = spacing.medium,
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(spacing.small),
     ) {
-        MemberAvatar(initial = label.take(1), color = avatarColor, size = 32.dp)
+        if (avatarColor != null) {
+            MemberAvatar(initial = label.take(1), color = avatarColor, size = 32.dp)
+        }
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
