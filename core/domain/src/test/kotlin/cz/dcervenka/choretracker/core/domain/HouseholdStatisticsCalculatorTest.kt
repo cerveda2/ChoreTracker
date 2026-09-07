@@ -275,6 +275,7 @@ class HouseholdStatisticsCalculatorTest {
         val staleness = calculator.buildStaleness(
             chores = chores + pausedChore,
             completions = emptyList(),
+            members = members,
             timeZone = timeZone,
             today = today,
         )
@@ -483,6 +484,188 @@ class HouseholdStatisticsCalculatorTest {
         )
 
         assertThat(dashboard.staleChores.single().status).isEqualTo(ChoreStatus.SOON)
+    }
+
+    @Test
+    fun `balance names the leader and lagging member from last30DaysCount, with a gap`() {
+        val completions = (1..8).map { index ->
+            completion(
+                id = "alice-$index",
+                choreId = "chore-dishes",
+                createdAt = "2026-03-2${index % 8}T18:00:00Z",
+                participantMemberIds = listOf("member-alice"),
+            )
+        } + (1..3).map { index ->
+            completion(
+                id = "bob-$index",
+                choreId = "chore-vacuum",
+                createdAt = "2026-03-0${index}T18:00:00Z",
+                participantMemberIds = listOf("member-bob"),
+            )
+        }
+
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members,
+            chores = chores,
+            completions = completions,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        val balance = dashboard.balance
+        assertThat(balance).isNotNull()
+        assertThat(balance?.leaderMemberId).isEqualTo("member-alice")
+        assertThat(balance?.laggingMemberId).isEqualTo("member-bob")
+        assertThat(balance?.gap).isEqualTo(5)
+        assertThat(balance?.countsByMemberId).containsExactly("member-alice", 8, "member-bob", 3)
+    }
+
+    @Test
+    fun `balance is null with fewer than two members`() {
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members.take(1),
+            chores = chores,
+            completions = listOf(
+                completion(
+                    id = "completion-1",
+                    choreId = "chore-dishes",
+                    createdAt = "2026-03-28T18:00:00Z",
+                    participantMemberIds = listOf("member-alice"),
+                ),
+            ),
+            timeZone = timeZone,
+            today = today,
+        )
+
+        assertThat(dashboard.balance).isNull()
+    }
+
+    @Test
+    fun `balance is null when nobody has logged anything in the last 30 days`() {
+        val completions = listOf(
+            // Well outside the 30-day window used for last30DaysCount.
+            completion(
+                id = "completion-old",
+                choreId = "chore-dishes",
+                createdAt = "2025-01-01T18:00:00Z",
+                participantMemberIds = listOf("member-alice"),
+            ),
+        )
+
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members,
+            chores = chores,
+            completions = completions,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        assertThat(dashboard.balance).isNull()
+    }
+
+    @Test
+    fun `an exact tie still produces a balance with a zero gap`() {
+        val completions = listOf(
+            completion(
+                id = "completion-alice",
+                choreId = "chore-dishes",
+                createdAt = "2026-03-28T18:00:00Z",
+                participantMemberIds = listOf("member-alice"),
+            ),
+            completion(
+                id = "completion-bob",
+                choreId = "chore-dishes",
+                createdAt = "2026-03-27T18:00:00Z",
+                participantMemberIds = listOf("member-bob"),
+            ),
+        )
+
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members,
+            chores = chores,
+            completions = completions,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        assertThat(dashboard.balance?.gap).isEqualTo(0)
+    }
+
+    @Test
+    fun `staleness resolves who completed the chore last and how many days remain`() {
+        val choresWithFrequency = listOf(
+            Chore(
+                id = "chore-laundry",
+                householdId = household.id,
+                name = "Laundry",
+                isActive = true,
+                createdAt = Instant.parse("2026-01-01T09:00:00Z"),
+                frequencyDays = 6,
+            ),
+        )
+        val completions = listOf(
+            completion(
+                id = "c1",
+                choreId = "chore-laundry",
+                createdAt = "2026-03-24T12:00:00Z", // 5 days ago
+                participantMemberIds = listOf("member-alice", "member-bob"),
+            ),
+        )
+
+        val staleness = calculator.buildStaleness(
+            chores = choresWithFrequency,
+            completions = completions,
+            members = members,
+            timeZone = timeZone,
+            today = today,
+        ).single()
+
+        assertThat(staleness.lastCompletedByNames).containsExactly("Alice", "Bob")
+        // frequencyDays (6) - daysSinceLastCompletion (5) = 1 day left.
+        assertThat(staleness.dueInDays).isEqualTo(1)
+    }
+
+    @Test
+    fun `staleness leaves dueInDays and lastCompletedByNames empty for a never-done chore`() {
+        val staleness = calculator.buildStaleness(
+            chores = chores,
+            completions = emptyList(),
+            members = members,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        assertThat(staleness).isNotEmpty()
+        staleness.forEach {
+            assertThat(it.dueInDays).isNull()
+            assertThat(it.lastCompletedByNames).isEmpty()
+        }
+    }
+
+    @Test
+    fun `lastCompletedByNames drops a participant who is no longer a current member`() {
+        val completions = listOf(
+            completion(
+                id = "c1",
+                choreId = "chore-dishes",
+                createdAt = "2026-03-28T18:00:00Z",
+                participantMemberIds = listOf("member-alice", "member-removed"),
+            ),
+        )
+
+        val staleness = calculator.buildStaleness(
+            chores = chores,
+            completions = completions,
+            members = members,
+            timeZone = timeZone,
+            today = today,
+        ).first { it.choreName == "Dishes" }
+
+        assertThat(staleness.lastCompletedByNames).containsExactly("Alice")
     }
 
     private fun completion(

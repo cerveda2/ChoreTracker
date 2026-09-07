@@ -37,6 +37,7 @@ class CheckStaleChoresUseCase @Inject constructor(
             statisticsCalculator.buildStaleness(
                 chores = input.chores,
                 completions = input.completions,
+                members = input.members,
                 timeZone = TimeZone.currentSystemDefault(),
                 today = clock.todayIn(TimeZone.currentSystemDefault()),
             ).filter { it.status == ChoreStatus.NEEDS_ATTENTION }

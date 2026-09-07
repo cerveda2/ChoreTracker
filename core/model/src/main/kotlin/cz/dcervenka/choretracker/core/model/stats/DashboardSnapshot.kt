@@ -10,4 +10,5 @@ data class DashboardSnapshot(
     val activeChores: List<Chore>,
     val recentCompletions: List<RecentCompletion>,
     val staleChores: List<ChoreStaleness>,
+    val balance: BalanceSummary? = null,
 )

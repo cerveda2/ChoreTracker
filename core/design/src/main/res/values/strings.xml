@@ -42,8 +42,6 @@
     <string name="onboarding_qr_scan_retry">Tap to scan again</string>
 
     <string name="dashboard_loading">Loading dashboard…</string>
-    <string name="dashboard_recent_balance">Recent balance and task flow</string>
-    <string name="dashboard_title">Dashboard</string>
     <string name="dashboard_sync_failed_title">Remote sync needs attention</string>
     <string name="dashboard_sync_failed_permissions">We couldn\'t upload your latest changes because the server rejected the request. Your changes are still saved on this device.</string>
     <string name="dashboard_sync_failed_generic">We couldn\'t upload your latest changes. Your changes are still saved on this device and we\'ll keep trying.</string>
@@ -52,7 +50,6 @@
         <item quantity="one">We still need to upload %1$d local change to your household.</item>
         <item quantity="other">We still need to upload %1$d local changes to your household.</item>
     </plurals>
-    <string name="dashboard_last_30d">last 30d: %1$d</string>
     <string name="dashboard_share_percent">%1$d%%</string>
     <string name="dashboard_days_ago">%1$dd ago</string>
     <string name="dashboard_never_done">never</string>
@@ -69,7 +66,6 @@
     <string name="dashboard_quick_log_empty_message">Add a few chores in Settings to start logging completions from the dashboard.</string>
     <string name="dashboard_log">Log</string>
     <string name="dashboard_log_chore_title">Log a Chore</string>
-    <string name="dashboard_log_chore_fab">Log chore</string>
     <string name="dashboard_log_chore_suggested">Suggested</string>
     <string name="dashboard_recent_completions">Recent completions</string>
     <string name="dashboard_all_completions">All completions</string>
@@ -82,15 +78,36 @@
     <string name="dashboard_completion_delete_title">Delete this completion?</string>
     <string name="dashboard_completion_delete_message">This removes the logged entry. The chore itself is not affected.</string>
     <string name="dashboard_completion_action_error">Something went wrong</string>
-    <string name="dashboard_needs_attention">Needs attention</string>
     <string name="dashboard_stale_chip">%1$s: %2$s</string>
-    <plurals name="dashboard_stale_last_done">
-        <item quantity="one">Last done %1$s (%2$d day ago)</item>
-        <item quantity="other">Last done %1$s (%2$d days ago)</item>
-    </plurals>
-    <string name="dashboard_stale_never_done">This chore has not been completed yet.</string>
-    <string name="dashboard_needs_attention_empty">Everything looks up to date right now.</string>
     <string name="dashboard_edit_completion">Edit completion</string>
+    <string name="dashboard_balance_title">Balance</string>
+    <string name="dashboard_balance_period">Last 30 days</string>
+    <string name="dashboard_balance_even">Nearly even.</string>
+    <plurals name="dashboard_balance_behind">
+        <item quantity="one">%1$s is carrying more. %2$s is %3$d chore behind.</item>
+        <item quantity="other">%1$s is carrying more. %2$s is %3$d chores behind.</item>
+    </plurals>
+    <string name="dashboard_overdue">Overdue</string>
+    <string name="dashboard_due_soon">Due soon</string>
+    <string name="dashboard_recent_activity">Recent activity</string>
+    <plurals name="dashboard_days_since_last">
+        <item quantity="one">%1$d day since last</item>
+        <item quantity="other">%1$d days since last</item>
+    </plurals>
+    <plurals name="dashboard_due_in_days">
+        <item quantity="one">Due in %1$d day</item>
+        <item quantity="other">Due in %1$d days</item>
+    </plurals>
+    <string name="dashboard_did_it_last">%1$s did it last</string>
+    <string name="dashboard_not_done_yet">Not done yet</string>
+    <string name="dashboard_activity_row">%1$s \u00B7 %2$s</string>
+    <string name="dashboard_activity_note_quoted">\u201C%1$s\u201D</string>
+    <string name="dashboard_add_first_chore">Add a chore</string>
+    <string name="dashboard_home_empty_title">No chores yet</string>
+    <string name="dashboard_home_empty_message">Add your first chore to start tracking who does what.</string>
+    <string name="dashboard_sync_ok">Synced</string>
+    <string name="dashboard_sync_issue">Sync needs attention</string>
+    <string name="dashboard_open_settings">Open settings</string>
     <string name="log_sheet_who">WHO DID IT</string>
     <string name="log_sheet_everyone">Everyone</string>
     <string name="log_sheet_when">WHEN</string>
