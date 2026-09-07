@@ -13,7 +13,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,8 +33,8 @@ import androidx.compose.ui.res.stringResource
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreChip
-import cz.dcervenka.choretracker.core.design.components.ChoreLargeTopBar
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
+import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.ExtendedFabReservedHeight
 import cz.dcervenka.choretracker.core.design.components.ExtendedLogFab
@@ -54,7 +53,6 @@ import cz.dcervenka.choretracker.feature.chores.impl.contract.ChoresUiState
 import cz.dcervenka.choretracker.feature.chores.impl.viewmodel.UndoEvent
 import kotlinx.coroutines.flow.Flow
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChoresScreen(
     uiState: ChoresUiState,
@@ -124,7 +122,7 @@ fun ChoresScreen(
     ChoreScaffold(
         snackbarHostState = snackbarHostState,
         topBar = {
-            ChoreLargeTopBar(
+            ChoreTopAppBar(
                 title = stringResource(R.string.chores_title),
                 actions = {
                     IconButton(onClick = { searchExpanded = !searchExpanded }) {
@@ -163,11 +161,26 @@ fun ChoresScreen(
                             .padding(horizontal = spacing.large, vertical = spacing.small),
                     )
                 }
+                // Always visible, independent of whether the current filter/search has any
+                // matches - otherwise picking a filter with zero results makes the chips
+                // themselves vanish along with the list, with no way back except clearing state.
+                ChoreFilterRow(
+                    filter = uiState.filter,
+                    overdueCount = overdueCount,
+                    onFilterChanged = { onIntent(ChoresUiIntent.FilterChanged(it)) },
+                    modifier = Modifier.padding(horizontal = spacing.large, vertical = spacing.small),
+                )
                 val groups = groupChores(uiState)
                 if (groups.isEmpty()) {
+                    val (emptyTitle, emptyMessage) = if (uiState.chores.isEmpty()) {
+                        stringResource(R.string.chores_empty_title) to stringResource(R.string.chores_empty_message)
+                    } else {
+                        stringResource(R.string.chores_filter_empty_title) to
+                            stringResource(R.string.chores_filter_empty_message)
+                    }
                     EmptyState(
-                        title = stringResource(R.string.chores_empty_title),
-                        message = stringResource(R.string.chores_empty_message),
+                        title = emptyTitle,
+                        message = emptyMessage,
                         modifier = Modifier.padding(spacing.large),
                     )
                 } else {
@@ -181,13 +194,6 @@ fun ChoresScreen(
                         ),
                         verticalArrangement = Arrangement.spacedBy(spacing.large),
                     ) {
-                        item(key = "filters") {
-                            ChoreFilterRow(
-                                filter = uiState.filter,
-                                overdueCount = overdueCount,
-                                onFilterChanged = { onIntent(ChoresUiIntent.FilterChanged(it)) },
-                            )
-                        }
                         groups.forEach { (category, chores) ->
                             item(key = "group-${category.name}") {
                                 Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
@@ -267,10 +273,11 @@ private fun ChoreFilterRow(
     filter: ChoreFilter,
     overdueCount: Int,
     onFilterChanged: (ChoreFilter) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val spacing = LocalSpacing.current
     Row(
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        modifier = modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(spacing.small),
     ) {
         ChoreChip(

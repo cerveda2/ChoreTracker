@@ -271,6 +271,8 @@
     <string name="chores_search_hint">Search chores</string>
     <string name="chores_empty_title">No chores yet</string>
     <string name="chores_empty_message">Add your first chore to start tracking who does what.</string>
+    <string name="chores_filter_empty_title">No chores here</string>
+    <string name="chores_filter_empty_message">Nothing matches this filter. Try a different one or clear your search.</string>
     <string name="chores_filter_all">All</string>
     <string name="chores_filter_overdue">Overdue</string>
     <string name="chores_filter_overdue_count">Overdue · %1$d</string>

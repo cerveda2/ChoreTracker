@@ -293,6 +293,8 @@
     <string name="chores_search_hint">Hledat úkoly</string>
     <string name="chores_empty_title">Zatím žádné úkoly</string>
     <string name="chores_empty_message">Přidejte první úkol a začněte sledovat, kdo co dělá.</string>
+    <string name="chores_filter_empty_title">Žádné úkoly</string>
+    <string name="chores_filter_empty_message">Tomuto filtru nic neodpovídá. Zkuste jiný filtr nebo upravte hledání.</string>
     <string name="chores_filter_all">Vše</string>
     <string name="chores_filter_overdue">Po termínu</string>
     <string name="chores_filter_overdue_count">Po termínu · %1$d</string>
