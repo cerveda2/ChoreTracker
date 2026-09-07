@@ -2,7 +2,9 @@ package cz.dcervenka.choretracker.viewmodel
 
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveStartupDestinationUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveThemeSettingsUseCase
 import cz.dcervenka.choretracker.core.model.app.StartupDestination
+import cz.dcervenka.choretracker.core.model.settings.ThemeSettings
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import cz.dcervenka.choretracker.navigation.RootDestination
 import io.mockk.MockKAnnotations
@@ -25,18 +27,26 @@ class AppViewModelTest {
     @MockK
     lateinit var observeStartupDestinationUseCase: ObserveStartupDestinationUseCase
 
+    @MockK
+    lateinit var observeThemeSettingsUseCase: ObserveThemeSettingsUseCase
+
     private val startupFlow = MutableStateFlow(StartupDestination.AUTH)
+    private val themeSettingsFlow = MutableStateFlow(ThemeSettings())
 
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
         startupFlow.value = StartupDestination.AUTH
         every { observeStartupDestinationUseCase() } returns startupFlow
+        every { observeThemeSettingsUseCase() } returns themeSettingsFlow
     }
 
     @Test
     fun `maps startup destination flow into root destination`() = runTest(coroutineRule.dispatcher) {
-        val viewModel = AppViewModel(observeStartupDestinationUseCase = observeStartupDestinationUseCase)
+        val viewModel = AppViewModel(
+            observeStartupDestinationUseCase = observeStartupDestinationUseCase,
+            observeThemeSettingsUseCase = observeThemeSettingsUseCase,
+        )
 
         assertThat(viewModel.rootDestination.value).isEqualTo(RootDestination.Loading)
 
@@ -58,14 +68,20 @@ class AppViewModelTest {
 
     @Test
     fun `isReady is false before first non-loading destination`() = runTest(coroutineRule.dispatcher) {
-        val viewModel = AppViewModel(observeStartupDestinationUseCase = observeStartupDestinationUseCase)
+        val viewModel = AppViewModel(
+            observeStartupDestinationUseCase = observeStartupDestinationUseCase,
+            observeThemeSettingsUseCase = observeThemeSettingsUseCase,
+        )
 
         assertThat(viewModel.isReady.value).isFalse()
     }
 
     @Test
     fun `isReady becomes true as soon as first non-loading destination arrives`() = runTest(coroutineRule.dispatcher) {
-        val viewModel = AppViewModel(observeStartupDestinationUseCase = observeStartupDestinationUseCase)
+        val viewModel = AppViewModel(
+            observeStartupDestinationUseCase = observeStartupDestinationUseCase,
+            observeThemeSettingsUseCase = observeThemeSettingsUseCase,
+        )
 
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.rootDestination.collect {}

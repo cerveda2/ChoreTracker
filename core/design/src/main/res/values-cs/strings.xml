@@ -324,6 +324,7 @@
     <string name="common_loading_app">Načítám aplikaci…</string>
     <string name="common_retry">Zkusit znovu</string>
     <string name="common_undo">Vrátit</string>
+    <string name="common_mark_done">Označit %1$s jako hotové</string>
 
     <string name="dashboard_logged_snackbar">Zaznamenáno: %s</string>
 </resources>

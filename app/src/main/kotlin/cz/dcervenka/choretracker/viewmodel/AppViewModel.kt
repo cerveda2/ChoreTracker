@@ -3,7 +3,9 @@ package cz.dcervenka.choretracker.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveStartupDestinationUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveThemeSettingsUseCase
 import cz.dcervenka.choretracker.core.model.app.StartupDestination
+import cz.dcervenka.choretracker.core.model.settings.ThemeSettings
 import cz.dcervenka.choretracker.navigation.RootDestination
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +21,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AppViewModel @Inject constructor(
     observeStartupDestinationUseCase: ObserveStartupDestinationUseCase,
+    observeThemeSettingsUseCase: ObserveThemeSettingsUseCase,
 ) : ViewModel() {
     internal val rootDestination: StateFlow<RootDestination> = observeStartupDestinationUseCase()
         .map { destination ->
@@ -32,6 +35,13 @@ class AppViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = RootDestination.Loading,
+        )
+
+    internal val themeSettings: StateFlow<ThemeSettings> = observeThemeSettingsUseCase()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = ThemeSettings(),
         )
 
     private val _isReady = MutableStateFlow(false)
