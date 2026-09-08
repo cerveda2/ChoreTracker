@@ -9,7 +9,6 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
-import cz.dcervenka.choretracker.feature.onboarding.impl.screen.ManualCodeEntryScreen
 import cz.dcervenka.choretracker.feature.onboarding.impl.screen.OnboardingScreen
 import cz.dcervenka.choretracker.feature.onboarding.impl.screen.QrScanScreen
 import cz.dcervenka.choretracker.feature.onboarding.impl.viewmodel.OnboardingViewModel
@@ -23,7 +22,7 @@ fun NavGraphBuilder.onboardingScreen(navController: NavHostController) {
             OnboardingScreen(
                 uiState = uiState.value,
                 onIntent = viewModel::dispatch,
-                onJoinHousehold = { navController.navigate(QrScanDestination.route) },
+                onScanQr = { navController.navigate(QrScanDestination.route) },
             )
         }
 
@@ -34,19 +33,7 @@ fun NavGraphBuilder.onboardingScreen(navController: NavHostController) {
             QrScanScreen(
                 uiState = uiState.value,
                 onIntent = viewModel::dispatch,
-                onEnterManually = { navController.navigate(ManualCodeEntryDestination.route) },
-                onBack = { navController.popBackStack() },
-            )
-        }
-
-        composable(route = ManualCodeEntryDestination.route) { backStackEntry ->
-            val viewModel = sharedOnboardingViewModel(navController, backStackEntry)
-            val uiState = viewModel.uiState.collectAsStateWithLifecycle()
-
-            ManualCodeEntryScreen(
-                uiState = uiState.value,
-                onIntent = viewModel::dispatch,
-                onScanQr = { navController.popBackStack() },
+                onEnterManually = { navController.popBackStack() },
                 onBack = { navController.popBackStack() },
             )
         }
