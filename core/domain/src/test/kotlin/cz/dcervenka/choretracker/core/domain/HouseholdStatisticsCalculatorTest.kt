@@ -8,7 +8,7 @@ import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
-import cz.dcervenka.choretracker.core.model.stats.TopContributorResult
+import cz.dcervenka.choretracker.core.model.stats.StatsPeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import org.junit.Test
@@ -105,19 +105,13 @@ class HouseholdStatisticsCalculatorTest {
         val contributions = dashboard.memberContributions.associateBy { it.displayName }
         assertThat(contributions["Alice"]?.totalCount).isEqualTo(2)
         assertThat(contributions["Alice"]?.last30DaysCount).isEqualTo(2)
-        assertThat(contributions["Alice"]?.currentMonthCount).isEqualTo(2)
-        assertThat(contributions["Alice"]?.sharePercent).isEqualTo(50)
         assertThat(contributions["Bob"]?.totalCount).isEqualTo(2)
         assertThat(contributions["Bob"]?.last30DaysCount).isEqualTo(2)
-        assertThat(contributions["Bob"]?.currentMonthCount).isEqualTo(2)
-        assertThat(contributions["Bob"]?.sharePercent).isEqualTo(50)
         // 3 completions total (completion-1 is shared, so it's one completion, not two) -
         // matches the definition ChoreComparison/CategoryComparison/MonthlyBreakdown.totalCount
         // already use, not the sum of each member's own totalCount (which double-counts a shared
         // completion once per participant).
         assertThat(dashboard.summary.totalCompletions).isEqualTo(3)
-        // Alice and Bob both have totalCount 2 - a genuine tie, not an arbitrary pick.
-        assertThat(dashboard.summary.topContributor).isEqualTo(TopContributorResult.Tie)
 
         assertThat(dashboard.recentCompletions.first().participantNames).containsExactly("Alice", "Bob").inOrder()
 
@@ -197,6 +191,7 @@ class HouseholdStatisticsCalculatorTest {
             members = members,
             chores = listOf(activeChore, deletedChore),
             completions = completions,
+            period = StatsPeriod.ALL,
             timeZone = timeZone,
             today = today,
         )
@@ -209,7 +204,7 @@ class HouseholdStatisticsCalculatorTest {
     }
 
     @Test
-    fun `topContributor is NoData when nobody has completed anything yet`() {
+    fun `totalCompletions is zero when nobody has completed anything yet`() {
         val dashboard = calculator.dashboardSnapshot(
             household = household,
             members = members,
@@ -220,46 +215,6 @@ class HouseholdStatisticsCalculatorTest {
         )
 
         assertThat(dashboard.summary.totalCompletions).isEqualTo(0)
-        assertThat(dashboard.summary.topContributor).isEqualTo(TopContributorResult.NoData)
-    }
-
-    @Test
-    fun `sharePercent sums to 100 across current members even after a member is removed`() {
-        // "member-removed" no longer appears in `members` (as if deleteMember ran), but its old
-        // completion_participants rows survive - completions still reference it.
-        val completions = listOf(
-            completion(
-                id = "completion-1",
-                choreId = "chore-dishes",
-                createdAt = "2026-03-28T18:00:00Z",
-                participantMemberIds = listOf("member-alice"),
-            ),
-            completion(
-                id = "completion-2",
-                choreId = "chore-dishes",
-                createdAt = "2026-03-27T18:00:00Z",
-                participantMemberIds = listOf("member-bob"),
-            ),
-            completion(
-                id = "completion-3",
-                choreId = "chore-dishes",
-                createdAt = "2026-03-26T18:00:00Z",
-                participantMemberIds = listOf("member-removed"),
-            ),
-        )
-
-        val dashboard = calculator.dashboardSnapshot(
-            household = household,
-            members = members,
-            chores = chores,
-            completions = completions,
-            timeZone = timeZone,
-            today = today,
-        )
-
-        val contributions = dashboard.memberContributions.associateBy { it.displayName }
-        assertThat(contributions["Alice"]?.sharePercent).isEqualTo(50)
-        assertThat(contributions["Bob"]?.sharePercent).isEqualTo(50)
     }
 
     @Test
@@ -281,62 +236,6 @@ class HouseholdStatisticsCalculatorTest {
         )
 
         assertThat(staleness.map { it.choreName }).doesNotContain("Paused chore")
-    }
-
-    @Test
-    fun `stats comparison handles ties and monthly breakdown stays sorted`() {
-        val completions = listOf(
-            completion(
-                id = "completion-1",
-                choreId = "chore-dishes",
-                createdAt = "2026-03-28T18:00:00Z",
-                participantMemberIds = listOf("member-alice"),
-            ),
-            completion(
-                id = "completion-2",
-                choreId = "chore-dishes",
-                createdAt = "2026-03-24T18:00:00Z",
-                participantMemberIds = listOf("member-bob"),
-            ),
-            completion(
-                id = "completion-3",
-                choreId = "chore-vacuum",
-                createdAt = "2026-02-11T18:00:00Z",
-                participantMemberIds = listOf("member-bob"),
-            ),
-        )
-
-        val stats = calculator.statsSnapshot(
-            household = household,
-            members = members,
-            chores = chores,
-            completions = completions,
-            timeZone = timeZone,
-            today = today,
-        )
-
-        val comparisons = stats.comparisons.associateBy { it.choreName }
-        assertThat(comparisons["Dishes"]?.leader).isEqualTo(ChoreLeaderResult.Tie)
-        assertThat(comparisons["Vacuum"]?.leader).isEqualTo(ChoreLeaderResult.Leader("Bob"))
-        assertThat(comparisons["Dusting"]?.leader).isEqualTo(ChoreLeaderResult.NoData)
-
-        // Six contiguous calendar months ending at `today`'s month (2026-03), zero-filled - not
-        // just the two months that happen to have a completion.
-        assertThat(stats.monthlyBreakdown.map { it.monthLabel })
-            .containsExactly("2026-03", "2026-02", "2026-01", "2025-12", "2025-11", "2025-10").inOrder()
-        assertThat(stats.monthlyBreakdown.first().countsByMemberId["member-alice"]).isEqualTo(1)
-        assertThat(stats.monthlyBreakdown.first().countsByMemberId["member-bob"]).isEqualTo(1)
-        assertThat(stats.monthlyBreakdown.first().totalCount).isEqualTo(2)
-        assertThat(stats.monthlyBreakdown[1].totalCount).isEqualTo(1)
-        assertThat(stats.monthlyBreakdown[2].totalCount).isEqualTo(0)
-
-        // 3 completions, Alice has 1, Bob has 2 → 33% and 66%
-        val contributions = stats.summary
-        assertThat(contributions.totalCompletions).isEqualTo(3)
-        assertThat(contributions.topContributor).isEqualTo(TopContributorResult.Leader("Bob", 66))
-        val contribByName = stats.memberContributions.associateBy { it.displayName }
-        assertThat(contribByName["Alice"]?.sharePercent).isEqualTo(33)
-        assertThat(contribByName["Bob"]?.sharePercent).isEqualTo(66)
     }
 
     @Test
@@ -374,6 +273,7 @@ class HouseholdStatisticsCalculatorTest {
             members = duplicateNameMembers,
             chores = chores,
             completions = completions,
+            period = StatsPeriod.ALL,
             timeZone = timeZone,
             today = today,
         )

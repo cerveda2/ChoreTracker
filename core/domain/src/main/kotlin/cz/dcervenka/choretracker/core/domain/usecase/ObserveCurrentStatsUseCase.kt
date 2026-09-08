@@ -3,6 +3,7 @@ package cz.dcervenka.choretracker.core.domain.usecase
 import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
 import cz.dcervenka.choretracker.core.data.contract.StatsRepository
 import cz.dcervenka.choretracker.core.domain.HouseholdStatisticsCalculator
+import cz.dcervenka.choretracker.core.model.stats.StatsPeriod
 import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filterNotNull
@@ -19,7 +20,7 @@ class ObserveCurrentStatsUseCase @Inject constructor(
     private val statisticsCalculator: HouseholdStatisticsCalculator,
     private val clock: Clock,
 ) {
-    operator fun invoke(): Flow<StatsSnapshot> =
+    operator fun invoke(period: StatsPeriod): Flow<StatsSnapshot> =
         householdRepository.observeCurrentHousehold()
             .filterNotNull()
             .flatMapLatest { household ->
@@ -29,6 +30,7 @@ class ObserveCurrentStatsUseCase @Inject constructor(
                         members = input.members,
                         chores = input.chores,
                         completions = input.completions,
+                        period = period,
                         today = clock.todayIn(TimeZone.currentSystemDefault()),
                     )
                 }

@@ -6,6 +6,7 @@ import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
 import cz.dcervenka.choretracker.core.data.contract.StatsRepository
 import cz.dcervenka.choretracker.core.domain.HouseholdStatisticsCalculator
 import cz.dcervenka.choretracker.core.model.stats.HouseholdStatsInput
+import cz.dcervenka.choretracker.core.model.stats.StatsPeriod
 import cz.dcervenka.choretracker.core.test.clock.FixedClock
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleStatsSnapshot
@@ -71,11 +72,12 @@ class ObserveCurrentStatsUseCaseTest {
                 members = input.members,
                 chores = input.chores,
                 completions = input.completions,
+                period = StatsPeriod.MONTH,
                 today = expectedToday,
             )
         } returns snapshot
 
-        useCase().test {
+        useCase(StatsPeriod.MONTH).test {
             householdFlow.value = household
 
             assertThat(awaitItem()).isEqualTo(snapshot)

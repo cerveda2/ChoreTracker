@@ -21,6 +21,7 @@ fun NavGraphBuilder.statsScreen(
 
         StatsScreen(
             uiState = uiState.value,
+            onIntent = viewModel::dispatch,
             onChoreClick = { choreId, choreName ->
                 navController.navigate(StatsChoreHistoryDestination.createRoute(choreId, choreName))
             },
