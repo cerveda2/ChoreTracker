@@ -1,7 +1,6 @@
 package cz.dcervenka.choretracker.feature.settings.impl.screen
 
 import android.content.ClipData
-import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +18,7 @@ import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +41,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -50,9 +49,9 @@ import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.EmptyState
+import cz.dcervenka.choretracker.core.design.components.ListGroup
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
-import cz.dcervenka.choretracker.core.design.components.ScreenHeader
-import cz.dcervenka.choretracker.core.design.components.SectionCard
+import cz.dcervenka.choretracker.core.design.components.SectionHeader
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
@@ -133,13 +132,7 @@ fun MembersSettingsScreen(
                     }) {
                         Text(stringResource(R.string.settings_invite_copy))
                     }
-                    TextButton(onClick = {
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, shareMessage.format(code))
-                        }
-                        context.startActivity(Intent.createChooser(intent, null))
-                    }) {
+                    TextButton(onClick = { shareInviteCode(context, shareMessage.format(code)) }) {
                         Text(stringResource(R.string.settings_invite_share))
                     }
                 }
@@ -171,54 +164,58 @@ fun MembersSettingsScreen(
                 .fillMaxSize()
                 .imePadding(),
             contentPadding = detailContentPadding(innerPadding),
-            verticalArrangement = Arrangement.spacedBy(spacing.medium),
+            verticalArrangement = Arrangement.spacedBy(spacing.large),
         ) {
             item {
-                ScreenHeader(
-                    title = stringResource(R.string.household_members),
-                    subtitle = pluralStringResource(
-                        R.plurals.household_member_count,
-                        uiState.members.size,
-                        uiState.members.size,
-                    ),
-                )
-            }
-            item {
-                SectionCard(title = stringResource(R.string.household_members)) {
-                    if (uiState.members.isEmpty()) {
-                        EmptyState(
-                            title = stringResource(R.string.settings_members_empty_title),
-                            message = stringResource(R.string.settings_members_empty_message),
-                        )
-                    } else {
-                        uiState.members.forEach { member ->
-                            MemberRow(
-                                member = member,
-                                isOwner = uiState.isOwner,
-                                onDeleteClick = { memberToDelete = member.id },
-                                onInviteClick = {
-                                    memberInviteName = member.displayName
-                                    onIntent(SettingsUiIntent.GenerateMemberInvite(member.id))
-                                },
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                    SectionHeader(title = stringResource(R.string.household_members))
+                    ListGroup {
+                        if (uiState.members.isEmpty()) {
+                            EmptyState(
+                                title = stringResource(R.string.settings_members_empty_title),
+                                message = stringResource(R.string.settings_members_empty_message),
+                                modifier = Modifier.padding(spacing.medium),
                             )
+                        } else {
+                            uiState.members.forEachIndexed { index, member ->
+                                if (index > 0) HorizontalDivider()
+                                MemberRow(
+                                    member = member,
+                                    isOwner = uiState.isOwner,
+                                    onDeleteClick = { memberToDelete = member.id },
+                                    onInviteClick = {
+                                        memberInviteName = member.displayName
+                                        onIntent(SettingsUiIntent.GenerateMemberInvite(member.id))
+                                    },
+                                )
+                            }
                         }
                     }
-                    OutlinedTextField(
-                        value = uiState.memberInput,
-                        onValueChange = { onIntent(SettingsUiIntent.MemberInputChanged(it)) },
-                        label = { Text(text = stringResource(R.string.household_new_member)) },
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Words,
-                            autoCorrectEnabled = true,
-                        ),
-                        enabled = uiState.isOwner,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    PrimaryButton(
-                        text = stringResource(R.string.household_add_member),
-                        onClick = { onIntent(SettingsUiIntent.AddMember) },
-                        enabled = uiState.isOwner && uiState.memberInput.isNotBlank(),
-                    )
+                }
+            }
+            item {
+                ListGroup {
+                    Column(
+                        modifier = Modifier.padding(spacing.medium),
+                        verticalArrangement = Arrangement.spacedBy(spacing.medium),
+                    ) {
+                        OutlinedTextField(
+                            value = uiState.memberInput,
+                            onValueChange = { onIntent(SettingsUiIntent.MemberInputChanged(it)) },
+                            label = { Text(text = stringResource(R.string.household_new_member)) },
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Words,
+                                autoCorrectEnabled = true,
+                            ),
+                            enabled = uiState.isOwner,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        PrimaryButton(
+                            text = stringResource(R.string.household_add_member),
+                            onClick = { onIntent(SettingsUiIntent.AddMember) },
+                            enabled = uiState.isOwner && uiState.memberInput.isNotBlank(),
+                        )
+                    }
                 }
             }
         }
@@ -232,10 +229,13 @@ private fun MemberRow(
     onDeleteClick: () -> Unit,
     onInviteClick: () -> Unit,
 ) {
+    val spacing = LocalSpacing.current
     val canDelete = isOwner && !member.isCurrentUser && member.role != HouseholdRole.OWNER
     val canInvite = isOwner && member.userId == null
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = spacing.medium, vertical = spacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {

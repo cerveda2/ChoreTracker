@@ -1,7 +1,6 @@
 package cz.dcervenka.choretracker.feature.settings.impl.screen
 
 import android.content.ClipData
-import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,9 +48,9 @@ import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.EmptyState
+import cz.dcervenka.choretracker.core.design.components.ListGroup
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
-import cz.dcervenka.choretracker.core.design.components.ScreenHeader
-import cz.dcervenka.choretracker.core.design.components.SectionCard
+import cz.dcervenka.choretracker.core.design.components.SectionHeader
 import cz.dcervenka.choretracker.core.model.household.Invite
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
@@ -103,136 +102,141 @@ fun HouseholdSettingsScreen(
                 .fillMaxSize()
                 .imePadding(),
             contentPadding = detailContentPadding(innerPadding),
-            verticalArrangement = Arrangement.spacedBy(spacing.medium),
+            verticalArrangement = Arrangement.spacedBy(spacing.large),
         ) {
-            item {
-                ScreenHeader(
-                    title = uiState.household?.name ?: stringResource(R.string.household_no_household),
-                    subtitle = uiState.household?.let {
-                        stringResource(R.string.settings_invite_code, it.inviteCode)
-                    },
-                )
-            }
             if (uiState.household != null) {
                 item {
-                    SectionCard(title = stringResource(R.string.settings_household_title)) {
-                        OutlinedTextField(
-                            value = uiState.householdNameInput,
-                            onValueChange = { onIntent(SettingsUiIntent.HouseholdNameChanged(it)) },
-                            label = { Text(text = stringResource(R.string.settings_household_name)) },
-                            keyboardOptions = KeyboardOptions(
-                                capitalization = KeyboardCapitalization.Words,
-                                autoCorrectEnabled = true,
-                            ),
-                            enabled = uiState.isOwner,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        PrimaryButton(
-                            text = stringResource(R.string.settings_save_household_name),
-                            onClick = { onIntent(SettingsUiIntent.SaveHouseholdName) },
-                            enabled = uiState.isOwner,
-                        )
+                    ListGroup {
+                        Column(
+                            modifier = Modifier.padding(spacing.medium),
+                            verticalArrangement = Arrangement.spacedBy(spacing.medium),
+                        ) {
+                            OutlinedTextField(
+                                value = uiState.householdNameInput,
+                                onValueChange = { onIntent(SettingsUiIntent.HouseholdNameChanged(it)) },
+                                label = { Text(text = stringResource(R.string.settings_household_name)) },
+                                keyboardOptions = KeyboardOptions(
+                                    capitalization = KeyboardCapitalization.Words,
+                                    autoCorrectEnabled = true,
+                                ),
+                                enabled = uiState.isOwner,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            PrimaryButton(
+                                text = stringResource(R.string.settings_save_household_name),
+                                onClick = { onIntent(SettingsUiIntent.SaveHouseholdName) },
+                                enabled = uiState.isOwner,
+                            )
+                        }
                     }
                 }
                 item {
                     val hasActiveInvite = uiState.invites.isNotEmpty() &&
                         uiState.invites.any { it.code == uiState.household.inviteCode && it.consumedAt == null }
-                    SectionCard(title = stringResource(R.string.household_invite_section)) {
-                        if (hasActiveInvite) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                    Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                        SectionHeader(title = stringResource(R.string.household_invite_section))
+                        ListGroup {
+                            Column(
+                                modifier = Modifier.padding(spacing.medium),
+                                verticalArrangement = Arrangement.spacedBy(spacing.medium),
                             ) {
-                                Text(
-                                    text = stringResource(R.string.settings_invite_code, uiState.household.inviteCode),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                IconButton(onClick = {
-                                    scope.launch {
-                                        clipboard.setClipEntry(
-                                            ClipEntry(ClipData.newPlainText("", uiState.household.inviteCode)),
+                                if (hasActiveInvite) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Text(
+                                            text = stringResource(
+                                                R.string.settings_invite_code,
+                                                uiState.household.inviteCode,
+                                            ),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier.weight(1f),
                                         )
-                                    }
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.ContentCopy,
-                                        contentDescription = stringResource(R.string.settings_invite_copy),
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-                                IconButton(onClick = {
-                                    val intent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, shareMessage.format(uiState.household.inviteCode))
-                                    }
-                                    context.startActivity(Intent.createChooser(intent, null))
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Share,
-                                        contentDescription = stringResource(R.string.settings_invite_share),
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-                            }
-                            Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Image(
-                                    painter = rememberQrCodePainter(uiState.household.inviteCode),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(180.dp),
-                                )
-                            }
-                        } else {
-                            Text(
-                                text = stringResource(R.string.settings_invite_none),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        if (uiState.invites.isNotEmpty()) {
-                            HorizontalDivider()
-                            Text(
-                                text = stringResource(R.string.settings_invite_history_title),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(vertical = spacing.xSmall),
-                            )
-                            val labelOpen = stringResource(R.string.settings_invite_label_open)
-                            val labelForMember = stringResource(R.string.settings_invite_label_for_member)
-                            uiState.invites.forEach { invite ->
-                                val label = when {
-                                    invite.consumedByMemberId != null -> {
-                                        val memberName = uiState.members.find { it.id == invite.consumedByMemberId }?.displayName
-                                        labelForMember.format(memberName ?: "?")
-                                    }
-                                    invite.targetMemberId != null -> {
-                                        val memberName = uiState.members.find { it.id == invite.targetMemberId }?.displayName
-                                        labelForMember.format(memberName ?: "?")
-                                    }
-                                    else -> labelOpen
-                                }
-                                InviteRow(
-                                    invite = invite,
-                                    label = label,
-                                    onCopy = {
-                                        scope.launch {
-                                            clipboard.setClipEntry(
-                                                ClipEntry(ClipData.newPlainText("", invite.code)),
+                                        IconButton(onClick = {
+                                            scope.launch {
+                                                clipboard.setClipEntry(
+                                                    ClipEntry(ClipData.newPlainText("", uiState.household.inviteCode)),
+                                                )
+                                            }
+                                        }) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.ContentCopy,
+                                                contentDescription = stringResource(R.string.settings_invite_copy),
+                                                modifier = Modifier.size(20.dp),
                                             )
                                         }
-                                    },
+                                        IconButton(onClick = {
+                                            shareInviteCode(context, shareMessage.format(uiState.household.inviteCode))
+                                        }) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Share,
+                                                contentDescription = stringResource(R.string.settings_invite_share),
+                                                modifier = Modifier.size(20.dp),
+                                            )
+                                        }
+                                    }
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Image(
+                                            painter = rememberQrCodePainter(uiState.household.inviteCode),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(180.dp),
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        text = stringResource(R.string.settings_invite_none),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                if (uiState.invites.isNotEmpty()) {
+                                    HorizontalDivider()
+                                    Text(
+                                        text = stringResource(R.string.settings_invite_history_title),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                    val labelOpen = stringResource(R.string.settings_invite_label_open)
+                                    val labelForMember = stringResource(R.string.settings_invite_label_for_member)
+                                    uiState.invites.forEach { invite ->
+                                        val label = when {
+                                            invite.consumedByMemberId != null -> {
+                                                val memberName =
+                                                    uiState.members.find { it.id == invite.consumedByMemberId }?.displayName
+                                                labelForMember.format(memberName ?: "?")
+                                            }
+                                            invite.targetMemberId != null -> {
+                                                val memberName =
+                                                    uiState.members.find { it.id == invite.targetMemberId }?.displayName
+                                                labelForMember.format(memberName ?: "?")
+                                            }
+                                            else -> labelOpen
+                                        }
+                                        InviteRow(
+                                            invite = invite,
+                                            label = label,
+                                            onCopy = {
+                                                scope.launch {
+                                                    clipboard.setClipEntry(
+                                                        ClipEntry(ClipData.newPlainText("", invite.code)),
+                                                    )
+                                                }
+                                            },
+                                        )
+                                    }
+                                }
+                                PrimaryButton(
+                                    text = stringResource(R.string.household_refresh_invite),
+                                    onClick = { onIntent(SettingsUiIntent.RefreshInvite) },
+                                    enabled = uiState.isOwner,
                                 )
                             }
                         }
-                        PrimaryButton(
-                            text = stringResource(R.string.household_refresh_invite),
-                            onClick = { onIntent(SettingsUiIntent.RefreshInvite) },
-                            enabled = uiState.isOwner,
-                        )
                     }
                 }
             } else {

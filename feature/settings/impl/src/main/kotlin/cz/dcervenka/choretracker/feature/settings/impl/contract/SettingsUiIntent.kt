@@ -1,6 +1,7 @@
 package cz.dcervenka.choretracker.feature.settings.impl.contract
 
 import cz.dcervenka.choretracker.core.common.UiIntent
+import cz.dcervenka.choretracker.core.model.settings.ThemeMode
 
 sealed interface SettingsUiIntent : UiIntent {
     data class AccountDisplayNameChanged(val value: String) : SettingsUiIntent
@@ -13,4 +14,6 @@ sealed interface SettingsUiIntent : UiIntent {
     data object RefreshInvite : SettingsUiIntent
     data class DeleteMember(val memberId: String) : SettingsUiIntent
     data class GenerateMemberInvite(val memberId: String) : SettingsUiIntent
+    data class SetThemeMode(val mode: ThemeMode) : SettingsUiIntent
+    data class SetDynamicColor(val enabled: Boolean) : SettingsUiIntent
 }
