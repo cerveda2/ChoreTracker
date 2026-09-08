@@ -1,7 +1,7 @@
 <resources>
     <string name="nav_home">Domů</string>
     <string name="nav_chores">Úkoly</string>
-    <string name="nav_stats">Přehled</string>
+    <string name="nav_stats">Postřehy</string>
     <string name="nav_settings">Nastavení</string>
 
     <string name="auth_title">ChoreTracker</string>
@@ -172,8 +172,8 @@
     <string name="settings_member_invite_title">Pozvánka pro %1$s</string>
     <string name="settings_member_invite_action">Vygenerovat odkaz na pozvánku</string>
 
-    <string name="stats_loading">Načítám přehled…</string>
-    <string name="stats_title">Přehled</string>
+    <string name="stats_loading">Načítám postřehy…</string>
+    <string name="stats_title">Postřehy</string>
     <string name="stats_empty_title">Zatím nedostatek dat</string>
     <string name="stats_empty_message">Statistiky se zobrazí po splnění několika úkolů v domácnosti.</string>
     <string name="stats_member_count">%1$s: %2$d</string>
