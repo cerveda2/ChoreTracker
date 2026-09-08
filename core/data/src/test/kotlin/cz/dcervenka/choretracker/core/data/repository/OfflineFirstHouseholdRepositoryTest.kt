@@ -22,6 +22,8 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.just
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -92,6 +94,7 @@ class OfflineFirstHouseholdRepositoryTest {
             authRepository = authRepository,
             syncRepository = syncRepository,
             database = database,
+            scope = CoroutineScope(Dispatchers.Unconfined),
         )
     }
 
