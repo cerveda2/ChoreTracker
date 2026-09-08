@@ -4,6 +4,7 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.data.contract.ChoreRepository
 import cz.dcervenka.choretracker.core.data.contract.SyncRepository
+import cz.dcervenka.choretracker.core.data.di.ApplicationScope
 import cz.dcervenka.choretracker.core.data.mapper.asModel
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
@@ -11,8 +12,10 @@ import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
@@ -24,6 +27,7 @@ class OfflineFirstChoreRepository @Inject constructor(
     private val choreDao: ChoreDao,
     private val pendingSyncOperationDao: PendingSyncOperationDao,
     private val syncRepository: SyncRepository,
+    @ApplicationScope private val scope: CoroutineScope,
 ) : ChoreRepository {
 
     override fun observeChores(householdId: String): Flow<List<Chore>> =
@@ -61,7 +65,7 @@ class OfflineFirstChoreRepository @Inject constructor(
                 createdAt = Clock.System.now(),
             ),
         )
-        syncRepository.syncPendingOperations()
+        scope.launch { syncRepository.syncPendingOperations() }
         return AppResult.Success(Unit)
     }
 
@@ -78,7 +82,7 @@ class OfflineFirstChoreRepository @Inject constructor(
                 createdAt = Clock.System.now(),
             ),
         )
-        syncRepository.syncPendingOperations()
+        scope.launch { syncRepository.syncPendingOperations() }
         return AppResult.Success(Unit)
     }
 
@@ -95,7 +99,7 @@ class OfflineFirstChoreRepository @Inject constructor(
                 createdAt = Clock.System.now(),
             ),
         )
-        syncRepository.syncPendingOperations()
+        scope.launch { syncRepository.syncPendingOperations() }
         return AppResult.Success(Unit)
     }
 
@@ -112,7 +116,7 @@ class OfflineFirstChoreRepository @Inject constructor(
                 createdAt = Clock.System.now(),
             ),
         )
-        syncRepository.syncPendingOperations()
+        scope.launch { syncRepository.syncPendingOperations() }
         return AppResult.Success(Unit)
     }
 
@@ -129,7 +133,7 @@ class OfflineFirstChoreRepository @Inject constructor(
                 createdAt = Clock.System.now(),
             ),
         )
-        syncRepository.syncPendingOperations()
+        scope.launch { syncRepository.syncPendingOperations() }
         return AppResult.Success(Unit)
     }
 
@@ -146,7 +150,7 @@ class OfflineFirstChoreRepository @Inject constructor(
                 createdAt = Clock.System.now(),
             ),
         )
-        syncRepository.syncPendingOperations()
+        scope.launch { syncRepository.syncPendingOperations() }
         return AppResult.Success(Unit)
     }
 }
