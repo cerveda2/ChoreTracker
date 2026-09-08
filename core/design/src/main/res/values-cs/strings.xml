@@ -21,11 +21,6 @@
     <string name="auth_validation_email_required">E-mail je povinný.</string>
     <string name="auth_validation_password_required">Heslo je povinné.</string>
     <string name="auth_validation_display_name_required">Zobrazované jméno je povinné.</string>
-    <string name="auth_firebase_not_ready">Firebase ještě není nakonfigurováno.</string>
-    <string name="auth_sign_in_failed">Přihlášení se nezdařilo.</string>
-    <string name="auth_sign_up_failed">Vytvoření účtu se nezdařilo.</string>
-    <string name="auth_profile_update_failed">Aktualizace profilu se nezdařila.</string>
-    <string name="auth_missing_created_user">Účet Firebase byl vytvořen bez instance uživatele.</string>
 
     <string name="onboarding_headline">Spravedlivé úkoly bez neustálého připomínání.</string>
     <string name="onboarding_body">Zaznamenejte splněné úkoly jedním klepnutím, sledujte, kdo dělá víc, a udržujte rovnováhu.</string>
@@ -55,13 +50,11 @@
         <item quantity="many">Ještě je třeba nahrát %1$d lokální změny do vaší domácnosti.</item>
         <item quantity="other">Ještě je třeba nahrát %1$d lokálních změn do vaší domácnosti.</item>
     </plurals>
-    <string name="dashboard_share_percent">%1$d%%</string>
     <string name="dashboard_days_ago">před %1$d d.</string>
     <string name="dashboard_never_done">nikdy</string>
     <string name="dashboard_log_chore_title">Zaznamenat úkol</string>
     <string name="dashboard_log_chore_suggested">Navrhovaná</string>
     <string name="dashboard_quick_log">Rychlé zaznamenání</string>
-    <string name="dashboard_record_prompt">Klepnutím zaznamenáte za sebe. Podržením zobrazíte možnosti.</string>
     <string name="dashboard_quick_log_empty_title">Zatím žádné aktivní úkoly</string>
     <string name="dashboard_quick_log_empty_message">Přidejte úkoly v Nastavení a začněte zaznamenávat splnění z přehledu.</string>
     <string name="dashboard_log">Zaznamenat</string>
@@ -71,12 +64,10 @@
     <string name="dashboard_completions_yesterday">Včera</string>
     <string name="dashboard_recent_completions_empty_title">Zatím žádná splnění</string>
     <string name="dashboard_recent_completions_empty_message">Jakmile někdo zaznamená úkol, zobrazí se zde s nejnovější aktivitou jako první.</string>
-    <string name="dashboard_completion_detail">Podrobnosti splnění</string>
     <string name="dashboard_completion_loading">Načítám splnění…</string>
     <string name="dashboard_completion_delete_title">Smazat toto splnění?</string>
     <string name="dashboard_completion_delete_message">Tím se odstraní zaznamenaný záznam. Samotný úkol není ovlivněn.</string>
     <string name="dashboard_completion_action_error">Něco se pokazilo</string>
-    <string name="dashboard_stale_chip">%1$s: %2$s</string>
     <string name="dashboard_edit_completion">Upravit splnění</string>
     <string name="dashboard_balance_title">Bilance</string>
     <string name="dashboard_balance_period">Posledních 30 dní</string>
@@ -140,7 +131,6 @@
     <string name="dashboard_filter_by_chore">Úkol</string>
 
     <string name="household_title">Domácnost</string>
-    <string name="household_active_invite">Aktivní pozvánka: %1$s</string>
     <string name="household_no_household">Zatím žádná domácnost</string>
     <string name="household_refresh_invite">Obnovit pozvánku</string>
     <string name="household_members">Členové</string>
@@ -153,12 +143,6 @@
     <string name="household_delete_member">Odebrat člena</string>
     <string name="household_delete_member_title">Odebrat tohoto člena?</string>
     <string name="household_delete_member_message">Tím se člen odstraní z domácnosti. Jeho historie splnění zůstane viditelná.</string>
-    <plurals name="household_member_count">
-        <item quantity="one">%1$d člen</item>
-        <item quantity="few">%1$d členové</item>
-        <item quantity="many">%1$d člena</item>
-        <item quantity="other">%1$d členů</item>
-    </plurals>
     <string name="household_invite_section">Pozvánka</string>
     <string name="settings_invite_none">Žádný aktivní kód pozvánky. Klepnutím na Obnovit pozvánku vygenerujte nový.</string>
     <string name="settings_invite_copy">Kopírovat kód</string>
@@ -178,8 +162,6 @@
     <string name="stats_title">Postřehy</string>
     <string name="stats_empty_title">Zatím nedostatek dat</string>
     <string name="stats_empty_message">Statistiky se zobrazí po splnění několika úkolů v domácnosti.</string>
-    <string name="stats_member_count">%1$s: %2$d</string>
-    <string name="stats_total_count">Splnění celkem: %1$d</string>
     <plurals name="stats_category_chore_count">
         <item quantity="one">%1$d úkol</item>
         <item quantity="few">%1$d úkoly</item>
@@ -207,8 +189,6 @@
     <string name="stats_turn">Na řadě: %1$s</string>
 
     <string name="settings_title">Nastavení</string>
-    <string name="settings_overview">Přehled</string>
-    <string name="settings_profile_title">Profil</string>
     <string name="settings_preferences_group">Předvolby</string>
     <string name="settings_manage_household_title">Správa domácnosti</string>
     <string name="settings_manage_members_title">Správa členů</string>
@@ -217,8 +197,6 @@
     <string name="settings_save_household_name">Uložit název domácnosti</string>
     <string name="settings_invite_code">Pozvánkový kód: %1$s</string>
     <string name="settings_invite_partner_title">Pozvat člena domácnosti</string>
-    <string name="settings_current_profile">Aktuální profil: %1$s</string>
-    <string name="settings_profile_description">Přihlášen(a) jako %1$s</string>
     <string name="settings_profile_email_role">%1$s · %2$s</string>
     <string name="settings_account_display_name_label">Zobrazované jméno</string>
     <string name="settings_account_email_label">E-mail</string>
@@ -230,7 +208,6 @@
         <item quantity="many">%1$d aktivního člena domácnosti</item>
         <item quantity="other">%1$d aktivních členů domácnosti</item>
     </plurals>
-    <string name="settings_account_description">Odhlášení a předvolby aplikace</string>
     <string name="settings_language_title">Jazyk</string>
     <string name="settings_language_description">Jazyk zobrazení aplikace</string>
     <string name="settings_theme_title">Motiv</string>
