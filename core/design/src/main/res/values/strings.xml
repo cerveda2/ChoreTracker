@@ -1,7 +1,7 @@
 <resources>
     <string name="nav_home">Home</string>
     <string name="nav_chores">Chores</string>
-    <string name="nav_stats">Stats</string>
+    <string name="nav_stats">Insights</string>
     <string name="nav_settings">Settings</string>
 
     <string name="auth_title">ChoreTracker</string>
@@ -54,13 +54,6 @@
     <string name="dashboard_share_percent">%1$d%%</string>
     <string name="dashboard_days_ago">%1$dd ago</string>
     <string name="dashboard_never_done">never</string>
-    <plurals name="stats_summary_total">
-        <item quantity="one">%1$d total completion</item>
-        <item quantity="other">%1$d total completions</item>
-    </plurals>
-    <string name="stats_summary_top_contributor">Top contributor: %1$s (%2$d%%)</string>
-    <string name="stats_summary_tie">Top contributor: tied</string>
-    <string name="stats_summary_no_data">No completions yet</string>
     <string name="dashboard_quick_log">Quick log</string>
     <string name="dashboard_record_prompt">Tap to log for you. Hold for options.</string>
     <string name="dashboard_quick_log_empty_title">No active chores yet</string>
@@ -165,49 +158,33 @@
     <string name="settings_member_invite_title">Invite for %1$s</string>
     <string name="settings_member_invite_action">Generate invite link</string>
 
-    <string name="stats_loading">Loading statistics…</string>
-    <string name="stats_title">Statistics</string>
-    <string name="stats_tab_summary">Summary</string>
-    <string name="stats_tab_by_chore">By chore</string>
-    <string name="stats_tab_by_category">By category</string>
-    <string name="stats_tab_monthly">Monthly</string>
+    <string name="stats_loading">Loading insights…</string>
+    <string name="stats_title">Insights</string>
     <string name="stats_empty_title">Not enough data yet</string>
     <string name="stats_empty_message">Statistics will appear after a few chores have been completed in your household.</string>
-    <string name="stats_per_chore_comparison">Per chore comparison</string>
-    <string name="stats_per_chore_empty_title">No chore comparisons yet</string>
-    <string name="stats_per_chore_empty_message">Start logging chores and we’ll break down who is doing what for each one.</string>
     <string name="stats_member_count">%1$s: %2$d</string>
-    <string name="stats_leader">Leader: %1$s</string>
-    <string name="stats_leader_no_data">No data</string>
-    <string name="stats_leader_tie">Tie</string>
-    <string name="stats_monthly_breakdown">Monthly breakdown</string>
-    <string name="stats_monthly_trend">Monthly trend</string>
-    <string name="stats_monthly_empty_title">No monthly trend yet</string>
-    <string name="stats_monthly_empty_message">Once completions span a few dates, the monthly history will appear here.</string>
     <string name="stats_total_count">Total completions: %1$d</string>
-    <string name="stats_summary_members_title">Household contribution</string>
-    <string name="stats_summary_members_empty">No member activity yet.</string>
-    <string name="stats_summary_member_line">%1$s • %2$d total • %3$d%% share</string>
-    <string name="stats_summary_member_subline">Last 30 days: %1$d • This month: %2$d</string>
-    <string name="stats_summary_attention_title">Needs attention</string>
-    <string name="stats_summary_attention_empty">No stale chores right now.</string>
-    <string name="stats_summary_attention_line">%1$s • %2$s</string>
-    <string name="stats_stale_never">Never completed</string>
-    <plurals name="stats_stale_days_ago">
-        <item quantity="one">%1$d day ago</item>
-        <item quantity="other">%1$d days ago</item>
-    </plurals>
-    <string name="stats_stale_soon">Due soon</string>
-    <string name="stats_stale_ok">On track</string>
     <plurals name="stats_category_chore_count">
         <item quantity="one">%1$d chore</item>
         <item quantity="other">%1$d chores</item>
     </plurals>
-    <string name="stats_category_empty_title">No category data yet</string>
-    <string name="stats_category_empty_message">Log some chores and category trends will appear here.</string>
     <string name="stats_chore_history_empty_title">No completions yet</string>
     <string name="stats_chore_history_empty_message">Completions for this chore will appear here once someone logs it.</string>
     <string name="stats_chore_history_unknown">Unknown</string>
+    <string name="stats_period_week">Week</string>
+    <string name="stats_period_month">Month</string>
+    <string name="stats_period_six_months">6 months</string>
+    <string name="stats_period_all">All</string>
+    <string name="stats_share_title">Share of work</string>
+    <string name="stats_share_together">Together</string>
+    <plurals name="stats_share_caption">
+        <item quantity="one">%1$d chore logged</item>
+        <item quantity="other">%1$d chores logged</item>
+    </plurals>
+    <string name="stats_last_six_months">Last 6 months</string>
+    <string name="stats_split_by_type">Split by type</string>
+    <string name="stats_by_chore">By chore</string>
+    <string name="stats_turn">Next: %1$s</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_overview">Overview</string>

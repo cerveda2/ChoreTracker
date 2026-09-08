@@ -17,8 +17,8 @@ import cz.dcervenka.choretracker.core.model.stats.HouseholdSummary
 import cz.dcervenka.choretracker.core.model.stats.MemberContribution
 import cz.dcervenka.choretracker.core.model.stats.MonthlyBreakdown
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
+import cz.dcervenka.choretracker.core.model.stats.ShareBreakdown
 import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
-import cz.dcervenka.choretracker.core.model.stats.TopContributorResult
 import kotlinx.datetime.LocalDate
 import kotlin.time.Clock
 
@@ -88,27 +88,18 @@ object PreviewData {
             displayName = "Dana",
             totalCount = 28,
             last30DaysCount = 12,
-            currentMonthCount = 7,
-            sharePercent = 57,
         ),
         MemberContribution(
             memberId = "member-2",
             displayName = "Alex",
             totalCount = 21,
             last30DaysCount = 10,
-            currentMonthCount = 6,
-            sharePercent = 43,
         ),
     )
 
     val dashboardSnapshot = DashboardSnapshot(
         household = household,
-        summary = HouseholdSummary(
-            totalCompletions = 49,
-            topContributor = previewContributions.first().let {
-                TopContributorResult.Leader(it.displayName, it.sharePercent)
-            },
-        ),
+        summary = HouseholdSummary(totalCompletions = 49),
         memberContributions = previewContributions,
         activeChores = chores.filter { it.isActive },
         recentCompletions = listOf(
@@ -161,13 +152,15 @@ object PreviewData {
 
     val statsSnapshot = StatsSnapshot(
         household = household,
-        summary = HouseholdSummary(
-            totalCompletions = 49,
-            topContributor = previewContributions.first().let {
-                TopContributorResult.Leader(it.displayName, it.sharePercent)
-            },
-        ),
+        summary = HouseholdSummary(totalCompletions = 49),
         memberContributions = previewContributions,
+        shareBreakdown = ShareBreakdown(
+            soloCountByMemberId = mapOf("member-1" to 22, "member-2" to 16),
+            sharedCount = 11,
+            totalCount = 49,
+            percentByMemberId = mapOf("member-1" to 45, "member-2" to 33),
+            togetherPercent = 22,
+        ),
         categoryComparisons = listOf(
             CategoryComparison(
                 category = ChoreCategory.CLEANING,
@@ -191,6 +184,7 @@ object PreviewData {
                 countsByMemberId = mapOf("member-1" to 14, "member-2" to 11),
                 leader = ChoreLeaderResult.Leader("Dana"),
                 totalCount = 25,
+                nextTurnMemberId = "member-2",
             ),
             ChoreComparison(
                 choreId = "chore-2",
@@ -198,16 +192,17 @@ object PreviewData {
                 countsByMemberId = mapOf("member-1" to 8, "member-2" to 10),
                 leader = ChoreLeaderResult.Leader("Alex"),
                 totalCount = 18,
+                nextTurnMemberId = "member-1",
             ),
         ),
         monthlyBreakdown = listOf(
             MonthlyBreakdown(
-                monthLabel = "March 2026",
+                monthLabel = "2026-03",
                 countsByMemberId = mapOf("member-1" to 7, "member-2" to 6),
                 totalCount = 13,
             ),
             MonthlyBreakdown(
-                monthLabel = "February 2026",
+                monthLabel = "2026-02",
                 countsByMemberId = mapOf("member-1" to 5, "member-2" to 4),
                 totalCount = 9,
             ),

@@ -1,28 +1,21 @@
 package cz.dcervenka.choretracker.feature.stats.impl.screen
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SecondaryScrollableTabRow
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRowDefaults
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.PreviewData
@@ -31,32 +24,18 @@ import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.TopLevelBottomBarSpacer
+import cz.dcervenka.choretracker.core.model.stats.StatsPeriod
+import cz.dcervenka.choretracker.feature.stats.impl.contract.StatsUiIntent
 import cz.dcervenka.choretracker.feature.stats.impl.contract.StatsUiState
-import kotlinx.coroutines.launch
 
 @Composable
 fun StatsScreen(
     uiState: StatsUiState,
+    onIntent: (StatsUiIntent) -> Unit = {},
     onChoreClick: (choreId: String, choreName: String) -> Unit = { _, _ -> },
 ) {
     val spacing = LocalSpacing.current
     val stats = uiState.snapshot
-
-    if (stats == null) {
-        LoadingState(message = stringResource(R.string.stats_loading))
-        return
-    }
-
-    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
-    val pagerState = rememberPagerState(
-        initialPage = selectedTabIndex,
-        pageCount = { StatsTab.entries.size },
-    )
-    val coroutineScope = rememberCoroutineScope()
-
-    LaunchedEffect(pagerState.currentPage) {
-        selectedTabIndex = pagerState.currentPage
-    }
 
     ChoreScaffold(
         topBar = {
@@ -64,82 +43,96 @@ fun StatsScreen(
         },
         bottomBar = { TopLevelBottomBarSpacer() },
     ) { innerPadding ->
-        val pagePadding = PaddingValues(
-            start = spacing.large,
-            top = spacing.medium,
-            end = spacing.large,
-            bottom = spacing.large,
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    top = innerPadding.calculateTopPadding(),
-                    bottom = innerPadding.calculateBottomPadding(),
-                ),
-        ) {
-            SecondaryScrollableTabRow(
-                selectedTabIndex = selectedTabIndex,
+        if (stats == null) {
+            LoadingState(
+                message = stringResource(R.string.stats_loading),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = spacing.large),
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                indicator = {
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier
-                            .tabIndicatorOffset(selectedTabIndex, matchContentSize = false)
-                            .padding(horizontal = spacing.medium),
-                        height = spacing.xSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                },
-                divider = {},
-                edgePadding = 0.dp,
+                    .fillMaxSize()
+                    .padding(top = innerPadding.calculateTopPadding()),
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = spacing.large,
+                    top = innerPadding.calculateTopPadding() + spacing.medium,
+                    end = spacing.large,
+                    bottom = innerPadding.calculateBottomPadding() + spacing.large,
+                ),
+                verticalArrangement = Arrangement.spacedBy(spacing.large),
             ) {
-                StatsTab.entries.forEachIndexed { index, tab ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = {
-                            selectedTabIndex = index
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(index)
-                            }
-                        },
-                        selectedContentColor = MaterialTheme.colorScheme.primary,
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        text = { Text(text = stringResource(tab.labelRes)) },
+                item(key = "period") {
+                    PeriodSelector(
+                        selected = uiState.period,
+                        onSelect = { onIntent(StatsUiIntent.SelectPeriod(it)) },
                     )
                 }
-            }
-
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-            ) { page ->
-                when (StatsTab.entries[page]) {
-                    StatsTab.Summary -> SummaryTab(stats = stats, contentPadding = pagePadding)
-                    StatsTab.ByChore -> ByChoreTab(
-                        stats = stats,
-                        contentPadding = pagePadding,
+                item(key = "share") {
+                    ShareOfWorkCard(
+                        shareBreakdown = stats.shareBreakdown,
+                        memberContributions = stats.memberContributions,
+                    )
+                }
+                item(key = "monthly") {
+                    MonthlyTrendCard(
+                        months = stats.monthlyBreakdown,
+                        memberContributions = stats.memberContributions,
+                    )
+                }
+                item(key = "split") {
+                    SplitByTypeCard(
+                        categoryComparisons = stats.categoryComparisons,
+                        memberContributions = stats.memberContributions,
+                    )
+                }
+                item(key = "by-chore") {
+                    ByChoreSection(
+                        comparisons = stats.comparisons,
+                        memberContributions = stats.memberContributions,
                         onChoreClick = onChoreClick,
                     )
-                    StatsTab.ByCategory -> ByCategoryTab(stats = stats, contentPadding = pagePadding)
-                    StatsTab.Monthly -> MonthlyTab(stats = stats, contentPadding = pagePadding)
                 }
             }
         }
     }
 }
 
-@Preview(showBackground = true, heightDp = 1000)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PeriodSelector(
+    selected: StatsPeriod,
+    onSelect: (StatsPeriod) -> Unit,
+) {
+    val options = StatsPeriod.entries
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        options.forEachIndexed { index, period ->
+            SegmentedButton(
+                selected = selected == period,
+                onClick = { onSelect(period) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                label = {
+                    Text(
+                        text = stringResource(period.labelRes()),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+            )
+        }
+    }
+}
+
+private fun StatsPeriod.labelRes(): Int = when (this) {
+    StatsPeriod.WEEK -> R.string.stats_period_week
+    StatsPeriod.MONTH -> R.string.stats_period_month
+    StatsPeriod.SIX_MONTHS -> R.string.stats_period_six_months
+    StatsPeriod.ALL -> R.string.stats_period_all
+}
+
+@Preview(showBackground = true, heightDp = 1400)
 @Composable
 private fun StatsScreenPreview() {
     ChoreTrackerTheme {
-        StatsScreen(
-            uiState = StatsUiState(snapshot = PreviewData.statsSnapshot),
-        )
+        StatsScreen(uiState = StatsUiState(snapshot = PreviewData.statsSnapshot))
     }
 }

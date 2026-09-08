@@ -1,7 +1,7 @@
 <resources>
     <string name="nav_home">Domů</string>
     <string name="nav_chores">Úkoly</string>
-    <string name="nav_stats">Statistiky</string>
+    <string name="nav_stats">Postřehy</string>
     <string name="nav_settings">Nastavení</string>
 
     <string name="auth_title">ChoreTracker</string>
@@ -56,15 +56,6 @@
     <string name="dashboard_share_percent">%1$d%%</string>
     <string name="dashboard_days_ago">před %1$d d.</string>
     <string name="dashboard_never_done">nikdy</string>
-    <plurals name="stats_summary_total">
-        <item quantity="one">%1$d splnění celkem</item>
-        <item quantity="few">%1$d splnění celkem</item>
-        <item quantity="many">%1$d splnění celkem</item>
-        <item quantity="other">%1$d splnění celkem</item>
-    </plurals>
-    <string name="stats_summary_top_contributor">Nejvíce přispívá: %1$s (%2$d%%)</string>
-    <string name="stats_summary_tie">Nejvíce přispívá: remíza</string>
-    <string name="stats_summary_no_data">Zatím žádná splnění</string>
     <string name="dashboard_log_chore_title">Zaznamenat úkol</string>
     <string name="dashboard_log_chore_suggested">Navrhovaná</string>
     <string name="dashboard_quick_log">Rychlé zaznamenání</string>
@@ -181,53 +172,37 @@
     <string name="settings_member_invite_title">Pozvánka pro %1$s</string>
     <string name="settings_member_invite_action">Vygenerovat odkaz na pozvánku</string>
 
-    <string name="stats_loading">Načítám statistiky…</string>
-    <string name="stats_title">Statistiky</string>
-    <string name="stats_tab_summary">Přehled</string>
-    <string name="stats_tab_by_chore">Podle úkolu</string>
-    <string name="stats_tab_by_category">Podle kategorie</string>
-    <string name="stats_tab_monthly">Měsíčně</string>
+    <string name="stats_loading">Načítám postřehy…</string>
+    <string name="stats_title">Postřehy</string>
     <string name="stats_empty_title">Zatím nedostatek dat</string>
     <string name="stats_empty_message">Statistiky se zobrazí po splnění několika úkolů v domácnosti.</string>
-    <string name="stats_per_chore_comparison">Porovnání podle úkolu</string>
-    <string name="stats_per_chore_empty_title">Zatím žádná porovnání úkolů</string>
-    <string name="stats_per_chore_empty_message">Začněte zaznamenávat úkoly a my rozdělíme, kdo co dělá za každý z nich.</string>
     <string name="stats_member_count">%1$s: %2$d</string>
-    <string name="stats_leader">Vedoucí: %1$s</string>
-    <string name="stats_leader_no_data">Žádná data</string>
-    <string name="stats_leader_tie">Remíza</string>
-    <string name="stats_monthly_breakdown">Měsíční přehled</string>
-    <string name="stats_monthly_trend">Měsíční trend</string>
-    <string name="stats_monthly_empty_title">Zatím žádný měsíční trend</string>
-    <string name="stats_monthly_empty_message">Jakmile budou splnění z více dat, zobrazí se zde měsíční historie.</string>
     <string name="stats_total_count">Splnění celkem: %1$d</string>
-    <string name="stats_summary_members_title">Příspěvek domácnosti</string>
-    <string name="stats_summary_members_empty">Zatím žádná aktivita členů.</string>
-    <string name="stats_summary_member_line">%1$s • %2$d celkem • %3$d%% podíl</string>
-    <string name="stats_summary_member_subline">Posl. 30 dní: %1$d • Tento měsíc: %2$d</string>
-    <string name="stats_summary_attention_title">Vyžaduje pozornost</string>
-    <string name="stats_summary_attention_empty">Žádné zastaralé úkoly momentálně.</string>
-    <string name="stats_summary_attention_line">%1$s • %2$s</string>
-    <string name="stats_stale_never">Nikdy nesplněno</string>
-    <plurals name="stats_stale_days_ago">
-        <item quantity="one">před %1$d dnem</item>
-        <item quantity="few">před %1$d dny</item>
-        <item quantity="many">před %1$d dne</item>
-        <item quantity="other">před %1$d dny</item>
-    </plurals>
-    <string name="stats_stale_soon">Brzy splatné</string>
-    <string name="stats_stale_ok">V pořádku</string>
     <plurals name="stats_category_chore_count">
         <item quantity="one">%1$d úkol</item>
         <item quantity="few">%1$d úkoly</item>
         <item quantity="many">%1$d úkolu</item>
         <item quantity="other">%1$d úkolů</item>
     </plurals>
-    <string name="stats_category_empty_title">Zatím žádná data kategorií</string>
-    <string name="stats_category_empty_message">Zaznamnejte několik úkolů a trendy podle kategorií se zobrazí zde.</string>
     <string name="stats_chore_history_empty_title">Zatím žádná splnění</string>
     <string name="stats_chore_history_empty_message">Splnění tohoto úkolu se zobrazí zde, jakmile ho někdo zaznamená.</string>
     <string name="stats_chore_history_unknown">Neznámý</string>
+    <string name="stats_period_week">Týden</string>
+    <string name="stats_period_month">Měsíc</string>
+    <string name="stats_period_six_months">6 měsíců</string>
+    <string name="stats_period_all">Vše</string>
+    <string name="stats_share_title">Podíl práce</string>
+    <string name="stats_share_together">Společně</string>
+    <plurals name="stats_share_caption">
+        <item quantity="one">%1$d zaznamenaný úkol</item>
+        <item quantity="few">%1$d zaznamenané úkoly</item>
+        <item quantity="many">%1$d zaznamenaného úkolu</item>
+        <item quantity="other">%1$d zaznamenaných úkolů</item>
+    </plurals>
+    <string name="stats_last_six_months">Posledních 6 měsíců</string>
+    <string name="stats_split_by_type">Rozdělení podle typu</string>
+    <string name="stats_by_chore">Podle úkolu</string>
+    <string name="stats_turn">Na řadě: %1$s</string>
 
     <string name="settings_title">Nastavení</string>
     <string name="settings_overview">Přehled</string>
