@@ -12,10 +12,6 @@ object MembersSettingsDestination {
     const val route = "settings/members"
 }
 
-object ChoresSettingsDestination {
-    const val route = "settings/chores"
-}
-
 object AccountSettingsDestination {
     const val route = "settings/account"
 }

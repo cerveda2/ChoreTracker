@@ -10,7 +10,7 @@ Personal offline-first Android household chore tracker for couples. Built by Dav
 ## Key Conventions
 
 - New Compose components go in `core/design`, following `SectionCard`, `PrimaryButton` patterns
-- Chore/member management UI lives in **settings feature only**
+- Chore management UI lives in `feature/chores`; member/household management in `feature/settings`
 - New data attributes must update: Room entity, DAO, mapper, repository, use case, Firestore schema, `firestore.rules`
 - One feature per commit, scoped changes only
 - Do NOT add comments, docstrings, or annotations to unchanged code

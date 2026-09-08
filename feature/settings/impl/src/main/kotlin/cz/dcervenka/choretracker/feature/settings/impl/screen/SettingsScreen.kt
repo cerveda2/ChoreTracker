@@ -29,7 +29,6 @@ fun SettingsScreen(
     uiState: SettingsUiState,
     onOpenHousehold: () -> Unit,
     onOpenMembers: () -> Unit,
-    onOpenChores: () -> Unit,
     onOpenAccount: () -> Unit,
     onOpenLanguage: () -> Unit,
     onOpenNotifications: () -> Unit,
@@ -86,16 +85,6 @@ fun SettingsScreen(
                             uiState.members.size,
                         ),
                         onClick = onOpenMembers,
-                    )
-                    androidx.compose.material3.HorizontalDivider()
-                    SettingsListItem(
-                        title = stringResource(R.string.settings_manage_chores_title),
-                        subtitle = pluralStringResource(
-                            R.plurals.settings_chores_description,
-                            uiState.chores.size,
-                            uiState.chores.size,
-                        ),
-                        onClick = onOpenChores,
                     )
                 }
             }
@@ -155,11 +144,9 @@ private fun SettingsScreenPreview() {
                 userLabel = "Dana",
                 household = PreviewData.household,
                 members = PreviewData.members,
-                chores = PreviewData.chores,
             ),
             onOpenHousehold = {},
             onOpenMembers = {},
-            onOpenChores = {},
             onOpenAccount = {},
             onOpenLanguage = {},
             onOpenNotifications = {},

@@ -1,5 +1,6 @@
 <resources>
     <string name="nav_home">Domů</string>
+    <string name="nav_chores">Úkoly</string>
     <string name="nav_stats">Statistiky</string>
     <string name="nav_settings">Nastavení</string>
 
@@ -156,12 +157,6 @@
     <string name="household_role_member">člen</string>
     <string name="household_new_member">Nový člen</string>
     <string name="household_add_member">Přidat člena</string>
-    <string name="household_chores">Úkoly</string>
-    <string name="household_new_chore">Nový úkol</string>
-    <string name="household_add_chore">Přidat úkol</string>
-    <string name="household_delete_chore">Smazat úkol</string>
-    <string name="household_delete_chore_title">Smazat tento úkol?</string>
-    <string name="household_delete_chore_message">Tím se úkol odstraní z aktivního plánování, ale stávající historie splnění zůstane čitelná.</string>
     <string name="household_delete_member">Odebrat člena</string>
     <string name="household_delete_member_title">Odebrat tohoto člena?</string>
     <string name="household_delete_member_message">Tím se člen odstraní z domácnosti. Jeho historie splnění zůstane viditelná.</string>
@@ -170,12 +165,6 @@
         <item quantity="few">%1$d členové</item>
         <item quantity="many">%1$d člena</item>
         <item quantity="other">%1$d členů</item>
-    </plurals>
-    <plurals name="household_chore_count">
-        <item quantity="one">%1$d úkol</item>
-        <item quantity="few">%1$d úkoly</item>
-        <item quantity="many">%1$d úkolu</item>
-        <item quantity="other">%1$d úkolů</item>
     </plurals>
     <string name="household_invite_section">Pozvánka</string>
     <string name="settings_invite_none">Žádný aktivní kód pozvánky. Klepnutím na Obnovit pozvánku vygenerujte nový.</string>
@@ -246,7 +235,6 @@
     <string name="settings_household_title">Domácnost</string>
     <string name="settings_manage_household_title">Správa domácnosti</string>
     <string name="settings_manage_members_title">Správa členů</string>
-    <string name="settings_manage_chores_title">Správa úkolů</string>
     <string name="settings_account_title">Účet</string>
     <string name="settings_household_name">Název domácnosti</string>
     <string name="settings_save_household_name">Uložit název domácnosti</string>
@@ -264,12 +252,6 @@
         <item quantity="few">%1$d aktivní členové domácnosti</item>
         <item quantity="many">%1$d aktivního člena domácnosti</item>
         <item quantity="other">%1$d aktivních členů domácnosti</item>
-    </plurals>
-    <plurals name="settings_chores_description">
-        <item quantity="one">%1$d dostupný úkol ke sledování</item>
-        <item quantity="few">%1$d dostupné úkoly ke sledování</item>
-        <item quantity="many">%1$d dostupného úkolu ke sledování</item>
-        <item quantity="other">%1$d dostupných úkolů ke sledování</item>
     </plurals>
     <string name="settings_account_description">Odhlášení a předvolby aplikace</string>
     <string name="settings_language_title">Jazyk</string>
@@ -289,8 +271,6 @@
     <string name="settings_household_empty_message">Vytvořte nebo se připojte k domácnosti při prvním spuštění a poté spravujte název a pozvánkový kód zde.</string>
     <string name="settings_members_empty_title">Zatím žádní členové</string>
     <string name="settings_members_empty_message">Pozvěte nebo přidejte členy domácnosti, aby bylo možné přidělovat a sledovat úkoly společně.</string>
-    <string name="settings_chores_empty_title">Zatím žádné úkoly</string>
-    <string name="settings_chores_empty_message">Vytvořte svůj první úkol a odemkněte rychlé zaznamenávání, nedávnou aktivitu a statistiky domácnosti.</string>
     <string name="settings_theme_note">Aktuální motiv aplikace je Warm Utility.</string>
     <string name="settings_sign_out">Odhlásit se</string>
     <string name="settings_sign_out_supporting">Odhlaste se z tohoto zařízení a vraťte se na přihlašovací obrazovku.</string>
@@ -303,30 +283,39 @@
     <string name="settings_management_section">Správa domácnosti</string>
     <string name="settings_account_section">Předvolby</string>
 
-    <plurals name="settings_chore_frequency_every_n_days">
-        <item quantity="one">Každý %1$d den</item>
-        <item quantity="few">Každé %1$d dny</item>
-        <item quantity="many">Každých %1$d dne</item>
-        <item quantity="other">Každých %1$d dní</item>
-    </plurals>
-    <string name="settings_chore_frequency_not_set">Bez frekvence</string>
-    <string name="settings_chore_set_frequency_title">Nastavit frekvenci</string>
-    <string name="settings_chore_set_frequency_hint">Dny mezi splněními</string>
-    <string name="settings_chore_clear_frequency">Vymazat</string>
-    <string name="settings_chore_rename_title">Přejmenovat úkol</string>
-    <string name="settings_chore_rename_hint">Název úkolu</string>
-    <string name="settings_chore_search_hint">Hledat úkoly</string>
-    <string name="settings_chore_group_status">Stav</string>
-    <string name="settings_chore_active">Aktivní</string>
-    <string name="settings_chore_inactive">Neaktivní</string>
-    <string name="settings_feedback_chore_added">Úkol přidán</string>
-    <string name="settings_feedback_chore_deleted">Úkol smazán</string>
-    <string name="settings_feedback_chore_saved">Uloženo</string>
     <string name="settings_feedback_member_added">Člen přidán</string>
     <string name="settings_feedback_member_deleted">Člen odebrán</string>
     <string name="settings_feedback_name_saved">Název uložen</string>
     <string name="settings_feedback_error">Něco se pokazilo</string>
-    <string name="settings_chore_category_title">Kategorie</string>
+
+    <string name="chores_title">Úkoly</string>
+    <string name="chores_new_chore">Nový úkol</string>
+    <string name="chores_search_hint">Hledat úkoly</string>
+    <string name="chores_empty_title">Zatím žádné úkoly</string>
+    <string name="chores_empty_message">Přidejte první úkol a začněte sledovat, kdo co dělá.</string>
+    <string name="chores_filter_empty_title">Žádné úkoly</string>
+    <string name="chores_filter_empty_message">Tomuto filtru nic neodpovídá. Zkuste jiný filtr nebo upravte hledání.</string>
+    <string name="chores_filter_all">Vše</string>
+    <string name="chores_filter_overdue">Po termínu</string>
+    <string name="chores_filter_overdue_count">Po termínu · %1$d</string>
+    <string name="chores_filter_due_soon">Blíží se termín</string>
+    <string name="chores_filter_paused">Pozastaveno</string>
+    <string name="chores_no_schedule">Bez frekvence</string>
+    <string name="chores_editor_name_hint">Název úkolu</string>
+    <string name="chores_editor_category_label">Kategorie</string>
+    <string name="chores_editor_frequency_label">Frekvence</string>
+    <string name="chores_editor_frequency_none">Žádná</string>
+    <string name="chores_editor_frequency_daily">Denně</string>
+    <string name="chores_editor_frequency_weekly">Týdně</string>
+    <string name="chores_editor_frequency_custom">Vlastní</string>
+    <string name="chores_editor_frequency_custom_hint">Dny mezi splněními</string>
+    <string name="chores_editor_add_action">Přidat úkol</string>
+    <string name="chores_delete_title">Smazat tento úkol?</string>
+    <string name="chores_delete_message">Tím se úkol odstraní z aktivního plánování, ale stávající historie splnění zůstane čitelná.</string>
+    <string name="chores_feedback_added">Úkol přidán</string>
+    <string name="chores_feedback_saved">Uloženo</string>
+    <string name="chores_feedback_deleted">Úkol smazán</string>
+
     <string name="chore_category_cleaning">Úklid</string>
     <string name="chore_category_cooking">Vaření</string>
     <string name="chore_category_shopping">Nákupy</string>

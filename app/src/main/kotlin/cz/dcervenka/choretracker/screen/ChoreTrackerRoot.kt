@@ -34,6 +34,7 @@ import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.model.settings.ThemeMode
 import cz.dcervenka.choretracker.core.notifications.ui.NotificationPermissionRequest
 import cz.dcervenka.choretracker.feature.auth.impl.navigation.authScreen
+import cz.dcervenka.choretracker.feature.chores.impl.navigation.choresScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.navigation.dashboardScreen
 import cz.dcervenka.choretracker.feature.onboarding.impl.navigation.onboardingScreen
 import cz.dcervenka.choretracker.feature.settings.impl.navigation.SettingsDestination
@@ -149,6 +150,7 @@ fun ChoreTrackerRoot(
                         navController = navController,
                         onOpenSettings = { navigateToTab(SettingsDestination.route) },
                     )
+                    choresScreen()
                     statsScreen(navController = navController)
                     settingsScreen(navController = navController)
                 }
