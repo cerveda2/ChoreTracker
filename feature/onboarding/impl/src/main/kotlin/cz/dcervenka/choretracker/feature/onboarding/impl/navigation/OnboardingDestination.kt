@@ -14,7 +14,3 @@ object OnboardingDestination {
 object QrScanDestination {
     const val route = "onboarding/qr-scan"
 }
-
-object ManualCodeEntryDestination {
-    const val route = "onboarding/manual-entry"
-}

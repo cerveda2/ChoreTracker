@@ -113,7 +113,7 @@ fun QrScanScreen(
             }
             TextButton(onClick = onEnterManually) {
                 Text(
-                    text = stringResource(R.string.onboarding_enter_code_manually),
+                    text = stringResource(R.string.common_back),
                     color = Color.White,
                 )
             }
