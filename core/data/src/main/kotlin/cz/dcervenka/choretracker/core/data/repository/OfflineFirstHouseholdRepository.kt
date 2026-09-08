@@ -5,6 +5,7 @@ import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
 import cz.dcervenka.choretracker.core.data.contract.SyncRepository
+import cz.dcervenka.choretracker.core.data.di.ApplicationScope
 import cz.dcervenka.choretracker.core.data.mapper.asModel
 import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
@@ -22,6 +23,7 @@ import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRestoreStatus
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.household.Invite
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emitAll
@@ -29,6 +31,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
@@ -47,6 +50,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     private val authRepository: AuthRepository,
     private val syncRepository: SyncRepository,
     private val database: ChoreTrackerDatabase,
+    @ApplicationScope private val scope: CoroutineScope,
 ) : HouseholdRepository {
 
     private val restoreStatus = MutableStateFlow(HouseholdRestoreStatus())
@@ -75,8 +79,8 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                     )
                 }
                 else -> {
-                    syncRepository.syncPendingOperations()
                     if (householdDao.getCurrentHouseholdForUser(user.id) == null) {
+                        syncRepository.syncPendingOperations()
                         Timber.d("observeCurrentHousehold: no local household, restoring for user=${user.id}")
                         restoreStatus.value = HouseholdRestoreStatus(isRestoring = true)
                         when (val restoreResult = syncRepository.restoreHouseholdForUser(user.id)) {
@@ -97,9 +101,18 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                         if (!hasRefreshedFromRemoteThisSession) {
                             hasRefreshedFromRemoteThisSession = true
                             Timber.d(
-                                "observeCurrentHousehold: household exists locally, pulling fresh snapshot for user=${user.id}"
+                                "observeCurrentHousehold: household exists locally, refreshing from remote " +
+                                    "in the background for user=${user.id}"
                             )
-                            syncRepository.restoreHouseholdForUser(user.id)
+                            // Cached local data is emitted below immediately; don't make the caller wait on
+                            // a remote round-trip (syncPendingOperations' email sync alone can block up to
+                            // its 20s task timeout on bad connectivity) just to see what's already on disk.
+                            // The Room Flow this emits from re-emits on its own once the background refresh
+                            // writes fresh data, same as real-time sync already does.
+                            scope.launch {
+                                syncRepository.syncPendingOperations()
+                                syncRepository.restoreHouseholdForUser(user.id)
+                            }
                         }
                     }
                     stampCurrentUserEmail(user)
@@ -161,7 +174,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                 )
                 inviteDao.upsert(invite)
                 enqueueOperation("household", householdId, "upsert", household.id)
-                syncRepository.syncPendingOperations()
+                scope.launch { syncRepository.syncPendingOperations() }
                 AppResult.Success(household.asModel())
             }
         }
@@ -202,8 +215,10 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         inviteDao.markConsumed(invite.id, Clock.System.now(), consumedByMemberId)
         enqueueOperation("member", invite.householdId, "join", user.id)
         enqueueOperation("invite", invite.householdId, "consumed", invite.id)
-        syncRepository.syncPendingOperations()
+        scope.launch { syncRepository.syncPendingOperations() }
         if (householdDao.getHousehold(invite.householdId) == null) {
+            // Unlike the push above, this pull can't be backgrounded - there's nothing local to
+            // return below until the household this invite belongs to has actually been fetched.
             syncRepository.restoreHouseholdForUser(user.id)
         }
         return householdDao.getHousehold(invite.householdId)
@@ -230,7 +245,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             ),
         )
         enqueueOperation("member", householdId, "upsert", displayName)
-        syncRepository.syncPendingOperations()
+        scope.launch { syncRepository.syncPendingOperations() }
         return AppResult.Success(Unit)
     }
 
@@ -245,8 +260,10 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         householdDao.updateInviteCode(householdId, invite.code)
         inviteDao.upsert(invite)
         enqueueOperation("invite", householdId, "upsert", invite.code)
-        syncRepository.syncPendingOperations()
-        user?.id?.let { syncRepository.restoreHouseholdForUser(it) }
+        scope.launch {
+            syncRepository.syncPendingOperations()
+            user?.id?.let { syncRepository.restoreHouseholdForUser(it) }
+        }
         return AppResult.Success(invite.asModel())
     }
 
@@ -263,7 +280,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             val invite = generateInvite(householdId, targetMemberId = memberId)
             inviteDao.upsert(invite)
             enqueueOperation("invite", householdId, "upsert", invite.code)
-            syncRepository.syncPendingOperations()
+            scope.launch { syncRepository.syncPendingOperations() }
             AppResult.Success(invite.asModel())
         }
     }
@@ -279,7 +296,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         val sanitizedName = name.trim().ifBlank { "My Household" }
         householdDao.updateName(householdId, sanitizedName)
         enqueueOperation("household", householdId, "rename", sanitizedName)
-        syncRepository.syncPendingOperations()
+        scope.launch { syncRepository.syncPendingOperations() }
         return AppResult.Success(Unit)
     }
 
@@ -296,7 +313,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                     val sanitizedName = displayName.trim().ifBlank { user.displayName }
                     memberDao.upsert(existing.copy(displayName = sanitizedName))
                     enqueueOperation("member", householdId, "rename", sanitizedName)
-                    syncRepository.syncPendingOperations()
+                    scope.launch { syncRepository.syncPendingOperations() }
                     AppResult.Success(Unit)
                 }
             }
@@ -316,7 +333,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         } else {
             memberDao.deleteById(memberId)
             enqueueOperation("member", householdId, "delete", member.userId ?: member.id)
-            syncRepository.syncPendingOperations()
+            scope.launch { syncRepository.syncPendingOperations() }
             AppResult.Success(Unit)
         }
     }
@@ -336,7 +353,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             if (member.displayName != name) {
                 memberDao.upsert(member.copy(displayName = name))
                 enqueueOperation("member", householdId, "rename", name)
-                syncRepository.syncPendingOperations()
+                scope.launch { syncRepository.syncPendingOperations() }
             }
         }
     }

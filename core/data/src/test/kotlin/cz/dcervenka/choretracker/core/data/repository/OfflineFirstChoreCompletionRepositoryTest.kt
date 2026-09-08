@@ -23,6 +23,8 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.just
 import io.mockk.slot
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
@@ -80,6 +82,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
             pendingSyncOperationDao = pendingSyncOperationDao,
             authRepository = authRepository,
             syncRepository = syncRepository,
+            scope = CoroutineScope(Dispatchers.Unconfined),
         )
     }
 

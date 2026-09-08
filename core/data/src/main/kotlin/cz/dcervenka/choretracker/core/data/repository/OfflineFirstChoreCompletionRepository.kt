@@ -5,6 +5,7 @@ import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.ChoreCompletionRepository
 import cz.dcervenka.choretracker.core.data.contract.SyncRepository
+import cz.dcervenka.choretracker.core.data.di.ApplicationScope
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
@@ -16,9 +17,11 @@ import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntit
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
@@ -36,6 +39,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
     private val pendingSyncOperationDao: PendingSyncOperationDao,
     private val authRepository: AuthRepository,
     private val syncRepository: SyncRepository,
+    @ApplicationScope private val scope: CoroutineScope,
 ) : ChoreCompletionRepository {
 
     override fun observeRecentCompletions(householdId: String, limit: Int): Flow<List<RecentCompletion>> =
@@ -130,7 +134,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
                 createdAt = Clock.System.now(),
             ),
         )
-        syncRepository.syncPendingOperations()
+        scope.launch { syncRepository.syncPendingOperations() }
         return AppResult.Success(completionId)
     }
 
@@ -167,7 +171,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
                         createdAt = Clock.System.now(),
                     ),
                 )
-                syncRepository.syncPendingOperations()
+                scope.launch { syncRepository.syncPendingOperations() }
                 AppResult.Success(Unit)
             }
         }
@@ -198,7 +202,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
                         createdAt = Clock.System.now(),
                     ),
                 )
-                syncRepository.syncPendingOperations()
+                scope.launch { syncRepository.syncPendingOperations() }
                 AppResult.Success(Unit)
             }
         }

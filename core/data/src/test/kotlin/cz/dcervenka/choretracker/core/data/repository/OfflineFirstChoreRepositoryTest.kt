@@ -16,6 +16,8 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.just
 import io.mockk.slot
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -51,6 +53,7 @@ class OfflineFirstChoreRepositoryTest {
             choreDao = choreDao,
             pendingSyncOperationDao = pendingSyncOperationDao,
             syncRepository = syncRepository,
+            scope = CoroutineScope(Dispatchers.Unconfined),
         )
     }
 
