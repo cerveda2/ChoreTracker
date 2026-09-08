@@ -5,6 +5,8 @@ import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.household.Invite
+import cz.dcervenka.choretracker.core.model.settings.ReminderSettings
+import cz.dcervenka.choretracker.core.model.settings.ThemeSettings
 
 data class SettingsUiState(
     val userLabel: String? = null,
@@ -17,6 +19,8 @@ data class SettingsUiState(
     val memberInput: String = "",
     val requiresConfiguration: Boolean = false,
     val isSignedOut: Boolean = false,
+    val themeSettings: ThemeSettings = ThemeSettings(),
+    val reminderSettings: ReminderSettings = ReminderSettings(),
 ) : UiState {
     val isOwner: Boolean
         get() = members.any { it.isCurrentUser && it.role == HouseholdRole.OWNER }

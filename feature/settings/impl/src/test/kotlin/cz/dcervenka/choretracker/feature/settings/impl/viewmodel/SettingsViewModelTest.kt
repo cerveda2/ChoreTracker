@@ -11,11 +11,18 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInvitesUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveThemeSettingsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SetDynamicColorUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SetThemeModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCurrentMemberDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateHouseholdNameUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.settings.ReminderSettings
+import cz.dcervenka.choretracker.core.model.settings.ThemeMode
+import cz.dcervenka.choretracker.core.model.settings.ThemeSettings
 import cz.dcervenka.choretracker.core.test.mock.sampleAuthenticatedState
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleInvite
@@ -23,10 +30,12 @@ import cz.dcervenka.choretracker.core.test.mock.sampleMembers
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import io.mockk.MockKAnnotations
+import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
+import io.mockk.just
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -75,6 +84,20 @@ class SettingsViewModelTest {
     @MockK
     lateinit var updateHouseholdNameUseCase: UpdateHouseholdNameUseCase
 
+    @MockK
+    lateinit var observeThemeSettingsUseCase: ObserveThemeSettingsUseCase
+
+    @MockK
+    lateinit var observeReminderSettingsUseCase: ObserveReminderSettingsUseCase
+
+    @MockK
+    lateinit var setThemeModeUseCase: SetThemeModeUseCase
+
+    @MockK
+    lateinit var setDynamicColorUseCase: SetDynamicColorUseCase
+
+    private val themeSettingsFlow = MutableStateFlow(ThemeSettings())
+    private val reminderSettingsFlow = MutableStateFlow(ReminderSettings())
     private val authStateFlow = MutableStateFlow<AuthState>(AuthState.SignedOut)
     private val householdFlow = MutableStateFlow<cz.dcervenka.choretracker.core.model.household.Household?>(null)
     private val membersFlow =
@@ -90,6 +113,10 @@ class SettingsViewModelTest {
         every { observeCurrentHouseholdUseCase() } returns householdFlow
         every { observeMembersUseCase(any()) } answers { membersFlow }
         every { observeInvitesUseCase(any()) } returns MutableStateFlow(emptyList())
+        every { observeThemeSettingsUseCase() } returns themeSettingsFlow
+        every { observeReminderSettingsUseCase() } returns reminderSettingsFlow
+        coEvery { setThemeModeUseCase(any()) } just Runs
+        coEvery { setDynamicColorUseCase(any()) } just Runs
         coEvery { signOutUseCase() } returns AppResult.Success(Unit)
         coEvery { addMemberUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { createInviteUseCase(any()) } returns AppResult.Success(sampleInvite())
@@ -150,6 +177,41 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `uiState reflects theme and reminder settings`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+        themeSettingsFlow.value = ThemeSettings(mode = ThemeMode.DARK, dynamicColor = true)
+        reminderSettingsFlow.value = ReminderSettings(enabled = true, hour = 8, minute = 30)
+
+        viewModel.uiState.test {
+            awaitItem()
+            val state = awaitItem()
+            assertThat(state.themeSettings).isEqualTo(ThemeSettings(mode = ThemeMode.DARK, dynamicColor = true))
+            assertThat(state.reminderSettings).isEqualTo(ReminderSettings(enabled = true, hour = 8, minute = 30))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `SetThemeMode delegates to use case`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.dispatch(SettingsUiIntent.SetThemeMode(ThemeMode.DARK))
+        advanceUntilIdle()
+
+        coVerify { setThemeModeUseCase(ThemeMode.DARK) }
+    }
+
+    @Test
+    fun `SetDynamicColor delegates to use case`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.dispatch(SettingsUiIntent.SetDynamicColor(true))
+        advanceUntilIdle()
+
+        coVerify { setDynamicColorUseCase(true) }
+    }
+
+    @Test
     fun `saveAccountDisplayName updates auth and current member`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
         val household = sampleHousehold()
@@ -174,6 +236,8 @@ private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
     observeCurrentHouseholdUseCase,
     observeMembersUseCase,
     observeInvitesUseCase,
+    observeThemeSettingsUseCase,
+    observeReminderSettingsUseCase,
     signOutUseCase,
     addMemberUseCase,
     createInviteUseCase,
@@ -182,4 +246,6 @@ private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
     updateDisplayNameUseCase,
     updateCurrentMemberDisplayNameUseCase,
     updateHouseholdNameUseCase,
+    setThemeModeUseCase,
+    setDynamicColorUseCase,
 )

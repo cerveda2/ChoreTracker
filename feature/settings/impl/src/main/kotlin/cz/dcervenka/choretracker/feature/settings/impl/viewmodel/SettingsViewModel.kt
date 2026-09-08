@@ -11,6 +11,10 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInvitesUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveThemeSettingsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SetDynamicColorUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SetThemeModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCurrentMemberDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateDisplayNameUseCase
@@ -40,6 +44,8 @@ class SettingsViewModel @Inject constructor(
     observeCurrentHouseholdUseCase: ObserveCurrentHouseholdUseCase,
     observeMembersUseCase: ObserveMembersUseCase,
     observeInvitesUseCase: ObserveInvitesUseCase,
+    observeThemeSettingsUseCase: ObserveThemeSettingsUseCase,
+    observeReminderSettingsUseCase: ObserveReminderSettingsUseCase,
     private val signOutUseCase: SignOutUseCase,
     private val addMemberUseCase: AddMemberUseCase,
     private val createInviteUseCase: CreateInviteUseCase,
@@ -48,6 +54,8 @@ class SettingsViewModel @Inject constructor(
     private val updateDisplayNameUseCase: UpdateDisplayNameUseCase,
     private val updateCurrentMemberDisplayNameUseCase: UpdateCurrentMemberDisplayNameUseCase,
     private val updateHouseholdNameUseCase: UpdateHouseholdNameUseCase,
+    private val setThemeModeUseCase: SetThemeModeUseCase,
+    private val setDynamicColorUseCase: SetDynamicColorUseCase,
 ) : ViewModel() {
     private val _events = Channel<SettingsUiEvent>(Channel.BUFFERED)
     val events: Flow<SettingsUiEvent> = _events.receiveAsFlow()
@@ -127,23 +135,29 @@ class SettingsViewModel @Inject constructor(
     val uiState: StateFlow<SettingsUiState> = combine(
         observeAuthStateUseCase(),
         householdState,
-    ) { state, householdUiState ->
+        observeThemeSettingsUseCase(),
+        observeReminderSettingsUseCase(),
+    ) { state, householdUiState, themeSettings, reminderSettings ->
+        val stateWithSettings = householdUiState.copy(
+            themeSettings = themeSettings,
+            reminderSettings = reminderSettings,
+        )
         when (state) {
             is AuthState.Authenticated -> {
-                val memberName = householdUiState.members.find { it.isCurrentUser }
+                val memberName = stateWithSettings.members.find { it.isCurrentUser }
                     ?.displayName?.takeIf { it.isNotBlank() }
                 val resolvedName = memberName
                     ?: state.user.displayName.takeIf { it != state.user.email.orEmpty() }
                     ?: state.user.email.orEmpty()
-                householdUiState.copy(
+                stateWithSettings.copy(
                     userLabel = resolvedName,
                     userEmail = state.user.email,
                     accountDisplayNameInput = accountDisplayNameInput.value,
                 )
             }
-            AuthState.RequiresConfiguration -> householdUiState.copy(requiresConfiguration = true)
-            AuthState.SignedOut -> householdUiState.copy(isSignedOut = true)
-            AuthState.Initializing -> householdUiState
+            AuthState.RequiresConfiguration -> stateWithSettings.copy(requiresConfiguration = true)
+            AuthState.SignedOut -> stateWithSettings.copy(isSignedOut = true)
+            AuthState.Initializing -> stateWithSettings
         }
     }.stateIn(
         scope = viewModelScope,
@@ -179,6 +193,8 @@ class SettingsViewModel @Inject constructor(
             SettingsUiIntent.RefreshInvite -> refreshInvite()
             is SettingsUiIntent.DeleteMember -> deleteMember(intent.memberId)
             is SettingsUiIntent.GenerateMemberInvite -> generateMemberInvite(intent.memberId)
+            is SettingsUiIntent.SetThemeMode -> viewModelScope.launch { setThemeModeUseCase(intent.mode) }
+            is SettingsUiIntent.SetDynamicColor -> viewModelScope.launch { setDynamicColorUseCase(intent.enabled) }
             else -> Unit
         }
     }
