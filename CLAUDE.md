@@ -9,12 +9,14 @@ Personal offline-first Android household chore tracker for couples. Built by Dav
 
 ## Key Conventions
 
-- New Compose components go in `core/design`, following `SectionCard`, `PrimaryButton` patterns
+- Visual design is Direction A (warm Material3 Expressive, fairness-first) — see the redesign's implementation plan for the full rationale. Bottom nav is 4 tabs: Home / Chores / Insights / Settings.
+- New Compose components go in `core/design`, following the `ListGroup` + `ChoreListRow` (+ `IconCircle` leading, `SectionHeader` above the group) grouped-list pattern, `PrimaryButton`/`SecondaryButton`, and `ChoreScaffold`/`ChoreTopAppBar` (`ChoreLargeTopBar` only for a screen with a genuine subtitle, e.g. Home's date — a title-only screen using it leaves a large empty gap above the title). `ScreenHeader`, `SectionCard`, `ChoreTabRow`, and `LogButton` were removed as part of the redesign cleanup; don't reintroduce them — use the patterns above instead.
 - Chore management UI lives in `feature/chores`; member/household management in `feature/settings`
 - New data attributes must update: Room entity, DAO, mapper, repository, use case, Firestore schema, `firestore.rules`
 - One feature per commit, scoped changes only
 - Do NOT add comments, docstrings, or annotations to unchanged code
 - Firestore security rules: `firestore.rules` in project root
+- Offline-first writes: `core/data`'s `OfflineFirst*Repository` classes push local writes to Firestore via a fire-and-forget `@ApplicationScope` coroutine, not an awaited call — the local Room write is the source of truth and must never block on the network. Only await a push/pull when the return value genuinely depends on it (e.g. `joinHousehold` needs the pulled household to return one). See PR #86.
 
 ## Git Conventions
 
