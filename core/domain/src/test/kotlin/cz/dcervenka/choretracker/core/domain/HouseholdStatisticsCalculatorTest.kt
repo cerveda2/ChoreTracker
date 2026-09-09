@@ -485,6 +485,106 @@ class HouseholdStatisticsCalculatorTest {
         assertThat(dashboard.staleChores.single().status).isEqualTo(ChoreStatus.SOON)
     }
 
+    @Test
+    fun `daily chore is OK right after being logged`() {
+        val dailyChore = Chore(
+            id = "chore-dishes-daily",
+            householdId = household.id,
+            name = "Dishes",
+            isActive = true,
+            createdAt = Instant.parse("2026-01-01T09:00:00Z"),
+            frequencyDays = 1,
+        )
+        val completions = listOf(
+            completion(
+                id = "c1",
+                choreId = "chore-dishes-daily",
+                createdAt = "2026-03-29T12:00:00Z", // done today, 0 days ago
+                participantMemberIds = listOf("member-alice"),
+            ),
+        )
+
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members,
+            chores = listOf(dailyChore),
+            completions = completions,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        // A daily chore's soonThreshold used to clamp to 0 (attentionThreshold - 1), which made
+        // daysSinceLastCompletion >= soonThreshold true from the moment it was logged, so it
+        // could never read OK - see HouseholdStatisticsCalculator.computeStatus.
+        assertThat(dashboard.staleChores.single().status).isEqualTo(ChoreStatus.OK)
+    }
+
+    @Test
+    fun `daily chore needs attention the day after it's due, not the same day it's due`() {
+        val dailyChore = Chore(
+            id = "chore-dishes-daily",
+            householdId = household.id,
+            name = "Dishes",
+            isActive = true,
+            createdAt = Instant.parse("2026-01-01T09:00:00Z"),
+            frequencyDays = 1,
+        )
+        val completions = listOf(
+            completion(
+                id = "c1",
+                choreId = "chore-dishes-daily",
+                createdAt = "2026-03-28T12:00:00Z", // 1 day ago - due today, per the >= boundary below
+                participantMemberIds = listOf("member-alice"),
+            ),
+        )
+
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members,
+            chores = listOf(dailyChore),
+            completions = completions,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        assertThat(dashboard.staleChores.single().status).isEqualTo(ChoreStatus.NEEDS_ATTENTION)
+    }
+
+    @Test
+    fun `a chore reads needs-attention exactly on its due day, not only after it passes`() {
+        // Documents the existing daysSinceLastCompletion >= attentionThreshold boundary as
+        // intentional: a chore due "every 3 days" is expected to be done by day 3, so reaching
+        // day 3 with nothing logged already counts as needing attention (and triggers the stale
+        // chore reminder push), rather than waiting until day 4.
+        val everyThreeDaysChore = Chore(
+            id = "chore-laundry",
+            householdId = household.id,
+            name = "Laundry",
+            isActive = true,
+            createdAt = Instant.parse("2026-01-01T09:00:00Z"),
+            frequencyDays = 3,
+        )
+        val completions = listOf(
+            completion(
+                id = "c1",
+                choreId = "chore-laundry",
+                createdAt = "2026-03-26T12:00:00Z", // exactly 3 days ago
+                participantMemberIds = listOf("member-alice"),
+            ),
+        )
+
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members,
+            chores = listOf(everyThreeDaysChore),
+            completions = completions,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        assertThat(dashboard.staleChores.single().status).isEqualTo(ChoreStatus.NEEDS_ATTENTION)
+    }
+
     private fun completion(
         id: String,
         choreId: String,
