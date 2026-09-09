@@ -335,9 +335,16 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         } else {
             DEFAULT_NEEDS_ATTENTION_THRESHOLD_DAYS
         }
-        val soonThreshold = if (frequencyDays != null && frequencyDays > 0) {
-            // For a 1- or 2-day frequency, rounding frequencyDays * SOON_THRESHOLD_RATIO lands on
-            // attentionThreshold itself (e.g. frequencyDays=2 → round(1.6)=2), which made the
+        val soonThreshold = if (frequencyDays == 1) {
+            // A 1-day cycle has no integer day count strictly between "just done" (0) and "due"
+            // (1) to hold a distinct SOON phase - clamping to attentionThreshold - 1 (below) would
+            // give 0, which makes daysSinceLastCompletion >= soonThreshold true from the moment a
+            // chore is logged (day 0), so it could never read OK. Equal to attentionThreshold
+            // instead: SOON stays unreachable, but so does the false-overdue-on-day-0 read.
+            attentionThreshold
+        } else if (frequencyDays != null && frequencyDays > 0) {
+            // For a 2-day frequency, rounding frequencyDays * SOON_THRESHOLD_RATIO lands on
+            // attentionThreshold itself (frequencyDays=2 → round(1.6)=2), which made the
             // NEEDS_ATTENTION branch below always win first and SOON unreachable. Clamping below
             // attentionThreshold keeps SOON reachable for short frequencies too.
             (frequencyDays * SOON_THRESHOLD_RATIO).roundToInt().coerceAtMost(attentionThreshold - 1)
