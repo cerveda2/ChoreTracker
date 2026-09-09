@@ -101,6 +101,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
                 chores = chores,
                 members = members,
                 completions = periodCompletions,
+                allCompletions = activeCompletions,
             ),
             categoryComparisons = buildCategoryComparisons(
                 chores = chores,
@@ -245,13 +246,20 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         chores: List<Chore>,
         members: List<HouseholdMember>,
         completions: List<ChoreCompletion>,
+        allCompletions: List<ChoreCompletion>,
     ): List<ChoreComparison> = chores
         .filter { it.deletedAt == null }
         .sortedBy(Chore::name)
         .map { chore ->
             val choreCompletions = completions.filter { it.choreId == chore.id }
             val counts = buildCountsByMemberId(members, choreCompletions)
-            val lastCompleterIds = choreCompletions.maxByOrNull(ChoreCompletion::createdAt)
+            // Full history (allCompletions), not the period-filtered `completions` above - a
+            // low-cadence chore can easily have zero completions in the selected reporting
+            // period, which would otherwise make "whose turn" disappear (or flip) purely because
+            // of which period is selected, rather than reflecting who actually went last. Mirrors
+            // why staleChores/monthlyBreakdown above are also computed off unfiltered completions.
+            val lastCompleterIds = allCompletions.filter { it.choreId == chore.id }
+                .maxByOrNull(ChoreCompletion::createdAt)
                 ?.participantMemberIds
                 .orEmpty()
                 .toSet()

@@ -8,9 +8,9 @@ import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentDashboardUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveStaleChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreCategoryUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
@@ -19,8 +19,8 @@ import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
+import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.test.mock.sampleChore
-import cz.dcervenka.choretracker.core.test.mock.sampleDashboardSnapshot
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
@@ -55,7 +55,7 @@ class ChoresViewModelTest {
     lateinit var observeMembersUseCase: ObserveMembersUseCase
 
     @MockK
-    lateinit var observeCurrentDashboardUseCase: ObserveCurrentDashboardUseCase
+    lateinit var observeStaleChoresUseCase: ObserveStaleChoresUseCase
 
     @MockK
     lateinit var addChoreUseCase: AddChoreUseCase
@@ -84,7 +84,7 @@ class ChoresViewModelTest {
     private val householdFlow = MutableStateFlow<Household?>(null)
     private val choresFlow = MutableStateFlow(emptyList<Chore>())
     private val membersFlow = MutableStateFlow(emptyList<HouseholdMember>())
-    private val dashboardFlow = MutableStateFlow(sampleDashboardSnapshot())
+    private val staleChoresFlow = MutableStateFlow(emptyList<ChoreStaleness>())
 
     @Before
     fun setUp() {
@@ -92,11 +92,11 @@ class ChoresViewModelTest {
         householdFlow.value = null
         choresFlow.value = emptyList()
         membersFlow.value = emptyList()
-        dashboardFlow.value = sampleDashboardSnapshot()
+        staleChoresFlow.value = emptyList()
         every { observeCurrentHouseholdUseCase() } returns householdFlow
         every { observeChoresUseCase(any()) } answers { choresFlow }
         every { observeMembersUseCase(any()) } answers { membersFlow }
-        every { observeCurrentDashboardUseCase() } returns dashboardFlow
+        every { observeStaleChoresUseCase() } returns staleChoresFlow
         coEvery { addChoreUseCase(any(), any(), any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreNameUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreCategoryUseCase(any(), any()) } returns AppResult.Success(Unit)
@@ -268,7 +268,7 @@ private fun ChoresViewModelTest.createViewModel() = ChoresViewModel(
     observeCurrentHouseholdUseCase,
     observeChoresUseCase,
     observeMembersUseCase,
-    observeCurrentDashboardUseCase,
+    observeStaleChoresUseCase,
     addChoreUseCase,
     updateChoreNameUseCase,
     updateChoreCategoryUseCase,

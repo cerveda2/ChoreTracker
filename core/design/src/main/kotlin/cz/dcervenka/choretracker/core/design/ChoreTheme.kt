@@ -106,7 +106,16 @@ private val MemberColorD = Color(0xFF647C68)
 data class MemberPalette(
     private val colors: List<Color> = listOf(MemberColorA, MemberColorB, MemberColorC, MemberColorD),
 ) {
-    fun color(index: Int): Color = colors[index % colors.size]
+    // index.mod(), not %: Kotlin's % is sign-preserving, so a caller forwarding an unguarded -1
+    // (e.g. indexOf/indexOfFirst on an id no longer present) would otherwise crash with an
+    // IndexOutOfBoundsException instead of wrapping to a deterministic fallback color.
+    fun color(index: Int): Color = colors[index.mod(colors.size)]
+
+    // Resolves by id against a caller-supplied canonical ordering, rather than by whatever
+    // position a (possibly filtered/sorted) list happens to iterate in - so an avatar, a balance
+    // bar segment and a chart series for the same member always agree even when the list being
+    // drawn isn't in that canonical order.
+    fun colorFor(memberId: String, orderedIds: List<String>): Color = color(orderedIds.indexOf(memberId))
 }
 
 val LocalSpacing = staticCompositionLocalOf { ChoreSpacing() }

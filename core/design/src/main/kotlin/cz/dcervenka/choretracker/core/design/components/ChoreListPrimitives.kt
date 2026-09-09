@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -132,6 +134,9 @@ fun ChoreListRow(
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(start = 16.dp, top = 10.dp, end = 12.dp, bottom = 10.dp),
+    // Optional extra content below the subtitle - e.g. a progress/freshness indicator - so a
+    // screen that needs one doesn't have to hand-roll the rest of this row just to add it.
+    belowSubtitle: (@Composable () -> Unit)? = null,
 ) {
     val spacing = LocalSpacing.current
     Row(
@@ -164,6 +169,10 @@ fun ChoreListRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = subtitleColor,
                 )
+            }
+            if (belowSubtitle != null) {
+                Spacer(modifier = Modifier.height(spacing.xSmall))
+                belowSubtitle()
             }
         }
         trailing?.invoke()

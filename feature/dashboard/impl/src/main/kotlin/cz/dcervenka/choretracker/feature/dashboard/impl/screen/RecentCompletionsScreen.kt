@@ -269,7 +269,10 @@ private fun CompletionDateSection(
         ListGroup {
             completions.forEachIndexed { index, completion ->
                 if (index > 0) HorizontalDivider(modifier = Modifier.padding(horizontal = spacing.medium))
-                val avatarIndex = completion.participantMemberIds.firstOrNull()
+                // See RecentActivitySection - resolve against the same participant
+                // participantNames.firstOrNull() (below) came from, not just the first raw id.
+                val avatarIndex = completion.participantMemberIds
+                    .firstOrNull { it in memberIndexById }
                     ?.let { memberIndexById[it] }
                     ?: 0
                 ChoreListRow(

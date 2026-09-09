@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -42,6 +43,11 @@ internal fun MonthlyTrendCard(
     // chronologically, matching normal trend-chart convention.
     val displayMonths = months.asReversed()
     val maxCount = displayMonths.maxOfOrNull { it.totalCount }?.coerceAtLeast(1) ?: 1
+    // formatMonthAbbreviationForLocale builds a fresh SimpleDateFormat per call - precompute
+    // once per `months` change instead of once per recomposition of this whole card.
+    val monthLabels = remember(displayMonths) {
+        displayMonths.associate { it.monthLabel to formatMonthAbbreviationForLocale(it.monthLabel) }
+    }
 
     ListGroup(modifier = modifier) {
         Column(
@@ -104,7 +110,7 @@ internal fun MonthlyTrendCard(
                             }
                         }
                         Text(
-                            text = formatMonthAbbreviationForLocale(month.monthLabel),
+                            text = monthLabels.getValue(month.monthLabel),
                             style = MaterialTheme.typography.labelSmall,
                             color = labelColor,
                             maxLines = 1,

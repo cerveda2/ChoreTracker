@@ -8,14 +8,17 @@ import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentDashboardUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveStaleChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreCategoryUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
+import cz.dcervenka.choretracker.core.model.chore.Chore
+import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
+import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.feature.chores.impl.contract.ChoreFilter
 import cz.dcervenka.choretracker.feature.chores.impl.contract.ChoresUiEvent
 import cz.dcervenka.choretracker.feature.chores.impl.contract.ChoresUiIntent
@@ -40,7 +43,7 @@ class ChoresViewModel @Inject constructor(
     observeCurrentHouseholdUseCase: ObserveCurrentHouseholdUseCase,
     observeChoresUseCase: ObserveChoresUseCase,
     observeMembersUseCase: ObserveMembersUseCase,
-    observeCurrentDashboardUseCase: ObserveCurrentDashboardUseCase,
+    observeStaleChoresUseCase: ObserveStaleChoresUseCase,
     private val addChoreUseCase: AddChoreUseCase,
     private val updateChoreNameUseCase: UpdateChoreNameUseCase,
     private val updateChoreCategoryUseCase: UpdateChoreCategoryUseCase,
@@ -60,27 +63,39 @@ class ChoresViewModel @Inject constructor(
     private val filter = MutableStateFlow(ChoreFilter.ALL)
     private val query = MutableStateFlow("")
 
+    // Chores/members/staleness only - filter and query are cheap, UI-only fields that shouldn't
+    // force a re-fetch/re-filter of this data on every keystroke, so they're combined in
+    // downstream of it instead of inside the same combine.
     val uiState: StateFlow<ChoresUiState> = observeCurrentHouseholdUseCase()
         .filterNotNull()
         .flatMapLatest { household ->
             combine(
                 observeChoresUseCase(household.id),
                 observeMembersUseCase(household.id),
-                observeCurrentDashboardUseCase(),
-                filter,
-                query,
-            ) { chores, members, snapshot, currentFilter, currentQuery ->
-                ChoresUiState(
+                observeStaleChoresUseCase(),
+            ) { chores, members, staleChores ->
+                ChoresBaseData(
                     householdId = household.id,
                     chores = chores.filter { it.deletedAt == null },
-                    staleness = snapshot.staleChores.associateBy { it.choreId },
+                    staleness = staleChores.associateBy { it.choreId },
                     members = members,
                     isOwner = members.any { it.isCurrentUser && it.role == HouseholdRole.OWNER },
-                    filter = currentFilter,
-                    query = currentQuery,
                 )
             }
-        }.stateIn(
+        }
+        .combine(filter) { base, currentFilter -> base to currentFilter }
+        .combine(query) { (base, currentFilter), currentQuery ->
+            ChoresUiState(
+                householdId = base.householdId,
+                chores = base.chores,
+                staleness = base.staleness,
+                members = base.members,
+                isOwner = base.isOwner,
+                filter = currentFilter,
+                query = currentQuery,
+            )
+        }
+        .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = ChoresUiState(),
@@ -181,4 +196,12 @@ class ChoresViewModel @Inject constructor(
             }
         }
     }
+
+    private data class ChoresBaseData(
+        val householdId: String,
+        val chores: List<Chore>,
+        val staleness: Map<String, ChoreStaleness>,
+        val members: List<HouseholdMember>,
+        val isOwner: Boolean,
+    )
 }

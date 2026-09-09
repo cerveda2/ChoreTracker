@@ -56,7 +56,13 @@ internal fun RecentActivitySection(
             ListGroup {
                 completions.forEachIndexed { index, completion ->
                     if (index > 0) HorizontalDivider(modifier = Modifier.padding(horizontal = spacing.medium))
-                    val avatarIndex = completion.participantMemberIds.firstOrNull()
+                    // Resolve against the same participant participantNames.firstOrNull() (below)
+                    // came from - the leading id in participantMemberIds may belong to a member
+                    // no longer in the household (memberIndexById only covers current members),
+                    // in which case it's absent from participantNames too and this falls through
+                    // to whichever id comes next, keeping the avatar's color and initial in sync.
+                    val avatarIndex = completion.participantMemberIds
+                        .firstOrNull { it in memberIndexById }
                         ?.let { memberIndexById[it] }
                         ?: 0
                     ChoreListRow(

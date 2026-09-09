@@ -56,7 +56,7 @@
     <string name="dashboard_log_chore_suggested">Navrhovaná</string>
     <string name="dashboard_quick_log">Rychlé zaznamenání</string>
     <string name="dashboard_quick_log_empty_title">Zatím žádné aktivní úkoly</string>
-    <string name="dashboard_quick_log_empty_message">Přidejte úkoly v Nastavení a začněte zaznamenávat splnění z přehledu.</string>
+    <string name="dashboard_quick_log_empty_message">Přidejte úkoly v záložce Úkoly a začněte zaznamenávat splnění z přehledu.</string>
     <string name="dashboard_log">Zaznamenat</string>
     <string name="dashboard_recent_completions">Nedávná splnění</string>
     <string name="dashboard_all_completions">Všechna splnění</string>

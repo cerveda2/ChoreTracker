@@ -52,7 +52,7 @@
     <string name="dashboard_never_done">never</string>
     <string name="dashboard_quick_log">Quick log</string>
     <string name="dashboard_quick_log_empty_title">No active chores yet</string>
-    <string name="dashboard_quick_log_empty_message">Add a few chores in Settings to start logging completions from the dashboard.</string>
+    <string name="dashboard_quick_log_empty_message">Add a few chores in the Chores tab to start logging completions from the dashboard.</string>
     <string name="dashboard_log">Log</string>
     <string name="dashboard_log_chore_title">Log a Chore</string>
     <string name="dashboard_log_chore_suggested">Suggested</string>

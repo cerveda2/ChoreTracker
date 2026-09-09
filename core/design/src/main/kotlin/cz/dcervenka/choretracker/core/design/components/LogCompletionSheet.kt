@@ -88,18 +88,21 @@ fun LogCompletionSheet(
     val isYesterday = pickedDate == yesterday
     val isCustomDate = pickedDate != null && !isToday && !isYesterday
 
-    // DatePickerState.selectedDateMillis is UTC midnight of the picked calendar date, not local
-    // midnight - passing it straight through as an Instant (or reading one straight back into it)
-    // shifts the completion to the wrong local day for any timezone behind UTC. Re-anchor through
-    // the local calendar date on both sides of the picker instead.
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = (completedAt ?: Clock.System.now())
-            .toLocalDateTime(timeZone).date
-            .atStartOfDayIn(TimeZone.UTC)
-            .toEpochMilliseconds(),
-    )
-
     if (showDatePicker) {
+        // Created fresh each time the dialog opens (not hoisted above this `if`), so it always
+        // starts on the currently-picked day - e.g. tapping "Yesterday" then "Pick a date" opens
+        // on yesterday, not on whatever day was current the first time the sheet composed.
+        //
+        // DatePickerState.selectedDateMillis is UTC midnight of the picked calendar date, not
+        // local midnight - passing it straight through as an Instant (or reading one straight
+        // back into it) shifts the completion to the wrong local day for any timezone behind UTC.
+        // Re-anchor through the local calendar date on both sides of the picker instead.
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = (completedAt ?: Clock.System.now())
+                .toLocalDateTime(timeZone).date
+                .atStartOfDayIn(TimeZone.UTC)
+                .toEpochMilliseconds(),
+        )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {

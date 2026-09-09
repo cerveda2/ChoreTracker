@@ -1,24 +1,13 @@
 package cz.dcervenka.choretracker.feature.chores.impl.screen
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
+import cz.dcervenka.choretracker.core.design.components.ChoreListRow
 import cz.dcervenka.choretracker.core.design.components.DoneButton
 import cz.dcervenka.choretracker.core.design.components.FreshnessBar
 import cz.dcervenka.choretracker.core.design.components.IconCircle
@@ -33,7 +22,6 @@ internal fun freshnessFraction(daysSince: Int?, frequencyDays: Int?): Float? {
     return daysSince.toFloat() / frequencyDays.toFloat()
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun ChoreRow(
     chore: Chore,
@@ -42,7 +30,6 @@ internal fun ChoreRow(
     onOpenSheet: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val spacing = LocalSpacing.current
     // A paused chore keeps whatever staleness it had when paused, but shouldn't read as urgent -
     // no fraction at all means no freshness bar, no tertiary tint, and an outlined (not filled)
     // done button below.
@@ -51,54 +38,43 @@ internal fun ChoreRow(
     } else {
         null
     }
-    val freshnessColor = when {
-        fraction == null -> null
-        fraction >= 1f -> MaterialTheme.colorScheme.tertiary
-        fraction >= 0.8f -> MaterialTheme.colorScheme.secondary
-        else -> MaterialTheme.colorScheme.primary
+    // Paired up front so the FreshnessBar lambda below captures two definitely-non-null values,
+    // rather than the two separately-nullable locals a plain `if` would smart-cast awkwardly
+    // through a deferred composable lambda.
+    val freshness: Pair<Float, Color>? = fraction?.let { value ->
+        val color = when {
+            value >= 1f -> MaterialTheme.colorScheme.tertiary
+            value >= 0.8f -> MaterialTheme.colorScheme.secondary
+            else -> MaterialTheme.colorScheme.primary
+        }
+        value to color
     }
 
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .defaultMinSize(minHeight = 64.dp)
-            .combinedClickable(onClick = onOpenSheet)
-            .padding(start = 16.dp, top = 10.dp, end = 12.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(spacing.medium),
-    ) {
-        IconCircle(icon = chore.category.toIcon())
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(spacing.xSmall),
-        ) {
-            Text(
-                text = chore.name,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+    ChoreListRow(
+        modifier = modifier,
+        leading = { IconCircle(icon = chore.category.toIcon()) },
+        title = chore.name,
+        subtitle = choreRowSubtitle(chore, staleness),
+        subtitleColor = if (fraction != null && fraction >= 1f) {
+            MaterialTheme.colorScheme.tertiary
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        trailing = {
+            DoneButton(
+                filled = fraction != null && fraction >= 1f,
+                onClick = onQuickLog,
+                onLongClick = onOpenSheet,
+                contentDescription = stringResource(R.string.common_mark_done, chore.name),
             )
-            Text(
-                text = choreRowSubtitle(chore, staleness),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (fraction != null && fraction >= 1f) {
-                    MaterialTheme.colorScheme.tertiary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-            )
-            if (fraction != null && freshnessColor != null) {
-                FreshnessBar(fraction = fraction, color = freshnessColor)
+        },
+        onClick = onOpenSheet,
+        belowSubtitle = freshness?.let { (value, color) ->
+            {
+                FreshnessBar(fraction = value, color = color)
             }
-        }
-        DoneButton(
-            filled = fraction != null && fraction >= 1f,
-            onClick = onQuickLog,
-            onLongClick = onOpenSheet,
-            contentDescription = stringResource(R.string.common_mark_done, chore.name),
-        )
-    }
+        },
+    )
 }
 
 @Composable

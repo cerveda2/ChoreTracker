@@ -350,6 +350,34 @@ class HouseholdStatisticsCalculatorSharesTest {
     }
 
     @Test
+    fun `next turn uses full history, not the period filter`() {
+        // Alice's only completion is 56 days ago - well outside a WEEK period, so both members
+        // are tied at 0 within the period. Without full-history tie-breaking this would report
+        // no next turn at all, instead of correctly favoring Bob (who's never done it).
+        val completions = listOf(
+            completion(
+                id = "old",
+                choreId = "chore-dishes",
+                createdAt = "2026-02-01T12:00:00Z",
+                participantMemberIds = listOf("member-alice"),
+            ),
+        )
+
+        val stats = calculator.statsSnapshot(
+            household = household,
+            members = members,
+            chores = chores,
+            completions = completions,
+            period = StatsPeriod.WEEK,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        val dishes = stats.comparisons.first { it.choreName == "Dishes" }
+        assertThat(dishes.nextTurnMemberId).isEqualTo("member-bob")
+    }
+
+    @Test
     fun `period filtering leaves monthly breakdown and staleness unaffected`() {
         val completions = listOf(
             completion(

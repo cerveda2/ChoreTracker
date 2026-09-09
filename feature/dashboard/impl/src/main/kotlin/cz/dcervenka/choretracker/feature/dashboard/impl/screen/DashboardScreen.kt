@@ -65,6 +65,7 @@ fun DashboardScreen(
     onSeeAllCompletions: () -> Unit,
     onOpenCompletion: (String) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenChores: () -> Unit,
 ) {
     val spacing = LocalSpacing.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -133,13 +134,17 @@ fun DashboardScreen(
         val syncState = uiState.syncState
         val hasSyncIssue = syncState != null &&
             (syncState.pendingOperations > 0 || !syncState.lastErrorMessage.isNullOrBlank())
+        // Today's date, not a live clock - fixing it at first composition avoids reformatting
+        // (a fresh SimpleDateFormat per formatInstantForLocale call) on every unrelated
+        // recomposition of this screen.
+        val todayLabel = remember { formatInstantForLocale(Clock.System.now(), "EEEEdMMMM") }
 
         ChoreScaffold(
             snackbarHostState = snackbarHostState,
             topBar = {
                 ChoreLargeTopBar(
                     title = snapshot.household.name,
-                    subtitle = formatInstantForLocale(Clock.System.now(), "EEEEdMMMM"),
+                    subtitle = todayLabel,
                     actions = {
                         IconButton(onClick = { onIntent(DashboardUiIntent.RetrySync) }) {
                             Icon(
@@ -220,7 +225,7 @@ fun DashboardScreen(
                                     )
                                     PrimaryButton(
                                         text = stringResource(R.string.dashboard_add_first_chore),
-                                        onClick = onOpenSettings,
+                                        onClick = onOpenChores,
                                     )
                                 }
                             }
@@ -306,6 +311,7 @@ private fun DashboardScreenPreview() {
             onSeeAllCompletions = {},
             onOpenCompletion = {},
             onOpenSettings = {},
+            onOpenChores = {},
         )
     }
 }

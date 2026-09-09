@@ -40,8 +40,10 @@ import cz.dcervenka.choretracker.core.design.components.ExtendedFabReservedHeigh
 import cz.dcervenka.choretracker.core.design.components.ExtendedLogFab
 import cz.dcervenka.choretracker.core.design.components.ListGroup
 import cz.dcervenka.choretracker.core.design.components.LoadingState
+import cz.dcervenka.choretracker.core.design.components.LogCompletionSheet
 import cz.dcervenka.choretracker.core.design.components.SectionHeader
 import cz.dcervenka.choretracker.core.design.components.TopLevelBottomBarSpacer
+import cz.dcervenka.choretracker.core.design.rememberSaveableStringList
 import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
@@ -97,9 +99,19 @@ fun ChoresScreen(
     var searchExpanded by rememberSaveable { mutableStateOf(false) }
     var editingChoreId by rememberSaveable { mutableStateOf<String?>(null) }
     var showNewChoreSheet by rememberSaveable { mutableStateOf(false) }
+    var logChoreId by rememberSaveable { mutableStateOf<String?>(null) }
+    var logNote by rememberSaveable { mutableStateOf("") }
+    val logMembers = rememberSaveableStringList()
     val currentUserId = uiState.members.firstOrNull { it.isCurrentUser }?.id
     val overdueCount = uiState.chores.count { chore ->
         chore.isActive && uiState.staleness[chore.id]?.status == ChoreStatus.NEEDS_ATTENTION
+    }
+
+    val openLogSheet: (String) -> Unit = { choreId ->
+        logChoreId = choreId
+        logMembers.clear()
+        if (currentUserId != null) logMembers.add(currentUserId)
+        logNote = ""
     }
 
     val quickLog: (Chore) -> Unit = { chore ->
@@ -115,7 +127,11 @@ fun ChoresScreen(
                 ),
             )
         } else {
-            editingChoreId = chore.id
+            // Members not yet loaded, or the current user's own membership row momentarily
+            // absent - open the log-completion sheet (like the dashboard's quickLog fallback),
+            // not the chore editor, so this window can't be mistaken for a rename/frequency
+            // prompt.
+            openLogSheet(chore.id)
         }
     }
 
@@ -125,7 +141,14 @@ fun ChoresScreen(
             ChoreTopAppBar(
                 title = stringResource(R.string.chores_title),
                 actions = {
-                    IconButton(onClick = { searchExpanded = !searchExpanded }) {
+                    IconButton(
+                        onClick = {
+                            searchExpanded = !searchExpanded
+                            // Collapsing without clearing would leave the list silently filtered
+                            // by a query the user can no longer see or edit.
+                            if (!searchExpanded) onIntent(ChoresUiIntent.QueryChanged(""))
+                        },
+                    ) {
                         Icon(
                             imageVector = if (searchExpanded) Icons.Outlined.Close else Icons.Outlined.Search,
                             contentDescription = stringResource(R.string.chores_search_hint),
@@ -265,6 +288,36 @@ fun ChoresScreen(
                 showNewChoreSheet = false
             },
         )
+    }
+
+    val loggingChoreId = logChoreId
+    if (loggingChoreId != null && householdId != null) {
+        val loggingChore = uiState.chores.find { it.id == loggingChoreId }
+        if (loggingChore != null) {
+            LogCompletionSheet(
+                choreName = loggingChore.name,
+                category = loggingChore.category,
+                frequencyDays = loggingChore.frequencyDays,
+                daysSinceLastCompletion = uiState.staleness[loggingChoreId]?.daysSinceLastCompletion,
+                members = uiState.members,
+                selectedMemberIds = logMembers,
+                note = logNote,
+                onNoteChange = { logNote = it },
+                onDismiss = { logChoreId = null },
+                onConfirm = { completedAt ->
+                    onIntent(
+                        ChoresUiIntent.LogCompletion(
+                            householdId = householdId,
+                            choreId = loggingChoreId,
+                            participantIds = logMembers.toList(),
+                            note = logNote,
+                            completedAt = completedAt,
+                        ),
+                    )
+                    logChoreId = null
+                },
+            )
+        }
     }
 }
 

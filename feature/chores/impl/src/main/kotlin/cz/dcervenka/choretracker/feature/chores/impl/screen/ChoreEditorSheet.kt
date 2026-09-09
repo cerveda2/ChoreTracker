@@ -225,7 +225,7 @@ internal fun ChoreEditorSheet(
                             stringResource(R.string.common_save)
                         },
                         onClick = { onSave(name.trim(), category, frequencyDays, isActive) },
-                        enabled = name.isNotBlank(),
+                        enabled = name.isNotBlank() && (!customSelected || frequencyDays != null),
                     )
                     if (chore != null && onDelete != null) {
                         TextButton(

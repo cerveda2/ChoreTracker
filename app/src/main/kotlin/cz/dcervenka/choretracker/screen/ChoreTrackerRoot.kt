@@ -1,5 +1,6 @@
 package cz.dcervenka.choretracker.screen
 
+import android.graphics.drawable.ColorDrawable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -14,10 +15,14 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -34,6 +39,7 @@ import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.model.settings.ThemeMode
 import cz.dcervenka.choretracker.core.notifications.ui.NotificationPermissionRequest
 import cz.dcervenka.choretracker.feature.auth.impl.navigation.authScreen
+import cz.dcervenka.choretracker.feature.chores.impl.navigation.ChoresDestination
 import cz.dcervenka.choretracker.feature.chores.impl.navigation.choresScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.navigation.dashboardScreen
 import cz.dcervenka.choretracker.feature.onboarding.impl.navigation.onboardingScreen
@@ -70,10 +76,19 @@ fun ChoreTrackerRoot(
         }
     }
 
+    // The most recent RootDestination this effect has already navigated for. Seeded with
+    // whatever rootDestination already is on this composition's first frame (rememberSaveable
+    // restores that same value across a config change), so a rotation that doesn't cross a
+    // section boundary - e.g. while several screens deep in Settings - isn't mistaken for a
+    // fresh Auth/Onboarding/Main transition. Comparing against navController.currentDestination
+    // instead would force-navigate back to that section's start route on every rotation,
+    // clobbering the NavController's own restored back stack.
+    var lastHandledRootDestination by rememberSaveable { mutableStateOf(rootDestination) }
+
     LaunchedEffect(rootDestination) {
         if (rootDestination == RootDestination.Loading) return@LaunchedEffect
-        val activeRoute = navController.currentDestination?.route ?: navController.graph.findStartDestination().route
-        if (activeRoute == rootDestination.route) return@LaunchedEffect
+        if (rootDestination == lastHandledRootDestination) return@LaunchedEffect
+        lastHandledRootDestination = rootDestination
         navController.navigate(rootDestination.route) {
             popUpTo(navController.graph.findStartDestination().id) {
                 saveState = false
@@ -91,12 +106,19 @@ fun ChoreTrackerRoot(
     }
 
     // ComponentActivity + enableEdgeToEdge() gives no AppCompat/setDefaultNightMode hook, so the
-    // status/nav bar icon appearance has to be pushed explicitly whenever the effective theme
-    // (which can differ from the system setting - see ThemeMode above) changes.
+    // status/nav bar icon appearance and the window background (both otherwise driven by the
+    // -night resource qualifier, i.e. the system setting, not this screen's ThemeMode - which can
+    // disagree with it) have to be pushed explicitly whenever the effective theme changes. Keyed
+    // on darkTheme (not a plain SideEffect) so it runs once per actual change, not every
+    // recomposition. These colors mirror values/themes.xml and values-night/themes.xml.
     val view = LocalView.current
-    SideEffect {
-        val window = (view.context as? android.app.Activity)?.window ?: return@SideEffect
-        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+    LaunchedEffect(darkTheme, view) {
+        val window = (view.context as? android.app.Activity)?.window ?: return@LaunchedEffect
+        val insetsController = WindowCompat.getInsetsController(window, view)
+        insetsController.isAppearanceLightStatusBars = !darkTheme
+        insetsController.isAppearanceLightNavigationBars = !darkTheme
+        val windowBackground = if (darkTheme) Color(0xFF171311) else Color(0xFFF4EEE5)
+        window.setBackgroundDrawable(ColorDrawable(windowBackground.toArgb()))
     }
 
     ChoreTrackerTheme(darkTheme = darkTheme, useDynamicColor = themeSettings.dynamicColor) {
@@ -149,6 +171,7 @@ fun ChoreTrackerRoot(
                     dashboardScreen(
                         navController = navController,
                         onOpenSettings = { navigateToTab(SettingsDestination.route) },
+                        onOpenChores = { navigateToTab(ChoresDestination.route) },
                     )
                     choresScreen()
                     statsScreen(navController = navController)

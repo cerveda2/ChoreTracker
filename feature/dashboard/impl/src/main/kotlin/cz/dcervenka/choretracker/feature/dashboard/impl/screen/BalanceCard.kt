@@ -72,17 +72,23 @@ internal fun BalanceCard(
 private fun BalanceBody(balance: BalanceSummary, members: List<HouseholdMember>) {
     val spacing = LocalSpacing.current
     val palette = LocalMemberPalette.current
-    val leaderIndex = members.indexOfFirst { it.id == balance.leaderMemberId }.coerceAtLeast(0)
-    val laggingIndex = members.indexOfFirst { it.id == balance.laggingMemberId }.coerceAtLeast(0)
+    val memberIds = members.map { it.id }
     val total = balance.countsByMemberId.values.sum().coerceAtLeast(1)
+    // balance.leaderMemberId/laggingMemberId come from a HouseholdStatisticsCalculator snapshot
+    // that can lag one combine step behind this composable's own `members` (e.g. right after a
+    // removal), so the id may briefly not be in `members` - fall back to the first member rather
+    // than indexOfFirst+coerceAtLeast(0), which would keep that fallback's color but still label
+    // it with the (nonexistent) leader/lagging member's name.
+    val leaderMember = members.find { it.id == balance.leaderMemberId } ?: members.first()
+    val laggingMember = members.find { it.id == balance.laggingMemberId } ?: members.first()
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(spacing.medium),
     ) {
         MemberAvatar(
-            initial = members[leaderIndex].displayName.take(1),
-            color = palette.color(leaderIndex),
+            initial = leaderMember.displayName.take(1),
+            color = palette.colorFor(leaderMember.id, memberIds),
             size = 44.dp,
         )
         Column(
@@ -118,10 +124,10 @@ private fun BalanceBody(balance: BalanceSummary, members: List<HouseholdMember>)
                 }
             }
         }
-        if (laggingIndex != leaderIndex) {
+        if (laggingMember.id != leaderMember.id) {
             MemberAvatar(
-                initial = members[laggingIndex].displayName.take(1),
-                color = palette.color(laggingIndex),
+                initial = laggingMember.displayName.take(1),
+                color = palette.colorFor(laggingMember.id, memberIds),
                 size = 44.dp,
             )
         }

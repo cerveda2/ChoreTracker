@@ -29,6 +29,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -71,6 +72,9 @@ fun SettingsScreen(
 ) {
     val spacing = LocalSpacing.current
     val context = LocalContext.current
+    // The version never changes at runtime - appVersionName does a synchronous PackageManager
+    // IPC call, which shouldn't re-run on every recomposition of a LazyColumn item.
+    val appVersion = remember(context) { appVersionName(context) }
     var showSignOutConfirm by rememberSaveable { mutableStateOf(false) }
 
     val currentMemberIndex = uiState.members.indexOfFirst { it.isCurrentUser }
@@ -212,7 +216,7 @@ fun SettingsScreen(
                         ChoreListRow(
                             leading = { IconCircle(icon = Icons.Outlined.Info) },
                             title = stringResource(R.string.settings_about_title),
-                            subtitle = stringResource(R.string.settings_about_version, appVersionName(context)),
+                            subtitle = stringResource(R.string.settings_about_version, appVersion),
                         )
                     }
                 }
