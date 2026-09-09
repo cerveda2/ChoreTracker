@@ -13,12 +13,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Tab
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,18 +35,18 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
-import cz.dcervenka.choretracker.core.design.components.ChoreTabRow
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
-import cz.dcervenka.choretracker.core.design.components.ScreenHeader
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthMode
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiIntent
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiState
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthScreen(
     uiState: AuthUiState,
@@ -62,9 +65,14 @@ fun AuthScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(spacing.medium),
         ) {
-            ScreenHeader(
-                title = stringResource(R.string.auth_title),
-                subtitle = stringResource(R.string.auth_subtitle),
+            Text(
+                text = stringResource(R.string.auth_title),
+                style = MaterialTheme.typography.displaySmall,
+            )
+            Text(
+                text = stringResource(R.string.auth_subtitle),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (uiState.requiresConfiguration) {
                 Card {
@@ -75,21 +83,22 @@ fun AuthScreen(
                     )
                 }
             }
-            ChoreTabRow(selectedTabIndex = uiState.authMode.ordinal) {
-                AuthMode.entries.forEach { mode ->
-                    Tab(
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                AuthMode.entries.forEachIndexed { index, mode ->
+                    SegmentedButton(
                         selected = uiState.authMode == mode,
                         onClick = { onIntent(AuthUiIntent.AuthModeChanged(mode)) },
                         enabled = !uiState.isWorking,
-                        selectedContentColor = MaterialTheme.colorScheme.primary,
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        text = {
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = AuthMode.entries.size),
+                        label = {
                             Text(
                                 text = if (mode == AuthMode.SIGN_IN) {
                                     stringResource(R.string.auth_sign_in)
                                 } else {
                                     stringResource(R.string.auth_create_account)
                                 },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         },
                     )

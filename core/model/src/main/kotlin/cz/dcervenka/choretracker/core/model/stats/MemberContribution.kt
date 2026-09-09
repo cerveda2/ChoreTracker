@@ -5,6 +5,4 @@ data class MemberContribution(
     val displayName: String,
     val totalCount: Int,
     val last30DaysCount: Int,
-    val currentMonthCount: Int,
-    val sharePercent: Int,
 )

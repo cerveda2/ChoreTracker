@@ -26,8 +26,9 @@ import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
+import cz.dcervenka.choretracker.core.design.components.ListGroup
 import cz.dcervenka.choretracker.core.design.components.LoadingState
-import cz.dcervenka.choretracker.core.design.components.SectionCard
+import cz.dcervenka.choretracker.core.design.components.LogCompletionSheet
 import cz.dcervenka.choretracker.core.design.rememberSaveableStringList
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
@@ -79,10 +80,11 @@ fun RecentCompletionDetailScreen(
     }
 
     if (showEditSheet) {
-        LogCompletionBottomSheet(
-            uiState = uiState,
-            selectedMembers = editSelectedMembers,
-            selectedNote = editNote,
+        LogCompletionSheet(
+            choreName = completion.choreName,
+            members = uiState.members,
+            selectedMemberIds = editSelectedMembers,
+            note = editNote,
             onNoteChange = { editNote = it },
             onDismiss = { showEditSheet = false },
             onConfirm = { _ ->
@@ -128,11 +130,16 @@ fun RecentCompletionDetailScreen(
                 .padding(spacing.large),
             verticalArrangement = Arrangement.spacedBy(spacing.medium),
         ) {
-            SectionCard(title = stringResource(R.string.dashboard_completion_detail)) {
-                RecentCompletionContent(
-                    completion = completion,
-                    dateSkeleton = "yMMMdHm",
-                )
+            ListGroup {
+                Column(
+                    modifier = Modifier.padding(spacing.medium),
+                    verticalArrangement = Arrangement.spacedBy(spacing.xSmall),
+                ) {
+                    RecentCompletionContent(
+                        completion = completion,
+                        dateSkeleton = "yMMMdHm",
+                    )
+                }
             }
         }
     }

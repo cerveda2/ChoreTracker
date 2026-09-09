@@ -17,6 +17,8 @@ import cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel.DashboardViewM
 
 fun NavGraphBuilder.dashboardScreen(
     navController: NavHostController,
+    onOpenSettings: () -> Unit,
+    onOpenChores: () -> Unit,
 ) {
     composable(route = DashboardDestination.route) {
         val viewModel: DashboardViewModel = hiltViewModel()
@@ -34,6 +36,8 @@ fun NavGraphBuilder.dashboardScreen(
             onOpenCompletion = { completionId ->
                 navController.navigate(DashboardCompletionDetailDestination.createRoute(completionId))
             },
+            onOpenSettings = onOpenSettings,
+            onOpenChores = onOpenChores,
         )
     }
 

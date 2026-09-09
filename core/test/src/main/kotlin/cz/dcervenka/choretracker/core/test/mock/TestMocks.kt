@@ -11,8 +11,8 @@ import cz.dcervenka.choretracker.core.model.stats.DashboardSnapshot
 import cz.dcervenka.choretracker.core.model.stats.HouseholdSummary
 import cz.dcervenka.choretracker.core.model.stats.MemberContribution
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
+import cz.dcervenka.choretracker.core.model.stats.ShareBreakdown
 import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
-import cz.dcervenka.choretracker.core.model.stats.TopContributorResult
 import kotlin.time.Instant
 
 fun sampleHousehold(
@@ -71,16 +71,11 @@ private val sampleContribution = MemberContribution(
     displayName = "Dana",
     totalCount = 5,
     last30DaysCount = 3,
-    currentMonthCount = 2,
-    sharePercent = 100,
 )
 
 fun sampleDashboardSnapshot() = DashboardSnapshot(
     household = sampleHousehold(),
-    summary = HouseholdSummary(
-        totalCompletions = 5,
-        topContributor = TopContributorResult.Leader(sampleContribution.displayName, sampleContribution.sharePercent),
-    ),
+    summary = HouseholdSummary(totalCompletions = 5),
     memberContributions = listOf(sampleContribution),
     activeChores = emptyList(),
     recentCompletions = listOf(
@@ -98,8 +93,15 @@ fun sampleDashboardSnapshot() = DashboardSnapshot(
 
 fun sampleStatsSnapshot() = StatsSnapshot(
     household = sampleHousehold(),
-    summary = HouseholdSummary(totalCompletions = 0, topContributor = TopContributorResult.NoData),
+    summary = HouseholdSummary(totalCompletions = 0),
     memberContributions = emptyList(),
+    shareBreakdown = ShareBreakdown(
+        soloCountByMemberId = emptyMap(),
+        sharedCount = 0,
+        totalCount = 0,
+        percentByMemberId = emptyMap(),
+        togetherPercent = 0,
+    ),
     comparisons = emptyList(),
     categoryComparisons = emptyList(),
     monthlyBreakdown = emptyList(),

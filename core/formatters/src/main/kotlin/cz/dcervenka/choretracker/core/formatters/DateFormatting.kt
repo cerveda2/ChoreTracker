@@ -50,3 +50,23 @@ fun formatMonthLabelForLocale(
         ),
     )
 }
+
+// Short month-only label ("Mar", "bře") for compact chart axes - same "YYYY-MM" input as
+// formatMonthLabelForLocale, just without the year and with a shorter skeleton.
+fun formatMonthAbbreviationForLocale(
+    rawLabel: String,
+    locale: Locale = Locale.getDefault(),
+): String {
+    val year = rawLabel.substringBefore('-').toIntOrNull()
+    val month = rawLabel.substringAfter('-', "").toIntOrNull()
+    if (year == null || month == null) {
+        return rawLabel
+    }
+
+    val pattern = DateFormat.getBestDateTimePattern(locale, "MMM")
+    return SimpleDateFormat(pattern, locale).format(
+        Date(
+            java.util.GregorianCalendar(year, month - 1, 1).timeInMillis,
+        ),
+    )
+}

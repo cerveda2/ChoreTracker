@@ -1,6 +1,7 @@
 <resources>
     <string name="nav_home">Home</string>
-    <string name="nav_stats">Stats</string>
+    <string name="nav_chores">Chores</string>
+    <string name="nav_stats">Insights</string>
     <string name="nav_settings">Settings</string>
 
     <string name="auth_title">ChoreTracker</string>
@@ -20,14 +21,9 @@
     <string name="auth_validation_email_required">Email is required.</string>
     <string name="auth_validation_password_required">Password is required.</string>
     <string name="auth_validation_display_name_required">Display name is required.</string>
-    <string name="auth_firebase_not_ready">Firebase isn\'t configured yet.</string>
-    <string name="auth_sign_in_failed">Unable to sign in.</string>
-    <string name="auth_sign_up_failed">Unable to create account.</string>
-    <string name="auth_profile_update_failed">Unable to update profile.</string>
-    <string name="auth_missing_created_user">The Firebase account was created without a user instance.</string>
 
-    <string name="onboarding_title">Set up your household</string>
-    <string name="onboarding_subtitle">Create a fresh household or join one with an invite code. The local Room database is already the source of truth.</string>
+    <string name="onboarding_headline">Keep chores fair, without the nagging.</string>
+    <string name="onboarding_body">Log what you did in one tap, see who is carrying the load, and keep it balanced.</string>
     <string name="onboarding_restoring_title">Checking your existing household</string>
     <string name="onboarding_restoring_message">We\'re trying to restore your household from the cloud.</string>
     <string name="onboarding_restore_failed_title">We couldn\'t restore your household</string>
@@ -35,15 +31,15 @@
     <string name="onboarding_your_name">Your name</string>
     <string name="onboarding_household_name">Household name</string>
     <string name="onboarding_create_household">Create household</string>
+    <string name="onboarding_create_new">Create a new household</string>
     <string name="onboarding_invite_code">Invite code</string>
+    <string name="onboarding_helper">Ask your partner for their code, or scan the QR from their Settings.</string>
+    <string name="onboarding_footnote">You can rename it and invite your partner afterwards.</string>
     <string name="onboarding_join_household">Join household</string>
-    <string name="onboarding_scan_qr_code">Scan QR code</string>
-    <string name="onboarding_enter_code_manually">Enter code manually</string>
+    <string name="onboarding_scan">Scan QR code</string>
     <string name="onboarding_qr_scan_retry">Tap to scan again</string>
 
     <string name="dashboard_loading">Loading dashboard…</string>
-    <string name="dashboard_recent_balance">Recent balance and task flow</string>
-    <string name="dashboard_title">Dashboard</string>
     <string name="dashboard_sync_failed_title">Remote sync needs attention</string>
     <string name="dashboard_sync_failed_permissions">We couldn\'t upload your latest changes because the server rejected the request. Your changes are still saved on this device.</string>
     <string name="dashboard_sync_failed_generic">We couldn\'t upload your latest changes. Your changes are still saved on this device and we\'ll keep trying.</string>
@@ -52,26 +48,13 @@
         <item quantity="one">We still need to upload %1$d local change to your household.</item>
         <item quantity="other">We still need to upload %1$d local changes to your household.</item>
     </plurals>
-    <string name="dashboard_last_30d">last 30d: %1$d</string>
-    <string name="dashboard_share_percent">%1$d%%</string>
     <string name="dashboard_days_ago">%1$dd ago</string>
     <string name="dashboard_never_done">never</string>
-    <string name="dashboard_log_date">Date: %1$s</string>
-    <string name="dashboard_log_date_today">today</string>
-    <plurals name="stats_summary_total">
-        <item quantity="one">%1$d total completion</item>
-        <item quantity="other">%1$d total completions</item>
-    </plurals>
-    <string name="stats_summary_top_contributor">Top contributor: %1$s (%2$d%%)</string>
-    <string name="stats_summary_tie">Top contributor: tied</string>
-    <string name="stats_summary_no_data">No completions yet</string>
     <string name="dashboard_quick_log">Quick log</string>
-    <string name="dashboard_record_prompt">Tap to log for you. Hold for options.</string>
     <string name="dashboard_quick_log_empty_title">No active chores yet</string>
-    <string name="dashboard_quick_log_empty_message">Add a few chores in Settings to start logging completions from the dashboard.</string>
+    <string name="dashboard_quick_log_empty_message">Add a few chores in the Chores tab to start logging completions from the dashboard.</string>
     <string name="dashboard_log">Log</string>
     <string name="dashboard_log_chore_title">Log a Chore</string>
-    <string name="dashboard_log_chore_fab">Log chore</string>
     <string name="dashboard_log_chore_suggested">Suggested</string>
     <string name="dashboard_recent_completions">Recent completions</string>
     <string name="dashboard_all_completions">All completions</string>
@@ -79,23 +62,56 @@
     <string name="dashboard_completions_yesterday">Yesterday</string>
     <string name="dashboard_recent_completions_empty_title">No completions yet</string>
     <string name="dashboard_recent_completions_empty_message">Once someone logs a chore, it will appear here with the latest activity first.</string>
-    <string name="dashboard_completion_detail">Completion details</string>
     <string name="dashboard_completion_loading">Loading completion…</string>
     <string name="dashboard_completion_delete_title">Delete this completion?</string>
     <string name="dashboard_completion_delete_message">This removes the logged entry. The chore itself is not affected.</string>
     <string name="dashboard_completion_action_error">Something went wrong</string>
-    <string name="dashboard_needs_attention">Needs attention</string>
-    <string name="dashboard_stale_chip">%1$s: %2$s</string>
-    <plurals name="dashboard_stale_last_done">
-        <item quantity="one">Last done %1$s (%2$d day ago)</item>
-        <item quantity="other">Last done %1$s (%2$d days ago)</item>
-    </plurals>
-    <string name="dashboard_stale_never_done">This chore has not been completed yet.</string>
-    <string name="dashboard_needs_attention_empty">Everything looks up to date right now.</string>
-    <string name="dashboard_log_completion">Log completion</string>
     <string name="dashboard_edit_completion">Edit completion</string>
-    <string name="dashboard_who_completed">Who completed this chore?</string>
-    <string name="dashboard_note">Note</string>
+    <string name="dashboard_balance_title">Balance</string>
+    <string name="dashboard_balance_period">Last 30 days</string>
+    <string name="dashboard_balance_even">Nearly even.</string>
+    <plurals name="dashboard_balance_behind">
+        <item quantity="one">%1$s is carrying more. %2$s is %3$d chore behind.</item>
+        <item quantity="other">%1$s is carrying more. %2$s is %3$d chores behind.</item>
+    </plurals>
+    <string name="dashboard_overdue">Overdue</string>
+    <string name="dashboard_due_soon">Due soon</string>
+    <string name="dashboard_recent_activity">Recent activity</string>
+    <plurals name="dashboard_days_since_last">
+        <item quantity="one">%1$d day since last</item>
+        <item quantity="other">%1$d days since last</item>
+    </plurals>
+    <plurals name="dashboard_due_in_days">
+        <item quantity="one">Due in %1$d day</item>
+        <item quantity="other">Due in %1$d days</item>
+    </plurals>
+    <string name="dashboard_did_it_last">%1$s did it last</string>
+    <string name="dashboard_not_done_yet">Not done yet</string>
+    <string name="dashboard_activity_row">%1$s \u00B7 %2$s</string>
+    <string name="dashboard_activity_note_quoted">\u201C%1$s\u201D</string>
+    <string name="dashboard_add_first_chore">Add a chore</string>
+    <string name="dashboard_home_empty_title">No chores yet</string>
+    <string name="dashboard_home_empty_message">Add your first chore to start tracking who does what.</string>
+    <string name="dashboard_sync_ok">Synced</string>
+    <string name="dashboard_sync_issue">Sync needs attention</string>
+    <string name="dashboard_open_settings">Open settings</string>
+    <string name="log_sheet_who">WHO DID IT</string>
+    <string name="log_sheet_everyone">Everyone</string>
+    <string name="log_sheet_when">WHEN</string>
+    <string name="log_sheet_today">Today</string>
+    <string name="log_sheet_yesterday">Yesterday</string>
+    <string name="log_sheet_pick_date">Pick a date</string>
+    <string name="log_sheet_note_hint">Add a note (optional)</string>
+    <string name="log_sheet_submit">Log %1$s</string>
+    <string name="log_sheet_meta_never_done">not done yet</string>
+    <plurals name="log_sheet_meta_frequency">
+        <item quantity="one">every %1$d day</item>
+        <item quantity="other">every %1$d days</item>
+    </plurals>
+    <plurals name="log_sheet_meta_last_done">
+        <item quantity="one">last done %1$d day ago</item>
+        <item quantity="other">last done %1$d days ago</item>
+    </plurals>
     <string name="dashboard_see_all">See all</string>
     <string name="dashboard_filter_all">All</string>
     <string name="dashboard_filter_action">Filter</string>
@@ -103,7 +119,6 @@
     <string name="dashboard_filter_by_chore">Chore</string>
 
     <string name="household_title">Household</string>
-    <string name="household_active_invite">Active invite: %1$s</string>
     <string name="household_no_household">No household yet</string>
     <string name="household_refresh_invite">Refresh invite</string>
     <string name="household_members">Members</string>
@@ -113,23 +128,9 @@
     <string name="household_role_member">member</string>
     <string name="household_new_member">New member</string>
     <string name="household_add_member">Add member</string>
-    <string name="household_chores">Chores</string>
-    <string name="household_new_chore">New chore</string>
-    <string name="household_add_chore">Add chore</string>
-    <string name="household_delete_chore">Delete chore</string>
-    <string name="household_delete_chore_title">Delete this chore?</string>
-    <string name="household_delete_chore_message">This removes the chore from active planning while keeping existing completion history readable.</string>
     <string name="household_delete_member">Remove member</string>
     <string name="household_delete_member_title">Remove this member?</string>
     <string name="household_delete_member_message">This removes the member from the household. Their completion history remains visible.</string>
-    <plurals name="household_member_count">
-        <item quantity="one">%1$d member</item>
-        <item quantity="other">%1$d members</item>
-    </plurals>
-    <plurals name="household_chore_count">
-        <item quantity="one">%1$d chore</item>
-        <item quantity="other">%1$d chores</item>
-    </plurals>
     <string name="household_invite_section">Invite</string>
     <string name="settings_invite_none">No active invite code. Tap Refresh invite to generate one.</string>
     <string name="settings_invite_copy">Copy code</string>
@@ -145,82 +146,62 @@
     <string name="settings_member_invite_title">Invite for %1$s</string>
     <string name="settings_member_invite_action">Generate invite link</string>
 
-    <string name="stats_loading">Loading statistics…</string>
-    <string name="stats_title">Statistics</string>
-    <string name="stats_tab_summary">Summary</string>
-    <string name="stats_tab_by_chore">By chore</string>
-    <string name="stats_tab_by_category">By category</string>
-    <string name="stats_tab_monthly">Monthly</string>
+    <string name="stats_loading">Loading insights…</string>
+    <string name="stats_title">Insights</string>
     <string name="stats_empty_title">Not enough data yet</string>
     <string name="stats_empty_message">Statistics will appear after a few chores have been completed in your household.</string>
-    <string name="stats_per_chore_comparison">Per chore comparison</string>
-    <string name="stats_per_chore_empty_title">No chore comparisons yet</string>
-    <string name="stats_per_chore_empty_message">Start logging chores and we’ll break down who is doing what for each one.</string>
-    <string name="stats_member_count">%1$s: %2$d</string>
-    <string name="stats_leader">Leader: %1$s</string>
-    <string name="stats_leader_no_data">No data</string>
-    <string name="stats_leader_tie">Tie</string>
-    <string name="stats_monthly_breakdown">Monthly breakdown</string>
-    <string name="stats_monthly_trend">Monthly trend</string>
-    <string name="stats_monthly_empty_title">No monthly trend yet</string>
-    <string name="stats_monthly_empty_message">Once completions span a few dates, the monthly history will appear here.</string>
-    <string name="stats_total_count">Total completions: %1$d</string>
-    <string name="stats_summary_members_title">Household contribution</string>
-    <string name="stats_summary_members_empty">No member activity yet.</string>
-    <string name="stats_summary_member_line">%1$s • %2$d total • %3$d%% share</string>
-    <string name="stats_summary_member_subline">Last 30 days: %1$d • This month: %2$d</string>
-    <string name="stats_summary_attention_title">Needs attention</string>
-    <string name="stats_summary_attention_empty">No stale chores right now.</string>
-    <string name="stats_summary_attention_line">%1$s • %2$s</string>
-    <string name="stats_stale_never">Never completed</string>
-    <plurals name="stats_stale_days_ago">
-        <item quantity="one">%1$d day ago</item>
-        <item quantity="other">%1$d days ago</item>
-    </plurals>
-    <string name="stats_stale_soon">Due soon</string>
-    <string name="stats_stale_ok">On track</string>
     <plurals name="stats_category_chore_count">
         <item quantity="one">%1$d chore</item>
         <item quantity="other">%1$d chores</item>
     </plurals>
-    <string name="stats_category_empty_title">No category data yet</string>
-    <string name="stats_category_empty_message">Log some chores and category trends will appear here.</string>
     <string name="stats_chore_history_empty_title">No completions yet</string>
     <string name="stats_chore_history_empty_message">Completions for this chore will appear here once someone logs it.</string>
     <string name="stats_chore_history_unknown">Unknown</string>
+    <string name="stats_period_week">Week</string>
+    <string name="stats_period_month">Month</string>
+    <string name="stats_period_six_months">6 months</string>
+    <string name="stats_period_all">All</string>
+    <string name="stats_share_title">Share of work</string>
+    <string name="stats_share_together">Together</string>
+    <plurals name="stats_share_caption">
+        <item quantity="one">%1$d chore logged</item>
+        <item quantity="other">%1$d chores logged</item>
+    </plurals>
+    <string name="stats_last_six_months">Last 6 months</string>
+    <string name="stats_split_by_type">Split by type</string>
+    <string name="stats_by_chore">By chore</string>
+    <string name="stats_turn">Next: %1$s</string>
 
     <string name="settings_title">Settings</string>
-    <string name="settings_overview">Overview</string>
-    <string name="settings_profile_title">Profile</string>
-    <string name="settings_household_title">Household</string>
+    <string name="settings_preferences_group">Preferences</string>
     <string name="settings_manage_household_title">Manage household</string>
     <string name="settings_manage_members_title">Manage members</string>
-    <string name="settings_manage_chores_title">Manage chores</string>
     <string name="settings_account_title">Account</string>
     <string name="settings_household_name">Household name</string>
     <string name="settings_save_household_name">Save household name</string>
     <string name="settings_invite_code">Invite code: %1$s</string>
-    <string name="settings_account_actions">Account</string>
-    <string name="settings_current_profile">Current profile: %1$s</string>
-    <string name="settings_profile_description">Signed in as %1$s</string>
+    <string name="settings_invite_partner_title">Invite a household member</string>
+    <string name="settings_profile_email_role">%1$s · %2$s</string>
     <string name="settings_account_display_name_label">Display name</string>
     <string name="settings_account_email_label">Email</string>
     <string name="settings_account_email_supporting">Your sign-in email can’t be changed here.</string>
     <string name="settings_save_display_name">Save display name</string>
-    <string name="settings_household_description">%1$s</string>
     <plurals name="settings_members_description">
         <item quantity="one">%1$d active household member</item>
         <item quantity="other">%1$d active household members</item>
     </plurals>
-    <plurals name="settings_chores_description">
-        <item quantity="one">%1$d chore available for tracking</item>
-        <item quantity="other">%1$d chores available for tracking</item>
-    </plurals>
-    <string name="settings_account_description">Sign out and app preferences</string>
     <string name="settings_language_title">Language</string>
     <string name="settings_language_description">App display language</string>
+    <string name="settings_theme_title">Theme</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_dynamic_color">Use wallpaper colors</string>
+    <string name="settings_about_title">About</string>
+    <string name="settings_about_version">Version %1$s</string>
     <string name="settings_notifications_title">Notifications</string>
-    <string name="settings_notifications_description">Chore reminder settings</string>
+    <string name="settings_notifications_summary_on">Daily at %1$s</string>
+    <string name="settings_notifications_summary_off">Off</string>
     <string name="settings_notifications_loading">Loading notification settings…</string>
     <string name="settings_notifications_reminders_section">Chore reminders</string>
     <string name="settings_notifications_enabled_label">Enable reminders</string>
@@ -228,48 +209,54 @@
     <string name="settings_notifications_time_label">Reminder time</string>
     <string name="settings_notifications_time_confirm">Set</string>
     <string name="settings_notifications_invite_section">Household invites</string>
-    <string name="settings_notifications_invite_enabled_label">Notify me when someone joins</string>
+    <string name="settings_notifications_invite_enabled_label">Invite accepted</string>
     <string name="settings_notifications_invite_enabled_description">Get a push notification when someone accepts your invite</string>
     <string name="settings_household_empty_title">No household selected</string>
     <string name="settings_household_empty_message">Create or join a household during onboarding to manage its name and invite code here.</string>
     <string name="settings_members_empty_title">No members yet</string>
     <string name="settings_members_empty_message">Invite or add household members so chores can be assigned and tracked together.</string>
-    <string name="settings_chores_empty_title">No chores yet</string>
-    <string name="settings_chores_empty_message">Create your first chore to unlock quick logging, recent activity, and household statistics.</string>
-    <string name="settings_theme_note">Warm Utility is the current app theme.</string>
     <string name="settings_sign_out">Sign out</string>
     <string name="settings_sign_out_supporting">Sign out of this device and return to the authentication flow.</string>
+    <string name="settings_sign_out_confirm_title">Sign out?</string>
     <string name="settings_loading">Loading…</string>
     <string name="settings_signed_out">Signed out</string>
     <string name="settings_firebase_required">Firebase setup required</string>
     <string name="settings_not_configured_summary">Complete app setup first to unlock household settings.</string>
     <string name="settings_no_household_summary">Create or join a household to manage members and chores.</string>
-    <string name="settings_profile_section">Profile &amp; status</string>
-    <string name="settings_management_section">Household management</string>
-    <string name="settings_account_section">Preferences</string>
 
-    <plurals name="settings_chore_frequency_every_n_days">
-        <item quantity="one">Every %1$d day</item>
-        <item quantity="other">Every %1$d days</item>
-    </plurals>
-    <string name="settings_chore_frequency_not_set">No frequency</string>
-    <string name="settings_chore_set_frequency_title">Set frequency</string>
-    <string name="settings_chore_set_frequency_hint">Days between completions</string>
-    <string name="settings_chore_clear_frequency">Clear</string>
-    <string name="settings_chore_rename_title">Rename chore</string>
-    <string name="settings_chore_rename_hint">Chore name</string>
-    <string name="settings_chore_search_hint">Search chores</string>
-    <string name="settings_chore_group_status">Status</string>
-    <string name="settings_chore_active">Active</string>
-    <string name="settings_chore_inactive">Inactive</string>
-    <string name="settings_feedback_chore_added">Chore added</string>
-    <string name="settings_feedback_chore_deleted">Chore deleted</string>
-    <string name="settings_feedback_chore_saved">Saved</string>
     <string name="settings_feedback_member_added">Member added</string>
     <string name="settings_feedback_member_deleted">Member removed</string>
     <string name="settings_feedback_name_saved">Name saved</string>
     <string name="settings_feedback_error">Something went wrong</string>
-    <string name="settings_chore_category_title">Category</string>
+
+    <string name="chores_title">Chores</string>
+    <string name="chores_new_chore">New chore</string>
+    <string name="chores_search_hint">Search chores</string>
+    <string name="chores_empty_title">No chores yet</string>
+    <string name="chores_empty_message">Add your first chore to start tracking who does what.</string>
+    <string name="chores_filter_empty_title">No chores here</string>
+    <string name="chores_filter_empty_message">Nothing matches this filter. Try a different one or clear your search.</string>
+    <string name="chores_filter_all">All</string>
+    <string name="chores_filter_overdue">Overdue</string>
+    <string name="chores_filter_overdue_count">Overdue · %1$d</string>
+    <string name="chores_filter_due_soon">Due soon</string>
+    <string name="chores_filter_paused">Paused</string>
+    <string name="chores_no_schedule">No schedule</string>
+    <string name="chores_editor_name_hint">Chore name</string>
+    <string name="chores_editor_category_label">Category</string>
+    <string name="chores_editor_frequency_label">Frequency</string>
+    <string name="chores_editor_frequency_none">None</string>
+    <string name="chores_editor_frequency_daily">Daily</string>
+    <string name="chores_editor_frequency_weekly">Weekly</string>
+    <string name="chores_editor_frequency_custom">Custom</string>
+    <string name="chores_editor_frequency_custom_hint">Days between completions</string>
+    <string name="chores_editor_add_action">Add chore</string>
+    <string name="chores_delete_title">Delete this chore?</string>
+    <string name="chores_delete_message">This removes the chore from active planning while keeping existing completion history readable.</string>
+    <string name="chores_feedback_added">Chore added</string>
+    <string name="chores_feedback_saved">Saved</string>
+    <string name="chores_feedback_deleted">Chore deleted</string>
+
     <string name="chore_category_cleaning">Cleaning</string>
     <string name="chore_category_cooking">Cooking</string>
     <string name="chore_category_shopping">Shopping</string>
@@ -304,6 +291,7 @@
     <string name="common_loading_app">Loading app…</string>
     <string name="common_retry">Retry</string>
     <string name="common_undo">Undo</string>
+    <string name="common_mark_done">Mark %1$s done</string>
 
     <string name="dashboard_logged_snackbar">Logged: %s</string>
 </resources>

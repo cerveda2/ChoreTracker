@@ -1,9 +1,11 @@
 package cz.dcervenka.choretracker.screen
 
+import android.graphics.drawable.ColorDrawable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -19,8 +21,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -30,10 +36,14 @@ import androidx.navigation.compose.rememberNavController
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.LoadingState
+import cz.dcervenka.choretracker.core.model.settings.ThemeMode
 import cz.dcervenka.choretracker.core.notifications.ui.NotificationPermissionRequest
 import cz.dcervenka.choretracker.feature.auth.impl.navigation.authScreen
+import cz.dcervenka.choretracker.feature.chores.impl.navigation.ChoresDestination
+import cz.dcervenka.choretracker.feature.chores.impl.navigation.choresScreen
 import cz.dcervenka.choretracker.feature.dashboard.impl.navigation.dashboardScreen
 import cz.dcervenka.choretracker.feature.onboarding.impl.navigation.onboardingScreen
+import cz.dcervenka.choretracker.feature.settings.impl.navigation.SettingsDestination
 import cz.dcervenka.choretracker.feature.settings.impl.navigation.settingsScreen
 import cz.dcervenka.choretracker.feature.stats.impl.navigation.statsScreen
 import cz.dcervenka.choretracker.navigation.RootDestination
@@ -46,6 +56,7 @@ fun ChoreTrackerRoot(
 ) {
     val navController = rememberNavController()
     val rootDestination by viewModel.rootDestination.collectAsStateWithLifecycle()
+    val themeSettings by viewModel.themeSettings.collectAsStateWithLifecycle()
     val startDestination = remember(rootDestination) {
         rootDestination.takeIf { it != RootDestination.Loading }?.route
     }
@@ -53,6 +64,17 @@ fun ChoreTrackerRoot(
     val currentDestination = navBackStackEntry?.destination
     val currentRoute = currentDestination?.route
     val showBottomBar = topLevelDestinations.any { destination -> currentRoute == destination.route }
+    // Shared by the bottom nav bar's own tab switches and Home's avatar-to-Settings shortcut, so
+    // both go through the same save/restore-state semantics rather than a plain navigate(route).
+    val navigateToTab: (String) -> Unit = { route ->
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id) {
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     // The most recent RootDestination this effect has already navigated for. Seeded with
     // whatever rootDestination already is on this composition's first frame (rememberSaveable
@@ -76,7 +98,30 @@ fun ChoreTrackerRoot(
         }
     }
 
-    ChoreTrackerTheme {
+    val systemDarkTheme = isSystemInDarkTheme()
+    val darkTheme = when (themeSettings.mode) {
+        ThemeMode.SYSTEM -> systemDarkTheme
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+
+    // ComponentActivity + enableEdgeToEdge() gives no AppCompat/setDefaultNightMode hook, so the
+    // status/nav bar icon appearance and the window background (both otherwise driven by the
+    // -night resource qualifier, i.e. the system setting, not this screen's ThemeMode - which can
+    // disagree with it) have to be pushed explicitly whenever the effective theme changes. Keyed
+    // on darkTheme (not a plain SideEffect) so it runs once per actual change, not every
+    // recomposition. These colors mirror values/themes.xml and values-night/themes.xml.
+    val view = LocalView.current
+    LaunchedEffect(darkTheme, view) {
+        val window = (view.context as? android.app.Activity)?.window ?: return@LaunchedEffect
+        val insetsController = WindowCompat.getInsetsController(window, view)
+        insetsController.isAppearanceLightStatusBars = !darkTheme
+        insetsController.isAppearanceLightNavigationBars = !darkTheme
+        val windowBackground = if (darkTheme) Color(0xFF171311) else Color(0xFFF4EEE5)
+        window.setBackgroundDrawable(ColorDrawable(windowBackground.toArgb()))
+    }
+
+    ChoreTrackerTheme(darkTheme = darkTheme, useDynamicColor = themeSettings.dynamicColor) {
         ChoreScaffold(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
@@ -85,31 +130,20 @@ fun ChoreTrackerRoot(
                     enter = fadeIn(tween(300)),
                     exit = fadeOut(tween(300)),
                 ) {
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        tonalElevation = 0.dp,
-                    ) {
+                    NavigationBar(tonalElevation = 0.dp) {
                         topLevelDestinations.forEach { destination ->
                             val selected = currentRoute == destination.route
                             NavigationBarItem(
                                 selected = selected,
-                                onClick = {
-                                    navController.navigate(destination.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
+                                onClick = { navigateToTab(destination.route) },
                                 icon = { Icon(destination.icon, contentDescription = null) },
                                 label = { Text(stringResource(destination.labelRes)) },
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    selectedTextColor = MaterialTheme.colorScheme.onPrimaryContainer,
                                     unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                     unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    indicatorColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
                                 ),
                             )
                         }
@@ -134,7 +168,12 @@ fun ChoreTrackerRoot(
                 ) {
                     authScreen()
                     onboardingScreen(navController = navController)
-                    dashboardScreen(navController = navController)
+                    dashboardScreen(
+                        navController = navController,
+                        onOpenSettings = { navigateToTab(SettingsDestination.route) },
+                        onOpenChores = { navigateToTab(ChoresDestination.route) },
+                    )
+                    choresScreen()
                     statsScreen(navController = navController)
                     settingsScreen(navController = navController)
                 }

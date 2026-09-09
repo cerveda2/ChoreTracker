@@ -12,8 +12,10 @@ import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
 import cz.dcervenka.choretracker.core.data.contract.InviteNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.data.contract.ReminderSettingsRepository
 import cz.dcervenka.choretracker.core.data.contract.StatsRepository
+import cz.dcervenka.choretracker.core.data.contract.ThemeSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.DataStoreInviteNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.DataStoreReminderSettingsRepository
+import cz.dcervenka.choretracker.core.data.repository.DataStoreThemeSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstChoreCompletionRepository
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstChoreRepository
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstHouseholdRepository
@@ -35,6 +37,10 @@ annotation class ReminderSettingsDataStore
 @Qualifier
 @Retention(AnnotationRetention.RUNTIME)
 annotation class InviteNotificationSettingsDataStore
+
+@Qualifier
+@Retention(AnnotationRetention.RUNTIME)
+annotation class ThemeSettingsDataStore
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -66,6 +72,9 @@ abstract class DataRepositoryModule {
         impl: DataStoreInviteNotificationSettingsRepository,
     ): InviteNotificationSettingsRepository
 
+    @Binds
+    abstract fun bindThemeSettingsRepository(impl: DataStoreThemeSettingsRepository): ThemeSettingsRepository
+
     companion object {
         @Provides
         @Singleton
@@ -83,5 +92,13 @@ abstract class DataRepositoryModule {
         ): DataStore<Preferences> = PreferenceDataStoreFactory.create(
             produceFile = { context.preferencesDataStoreFile("invite_notification_settings") },
         )
+
+        @Provides
+        @Singleton
+        @ThemeSettingsDataStore
+        fun provideThemeSettingsDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
+            PreferenceDataStoreFactory.create(
+                produceFile = { context.preferencesDataStoreFile("theme_settings") },
+            )
     }
 }

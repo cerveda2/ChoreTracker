@@ -4,6 +4,7 @@ import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
+import cz.dcervenka.choretracker.core.model.stats.BalanceSummary
 import cz.dcervenka.choretracker.core.model.stats.CategoryComparison
 import cz.dcervenka.choretracker.core.model.stats.ChoreComparison
 import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
@@ -14,8 +15,9 @@ import cz.dcervenka.choretracker.core.model.stats.HouseholdSummary
 import cz.dcervenka.choretracker.core.model.stats.MemberContribution
 import cz.dcervenka.choretracker.core.model.stats.MonthlyBreakdown
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
+import cz.dcervenka.choretracker.core.model.stats.ShareBreakdown
+import cz.dcervenka.choretracker.core.model.stats.StatsPeriod
 import cz.dcervenka.choretracker.core.model.stats.StatsSnapshot
-import cz.dcervenka.choretracker.core.model.stats.TopContributorResult
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -29,6 +31,7 @@ private const val DEFAULT_NEEDS_ATTENTION_THRESHOLD_DAYS = 14
 private const val DEFAULT_SOON_THRESHOLD_DAYS = 7
 private const val SOON_THRESHOLD_RATIO = 0.8
 private const val MONTHLY_BREAKDOWN_LIMIT = 6
+private const val PERCENT_TOTAL = 100
 
 class HouseholdStatisticsCalculator @Inject constructor() {
 
@@ -50,7 +53,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         )
         return DashboardSnapshot(
             household = household,
-            summary = buildSummary(contributions, activeCompletions),
+            summary = buildSummary(activeCompletions),
             memberContributions = contributions,
             activeChores = chores.filter { it.isActive && it.deletedAt == null }.sortedBy(Chore::name),
             recentCompletions = buildRecent(
@@ -62,9 +65,11 @@ class HouseholdStatisticsCalculator @Inject constructor() {
             staleChores = buildStaleness(
                 chores = chores,
                 completions = completions,
+                members = members,
                 timeZone = timeZone,
                 today = today,
             ),
+            balance = buildBalance(contributions),
         )
     }
 
@@ -73,29 +78,35 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         members: List<HouseholdMember>,
         chores: List<Chore>,
         completions: List<ChoreCompletion>,
+        period: StatsPeriod,
         timeZone: TimeZone = TimeZone.currentSystemDefault(),
         today: LocalDate,
     ): StatsSnapshot {
         val activeCompletions = activeChoreCompletions(chores, completions)
-        val contributions = buildContributions(
-            members = members,
-            completions = activeCompletions,
-            timeZone = timeZone,
-            today = today,
-        )
+        // The monthly trend chart and chore staleness are deliberately NOT period-filtered - the
+        // chart always covers its own fixed trailing window, and "how stale is this chore" needs
+        // its true last completion regardless of which reporting period is selected.
+        val periodCompletions = filterByPeriod(activeCompletions, period, timeZone, today)
         return StatsSnapshot(
             household = household,
-            summary = buildSummary(contributions, activeCompletions),
-            memberContributions = contributions,
+            summary = buildSummary(periodCompletions),
+            memberContributions = buildContributions(
+                members = members,
+                completions = periodCompletions,
+                timeZone = timeZone,
+                today = today,
+            ),
+            shareBreakdown = buildShareBreakdown(members, periodCompletions),
             comparisons = buildComparisons(
                 chores = chores,
                 members = members,
-                completions = activeCompletions,
+                completions = periodCompletions,
+                allCompletions = activeCompletions,
             ),
             categoryComparisons = buildCategoryComparisons(
                 chores = chores,
                 members = members,
-                completions = activeCompletions,
+                completions = periodCompletions,
             ),
             monthlyBreakdown = buildMonthlyBreakdown(
                 members = members,
@@ -106,6 +117,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
             staleChores = buildStaleness(
                 chores = chores,
                 completions = completions,
+                members = members,
                 timeZone = timeZone,
                 today = today,
             ),
@@ -155,14 +167,6 @@ class HouseholdStatisticsCalculator @Inject constructor() {
     ): List<MemberContribution> {
         // 29, not 30: today counts as day 0, so today - 29 is a 30-day window inclusive of today.
         val thirtyDaysAgo = today.minus(DatePeriod(days = 29))
-        // A removed member's completion_participants rows aren't cleaned up (see
-        // OfflineFirstHouseholdRepository.deleteMember), so participantMemberIds can still
-        // reference a member no longer in this list. Counting those in the denominator would
-        // make the remaining members' shares never add up to 100%.
-        val currentMemberIds = members.map { it.id }.toSet()
-        val totalAcrossAll = completions.sumOf { completion ->
-            completion.participantMemberIds.count { it in currentMemberIds }
-        }
         return members.map { member ->
             val memberCompletions = completions.filter { completion ->
                 member.id in completion.participantMemberIds
@@ -174,15 +178,6 @@ class HouseholdStatisticsCalculator @Inject constructor() {
                 last30DaysCount = memberCompletions.count { completion ->
                     completion.createdAt.toLocalDateTime(timeZone).date >= thirtyDaysAgo
                 },
-                currentMonthCount = memberCompletions.count { completion ->
-                    val date = completion.createdAt.toLocalDateTime(timeZone).date
-                    date.year == today.year && date.month == today.month
-                },
-                sharePercent = if (totalAcrossAll > 0) {
-                    (memberCompletions.size * 100) / totalAcrossAll
-                } else {
-                    0
-                },
             )
         }
     }
@@ -191,20 +186,14 @@ class HouseholdStatisticsCalculator @Inject constructor() {
     // ChoreComparison/CategoryComparison/MonthlyBreakdown.totalCount - not
     // contributions.sumOf { it.totalCount }, which counts participant slots (a shared completion
     // counts once per participant) and could never be reconciled against those other totals.
-    private fun buildSummary(
-        contributions: List<MemberContribution>,
-        completions: List<ChoreCompletion>,
-    ): HouseholdSummary {
-        val topCount = contributions.maxOfOrNull { it.totalCount } ?: 0
-        val topContributor = when {
-            topCount == 0 -> TopContributorResult.NoData
-            contributions.count { it.totalCount == topCount } > 1 -> TopContributorResult.Tie
-            else -> contributions.first { it.totalCount == topCount }
-                .let { TopContributorResult.Leader(it.displayName, it.sharePercent) }
-        }
-        return HouseholdSummary(totalCompletions = completions.size, topContributor = topContributor)
-    }
+    private fun buildSummary(completions: List<ChoreCompletion>): HouseholdSummary =
+        HouseholdSummary(totalCompletions = completions.size)
 
+    // A removed member's completion_participants rows aren't cleaned up (see
+    // OfflineFirstHouseholdRepository.deleteMember), so participantMemberIds can still reference
+    // a member no longer in this list - those completions are excluded entirely (from both solo
+    // and shared counts) rather than left in a denominator the remaining members' percentages
+    // could never add up against.
     // Keyed by member id, not display name: two members sharing a display name would otherwise
     // silently collapse into one entry (Map can't have two different values under one key).
     private fun buildCountsByMemberId(
@@ -257,18 +246,30 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         chores: List<Chore>,
         members: List<HouseholdMember>,
         completions: List<ChoreCompletion>,
+        allCompletions: List<ChoreCompletion>,
     ): List<ChoreComparison> = chores
         .filter { it.deletedAt == null }
         .sortedBy(Chore::name)
         .map { chore ->
             val choreCompletions = completions.filter { it.choreId == chore.id }
             val counts = buildCountsByMemberId(members, choreCompletions)
+            // Full history (allCompletions), not the period-filtered `completions` above - a
+            // low-cadence chore can easily have zero completions in the selected reporting
+            // period, which would otherwise make "whose turn" disappear (or flip) purely because
+            // of which period is selected, rather than reflecting who actually went last. Mirrors
+            // why staleChores/monthlyBreakdown above are also computed off unfiltered completions.
+            val lastCompleterIds = allCompletions.filter { it.choreId == chore.id }
+                .maxByOrNull(ChoreCompletion::createdAt)
+                ?.participantMemberIds
+                .orEmpty()
+                .toSet()
             ChoreComparison(
                 choreId = chore.id,
                 choreName = chore.name,
                 countsByMemberId = counts,
                 leader = computeLeader(counts, choreCompletions.isNotEmpty(), members),
                 totalCount = choreCompletions.size,
+                nextTurnMemberId = computeNextTurn(counts, lastCompleterIds),
             )
         }
 
@@ -302,31 +303,42 @@ class HouseholdStatisticsCalculator @Inject constructor() {
     fun buildStaleness(
         chores: List<Chore>,
         completions: List<ChoreCompletion>,
+        members: List<HouseholdMember>,
         timeZone: TimeZone,
         today: LocalDate,
-    ): List<ChoreStaleness> = chores
-        .filter { it.isActive && it.deletedAt == null }
-        .sortedBy(Chore::name)
-        .map { chore ->
-            val lastCompletionDate = completions
-                .filter { it.choreId == chore.id }
-                .maxByOrNull(ChoreCompletion::createdAt)
-                ?.createdAt
-                ?.toLocalDateTime(timeZone)
-                ?.date
-            val daysSinceLastCompletion = lastCompletionDate?.daysUntil(today)
-            ChoreStaleness(
-                choreId = chore.id,
-                choreName = chore.name,
-                lastCompletedDate = lastCompletionDate,
-                daysSinceLastCompletion = daysSinceLastCompletion,
-                frequencyDays = chore.frequencyDays,
-                status = computeStatus(
+    ): List<ChoreStaleness> {
+        val memberMap = members.associateBy(HouseholdMember::id)
+        return chores
+            .filter { it.isActive && it.deletedAt == null }
+            .sortedBy(Chore::name)
+            .map { chore ->
+                val lastCompletion = completions
+                    .filter { it.choreId == chore.id }
+                    .maxByOrNull(ChoreCompletion::createdAt)
+                val lastCompletionDate = lastCompletion?.createdAt?.toLocalDateTime(timeZone)?.date
+                val daysSinceLastCompletion = lastCompletionDate?.daysUntil(today)
+                val frequencyDays = chore.frequencyDays
+                ChoreStaleness(
+                    choreId = chore.id,
+                    choreName = chore.name,
+                    lastCompletedDate = lastCompletionDate,
                     daysSinceLastCompletion = daysSinceLastCompletion,
-                    frequencyDays = chore.frequencyDays,
-                ),
-            )
-        }
+                    frequencyDays = frequencyDays,
+                    status = computeStatus(
+                        daysSinceLastCompletion = daysSinceLastCompletion,
+                        frequencyDays = frequencyDays,
+                    ),
+                    lastCompletedByNames = lastCompletion?.participantMemberIds
+                        ?.mapNotNull { memberId -> memberMap[memberId]?.displayName }
+                        .orEmpty(),
+                    dueInDays = if (frequencyDays != null && daysSinceLastCompletion != null) {
+                        frequencyDays - daysSinceLastCompletion
+                    } else {
+                        null
+                    },
+                )
+            }
+    }
 
     private fun computeStatus(daysSinceLastCompletion: Int?, frequencyDays: Int?): ChoreStatus {
         if (daysSinceLastCompletion == null) return ChoreStatus.NEVER
@@ -356,5 +368,104 @@ class HouseholdStatisticsCalculator @Inject constructor() {
             daysSinceLastCompletion >= soonThreshold -> ChoreStatus.SOON
             else -> ChoreStatus.OK
         }
+    }
+}
+
+// Top-level, not a method: it only reads its parameter (no instance state), and keeping it out
+// of the class avoids tripping TooManyFunctions there. Null with fewer than two members, or when
+// nobody has logged anything in the last 30 days - "who's carrying more" is meaningless either way.
+private fun buildBalance(contributions: List<MemberContribution>): BalanceSummary? {
+    if (contributions.size < 2) return null
+    val countsByMemberId = contributions.associate { it.memberId to it.last30DaysCount }
+    return if (countsByMemberId.values.all { it == 0 }) {
+        null
+    } else {
+        val leader = contributions.maxBy { it.last30DaysCount }
+        val lagging = contributions.minBy { it.last30DaysCount }
+        BalanceSummary(
+            leaderMemberId = leader.memberId,
+            laggingMemberId = lagging.memberId,
+            gap = leader.last30DaysCount - lagging.last30DaysCount,
+            countsByMemberId = countsByMemberId,
+        )
+    }
+}
+
+// Standard largest-remainder-method rounding: floor every share, then hand the leftover
+// percentage points (100 - sum of floors) one at a time to whichever entries had the largest
+// fractional remainder, so the result always sums to exactly 100 (never 99 or 101).
+private fun largestRemainderPercentages(counts: List<Int>, total: Int): List<Int> {
+    if (total <= 0) return counts.map { 0 }
+    val exact = counts.map { it * PERCENT_TOTAL.toDouble() / total }
+    val floors = exact.map { it.toInt() }
+    val remainder = PERCENT_TOTAL - floors.sum()
+    val remainderOrder = exact.indices.sortedByDescending { exact[it] - floors[it] }
+    val result = floors.toMutableList()
+    remainderOrder.take(remainder).forEach { index -> result[index] += 1 }
+    return result
+}
+
+// A removed member's completion_participants rows aren't cleaned up (see
+// OfflineFirstHouseholdRepository.deleteMember), so participantMemberIds can still reference a
+// member no longer in this list - those completions are excluded entirely (from both solo and
+// shared counts) rather than left in a denominator the remaining members' percentages could never
+// add up against.
+private fun buildShareBreakdown(members: List<HouseholdMember>, completions: List<ChoreCompletion>): ShareBreakdown {
+    val currentMemberIds = members.map { it.id }.toSet()
+    val soloCountByMemberId = members.associate { it.id to 0 }.toMutableMap()
+    var sharedCount = 0
+    completions.forEach { completion ->
+        val currentParticipants = completion.participantMemberIds.filter { it in currentMemberIds }.distinct()
+        when {
+            currentParticipants.size == 1 ->
+                soloCountByMemberId[currentParticipants[0]] = (soloCountByMemberId[currentParticipants[0]] ?: 0) + 1
+            currentParticipants.size > 1 -> sharedCount += 1
+            // else: no current-member participant left - excluded from every count.
+        }
+    }
+    val totalCount = soloCountByMemberId.values.sum() + sharedCount
+    val memberIds = members.map { it.id }
+    val counts = memberIds.map { soloCountByMemberId[it] ?: 0 } + sharedCount
+    val percentages = largestRemainderPercentages(counts, totalCount)
+    val percentByMemberId = memberIds.indices.associate { index -> memberIds[index] to percentages[index] }
+    return ShareBreakdown(
+        soloCountByMemberId = soloCountByMemberId,
+        sharedCount = sharedCount,
+        totalCount = totalCount,
+        percentByMemberId = percentByMemberId,
+        togetherPercent = percentages.lastOrNull() ?: 0,
+    )
+}
+
+private fun periodStart(period: StatsPeriod, today: LocalDate): LocalDate? = when (period) {
+    // 6 (or 29) days ago, not 7 (or 30): today counts as day 0, so the window is inclusive
+    // of today - matches the existing last30DaysCount convention used for last30DaysCount.
+    StatsPeriod.WEEK -> today.minus(DatePeriod(days = 6))
+    StatsPeriod.MONTH -> today.minus(DatePeriod(days = 29))
+    StatsPeriod.SIX_MONTHS -> today.minus(DatePeriod(months = 6))
+    StatsPeriod.ALL -> null
+}
+
+private fun filterByPeriod(
+    completions: List<ChoreCompletion>,
+    period: StatsPeriod,
+    timeZone: TimeZone,
+    today: LocalDate,
+): List<ChoreCompletion> {
+    val start = periodStart(period, today) ?: return completions
+    return completions.filter { it.createdAt.toLocalDateTime(timeZone).date >= start }
+}
+
+// Lowest count takes the next turn; a tie is broken toward whoever wasn't part of the most
+// recent completion (shared completions can leave more than one "last completer"). Still tied
+// after that, or nobody to choose from at all - null, rather than guessing.
+private fun computeNextTurn(countsByMemberId: Map<String, Int>, lastCompleterIds: Set<String>): String? {
+    if (countsByMemberId.isEmpty()) return null
+    val minCount = countsByMemberId.values.min()
+    val candidates = countsByMemberId.filterValues { it == minCount }.keys
+    return if (candidates.size == 1) {
+        candidates.first()
+    } else {
+        candidates.filterNot { it in lastCompleterIds }.singleOrNull()
     }
 }

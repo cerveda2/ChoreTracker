@@ -3,27 +3,23 @@ package cz.dcervenka.choretracker.feature.settings.impl.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cz.dcervenka.choretracker.core.common.AppResult
-import cz.dcervenka.choretracker.core.domain.usecase.AddChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateMemberInviteUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInvitesUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveThemeSettingsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SetDynamicColorUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SetThemeModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreCategoryUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCurrentMemberDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateHouseholdNameUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
-import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
@@ -42,28 +38,24 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-@Suppress("TooManyFunctions")
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     observeAuthStateUseCase: ObserveAuthStateUseCase,
     observeCurrentHouseholdUseCase: ObserveCurrentHouseholdUseCase,
     observeMembersUseCase: ObserveMembersUseCase,
-    observeChoresUseCase: ObserveChoresUseCase,
     observeInvitesUseCase: ObserveInvitesUseCase,
+    observeThemeSettingsUseCase: ObserveThemeSettingsUseCase,
+    observeReminderSettingsUseCase: ObserveReminderSettingsUseCase,
     private val signOutUseCase: SignOutUseCase,
     private val addMemberUseCase: AddMemberUseCase,
-    private val addChoreUseCase: AddChoreUseCase,
     private val createInviteUseCase: CreateInviteUseCase,
     private val createMemberInviteUseCase: CreateMemberInviteUseCase,
-    private val deleteChoreUseCase: DeleteChoreUseCase,
     private val deleteMemberUseCase: DeleteMemberUseCase,
     private val updateDisplayNameUseCase: UpdateDisplayNameUseCase,
     private val updateCurrentMemberDisplayNameUseCase: UpdateCurrentMemberDisplayNameUseCase,
-    private val updateChoreActiveUseCase: UpdateChoreActiveUseCase,
-    private val updateChoreFrequencyUseCase: UpdateChoreFrequencyUseCase,
-    private val updateChoreNameUseCase: UpdateChoreNameUseCase,
-    private val updateChoreCategoryUseCase: UpdateChoreCategoryUseCase,
     private val updateHouseholdNameUseCase: UpdateHouseholdNameUseCase,
+    private val setThemeModeUseCase: SetThemeModeUseCase,
+    private val setDynamicColorUseCase: SetDynamicColorUseCase,
 ) : ViewModel() {
     private val _events = Channel<SettingsUiEvent>(Channel.BUFFERED)
     val events: Flow<SettingsUiEvent> = _events.receiveAsFlow()
@@ -73,9 +65,6 @@ class SettingsViewModel @Inject constructor(
     private val accountDisplayNameInput = MutableStateFlow("")
     private val householdNameInput = MutableStateFlow("")
     private val memberInput = MutableStateFlow("")
-    private val choreInput = MutableStateFlow("")
-    private val choreCategoryInput = MutableStateFlow(ChoreCategory.OTHER)
-    private val choreFrequencyInput = MutableStateFlow("")
 
     private val currentHousehold = observeCurrentHouseholdUseCase()
         .onEach { household -> currentHouseholdId = household?.id }
@@ -108,16 +97,11 @@ class SettingsViewModel @Inject constructor(
                     accountDisplayNameInput,
                     householdNameInput,
                     memberInput,
-                    choreInput,
-                    combine(choreCategoryInput, choreFrequencyInput, ::Pair),
-                ) { currentAccountName, currentHouseholdName, currentMember, currentChore, (currentCategory, currentFrequency) ->
+                ) { currentAccountName, currentHouseholdName, currentMember ->
                     SettingsUiState(
                         accountDisplayNameInput = currentAccountName,
                         householdNameInput = currentHouseholdName,
                         memberInput = currentMember,
-                        choreInput = currentChore,
-                        choreCategoryInput = currentCategory,
-                        choreFrequencyInput = currentFrequency,
                     )
                 }
             } else {
@@ -126,29 +110,22 @@ class SettingsViewModel @Inject constructor(
                 }
                 combine(
                     observeMembersUseCase(household.id),
-                    observeChoresUseCase(household.id),
                     observeInvitesUseCase(household.id),
                     combine(
                         accountDisplayNameInput,
                         householdNameInput,
                         memberInput,
-                        choreInput,
-                        combine(choreCategoryInput, choreFrequencyInput, ::Pair),
-                    ) { currentAccountName, currentHouseholdName, currentMember, currentChore, (currentCategory, currentFrequency) ->
+                    ) { currentAccountName, currentHouseholdName, currentMember ->
                         SettingsUiState(
                             accountDisplayNameInput = currentAccountName,
                             householdNameInput = currentHouseholdName,
                             memberInput = currentMember,
-                            choreInput = currentChore,
-                            choreCategoryInput = currentCategory,
-                            choreFrequencyInput = currentFrequency,
                         )
                     },
-                ) { members, chores, invites, draftState ->
+                ) { members, invites, draftState ->
                     draftState.copy(
                         household = household,
                         members = members,
-                        chores = chores.filter { it.deletedAt == null },
                         invites = invites.sortedByDescending { it.createdAt },
                     )
                 }
@@ -158,23 +135,29 @@ class SettingsViewModel @Inject constructor(
     val uiState: StateFlow<SettingsUiState> = combine(
         observeAuthStateUseCase(),
         householdState,
-    ) { state, householdUiState ->
+        observeThemeSettingsUseCase(),
+        observeReminderSettingsUseCase(),
+    ) { state, householdUiState, themeSettings, reminderSettings ->
+        val stateWithSettings = householdUiState.copy(
+            themeSettings = themeSettings,
+            reminderSettings = reminderSettings,
+        )
         when (state) {
             is AuthState.Authenticated -> {
-                val memberName = householdUiState.members.find { it.isCurrentUser }
+                val memberName = stateWithSettings.members.find { it.isCurrentUser }
                     ?.displayName?.takeIf { it.isNotBlank() }
                 val resolvedName = memberName
                     ?: state.user.displayName.takeIf { it != state.user.email.orEmpty() }
                     ?: state.user.email.orEmpty()
-                householdUiState.copy(
+                stateWithSettings.copy(
                     userLabel = resolvedName,
                     userEmail = state.user.email,
                     accountDisplayNameInput = accountDisplayNameInput.value,
                 )
             }
-            AuthState.RequiresConfiguration -> householdUiState.copy(requiresConfiguration = true)
-            AuthState.SignedOut -> householdUiState.copy(isSignedOut = true)
-            AuthState.Initializing -> householdUiState
+            AuthState.RequiresConfiguration -> stateWithSettings.copy(requiresConfiguration = true)
+            AuthState.SignedOut -> stateWithSettings.copy(isSignedOut = true)
+            AuthState.Initializing -> stateWithSettings
         }
     }.stateIn(
         scope = viewModelScope,
@@ -187,9 +170,6 @@ class SettingsViewModel @Inject constructor(
             is SettingsUiIntent.AccountDisplayNameChanged,
             is SettingsUiIntent.HouseholdNameChanged,
             is SettingsUiIntent.MemberInputChanged,
-            is SettingsUiIntent.ChoreInputChanged,
-            is SettingsUiIntent.ChoreCategoryInputChanged,
-            is SettingsUiIntent.ChoreFrequencyInputChanged,
             -> handleInputIntent(intent)
             else -> handleActionIntent(intent)
         }
@@ -200,29 +180,21 @@ class SettingsViewModel @Inject constructor(
             is SettingsUiIntent.AccountDisplayNameChanged -> accountDisplayNameInput.value = intent.value
             is SettingsUiIntent.HouseholdNameChanged -> householdNameInput.value = intent.value
             is SettingsUiIntent.MemberInputChanged -> memberInput.value = intent.value
-            is SettingsUiIntent.ChoreInputChanged -> choreInput.value = intent.value
-            is SettingsUiIntent.ChoreCategoryInputChanged -> choreCategoryInput.value = intent.category
-            is SettingsUiIntent.ChoreFrequencyInputChanged -> choreFrequencyInput.value = intent.value
             else -> Unit
         }
     }
 
-    @Suppress("CyclomaticComplexMethod")
     private fun handleActionIntent(intent: SettingsUiIntent) {
         when (intent) {
             SettingsUiIntent.SaveAccountDisplayName -> saveAccountDisplayName()
             SettingsUiIntent.SignOut -> viewModelScope.launch { signOutUseCase() }
             SettingsUiIntent.SaveHouseholdName -> saveHouseholdName()
             SettingsUiIntent.AddMember -> addMember()
-            SettingsUiIntent.AddChore -> addChore()
             SettingsUiIntent.RefreshInvite -> refreshInvite()
-            is SettingsUiIntent.UpdateChoreActive -> updateChoreActive(intent.choreId, intent.isActive)
-            is SettingsUiIntent.DeleteChore -> deleteChore(intent.choreId)
             is SettingsUiIntent.DeleteMember -> deleteMember(intent.memberId)
             is SettingsUiIntent.GenerateMemberInvite -> generateMemberInvite(intent.memberId)
-            is SettingsUiIntent.UpdateChoreFrequency -> updateChoreFrequency(intent.choreId, intent.frequencyDays)
-            is SettingsUiIntent.UpdateChoreName -> updateChoreName(intent.choreId, intent.name)
-            is SettingsUiIntent.UpdateChoreCategory -> updateChoreCategory(intent.choreId, intent.category)
+            is SettingsUiIntent.SetThemeMode -> viewModelScope.launch { setThemeModeUseCase(intent.mode) }
+            is SettingsUiIntent.SetDynamicColor -> viewModelScope.launch { setDynamicColorUseCase(intent.enabled) }
             else -> Unit
         }
     }
@@ -291,86 +263,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private fun addChore() {
-        val household = uiState.value.household ?: return
-        val frequencyDays = choreFrequencyInput.value.toIntOrNull()?.takeIf { it > 0 }
-        viewModelScope.launch {
-            val result = addChoreUseCase(
-                householdId = household.id,
-                name = uiState.value.choreInput,
-                category = choreCategoryInput.value,
-                frequencyDays = frequencyDays,
-            )
-            if (result is AppResult.Success) {
-                choreInput.value = ""
-                choreCategoryInput.value = ChoreCategory.OTHER
-                choreFrequencyInput.value = ""
-                _events.send(SettingsUiEvent.ChoreAdded)
-            } else if (result is AppResult.Error) {
-                _events.send(SettingsUiEvent.Error(result.message))
-            }
-        }
-    }
-
-    private fun updateChoreActive(choreId: String, isActive: Boolean) {
-        viewModelScope.launch {
-            val result = updateChoreActiveUseCase(choreId, isActive)
-            if (result is AppResult.Error) {
-                _events.send(SettingsUiEvent.Error(result.message))
-            }
-        }
-    }
-
     private fun deleteMember(memberId: String) {
         val household = uiState.value.household ?: return
         viewModelScope.launch {
             val result = deleteMemberUseCase(household.id, memberId)
             if (result is AppResult.Success) {
                 _events.send(SettingsUiEvent.MemberDeleted)
-            } else if (result is AppResult.Error) {
-                _events.send(SettingsUiEvent.Error(result.message))
-            }
-        }
-    }
-
-    private fun deleteChore(choreId: String) {
-        viewModelScope.launch {
-            val result = deleteChoreUseCase(choreId)
-            if (result is AppResult.Success) {
-                _events.send(SettingsUiEvent.ChoreDeleted)
-            } else if (result is AppResult.Error) {
-                _events.send(SettingsUiEvent.Error(result.message))
-            }
-        }
-    }
-
-    private fun updateChoreFrequency(choreId: String, frequencyDays: Int?) {
-        viewModelScope.launch {
-            val result = updateChoreFrequencyUseCase(choreId, frequencyDays)
-            if (result is AppResult.Success) {
-                _events.send(SettingsUiEvent.ChoreSaved)
-            } else if (result is AppResult.Error) {
-                _events.send(SettingsUiEvent.Error(result.message))
-            }
-        }
-    }
-
-    private fun updateChoreName(choreId: String, name: String) {
-        viewModelScope.launch {
-            val result = updateChoreNameUseCase(choreId, name)
-            if (result is AppResult.Success) {
-                _events.send(SettingsUiEvent.ChoreSaved)
-            } else if (result is AppResult.Error) {
-                _events.send(SettingsUiEvent.Error(result.message))
-            }
-        }
-    }
-
-    private fun updateChoreCategory(choreId: String, category: ChoreCategory) {
-        viewModelScope.launch {
-            val result = updateChoreCategoryUseCase(choreId, category)
-            if (result is AppResult.Success) {
-                _events.send(SettingsUiEvent.ChoreSaved)
             } else if (result is AppResult.Error) {
                 _events.send(SettingsUiEvent.Error(result.message))
             }

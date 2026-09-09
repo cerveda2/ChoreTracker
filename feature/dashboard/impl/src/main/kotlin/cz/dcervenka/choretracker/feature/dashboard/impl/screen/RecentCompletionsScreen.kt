@@ -3,7 +3,6 @@ package cz.dcervenka.choretracker.feature.dashboard.impl.screen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -28,15 +27,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import cz.dcervenka.choretracker.core.design.LocalMemberPalette
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
+import cz.dcervenka.choretracker.core.design.components.ChoreListRow
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.EmptyState
+import cz.dcervenka.choretracker.core.design.components.ListGroup
+import cz.dcervenka.choretracker.core.design.components.MemberAvatar
+import cz.dcervenka.choretracker.core.design.components.SectionHeader
 import cz.dcervenka.choretracker.core.formatters.formatInstantForLocale
 import cz.dcervenka.choretracker.core.formatters.formatLocalDateForLocale
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
@@ -88,6 +91,7 @@ fun RecentCompletionsScreen(
             .entries
             .sortedByDescending { it.key }
     }
+    val memberIndexById = members.withIndex().associate { (index, member) -> member.id to index }
 
     ChoreScaffold(
         topBar = {
@@ -140,6 +144,7 @@ fun RecentCompletionsScreen(
                         CompletionDateSection(
                             label = label,
                             completions = items,
+                            memberIndexById = memberIndexById,
                             onOpenCompletion = onOpenCompletion,
                         )
                     }
@@ -254,41 +259,40 @@ private fun FilterSheetContent(
 private fun CompletionDateSection(
     label: String,
     completions: List<RecentCompletion>,
+    memberIndexById: Map<String, Int>,
     onOpenCompletion: (String) -> Unit,
 ) {
     val spacing = LocalSpacing.current
-    Column(
-        verticalArrangement = Arrangement.spacedBy(spacing.small),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            HorizontalDivider(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = spacing.small),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-            )
-        }
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            completions.forEach { completion ->
-                RecentCompletionRow(
-                    completion = completion,
+    val palette = LocalMemberPalette.current
+    Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+        SectionHeader(title = label)
+        ListGroup {
+            completions.forEachIndexed { index, completion ->
+                if (index > 0) HorizontalDivider(modifier = Modifier.padding(horizontal = spacing.medium))
+                // See RecentActivitySection - resolve against the same participant
+                // participantNames.firstOrNull() (below) came from, not just the first raw id.
+                val avatarIndex = completion.participantMemberIds
+                    .firstOrNull { it in memberIndexById }
+                    ?.let { memberIndexById[it] }
+                    ?: 0
+                ChoreListRow(
+                    leading = {
+                        MemberAvatar(
+                            initial = completion.participantNames.firstOrNull()?.take(1).orEmpty(),
+                            color = palette.color(avatarIndex),
+                            size = 36.dp,
+                        )
+                    },
+                    title = completion.choreName,
+                    subtitle = completion.participantNames.joinToString(),
+                    trailing = {
+                        Text(
+                            text = formatInstantForLocale(completion.completedAt, "Hm"),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
                     onClick = { onOpenCompletion(completion.completionId) },
-                    trailingText = formatInstantForLocale(completion.completedAt, "Hm"),
-                    emphasizeAsActivity = true,
-                )
-                HorizontalDivider(
-                    modifier = Modifier.padding(start = 56.dp + spacing.small),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
                 )
             }
         }
