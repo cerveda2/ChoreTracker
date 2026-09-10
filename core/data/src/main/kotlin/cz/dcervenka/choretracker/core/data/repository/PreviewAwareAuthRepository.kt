@@ -74,4 +74,13 @@ class PreviewAwareAuthRepository @Inject constructor(
         previewState.value = null
         return remoteAuthDataSource.signOut()
     }
+
+    override suspend fun deleteAccount(): EmptyResult {
+        val isPreview = (previewState.value as? AuthState.Authenticated)?.user?.isPreview == true
+        if (isPreview) {
+            previewState.value = null
+            return AppResult.Success(Unit)
+        }
+        return remoteAuthDataSource.deleteAccount()
+    }
 }

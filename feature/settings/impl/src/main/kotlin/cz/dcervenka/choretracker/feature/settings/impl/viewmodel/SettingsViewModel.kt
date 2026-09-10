@@ -6,6 +6,7 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateMemberInviteUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.DeleteAccountUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LeaveHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
@@ -55,6 +56,7 @@ class SettingsViewModel @Inject constructor(
     private val removeMemberUseCase: RemoveMemberUseCase,
     private val transferOwnershipUseCase: TransferOwnershipUseCase,
     private val leaveHouseholdUseCase: LeaveHouseholdUseCase,
+    private val deleteAccountUseCase: DeleteAccountUseCase,
     private val updateDisplayNameUseCase: UpdateDisplayNameUseCase,
     private val updateCurrentMemberDisplayNameUseCase: UpdateCurrentMemberDisplayNameUseCase,
     private val updateHouseholdNameUseCase: UpdateHouseholdNameUseCase,
@@ -199,6 +201,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsUiIntent.GenerateMemberInvite -> generateMemberInvite(intent.memberId)
             is SettingsUiIntent.TransferOwnership -> transferOwnership(intent.newOwnerMemberId)
             SettingsUiIntent.LeaveHousehold -> leaveHousehold()
+            SettingsUiIntent.DeleteAccount -> deleteAccount()
             is SettingsUiIntent.SetThemeMode -> viewModelScope.launch { setThemeModeUseCase(intent.mode) }
             is SettingsUiIntent.SetDynamicColor -> viewModelScope.launch { setDynamicColorUseCase(intent.enabled) }
             else -> Unit
@@ -299,6 +302,17 @@ class SettingsViewModel @Inject constructor(
             // On success the reactive observeCurrentHousehold -> ONBOARDING redirect handles
             // navigation; only surface an error (e.g. offline).
             val result = leaveHouseholdUseCase(household.id)
+            if (result is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(result.message))
+            }
+        }
+    }
+
+    private fun deleteAccount() {
+        viewModelScope.launch {
+            // On success the authState -> SignedOut redirect (via ObserveStartupDestinationUseCase)
+            // tears the screen down; only surface an error (e.g. offline, function failure).
+            val result = deleteAccountUseCase()
             if (result is AppResult.Error) {
                 _events.send(SettingsUiEvent.Error(result.message))
             }

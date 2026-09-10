@@ -4,11 +4,13 @@ import android.content.Context
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
+import com.google.firebase.functions.FirebaseFunctions
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.remote.contract.RemoteAuthDataSource
+import cz.dcervenka.choretracker.core.remote.firebase.runtime.FIREBASE_FUNCTIONS_REGION
 import cz.dcervenka.choretracker.core.remote.firebase.runtime.FirebaseRuntimeConfigurator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
@@ -32,6 +34,13 @@ class FirebaseAuthDataSource @Inject constructor(
 
     private val firebaseAuth: FirebaseAuth?
         get() = if (FirebaseApp.getApps(context).isEmpty()) null else FirebaseAuth.getInstance()
+
+    private val firebaseFunctions: FirebaseFunctions?
+        get() = if (FirebaseApp.getApps(context).isEmpty()) {
+            null
+        } else {
+            FirebaseFunctions.getInstance(FIREBASE_FUNCTIONS_REGION)
+        }
 
     override val isConfigured: Boolean
         get() = firebaseAuth != null
@@ -183,6 +192,37 @@ class FirebaseAuthDataSource @Inject constructor(
         val auth = firebaseAuth ?: return AppResult.Success(Unit)
         auth.signOut()
         return AppResult.Success(Unit)
+    }
+
+    override suspend fun deleteAccount(): EmptyResult {
+        Timber.d("deleteAccount")
+        val auth = firebaseAuth
+        val functions = firebaseFunctions
+        // The Cloud Function tears down the household membership and the auth user server-side
+        // (Admin SDK - no recent-login requirement, unlike FirebaseUser.delete()). Only sign out
+        // locally once it succeeds; the authState -> SignedOut redirect and database.clearAll()
+        // do the rest.
+        return when {
+            auth == null || functions == null -> AppResult.Error("Firebase isn't configured yet.")
+            auth.currentUser == null -> AppResult.Error("Sign in first.")
+            else -> suspendCancellableCoroutine { continuation ->
+                functions.getHttpsCallable("deleteAccount").call()
+                    .addOnSuccessListener {
+                        Timber.d("deleteAccount: success, signing out")
+                        auth.signOut()
+                        continuation.resume(AppResult.Success(Unit))
+                    }
+                    .addOnFailureListener { throwable ->
+                        Timber.e(throwable, "deleteAccount: failed")
+                        continuation.resume(
+                            AppResult.Error(
+                                throwable.message ?: "Unable to delete your account.",
+                                throwable,
+                            ),
+                        )
+                    }
+            }
+        }
     }
 
     private fun validateCredentials(email: String, password: String): EmptyResult? = when {

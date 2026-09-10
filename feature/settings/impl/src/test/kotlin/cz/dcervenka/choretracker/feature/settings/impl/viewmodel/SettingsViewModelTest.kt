@@ -6,6 +6,7 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateMemberInviteUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.DeleteAccountUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LeaveHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
@@ -83,6 +84,9 @@ class SettingsViewModelTest {
 
     @MockK
     lateinit var leaveHouseholdUseCase: LeaveHouseholdUseCase
+
+    @MockK
+    lateinit var deleteAccountUseCase: DeleteAccountUseCase
 
     @MockK
     lateinit var updateDisplayNameUseCase: UpdateDisplayNameUseCase
@@ -280,6 +284,21 @@ class SettingsViewModelTest {
                 cancelAndIgnoreRemainingEvents()
             }
         }
+
+    @Test
+    fun `DeleteAccount delegates to the use case and surfaces an error when it fails`() =
+        runTest(coroutineRule.dispatcher) {
+            coEvery { deleteAccountUseCase() } returns AppResult.Error("Unable to delete your account.")
+            val viewModel = createViewModel()
+
+            viewModel.events.test {
+                viewModel.dispatch(SettingsUiIntent.DeleteAccount)
+                advanceUntilIdle()
+
+                coVerify { deleteAccountUseCase() }
+                assertThat(awaitItem()).isEqualTo(SettingsUiEvent.Error("Unable to delete your account."))
+            }
+        }
 }
 
 private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
@@ -296,6 +315,7 @@ private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
     removeMemberUseCase,
     transferOwnershipUseCase,
     leaveHouseholdUseCase,
+    deleteAccountUseCase,
     updateDisplayNameUseCase,
     updateCurrentMemberDisplayNameUseCase,
     updateHouseholdNameUseCase,
