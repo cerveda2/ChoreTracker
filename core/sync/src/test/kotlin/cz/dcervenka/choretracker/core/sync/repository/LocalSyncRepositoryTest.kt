@@ -21,6 +21,7 @@ import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
+import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
@@ -679,16 +680,28 @@ class LocalSyncRepositoryTest {
     }
 
     @Test
-    fun `restoreHouseholdForUser does not clear when no local household existed`() = runTest(coroutineRule.dispatcher) {
-        val snapshot = buildSnapshot(members = listOf(sampleMembers()[1]))
-        coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
-        coEvery { householdDao.getCurrentHouseholdForUser("user-1") } returns null
+    fun `restoreHouseholdForUser does not clear or apply a blank snapshot when no local household existed`() =
+        runTest(coroutineRule.dispatcher) {
+            // The permission-denied path returns an empty-members snapshot with a blank name /
+            // ownerUserId - applySnapshot-ing that would corrupt Room. It must be ignored.
+            val snapshot = buildSnapshot(members = emptyList()).copy(
+                household = Household(
+                    id = "household-1",
+                    name = "",
+                    ownerUserId = "",
+                    inviteCode = "",
+                    createdAt = Instant.fromEpochMilliseconds(0),
+                ),
+            )
+            coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
+            coEvery { householdDao.getCurrentHouseholdForUser("user-1") } returns null
 
-        val result = repository.restoreHouseholdForUser("user-1")
+            val result = repository.restoreHouseholdForUser("user-1")
 
-        assertThat(result).isInstanceOf(AppResult.Success::class.java)
-        coVerify(exactly = 0) { database.clearAll() }
-    }
+            assertThat((result as AppResult.Success).value).isFalse()
+            coVerify(exactly = 0) { database.clearAll() }
+            coVerify(exactly = 0) { householdDao.upsert(any()) }
+        }
 
     @Test
     fun `syncPendingOperations calls markInviteConsumed with consumedByMemberId`() = runTest(coroutineRule.dispatcher) {

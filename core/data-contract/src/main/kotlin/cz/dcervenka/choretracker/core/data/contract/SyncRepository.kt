@@ -13,4 +13,15 @@ interface SyncRepository {
     suspend fun restoreHouseholdForUser(userId: String): AppResult<Boolean>
 
     suspend fun ensureInviteLocal(code: String): EmptyResult
+
+    /** Atomically hands household ownership to another linked member. */
+    suspend fun transferOwnership(
+        householdId: String,
+        newOwnerUserId: String,
+        newOwnerMemberDocId: String,
+        previousOwnerMemberDocId: String,
+    ): EmptyResult
+
+    /** Soft-removes the caller's own membership remotely, then wipes local data. */
+    suspend fun leaveHousehold(householdId: String, selfMemberDocId: String): EmptyResult
 }

@@ -24,4 +24,12 @@ data class SettingsUiState(
 ) : UiState {
     val isOwner: Boolean
         get() = members.any { it.isCurrentUser && it.role == HouseholdRole.OWNER }
+
+    /** Linked members (real accounts) other than the current user - the only valid transfer targets. */
+    val eligibleTransferTargets: List<HouseholdMember>
+        get() = members.filter { !it.isCurrentUser && it.userId != null }
+
+    /** Only a non-owner can leave outright; an owner must transfer first (or delete their account). */
+    val canLeaveHousehold: Boolean
+        get() = household != null && !isOwner
 }

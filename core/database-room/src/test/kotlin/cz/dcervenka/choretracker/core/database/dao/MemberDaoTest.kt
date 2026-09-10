@@ -132,6 +132,18 @@ class MemberDaoTest {
     }
 
     @Test
+    fun `updateRole only touches the targeted member`() = runTest {
+        dao.upsert(memberEntity("member-1", role = "MEMBER"))
+        dao.upsert(memberEntity("member-2", role = "OWNER"))
+
+        dao.updateRole("member-1", "OWNER")
+        dao.updateRole("member-2", "MEMBER")
+
+        assertThat(dao.findById("household-1", "member-1")?.role).isEqualTo("OWNER")
+        assertThat(dao.findById("household-1", "member-2")?.role).isEqualTo("MEMBER")
+    }
+
+    @Test
     fun `observeMembers re-emits after a subsequent upsert`() = runTest {
         dao.upsert(memberEntity("member-1", displayName = "Alpha"))
 

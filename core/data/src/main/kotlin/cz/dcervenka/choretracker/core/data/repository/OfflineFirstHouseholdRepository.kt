@@ -347,6 +347,61 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         }
     }
 
+    override suspend fun transferOwnership(householdId: String, newOwnerMemberId: String): EmptyResult {
+        Timber.d("transferOwnership: householdId=$householdId newOwnerMemberId=$newOwnerMemberId")
+        val user = currentUser()
+        val household = householdDao.getHousehold(householdId)
+        val members = if (household != null) memberDao.getMembers(householdId) else emptyList()
+        val newOwner = members.find { it.id == newOwnerMemberId }
+        val newOwnerUserId = newOwner?.userId
+        val previousOwner = members.find { it.userId == user?.id }
+        return when {
+            user == null -> AppResult.Error("Sign in first.")
+            user.isPreview -> AppResult.Error("Cannot transfer ownership in preview mode")
+            household == null -> AppResult.Error("Household not found.")
+            household.ownerUserId != user.id -> AppResult.Error("Only the current owner can transfer ownership.")
+            newOwner == null -> AppResult.Error("Member not found.")
+            newOwnerUserId == null -> AppResult.Error("This member hasn't joined yet.")
+            newOwnerUserId == user.id -> AppResult.Error("You're already the owner.")
+            previousOwner == null -> AppResult.Error("Current owner's membership was not found.")
+            // Awaited: a fire-and-forget local flip would route the owner's next sync through
+            // performMemberSync (which writes neither ownerUserId nor role) and lose the change.
+            else -> when (
+                val result = syncRepository.transferOwnership(
+                    householdId = householdId,
+                    newOwnerUserId = newOwnerUserId,
+                    newOwnerMemberDocId = newOwnerUserId,
+                    previousOwnerMemberDocId = previousOwner.userId ?: previousOwner.id,
+                )
+            ) {
+                is AppResult.Error -> result
+                is AppResult.Success -> {
+                    householdDao.updateOwner(householdId, newOwnerUserId)
+                    memberDao.updateRole(newOwner.id, HouseholdRole.OWNER.name)
+                    memberDao.updateRole(previousOwner.id, HouseholdRole.MEMBER.name)
+                    AppResult.Success(Unit)
+                }
+            }
+        }
+    }
+
+    override suspend fun leaveHousehold(householdId: String): EmptyResult {
+        Timber.d("leaveHousehold: householdId=$householdId")
+        val user = currentUser()
+        val household = householdDao.getHousehold(householdId)
+        val member = user?.let { memberDao.findByUserId(householdId, it.id) }
+        return when {
+            user == null -> AppResult.Error("Sign in first.")
+            user.isPreview -> AppResult.Error("Cannot leave a household in preview mode")
+            household == null -> AppResult.Error("Household not found.")
+            household.ownerUserId == user.id -> AppResult.Error("Transfer ownership before leaving.")
+            member == null -> AppResult.Error("Your membership was not found.")
+            // selfMemberDocId == the uid for a linked member (memberDocumentId = userId ?: id, and
+            // a leaver always has a userId), which is also the users/{uid} doc key.
+            else -> syncRepository.leaveHousehold(householdId, member.userId ?: member.id)
+        }
+    }
+
     private suspend fun stampCurrentUserEmail(user: AppUser) {
         val email = user.email ?: return
         val householdId = householdDao.getCurrentHouseholdForUser(user.id)?.id ?: return

@@ -6,14 +6,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -23,6 +29,7 @@ import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.ListGroup
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
+import cz.dcervenka.choretracker.core.design.components.SectionHeader
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
@@ -53,6 +60,31 @@ fun AccountSettingsScreen(
     val emailValue = uiState.userEmail.orEmpty()
     val canSaveDisplayName = uiState.accountDisplayNameInput.trim().isNotBlank() &&
         uiState.accountDisplayNameInput.trim() != uiState.userLabel
+    var showLeaveConfirm by rememberSaveable { mutableStateOf(false) }
+
+    if (showLeaveConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLeaveConfirm = false },
+            title = { Text(stringResource(R.string.settings_leave_household_title)) },
+            text = { Text(stringResource(R.string.settings_leave_household_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLeaveConfirm = false
+                    onIntent(SettingsUiIntent.LeaveHousehold)
+                }) {
+                    Text(
+                        text = stringResource(R.string.settings_leave_household),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLeaveConfirm = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
+    }
 
     ChoreScaffold(
         snackbarHostState = snackbarHostState,
@@ -108,6 +140,46 @@ fun AccountSettingsScreen(
                             },
                             enabled = canSaveDisplayName,
                         )
+                    }
+                }
+            }
+            if (uiState.household != null) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                        SectionHeader(title = stringResource(R.string.settings_membership_section))
+                        ListGroup {
+                            TextButton(
+                                onClick = { showLeaveConfirm = true },
+                                enabled = uiState.canLeaveHousehold,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(spacing.small),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.settings_leave_household),
+                                    color = if (uiState.canLeaveHousehold) {
+                                        MaterialTheme.colorScheme.error
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                        if (uiState.isOwner) {
+                            Text(
+                                text = stringResource(
+                                    if (uiState.eligibleTransferTargets.isEmpty()) {
+                                        R.string.settings_leave_household_sole_owner_hint
+                                    } else {
+                                        R.string.settings_leave_household_owner_hint
+                                    },
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = spacing.small),
+                            )
+                        }
                     }
                 }
             }

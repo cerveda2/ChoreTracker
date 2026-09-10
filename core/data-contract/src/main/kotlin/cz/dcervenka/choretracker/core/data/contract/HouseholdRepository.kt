@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.model.household.HouseholdRestoreStatus
 import cz.dcervenka.choretracker.core.model.household.Invite
 import kotlinx.coroutines.flow.Flow
 
+@Suppress("TooManyFunctions")
 interface HouseholdRepository {
     fun observeCurrentHousehold(): Flow<Household?>
     fun observeRestoreStatus(): Flow<HouseholdRestoreStatus>
@@ -33,4 +34,8 @@ interface HouseholdRepository {
     suspend fun updateCurrentMemberDisplayName(householdId: String, displayName: String): EmptyResult
 
     suspend fun removeMember(householdId: String, memberId: String): EmptyResult
+
+    suspend fun transferOwnership(householdId: String, newOwnerMemberId: String): EmptyResult
+
+    suspend fun leaveHousehold(householdId: String): EmptyResult
 }
