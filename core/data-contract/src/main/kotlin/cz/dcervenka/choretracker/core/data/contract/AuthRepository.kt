@@ -18,4 +18,6 @@ interface AuthRepository {
     fun clearPreviewState() = Unit
 
     suspend fun signOut(): EmptyResult
+
+    suspend fun deleteAccount(): EmptyResult
 }

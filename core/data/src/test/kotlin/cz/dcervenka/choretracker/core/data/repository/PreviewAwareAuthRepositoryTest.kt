@@ -165,4 +165,29 @@ class PreviewAwareAuthRepositoryTest {
 
         coVerify(exactly = 0) { remoteAuthDataSource.updateDisplayName(any()) }
     }
+
+    // deleteAccount
+
+    @Test
+    fun `deleteAccount in preview clears preview state and never touches remote`() = runTest(coroutineRule.dispatcher) {
+        coEvery { remoteAuthDataSource.updateDisplayName(any()) } returns AppResult.Success(Unit)
+        repository.continueInPreviewMode("Dana")
+
+        val result = repository.deleteAccount()
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify(exactly = 0) { remoteAuthDataSource.deleteAccount() }
+        // preview state cleared → the next updateDisplayName falls through to remote
+        repository.updateDisplayName("Dana")
+        coVerify(exactly = 1) { remoteAuthDataSource.updateDisplayName("Dana") }
+    }
+
+    @Test
+    fun `deleteAccount outside preview delegates to remote`() = runTest(coroutineRule.dispatcher) {
+        coEvery { remoteAuthDataSource.deleteAccount() } returns AppResult.Success(Unit)
+
+        repository.deleteAccount()
+
+        coVerify(exactly = 1) { remoteAuthDataSource.deleteAccount() }
+    }
 }

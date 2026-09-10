@@ -199,6 +199,11 @@
     <string name="settings_transfer_ownership_confirm">Transfer</string>
     <string name="settings_transfer_ownership_none">No one else has joined this household yet.</string>
     <string name="settings_feedback_ownership_transferred">Ownership transferred</string>
+    <string name="settings_danger_zone_section">Danger zone</string>
+    <string name="settings_delete_account">Delete account</string>
+    <string name="settings_delete_account_title">Delete your account?</string>
+    <string name="settings_delete_account_message">Your account and its data are permanently removed. If you\'re the only member, the household is deleted too. Completions you shared stay visible to other members.</string>
+    <string name="settings_delete_account_confirm">Delete account</string>
     <plurals name="settings_members_description">
         <item quantity="one">%1$d active household member</item>
         <item quantity="other">%1$d active household members</item>

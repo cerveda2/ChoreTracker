@@ -61,6 +61,7 @@ fun AccountSettingsScreen(
     val canSaveDisplayName = uiState.accountDisplayNameInput.trim().isNotBlank() &&
         uiState.accountDisplayNameInput.trim() != uiState.userLabel
     var showLeaveConfirm by rememberSaveable { mutableStateOf(false) }
+    var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
 
     if (showLeaveConfirm) {
         AlertDialog(
@@ -80,6 +81,30 @@ fun AccountSettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showLeaveConfirm = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text(stringResource(R.string.settings_delete_account_title)) },
+            text = { Text(stringResource(R.string.settings_delete_account_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    onIntent(SettingsUiIntent.DeleteAccount)
+                }) {
+                    Text(
+                        text = stringResource(R.string.settings_delete_account_confirm),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             },
@@ -179,6 +204,27 @@ fun AccountSettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = spacing.small),
                             )
+                        }
+                    }
+                }
+            }
+            if (uiState.userLabel != null) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                        SectionHeader(title = stringResource(R.string.settings_danger_zone_section))
+                        ListGroup {
+                            TextButton(
+                                onClick = { showDeleteConfirm = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(spacing.small),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.settings_delete_account),
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
                         }
                     }
                 }

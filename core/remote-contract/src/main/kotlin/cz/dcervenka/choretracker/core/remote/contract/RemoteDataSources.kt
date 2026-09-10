@@ -22,6 +22,8 @@ interface RemoteAuthDataSource {
     suspend fun updateDisplayName(displayName: String): EmptyResult
 
     suspend fun signOut(): EmptyResult
+
+    suspend fun deleteAccount(): EmptyResult
 }
 
 interface RemoteHouseholdDataSource {
