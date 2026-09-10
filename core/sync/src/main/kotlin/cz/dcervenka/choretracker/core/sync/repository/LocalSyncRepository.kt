@@ -185,10 +185,10 @@ class LocalSyncRepository @Inject constructor(
                     snapshot == null -> AppResult.Success(false).also {
                         Timber.d("restoreHouseholdForUser: no remote snapshot found")
                     }
-                    snapshot.members.none { it.userId == userId } &&
+                    snapshot.members.none { it.userId == userId && it.removedAt == null } &&
                         householdDao.getCurrentHouseholdForUser(userId) != null -> {
                         Timber.w(
-                            "restoreHouseholdForUser: userId=$userId no longer a member of " +
+                            "restoreHouseholdForUser: userId=$userId no longer an active member of " +
                                 "household=${snapshot.household.id} - clearing local data",
                         )
                         database.clearAll()
@@ -221,6 +221,7 @@ class LocalSyncRepository @Inject constructor(
                     isCurrentUser = member.isCurrentUser,
                     email = member.email,
                     joinedViaInviteId = member.joinedViaInviteId,
+                    removedAt = member.removedAt,
                 ),
             )
         }
@@ -322,7 +323,9 @@ class LocalSyncRepository @Inject constructor(
                 Timber.d("syncPendingOperations: synced ${operationIds.size} operations for household=$householdId")
                 val operationIdSet = operationIds.toSet()
                 val failedOperationIds = buildSet {
-                    if (isOwner) addAll(deleteRemoteMembers(householdId, operations, operationIdSet))
+                    // Member removal has no dedicated remote call - it's a soft removedAt/active
+                    // field write that rides the full-snapshot push in performRemoteSync above,
+                    // same as a chore's deletedAt.
                     addAll(deleteRemoteCompletions(householdId, operations, operationIdSet))
                     addAll(consumeRemoteInvites(householdId, operations, operationIdSet))
                 }
@@ -385,26 +388,6 @@ class LocalSyncRepository @Inject constructor(
             userId = userId,
         )
         Timber.d("ensureEmailSynced: wrote email for userId=$userId")
-    }
-
-    private suspend fun deleteRemoteMembers(
-        householdId: String,
-        operations: List<PendingSyncOperationEntity>,
-        operationIdSet: Set<String>,
-    ): Set<String> {
-        val failedOperationIds = mutableSetOf<String>()
-        operations
-            .filter { it.id in operationIdSet && it.entityType == "member" && it.operationType == "delete" }
-            .forEach { op ->
-                val result = remoteHouseholdDataSource.deleteMember(householdId, op.payload)
-                if (result is AppResult.Error) {
-                    Timber.e(
-                        "syncPendingOperations: remote member delete failed for ${op.payload} — ${result.message}",
-                    )
-                    failedOperationIds += op.id
-                }
-            }
-        return failedOperationIds
     }
 
     private suspend fun deleteRemoteCompletions(
@@ -543,6 +526,10 @@ class LocalSyncRepository @Inject constructor(
                 isCurrentUser = member.isCurrentUser,
                 email = if (member.userId == currentUserId) currentUserEmail else member.email,
                 joinedViaInviteId = member.joinedViaInviteId,
+                // Load-bearing: the owner's full-snapshot push writes active = removedAt == null
+                // for every member on every sync - dropping this here would silently re-activate
+                // a removed member on the next unrelated owner sync.
+                removedAt = member.removedAt,
             )
         }
         val completions = completionDao.getCompletions(householdId).map { completion ->
@@ -623,6 +610,7 @@ class LocalSyncRepository @Inject constructor(
             role = runCatching { HouseholdRole.valueOf(memberEntity.role) }.getOrDefault(HouseholdRole.MEMBER),
             isCurrentUser = memberEntity.isCurrentUser,
             joinedViaInviteId = memberEntity.joinedViaInviteId,
+            removedAt = memberEntity.removedAt,
         )
         return member to ownCompletions
     }

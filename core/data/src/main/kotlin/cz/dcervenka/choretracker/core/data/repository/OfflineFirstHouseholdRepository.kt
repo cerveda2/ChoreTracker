@@ -135,7 +135,12 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     }
 
     override fun observeMembers(householdId: String): Flow<List<HouseholdMember>> =
-        memberDao.observeMembers(householdId).map { members -> members.map(MemberEntity::asModel) }
+        memberDao.observeMembers(householdId).map { members ->
+            // Soft-removed members are kept in Room (so chore history keeps resolving their name -
+            // OfflineFirstStatsRepository/OfflineFirstChoreCompletionRepository read the DAO
+            // directly, unfiltered) but drop out of the current-member lists every UI picker uses.
+            members.filter { it.removedAt == null }.map(MemberEntity::asModel)
+        }
 
     override fun observeInvites(householdId: String): Flow<List<Invite>> =
         inviteDao.observeInvites(householdId).map { invites -> invites.map(InviteEntity::asModel) }
@@ -320,18 +325,22 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         }
     }
 
-    override suspend fun deleteMember(householdId: String, memberId: String): EmptyResult {
-        Timber.d("deleteMember: householdId=$householdId memberId=$memberId")
+    override suspend fun removeMember(householdId: String, memberId: String): EmptyResult {
+        Timber.d("removeMember: householdId=$householdId memberId=$memberId")
         val user = currentUser()
         if (user?.isPreview == true) {
-            Timber.w("deleteMember failed: preview user attempted write operation")
-            return AppResult.Error("Cannot delete members in preview mode")
+            Timber.w("removeMember failed: preview user attempted write operation")
+            return AppResult.Error("Cannot remove members in preview mode")
         }
         val member = memberDao.getMembers(householdId).find { it.id == memberId }
         return if (member == null) {
             AppResult.Error("Member not found.")
         } else {
-            memberDao.deleteById(memberId)
+            // Soft removal (mirrors OfflineFirstChoreRepository.deleteChore): the row stays so
+            // chore history keeps resolving this member's name. The "delete" operationType is
+            // kept for the pending-op bookkeeping - the removedAt/active fields ride the normal
+            // full-snapshot push to Firestore, there's no dedicated remote delete anymore.
+            memberDao.markRemoved(memberId, Clock.System.now())
             enqueueOperation("member", householdId, "delete", member.userId ?: member.id)
             scope.launch { syncRepository.syncPendingOperations() }
             AppResult.Success(Unit)

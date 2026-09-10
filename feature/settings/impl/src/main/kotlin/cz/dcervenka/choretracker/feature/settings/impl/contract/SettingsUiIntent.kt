@@ -12,7 +12,7 @@ sealed interface SettingsUiIntent : UiIntent {
     data object SaveHouseholdName : SettingsUiIntent
     data object AddMember : SettingsUiIntent
     data object RefreshInvite : SettingsUiIntent
-    data class DeleteMember(val memberId: String) : SettingsUiIntent
+    data class RemoveMember(val memberId: String) : SettingsUiIntent
     data class GenerateMemberInvite(val memberId: String) : SettingsUiIntent
     data class SetThemeMode(val mode: ThemeMode) : SettingsUiIntent
     data class SetDynamicColor(val enabled: Boolean) : SettingsUiIntent

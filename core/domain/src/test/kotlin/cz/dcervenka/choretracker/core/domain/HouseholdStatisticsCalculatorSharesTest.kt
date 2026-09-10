@@ -405,6 +405,47 @@ class HouseholdStatisticsCalculatorSharesTest {
         assertThat(stats.staleChores.first { it.choreName == "Dishes" }.daysSinceLastCompletion).isEqualTo(56)
     }
 
+    @Test
+    fun `a removed member keeps resolving in history but drops out of contributions`() {
+        val removedCarol = HouseholdMember(
+            id = "member-carol",
+            householdId = household.id,
+            userId = "user-carol",
+            displayName = "Carol",
+            role = HouseholdRole.MEMBER,
+            removedAt = Instant.parse("2026-03-01T09:00:00Z"),
+        )
+        val completions = listOf(
+            completion(
+                id = "c1",
+                choreId = "chore-dishes",
+                createdAt = "2026-03-28T18:00:00Z",
+                participantMemberIds = listOf("member-alice"),
+            ),
+            completion(
+                id = "c2",
+                choreId = "chore-vacuum",
+                createdAt = "2026-02-10T18:00:00Z",
+                participantMemberIds = listOf("member-carol"),
+            ),
+        )
+
+        val dashboard = calculator.dashboardSnapshot(
+            household = household,
+            members = members + removedCarol,
+            chores = chores,
+            completions = completions,
+            timeZone = timeZone,
+            today = today,
+        )
+
+        // Carol is gone from "who currently shares the chores"...
+        assertThat(dashboard.memberContributions.map { it.displayName }).containsExactly("Alice", "Bob")
+        // ...but her name still resolves in the completion she was part of.
+        val vacuum = dashboard.recentCompletions.first { it.choreName == "Vacuum" }
+        assertThat(vacuum.participantNames).containsExactly("Carol")
+    }
+
     private fun completion(
         id: String,
         choreId: String,

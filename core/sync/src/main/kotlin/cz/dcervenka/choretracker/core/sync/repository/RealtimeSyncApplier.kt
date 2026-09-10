@@ -44,9 +44,12 @@ internal class RealtimeSyncApplier(
 
     suspend fun applyMembers(householdId: String, userId: String, members: List<HouseholdMember>) =
         mutex.withLock {
-            if (members.none { it.userId == userId }) {
+            // removedAt == null, not just presence: a soft-removed member's doc stays in the
+            // collection, so "I'm still listed" no longer means "I still have access" - this is
+            // the client side of the removedAt/active enforcement (see PR #80's clearAll path).
+            if (members.none { it.userId == userId && it.removedAt == null }) {
                 Timber.w(
-                    "applyMembers: userId=$userId no longer a member of household=$householdId - " +
+                    "applyMembers: userId=$userId no longer an active member of household=$householdId - " +
                         "clearing local data",
                 )
                 database.clearAll()
@@ -63,9 +66,15 @@ internal class RealtimeSyncApplier(
                         isCurrentUser = member.isCurrentUser,
                         email = member.email,
                         joinedViaInviteId = member.joinedViaInviteId,
+                        removedAt = member.removedAt,
                     ),
                 )
             }
+            // No prune step for soft-removed members: they stay present in the remote members
+            // collection (removedAt/active only), so they're never "absent from the listener" -
+            // same as chores' soft delete (see applyChores). The prune below still handles a
+            // member row that genuinely vanished remotely for some other reason.
+            //
             // Pending member operations are keyed by householdId, not their own member id (see
             // enqueueOperation call sites in OfflineFirstHouseholdRepository), so a household
             // with any pending member operation skips this reconciliation entirely rather than

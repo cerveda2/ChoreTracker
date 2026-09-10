@@ -151,6 +151,16 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
+    fun `applyMembers clears local data when the current user's own row is soft-removed`() = runTest {
+        val removedSelf = sampleMembers()[0].copy(removedAt = Instant.parse("2026-03-01T10:00:00Z"))
+
+        applier.applyMembers("household-1", "user-1", listOf(removedSelf, sampleMembers()[1]))
+
+        coVerify { database.clearAll() }
+        coVerify(exactly = 0) { memberDao.upsert(any()) }
+    }
+
+    @Test
     fun `applyCompletions upserts completions and replaces their participants`() = runTest {
         val completion = ChoreCompletion(
             id = "completion-1",

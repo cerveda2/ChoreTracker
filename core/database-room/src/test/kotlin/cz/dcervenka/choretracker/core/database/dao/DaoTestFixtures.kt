@@ -97,6 +97,7 @@ fun memberEntity(
     isCurrentUser: Boolean = false,
     email: String? = null,
     joinedViaInviteId: String? = null,
+    removedAt: Instant? = null,
 ) = MemberEntity(
     id = id,
     householdId = householdId,
@@ -106,6 +107,7 @@ fun memberEntity(
     isCurrentUser = isCurrentUser,
     email = email,
     joinedViaInviteId = joinedViaInviteId,
+    removedAt = removedAt,
 )
 
 fun pendingSyncOperationEntity(

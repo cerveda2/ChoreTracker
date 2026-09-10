@@ -31,6 +31,7 @@ internal fun MemberEntity.asModel(): HouseholdMember = HouseholdMember(
     isCurrentUser = isCurrentUser,
     email = email,
     joinedViaInviteId = joinedViaInviteId,
+    removedAt = removedAt,
 )
 
 internal fun ChoreEntity.asModel(): Chore = Chore(

@@ -6,13 +6,13 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateMemberInviteUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.DeleteMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInvitesUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveThemeSettingsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.RemoveMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetDynamicColorUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetThemeModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
@@ -73,7 +73,7 @@ class SettingsViewModelTest {
     lateinit var createMemberInviteUseCase: CreateMemberInviteUseCase
 
     @MockK
-    lateinit var deleteMemberUseCase: DeleteMemberUseCase
+    lateinit var removeMemberUseCase: RemoveMemberUseCase
 
     @MockK
     lateinit var updateDisplayNameUseCase: UpdateDisplayNameUseCase
@@ -120,7 +120,7 @@ class SettingsViewModelTest {
         coEvery { signOutUseCase() } returns AppResult.Success(Unit)
         coEvery { addMemberUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { createInviteUseCase(any()) } returns AppResult.Success(sampleInvite())
-        coEvery { deleteMemberUseCase(any(), any()) } returns AppResult.Success(Unit)
+        coEvery { removeMemberUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateDisplayNameUseCase(any()) } returns AppResult.Success(Unit)
         coEvery { updateCurrentMemberDisplayNameUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateHouseholdNameUseCase(any(), any()) } returns AppResult.Success(Unit)
@@ -242,7 +242,7 @@ private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
     addMemberUseCase,
     createInviteUseCase,
     createMemberInviteUseCase,
-    deleteMemberUseCase,
+    removeMemberUseCase,
     updateDisplayNameUseCase,
     updateCurrentMemberDisplayNameUseCase,
     updateHouseholdNameUseCase,

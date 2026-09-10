@@ -663,6 +663,22 @@ class LocalSyncRepositoryTest {
     }
 
     @Test
+    fun `restoreHouseholdForUser clears local data when the current user's own row is soft-removed`() = runTest(
+        coroutineRule.dispatcher,
+    ) {
+        val removedSelf = sampleMembers()[0].copy(removedAt = Instant.parse("2026-03-01T10:00:00Z"))
+        val snapshot = buildSnapshot(members = listOf(removedSelf, sampleMembers()[1]))
+        coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)
+        coEvery { householdDao.getCurrentHouseholdForUser("user-1") } returns householdEntity
+
+        val result = repository.restoreHouseholdForUser("user-1")
+
+        assertThat((result as AppResult.Success).value).isFalse()
+        coVerify { database.clearAll() }
+        coVerify(exactly = 0) { memberDao.upsert(any()) }
+    }
+
+    @Test
     fun `restoreHouseholdForUser does not clear when no local household existed`() = runTest(coroutineRule.dispatcher) {
         val snapshot = buildSnapshot(members = listOf(sampleMembers()[1]))
         coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(snapshot)

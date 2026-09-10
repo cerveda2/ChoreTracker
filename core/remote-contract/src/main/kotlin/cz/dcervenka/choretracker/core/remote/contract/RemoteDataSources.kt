@@ -49,6 +49,4 @@ interface RemoteHouseholdDataSource {
     suspend fun markInviteConsumed(householdId: String, inviteId: String, consumedAt: Instant, consumedByMemberId: String): EmptyResult
 
     suspend fun deleteCompletion(householdId: String, completionId: String): EmptyResult
-
-    suspend fun deleteMember(householdId: String, firestoreDocId: String): EmptyResult
 }
