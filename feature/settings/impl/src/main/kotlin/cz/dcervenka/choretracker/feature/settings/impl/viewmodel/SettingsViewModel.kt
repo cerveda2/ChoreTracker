@@ -6,13 +6,13 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateMemberInviteUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.DeleteMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInvitesUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveThemeSettingsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.RemoveMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetDynamicColorUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetThemeModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
@@ -50,7 +50,7 @@ class SettingsViewModel @Inject constructor(
     private val addMemberUseCase: AddMemberUseCase,
     private val createInviteUseCase: CreateInviteUseCase,
     private val createMemberInviteUseCase: CreateMemberInviteUseCase,
-    private val deleteMemberUseCase: DeleteMemberUseCase,
+    private val removeMemberUseCase: RemoveMemberUseCase,
     private val updateDisplayNameUseCase: UpdateDisplayNameUseCase,
     private val updateCurrentMemberDisplayNameUseCase: UpdateCurrentMemberDisplayNameUseCase,
     private val updateHouseholdNameUseCase: UpdateHouseholdNameUseCase,
@@ -191,7 +191,7 @@ class SettingsViewModel @Inject constructor(
             SettingsUiIntent.SaveHouseholdName -> saveHouseholdName()
             SettingsUiIntent.AddMember -> addMember()
             SettingsUiIntent.RefreshInvite -> refreshInvite()
-            is SettingsUiIntent.DeleteMember -> deleteMember(intent.memberId)
+            is SettingsUiIntent.RemoveMember -> removeMember(intent.memberId)
             is SettingsUiIntent.GenerateMemberInvite -> generateMemberInvite(intent.memberId)
             is SettingsUiIntent.SetThemeMode -> viewModelScope.launch { setThemeModeUseCase(intent.mode) }
             is SettingsUiIntent.SetDynamicColor -> viewModelScope.launch { setDynamicColorUseCase(intent.enabled) }
@@ -263,12 +263,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private fun deleteMember(memberId: String) {
+    private fun removeMember(memberId: String) {
         val household = uiState.value.household ?: return
         viewModelScope.launch {
-            val result = deleteMemberUseCase(household.id, memberId)
+            val result = removeMemberUseCase(household.id, memberId)
             if (result is AppResult.Success) {
-                _events.send(SettingsUiEvent.MemberDeleted)
+                _events.send(SettingsUiEvent.MemberRemoved)
             } else if (result is AppResult.Error) {
                 _events.send(SettingsUiEvent.Error(result.message))
             }

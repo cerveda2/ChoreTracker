@@ -187,4 +187,67 @@ class OfflineFirstHouseholdRepositoryTest {
             memberDao.claimPlaceholder("placeholder-id", "user-1", "dana@example.com", "UserTypedName", "invite-1")
         }
     }
+
+    @Test
+    fun `removeMember soft-removes via markRemoved, queues a delete op, and triggers sync`() = runTest {
+        val member = MemberEntity(
+            id = "member-2",
+            householdId = "household-1",
+            userId = "user-2",
+            displayName = "Bob",
+            role = HouseholdRole.MEMBER.name,
+            isCurrentUser = false,
+        )
+        coEvery { memberDao.getMembers("household-1") } returns listOf(member)
+        coEvery { memberDao.markRemoved(any(), any()) } just Runs
+        coEvery { pendingSyncOperationDao.upsert(any()) } just Runs
+
+        val result = repository.removeMember("household-1", "member-2")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify { memberDao.markRemoved("member-2", any()) }
+        coVerify(exactly = 0) { memberDao.deleteById(any()) }
+        coVerify {
+            pendingSyncOperationDao.upsert(
+                match { it.entityType == "member" && it.operationType == "delete" && it.payload == "user-2" },
+            )
+        }
+        coVerify { syncRepository.syncPendingOperations() }
+    }
+
+    @Test
+    fun `removeMember returns an error when the member is not found`() = runTest {
+        coEvery { memberDao.getMembers("household-1") } returns emptyList()
+
+        val result = repository.removeMember("household-1", "missing")
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        coVerify(exactly = 0) { memberDao.markRemoved(any(), any()) }
+    }
+
+    @Test
+    fun `observeMembers filters out soft-removed members`() = runTest {
+        val active = MemberEntity(
+            id = "member-1",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = HouseholdRole.OWNER.name,
+            isCurrentUser = true,
+        )
+        val removed = MemberEntity(
+            id = "member-2",
+            householdId = "household-1",
+            userId = "user-2",
+            displayName = "Bob",
+            role = HouseholdRole.MEMBER.name,
+            isCurrentUser = false,
+            removedAt = Instant.parse("2026-02-01T10:00:00Z"),
+        )
+        every { memberDao.observeMembers("household-1") } returns MutableStateFlow(listOf(active, removed))
+
+        val members = repository.observeMembers("household-1").first()
+
+        assertThat(members.map { it.id }).containsExactly("member-1")
+    }
 }

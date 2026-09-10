@@ -201,7 +201,8 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     put("userId", member.userId)
                     put("displayName", member.displayName)
                     put("role", member.role.name)
-                    put("active", true)
+                    put("active", member.removedAt == null)
+                    put("removedAt", member.removedAt?.asTimestamp())
                     member.email?.let { put("email", it) }
                     member.joinedViaInviteId?.let { put("joinedViaInviteId", it) }
                 },
@@ -311,7 +312,8 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     put("userId", member.userId)
                     put("displayName", member.displayName)
                     put("role", member.role.name)
-                    put("active", true)
+                    put("active", member.removedAt == null)
+                    put("removedAt", member.removedAt?.asTimestamp())
                     member.email?.let { put("email", it) }
                     member.joinedViaInviteId?.let { put("joinedViaInviteId", it) }
                 },
@@ -350,25 +352,6 @@ class FirebaseHouseholdDataSource @Inject constructor(
         }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "upsertMemberSnapshot: failed")
             AppResult.Error(error.message ?: "Unable to sync member data.", error)
-        }
-    }
-
-    override suspend fun deleteMember(householdId: String, firestoreDocId: String): EmptyResult {
-        Timber.d("deleteMember: householdId=$householdId firestoreDocId=$firestoreDocId")
-        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
-        return runCatching {
-            awaitTask(
-                db.collection(HOUSEHOLDS_COLLECTION)
-                    .document(householdId)
-                    .collection(MEMBERS_COLLECTION)
-                    .document(firestoreDocId)
-                    .delete(),
-            )
-            Timber.d("deleteMember: success")
-            AppResult.Success(Unit)
-        }.rethrowCancellation().getOrElse { error ->
-            Timber.e(error, "deleteMember: failed")
-            AppResult.Error(error.message ?: "Unable to delete member.", error)
         }
     }
 
@@ -577,6 +560,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
         isCurrentUser = getString("userId") == currentUserId,
         email = getString("email"),
         joinedViaInviteId = getString("joinedViaInviteId"),
+        removedAt = getTimestamp("removedAt")?.asInstant(),
     )
 
     private fun DocumentSnapshot.asChore(householdId: String): Chore = Chore(

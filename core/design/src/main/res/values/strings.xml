@@ -130,7 +130,7 @@
     <string name="household_add_member">Add member</string>
     <string name="household_delete_member">Remove member</string>
     <string name="household_delete_member_title">Remove this member?</string>
-    <string name="household_delete_member_message">This removes the member from the household. Their completion history remains visible.</string>
+    <string name="household_delete_member_message">They lose access to this household on their next sync. Their past completions stay visible in history.</string>
     <string name="household_invite_section">Invite</string>
     <string name="settings_invite_none">No active invite code. Tap Refresh invite to generate one.</string>
     <string name="settings_invite_copy">Copy code</string>
