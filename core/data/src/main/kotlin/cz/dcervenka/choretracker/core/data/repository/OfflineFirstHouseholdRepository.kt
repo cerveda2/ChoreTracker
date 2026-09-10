@@ -135,7 +135,12 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     }
 
     override fun observeMembers(householdId: String): Flow<List<HouseholdMember>> =
-        memberDao.observeMembers(householdId).map { members -> members.map(MemberEntity::asModel) }
+        memberDao.observeMembers(householdId).map { members ->
+            // Soft-removed members are kept in Room (so chore history keeps resolving their name -
+            // OfflineFirstStatsRepository/OfflineFirstChoreCompletionRepository read the DAO
+            // directly, unfiltered) but drop out of the current-member lists every UI picker uses.
+            members.filter { it.removedAt == null }.map(MemberEntity::asModel)
+        }
 
     override fun observeInvites(householdId: String): Flow<List<Invite>> =
         inviteDao.observeInvites(householdId).map { invites -> invites.map(InviteEntity::asModel) }
@@ -320,21 +325,87 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         }
     }
 
-    override suspend fun deleteMember(householdId: String, memberId: String): EmptyResult {
-        Timber.d("deleteMember: householdId=$householdId memberId=$memberId")
+    override suspend fun removeMember(householdId: String, memberId: String): EmptyResult {
+        Timber.d("removeMember: householdId=$householdId memberId=$memberId")
         val user = currentUser()
         if (user?.isPreview == true) {
-            Timber.w("deleteMember failed: preview user attempted write operation")
-            return AppResult.Error("Cannot delete members in preview mode")
+            Timber.w("removeMember failed: preview user attempted write operation")
+            return AppResult.Error("Cannot remove members in preview mode")
         }
         val member = memberDao.getMembers(householdId).find { it.id == memberId }
         return if (member == null) {
             AppResult.Error("Member not found.")
         } else {
-            memberDao.deleteById(memberId)
+            // Soft removal (mirrors OfflineFirstChoreRepository.deleteChore): the row stays so
+            // chore history keeps resolving this member's name. The "delete" operationType is
+            // kept for the pending-op bookkeeping - the removedAt/active fields ride the normal
+            // full-snapshot push to Firestore, there's no dedicated remote delete anymore.
+            memberDao.markRemoved(memberId, Clock.System.now())
             enqueueOperation("member", householdId, "delete", member.userId ?: member.id)
             scope.launch { syncRepository.syncPendingOperations() }
             AppResult.Success(Unit)
+        }
+    }
+
+    override suspend fun transferOwnership(householdId: String, newOwnerMemberId: String): EmptyResult {
+        Timber.d("transferOwnership: householdId=$householdId newOwnerMemberId=$newOwnerMemberId")
+        val user = currentUser()
+        val household = householdDao.getHousehold(householdId)
+        val members = if (household != null) memberDao.getMembers(householdId) else emptyList()
+        val newOwner = members.find { it.id == newOwnerMemberId }
+        val newOwnerUserId = newOwner?.userId
+        val previousOwner = members.find { it.userId == user?.id }
+        return when {
+            user == null -> AppResult.Error("Sign in first.")
+            user.isPreview -> AppResult.Error("Cannot transfer ownership in preview mode")
+            household == null -> AppResult.Error("Household not found.")
+            previousOwner == null -> AppResult.Error("Current owner's membership was not found.")
+            // Checked against the caller's own (real-time-synced) role, not household.ownerUserId:
+            // that field is never updated by real-time sync, so right after a previous transfer it
+            // can still read the old owner on this device - see the isOwner comment in
+            // LocalSyncRepository.syncHousehold for the full explanation.
+            previousOwner.role != HouseholdRole.OWNER.name ->
+                AppResult.Error("Only the current owner can transfer ownership.")
+            newOwner == null -> AppResult.Error("Member not found.")
+            newOwnerUserId == null -> AppResult.Error("This member hasn't joined yet.")
+            newOwnerUserId == user.id -> AppResult.Error("You're already the owner.")
+            // Awaited: a fire-and-forget local flip would route the owner's next sync through
+            // performMemberSync (which writes neither ownerUserId nor role) and lose the change.
+            else -> when (
+                val result = syncRepository.transferOwnership(
+                    householdId = householdId,
+                    newOwnerUserId = newOwnerUserId,
+                    newOwnerMemberDocId = newOwnerUserId,
+                    previousOwnerMemberDocId = previousOwner.userId ?: previousOwner.id,
+                )
+            ) {
+                is AppResult.Error -> result
+                is AppResult.Success -> {
+                    householdDao.updateOwner(householdId, newOwnerUserId)
+                    memberDao.updateRole(newOwner.id, HouseholdRole.OWNER.name)
+                    memberDao.updateRole(previousOwner.id, HouseholdRole.MEMBER.name)
+                    AppResult.Success(Unit)
+                }
+            }
+        }
+    }
+
+    override suspend fun leaveHousehold(householdId: String): EmptyResult {
+        Timber.d("leaveHousehold: householdId=$householdId")
+        val user = currentUser()
+        val household = householdDao.getHousehold(householdId)
+        val member = user?.let { memberDao.findByUserId(householdId, it.id) }
+        return when {
+            user == null -> AppResult.Error("Sign in first.")
+            user.isPreview -> AppResult.Error("Cannot leave a household in preview mode")
+            household == null -> AppResult.Error("Household not found.")
+            member == null -> AppResult.Error("Your membership was not found.")
+            // Checked against the caller's own (real-time-synced) role, not household.ownerUserId -
+            // see the matching comment on transferOwnership above.
+            member.role == HouseholdRole.OWNER.name -> AppResult.Error("Transfer ownership before leaving.")
+            // selfMemberDocId == the uid for a linked member (memberDocumentId = userId ?: id, and
+            // a leaver always has a userId), which is also the users/{uid} doc key.
+            else -> syncRepository.leaveHousehold(householdId, member.userId ?: member.id)
         }
     }
 

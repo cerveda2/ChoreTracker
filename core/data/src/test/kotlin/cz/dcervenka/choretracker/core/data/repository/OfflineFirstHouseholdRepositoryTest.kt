@@ -187,4 +187,218 @@ class OfflineFirstHouseholdRepositoryTest {
             memberDao.claimPlaceholder("placeholder-id", "user-1", "dana@example.com", "UserTypedName", "invite-1")
         }
     }
+
+    @Test
+    fun `removeMember soft-removes via markRemoved, queues a delete op, and triggers sync`() = runTest {
+        val member = MemberEntity(
+            id = "member-2",
+            householdId = "household-1",
+            userId = "user-2",
+            displayName = "Bob",
+            role = HouseholdRole.MEMBER.name,
+            isCurrentUser = false,
+        )
+        coEvery { memberDao.getMembers("household-1") } returns listOf(member)
+        coEvery { memberDao.markRemoved(any(), any()) } just Runs
+        coEvery { pendingSyncOperationDao.upsert(any()) } just Runs
+
+        val result = repository.removeMember("household-1", "member-2")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify { memberDao.markRemoved("member-2", any()) }
+        coVerify(exactly = 0) { memberDao.deleteById(any()) }
+        coVerify {
+            pendingSyncOperationDao.upsert(
+                match { it.entityType == "member" && it.operationType == "delete" && it.payload == "user-2" },
+            )
+        }
+        coVerify { syncRepository.syncPendingOperations() }
+    }
+
+    @Test
+    fun `removeMember returns an error when the member is not found`() = runTest {
+        coEvery { memberDao.getMembers("household-1") } returns emptyList()
+
+        val result = repository.removeMember("household-1", "missing")
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        coVerify(exactly = 0) { memberDao.markRemoved(any(), any()) }
+    }
+
+    @Test
+    fun `observeMembers filters out soft-removed members`() = runTest {
+        val active = MemberEntity(
+            id = "member-1",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = HouseholdRole.OWNER.name,
+            isCurrentUser = true,
+        )
+        val removed = MemberEntity(
+            id = "member-2",
+            householdId = "household-1",
+            userId = "user-2",
+            displayName = "Bob",
+            role = HouseholdRole.MEMBER.name,
+            isCurrentUser = false,
+            removedAt = Instant.parse("2026-02-01T10:00:00Z"),
+        )
+        every { memberDao.observeMembers("household-1") } returns MutableStateFlow(listOf(active, removed))
+
+        val members = repository.observeMembers("household-1").first()
+
+        assertThat(members.map { it.id }).containsExactly("member-1")
+    }
+
+    @Test
+    fun `leaveHousehold delegates to the sync repository with the caller's own member doc id`() = runTest {
+        val household = HouseholdEntity(
+            id = "household-1",
+            name = "Home",
+            ownerUserId = "owner-user",
+            inviteCode = "ABC123",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+        )
+        val selfMember = MemberEntity(
+            id = "member-self",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = HouseholdRole.MEMBER.name,
+            isCurrentUser = true,
+        )
+        coEvery { householdDao.getHousehold("household-1") } returns household
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns selfMember
+        coEvery { syncRepository.leaveHousehold("household-1", "user-1") } returns AppResult.Success(Unit)
+
+        val result = repository.leaveHousehold("household-1")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify { syncRepository.leaveHousehold("household-1", "user-1") }
+    }
+
+    @Test
+    fun `leaveHousehold rejects the owner - they must transfer first`() = runTest {
+        // household.ownerUserId is stale here (still the old owner) - the guard reads the
+        // caller's own real-time-synced role instead, so a real (but locally-stale) owner is
+        // still caught. See the isOwner comment in LocalSyncRepository.syncHousehold.
+        val household = HouseholdEntity(
+            id = "household-1",
+            name = "Home",
+            ownerUserId = "someone-else",
+            inviteCode = "ABC123",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+        )
+        val ownerMember = MemberEntity(
+            id = "member-self",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = HouseholdRole.OWNER.name,
+            isCurrentUser = true,
+        )
+        coEvery { householdDao.getHousehold("household-1") } returns household
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns ownerMember
+
+        val result = repository.leaveHousehold("household-1")
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        coVerify(exactly = 0) { syncRepository.leaveHousehold(any(), any()) }
+    }
+
+    @Test
+    fun `transferOwnership issues the sync call then swaps owner and roles locally`() = runTest {
+        val household = HouseholdEntity(
+            id = "household-1",
+            name = "Home",
+            ownerUserId = "user-1",
+            inviteCode = "ABC123",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+        )
+        val owner = MemberEntity(
+            id = "member-owner",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = HouseholdRole.OWNER.name,
+            isCurrentUser = true,
+        )
+        val target = MemberEntity(
+            id = "member-target",
+            householdId = "household-1",
+            userId = "user-2",
+            displayName = "Bob",
+            role = HouseholdRole.MEMBER.name,
+            isCurrentUser = false,
+        )
+        coEvery { householdDao.getHousehold("household-1") } returns household
+        coEvery { memberDao.getMembers("household-1") } returns listOf(owner, target)
+        coEvery {
+            syncRepository.transferOwnership("household-1", "user-2", "user-2", "user-1")
+        } returns AppResult.Success(Unit)
+        coEvery { householdDao.updateOwner(any(), any()) } just Runs
+        coEvery { memberDao.updateRole(any(), any()) } just Runs
+
+        val result = repository.transferOwnership("household-1", "member-target")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify { householdDao.updateOwner("household-1", "user-2") }
+        coVerify { memberDao.updateRole("member-target", HouseholdRole.OWNER.name) }
+        coVerify { memberDao.updateRole("member-owner", HouseholdRole.MEMBER.name) }
+    }
+
+    @Test
+    fun `transferOwnership rejects a non-owner caller`() = runTest {
+        // household.ownerUserId is stale here (points elsewhere) - the guard reads the caller's
+        // own real-time-synced role instead, so a plain MEMBER is rejected either way.
+        val household = HouseholdEntity(
+            id = "household-1",
+            name = "Home",
+            ownerUserId = "someone-else",
+            inviteCode = "ABC123",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+        )
+        val caller = MemberEntity(
+            id = "member-caller",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = HouseholdRole.MEMBER.name,
+            isCurrentUser = true,
+        )
+        coEvery { householdDao.getHousehold("household-1") } returns household
+        coEvery { memberDao.getMembers("household-1") } returns listOf(caller)
+
+        val result = repository.transferOwnership("household-1", "member-x")
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        coVerify(exactly = 0) { syncRepository.transferOwnership(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `transferOwnership rejects a placeholder target`() = runTest {
+        val household = HouseholdEntity(
+            id = "household-1",
+            name = "Home",
+            ownerUserId = "user-1",
+            inviteCode = "ABC123",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+        )
+        val owner = MemberEntity(
+            id = "member-owner",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = HouseholdRole.OWNER.name,
+            isCurrentUser = true,
+        )
+        coEvery { householdDao.getHousehold("household-1") } returns household
+        coEvery { memberDao.getMembers("household-1") } returns listOf(owner)
+
+        val result = repository.transferOwnership("household-1", "member-placeholder")
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        coVerify(exactly = 0) { syncRepository.transferOwnership(any(), any(), any(), any()) }
+    }
 }

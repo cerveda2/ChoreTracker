@@ -4,9 +4,9 @@ import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
 import javax.inject.Inject
 
-class DeleteMemberUseCase @Inject constructor(
+class LeaveHouseholdUseCase @Inject constructor(
     private val householdRepository: HouseholdRepository,
 ) {
-    suspend operator fun invoke(householdId: String, memberId: String): EmptyResult =
-        householdRepository.deleteMember(householdId, memberId)
+    suspend operator fun invoke(householdId: String): EmptyResult =
+        householdRepository.leaveHousehold(householdId)
 }

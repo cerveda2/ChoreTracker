@@ -22,6 +22,8 @@ interface RemoteAuthDataSource {
     suspend fun updateDisplayName(displayName: String): EmptyResult
 
     suspend fun signOut(): EmptyResult
+
+    suspend fun deleteAccount(): EmptyResult
 }
 
 interface RemoteHouseholdDataSource {
@@ -50,5 +52,12 @@ interface RemoteHouseholdDataSource {
 
     suspend fun deleteCompletion(householdId: String, completionId: String): EmptyResult
 
-    suspend fun deleteMember(householdId: String, firestoreDocId: String): EmptyResult
+    suspend fun transferOwnership(
+        householdId: String,
+        newOwnerUserId: String,
+        newOwnerMemberDocId: String,
+        previousOwnerMemberDocId: String,
+    ): EmptyResult
+
+    suspend fun leaveHousehold(householdId: String, selfMemberDocId: String): EmptyResult
 }

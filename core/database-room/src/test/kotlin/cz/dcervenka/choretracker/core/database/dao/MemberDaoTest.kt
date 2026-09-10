@@ -119,6 +119,31 @@ class MemberDaoTest {
     }
 
     @Test
+    fun `markRemoved stamps removedAt on only the targeted member and keeps the row`() = runTest {
+        dao.upsert(memberEntity("member-1"))
+        dao.upsert(memberEntity("member-2"))
+
+        dao.markRemoved("member-1", instantAt(42))
+
+        assertThat(dao.findById("household-1", "member-1")?.removedAt).isEqualTo(instantAt(42))
+        assertThat(dao.findById("household-1", "member-2")?.removedAt).isNull()
+        // The row survives - observeMembers is unfiltered at the DAO level; the repository filters.
+        assertThat(dao.getMembers("household-1").map { it.id }).containsExactly("member-1", "member-2")
+    }
+
+    @Test
+    fun `updateRole only touches the targeted member`() = runTest {
+        dao.upsert(memberEntity("member-1", role = "MEMBER"))
+        dao.upsert(memberEntity("member-2", role = "OWNER"))
+
+        dao.updateRole("member-1", "OWNER")
+        dao.updateRole("member-2", "MEMBER")
+
+        assertThat(dao.findById("household-1", "member-1")?.role).isEqualTo("OWNER")
+        assertThat(dao.findById("household-1", "member-2")?.role).isEqualTo("MEMBER")
+    }
+
+    @Test
     fun `observeMembers re-emits after a subsequent upsert`() = runTest {
         dao.upsert(memberEntity("member-1", displayName = "Alpha"))
 

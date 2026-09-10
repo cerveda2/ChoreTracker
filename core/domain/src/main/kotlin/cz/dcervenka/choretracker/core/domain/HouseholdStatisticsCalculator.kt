@@ -45,8 +45,12 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         recentLimit: Int = 8,
     ): DashboardSnapshot {
         val activeCompletions = activeChoreCompletions(chores, completions)
+        // Removed members drop out of "who currently shares the chores" (contributions, balance)
+        // but stay in the raw `members` list passed to buildRecent/buildStaleness so their name
+        // still resolves in history.
+        val activeMembers = activeMembersOf(members)
         val contributions = buildContributions(
-            members = members,
+            members = activeMembers,
             completions = activeCompletions,
             timeZone = timeZone,
             today = today,
@@ -87,29 +91,32 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         // chart always covers its own fixed trailing window, and "how stale is this chore" needs
         // its true last completion regardless of which reporting period is selected.
         val periodCompletions = filterByPeriod(activeCompletions, period, timeZone, today)
+        // Removed members drop out of every "current contributor" breakdown but stay in the raw
+        // `members` list passed to buildStaleness so lastCompletedByNames still resolves.
+        val activeMembers = activeMembersOf(members)
         return StatsSnapshot(
             household = household,
             summary = buildSummary(periodCompletions),
             memberContributions = buildContributions(
-                members = members,
+                members = activeMembers,
                 completions = periodCompletions,
                 timeZone = timeZone,
                 today = today,
             ),
-            shareBreakdown = buildShareBreakdown(members, periodCompletions),
+            shareBreakdown = buildShareBreakdown(activeMembers, periodCompletions),
             comparisons = buildComparisons(
                 chores = chores,
-                members = members,
+                members = activeMembers,
                 completions = periodCompletions,
                 allCompletions = activeCompletions,
             ),
             categoryComparisons = buildCategoryComparisons(
                 chores = chores,
-                members = members,
+                members = activeMembers,
                 completions = periodCompletions,
             ),
             monthlyBreakdown = buildMonthlyBreakdown(
-                members = members,
+                members = activeMembers,
                 completions = activeCompletions,
                 timeZone = timeZone,
                 today = today,
@@ -370,6 +377,11 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         }
     }
 }
+
+// Top-level, not a method: it only reads its parameter (no instance state), and keeping it out
+// of the class avoids tripping TooManyFunctions there.
+private fun activeMembersOf(members: List<HouseholdMember>): List<HouseholdMember> =
+    members.filter { it.removedAt == null }
 
 // Top-level, not a method: it only reads its parameter (no instance state), and keeping it out
 // of the class avoids tripping TooManyFunctions there. Null with fewer than two members, or when

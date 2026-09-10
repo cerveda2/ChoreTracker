@@ -6,16 +6,19 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateMemberInviteUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.DeleteMemberUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.DeleteAccountUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.LeaveHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInvitesUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveThemeSettingsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.RemoveMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetDynamicColorUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetThemeModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.TransferOwnershipUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCurrentMemberDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateHouseholdNameUseCase
@@ -28,6 +31,7 @@ import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleInvite
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
+import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import io.mockk.MockKAnnotations
 import io.mockk.Runs
@@ -73,7 +77,16 @@ class SettingsViewModelTest {
     lateinit var createMemberInviteUseCase: CreateMemberInviteUseCase
 
     @MockK
-    lateinit var deleteMemberUseCase: DeleteMemberUseCase
+    lateinit var removeMemberUseCase: RemoveMemberUseCase
+
+    @MockK
+    lateinit var transferOwnershipUseCase: TransferOwnershipUseCase
+
+    @MockK
+    lateinit var leaveHouseholdUseCase: LeaveHouseholdUseCase
+
+    @MockK
+    lateinit var deleteAccountUseCase: DeleteAccountUseCase
 
     @MockK
     lateinit var updateDisplayNameUseCase: UpdateDisplayNameUseCase
@@ -120,7 +133,7 @@ class SettingsViewModelTest {
         coEvery { signOutUseCase() } returns AppResult.Success(Unit)
         coEvery { addMemberUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { createInviteUseCase(any()) } returns AppResult.Success(sampleInvite())
-        coEvery { deleteMemberUseCase(any(), any()) } returns AppResult.Success(Unit)
+        coEvery { removeMemberUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateDisplayNameUseCase(any()) } returns AppResult.Success(Unit)
         coEvery { updateCurrentMemberDisplayNameUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateHouseholdNameUseCase(any(), any()) } returns AppResult.Success(Unit)
@@ -229,6 +242,63 @@ class SettingsViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun `TransferOwnership delegates to the use case and emits OwnershipTransferred`() =
+        runTest(coroutineRule.dispatcher) {
+            coEvery { transferOwnershipUseCase(any(), any()) } returns AppResult.Success(Unit)
+            val viewModel = createViewModel()
+            authStateFlow.value = sampleAuthenticatedState()
+            householdFlow.value = sampleHousehold()
+
+            viewModel.uiState.test {
+                advanceUntilIdle()
+                viewModel.events.test {
+                    viewModel.dispatch(SettingsUiIntent.TransferOwnership("member-2"))
+                    advanceUntilIdle()
+
+                    coVerify { transferOwnershipUseCase("household-1", "member-2") }
+                    assertThat(awaitItem()).isEqualTo(SettingsUiEvent.OwnershipTransferred)
+                }
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `LeaveHousehold delegates to the use case and surfaces an error when it fails`() =
+        runTest(coroutineRule.dispatcher) {
+            coEvery { leaveHouseholdUseCase(any()) } returns AppResult.Error("Connect to the internet to leave.")
+            val viewModel = createViewModel()
+            authStateFlow.value = sampleAuthenticatedState()
+            householdFlow.value = sampleHousehold()
+
+            viewModel.uiState.test {
+                advanceUntilIdle()
+                viewModel.events.test {
+                    viewModel.dispatch(SettingsUiIntent.LeaveHousehold)
+                    advanceUntilIdle()
+
+                    coVerify { leaveHouseholdUseCase("household-1") }
+                    assertThat(awaitItem()).isEqualTo(SettingsUiEvent.Error("Connect to the internet to leave."))
+                }
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `DeleteAccount delegates to the use case and surfaces an error when it fails`() =
+        runTest(coroutineRule.dispatcher) {
+            coEvery { deleteAccountUseCase() } returns AppResult.Error("Unable to delete your account.")
+            val viewModel = createViewModel()
+
+            viewModel.events.test {
+                viewModel.dispatch(SettingsUiIntent.DeleteAccount)
+                advanceUntilIdle()
+
+                coVerify { deleteAccountUseCase() }
+                assertThat(awaitItem()).isEqualTo(SettingsUiEvent.Error("Unable to delete your account."))
+            }
+        }
 }
 
 private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
@@ -242,7 +312,10 @@ private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
     addMemberUseCase,
     createInviteUseCase,
     createMemberInviteUseCase,
-    deleteMemberUseCase,
+    removeMemberUseCase,
+    transferOwnershipUseCase,
+    leaveHouseholdUseCase,
+    deleteAccountUseCase,
     updateDisplayNameUseCase,
     updateCurrentMemberDisplayNameUseCase,
     updateHouseholdNameUseCase,

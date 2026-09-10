@@ -6,6 +6,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.SetOptions
@@ -201,7 +202,8 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     put("userId", member.userId)
                     put("displayName", member.displayName)
                     put("role", member.role.name)
-                    put("active", true)
+                    put("active", member.removedAt == null)
+                    put("removedAt", member.removedAt?.asTimestamp())
                     member.email?.let { put("email", it) }
                     member.joinedViaInviteId?.let { put("joinedViaInviteId", it) }
                 },
@@ -311,7 +313,8 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     put("userId", member.userId)
                     put("displayName", member.displayName)
                     put("role", member.role.name)
-                    put("active", true)
+                    put("active", member.removedAt == null)
+                    put("removedAt", member.removedAt?.asTimestamp())
                     member.email?.let { put("email", it) }
                     member.joinedViaInviteId?.let { put("joinedViaInviteId", it) }
                 },
@@ -350,25 +353,6 @@ class FirebaseHouseholdDataSource @Inject constructor(
         }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "upsertMemberSnapshot: failed")
             AppResult.Error(error.message ?: "Unable to sync member data.", error)
-        }
-    }
-
-    override suspend fun deleteMember(householdId: String, firestoreDocId: String): EmptyResult {
-        Timber.d("deleteMember: householdId=$householdId firestoreDocId=$firestoreDocId")
-        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
-        return runCatching {
-            awaitTask(
-                db.collection(HOUSEHOLDS_COLLECTION)
-                    .document(householdId)
-                    .collection(MEMBERS_COLLECTION)
-                    .document(firestoreDocId)
-                    .delete(),
-            )
-            Timber.d("deleteMember: success")
-            AppResult.Success(Unit)
-        }.rethrowCancellation().getOrElse { error ->
-            Timber.e(error, "deleteMember: failed")
-            AppResult.Error(error.message ?: "Unable to delete member.", error)
         }
     }
 
@@ -444,6 +428,71 @@ class FirebaseHouseholdDataSource @Inject constructor(
         }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "deleteCompletion: failed")
             AppResult.Error(error.message ?: "Unable to delete completion.", error)
+        }
+    }
+
+    override suspend fun transferOwnership(
+        householdId: String,
+        newOwnerUserId: String,
+        newOwnerMemberDocId: String,
+        previousOwnerMemberDocId: String,
+    ): EmptyResult {
+        Timber.d("transferOwnership: householdId=$householdId newOwnerUserId=$newOwnerUserId")
+        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        return runCatching {
+            val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
+            val members = householdRef.collection(MEMBERS_COLLECTION)
+            // One batch: every write is evaluated against the pre-batch state where the caller is
+            // still isHouseholdOwner, so all three pass the current rules atomically. `role` is
+            // advisory (no rule reads it) but the UI's isOwner does - swap it too.
+            val batch = db.batch()
+            batch.update(householdRef, "ownerUserId", newOwnerUserId)
+            batch.set(
+                members.document(newOwnerMemberDocId),
+                mapOf("role" to HouseholdRole.OWNER.name),
+                SetOptions.merge(),
+            )
+            batch.set(
+                members.document(previousOwnerMemberDocId),
+                mapOf("role" to HouseholdRole.MEMBER.name),
+                SetOptions.merge(),
+            )
+            awaitTask(batch.commit())
+            Timber.d("transferOwnership: success")
+            AppResult.Success(Unit)
+        }.rethrowCancellation().getOrElse { error ->
+            Timber.e(error, "transferOwnership: failed")
+            AppResult.Error(error.message ?: "Unable to transfer ownership.", error)
+        }
+    }
+
+    override suspend fun leaveHousehold(householdId: String, selfMemberDocId: String): EmptyResult {
+        Timber.d("leaveHousehold: householdId=$householdId selfMemberDocId=$selfMemberDocId")
+        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        return runCatching {
+            val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
+            val batch = db.batch()
+            // Only active/removedAt on the caller's own member doc - the self-leave rules branch
+            // rejects anything else. NOT the full member map (upsertMemberSnapshot), which would
+            // also try to re-push completions after active flips to false and get denied.
+            batch.set(
+                householdRef.collection(MEMBERS_COLLECTION).document(selfMemberDocId),
+                mapOf("active" to false, "removedAt" to Timestamp.now()),
+                SetOptions.merge(),
+            )
+            // Drop the household pointer so a later restoreHouseholdForUser resolves to no
+            // household instead of hitting PERMISSION_DENIED and writing a blank snapshot.
+            batch.set(
+                db.collection(USERS_COLLECTION).document(selfMemberDocId),
+                mapOf("householdId" to FieldValue.delete()),
+                SetOptions.merge(),
+            )
+            awaitTask(batch.commit())
+            Timber.d("leaveHousehold: success")
+            AppResult.Success(Unit)
+        }.rethrowCancellation().getOrElse { error ->
+            Timber.e(error, "leaveHousehold: failed")
+            AppResult.Error(error.message ?: "Unable to leave household.", error)
         }
     }
 
@@ -577,6 +626,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
         isCurrentUser = getString("userId") == currentUserId,
         email = getString("email"),
         joinedViaInviteId = getString("joinedViaInviteId"),
+        removedAt = getTimestamp("removedAt")?.asInstant(),
     )
 
     private fun DocumentSnapshot.asChore(householdId: String): Chore = Chore(

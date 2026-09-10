@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import kotlinx.coroutines.flow.Flow
+import kotlin.time.Instant
 
 @Dao
 interface MemberDao {
@@ -45,6 +46,15 @@ interface MemberDao {
 
     @Query("UPDATE members SET isCurrentUser = 0 WHERE isCurrentUser = 1")
     suspend fun clearCurrentUser()
+
+    @Query("UPDATE members SET role = :role WHERE id = :memberId")
+    suspend fun updateRole(memberId: String, role: String)
+
+    // Soft removal, mirroring ChoreDao.markDeleted. The row stays so chore history keeps
+    // resolving the member's name; the repository layer filters removed members out of the
+    // current-member lists.
+    @Query("UPDATE members SET removedAt = :removedAt WHERE id = :memberId")
+    suspend fun markRemoved(memberId: String, removedAt: Instant)
 
     @Query("DELETE FROM members WHERE id = :id")
     suspend fun deleteById(id: String)

@@ -185,13 +185,18 @@ class LocalSyncRepository @Inject constructor(
                     snapshot == null -> AppResult.Success(false).also {
                         Timber.d("restoreHouseholdForUser: no remote snapshot found")
                     }
-                    snapshot.members.none { it.userId == userId } &&
-                        householdDao.getCurrentHouseholdForUser(userId) != null -> {
+                    snapshot.members.none { it.userId == userId && it.removedAt == null } -> {
+                        // Not an active member of the fetched household (removed, or left). Never
+                        // applySnapshot here - the fetch returns an empty-members sentinel with a
+                        // blank name/ownerUserId on PERMISSION_DENIED, and writing that into Room
+                        // corrupts local state. Wipe local data if any is still present.
                         Timber.w(
-                            "restoreHouseholdForUser: userId=$userId no longer a member of " +
-                                "household=${snapshot.household.id} - clearing local data",
+                            "restoreHouseholdForUser: userId=$userId is not an active member of " +
+                                "household=${snapshot.household.id}",
                         )
-                        database.clearAll()
+                        if (householdDao.getCurrentHouseholdForUser(userId) != null) {
+                            database.clearAll()
+                        }
                         AppResult.Success(false)
                     }
                     else -> applySnapshot(snapshot)
@@ -210,19 +215,28 @@ class LocalSyncRepository @Inject constructor(
                 createdAt = snapshot.household.createdAt,
             ),
         )
-        deduplicateMembers(snapshot.members).forEach { member ->
-            memberDao.upsert(
-                MemberEntity(
-                    id = member.id,
-                    householdId = member.householdId,
-                    userId = member.userId,
-                    displayName = member.displayName,
-                    role = member.role.name,
-                    isCurrentUser = member.isCurrentUser,
-                    email = member.email,
-                    joinedViaInviteId = member.joinedViaInviteId,
-                ),
-            )
+        // Same guard as RealtimeSyncApplier.applyMembers: a household with a pending member
+        // operation queued skips the member upsert entirely, rather than risk this pulled
+        // snapshot - which may predate that not-yet-pushed local change - clobbering it (e.g.
+        // reverting a just-set removedAt back to null).
+        val hasPendingMemberOps = pendingSyncOperationDao.getAll()
+            .any { it.entityType == "member" && it.entityId == snapshot.household.id }
+        if (!hasPendingMemberOps) {
+            deduplicateMembers(snapshot.members).forEach { member ->
+                memberDao.upsert(
+                    MemberEntity(
+                        id = member.id,
+                        householdId = member.householdId,
+                        userId = member.userId,
+                        displayName = member.displayName,
+                        role = member.role.name,
+                        isCurrentUser = member.isCurrentUser,
+                        email = member.email,
+                        joinedViaInviteId = member.joinedViaInviteId,
+                        removedAt = member.removedAt,
+                    ),
+                )
+            }
         }
         snapshot.chores.forEach { chore ->
             choreDao.upsert(
@@ -287,7 +301,13 @@ class LocalSyncRepository @Inject constructor(
         authenticatedUser: AppUser,
     ): AppResult.Error? {
         val now = Clock.System.now()
-        val isOwner = householdDao.getHousehold(householdId)?.ownerUserId == authenticatedUser.id
+        // Derived from the caller's own member row, not households.ownerUserId: that field has no
+        // real-time listener (observeRealtimeUpdates only watches members/completions/invites/
+        // chores), so after a transfer it stays stale on both ends until the next full restore -
+        // for the new owner that misroutes every household-level mutation (add/remove member,
+        // rename) through performMemberSync below, which silently drops them. The member's own
+        // `role` IS kept fresh by the real-time members listener, so it doesn't have that gap.
+        val isOwner = memberDao.findByUserId(householdId, authenticatedUser.id)?.role == HouseholdRole.OWNER.name
         val result = performRemoteSync(householdId, isOwner, authenticatedUser)
         if (result == null) {
             // buildSnapshot/buildMemberSync found no local household or member row to sync from -
@@ -322,7 +342,9 @@ class LocalSyncRepository @Inject constructor(
                 Timber.d("syncPendingOperations: synced ${operationIds.size} operations for household=$householdId")
                 val operationIdSet = operationIds.toSet()
                 val failedOperationIds = buildSet {
-                    if (isOwner) addAll(deleteRemoteMembers(householdId, operations, operationIdSet))
+                    // Member removal has no dedicated remote call - it's a soft removedAt/active
+                    // field write that rides the full-snapshot push in performRemoteSync above,
+                    // same as a chore's deletedAt.
                     addAll(deleteRemoteCompletions(householdId, operations, operationIdSet))
                     addAll(consumeRemoteInvites(householdId, operations, operationIdSet))
                 }
@@ -387,26 +409,6 @@ class LocalSyncRepository @Inject constructor(
         Timber.d("ensureEmailSynced: wrote email for userId=$userId")
     }
 
-    private suspend fun deleteRemoteMembers(
-        householdId: String,
-        operations: List<PendingSyncOperationEntity>,
-        operationIdSet: Set<String>,
-    ): Set<String> {
-        val failedOperationIds = mutableSetOf<String>()
-        operations
-            .filter { it.id in operationIdSet && it.entityType == "member" && it.operationType == "delete" }
-            .forEach { op ->
-                val result = remoteHouseholdDataSource.deleteMember(householdId, op.payload)
-                if (result is AppResult.Error) {
-                    Timber.e(
-                        "syncPendingOperations: remote member delete failed for ${op.payload} — ${result.message}",
-                    )
-                    failedOperationIds += op.id
-                }
-            }
-        return failedOperationIds
-    }
-
     private suspend fun deleteRemoteCompletions(
         householdId: String,
         operations: List<PendingSyncOperationEntity>,
@@ -446,6 +448,31 @@ class LocalSyncRepository @Inject constructor(
                 ),
             )
             AppResult.Success(Unit)
+        }
+    }
+
+    override suspend fun transferOwnership(
+        householdId: String,
+        newOwnerUserId: String,
+        newOwnerMemberDocId: String,
+        previousOwnerMemberDocId: String,
+    ): EmptyResult = remoteHouseholdDataSource.transferOwnership(
+        householdId = householdId,
+        newOwnerUserId = newOwnerUserId,
+        newOwnerMemberDocId = newOwnerMemberDocId,
+        previousOwnerMemberDocId = previousOwnerMemberDocId,
+    )
+
+    override suspend fun leaveHousehold(householdId: String, selfMemberDocId: String): EmptyResult {
+        return when (val result = remoteHouseholdDataSource.leaveHousehold(householdId, selfMemberDocId)) {
+            is AppResult.Error -> result
+            is AppResult.Success -> {
+                // Same wipe-and-redirect path a removed member takes (PR #80): clearing the
+                // tables makes observeHouseholdForUser emit null -> ObserveStartupDestinationUseCase
+                // -> ONBOARDING.
+                database.clearAll()
+                AppResult.Success(Unit)
+            }
         }
     }
 
@@ -543,6 +570,10 @@ class LocalSyncRepository @Inject constructor(
                 isCurrentUser = member.isCurrentUser,
                 email = if (member.userId == currentUserId) currentUserEmail else member.email,
                 joinedViaInviteId = member.joinedViaInviteId,
+                // Load-bearing: the owner's full-snapshot push writes active = removedAt == null
+                // for every member on every sync - dropping this here would silently re-activate
+                // a removed member on the next unrelated owner sync.
+                removedAt = member.removedAt,
             )
         }
         val completions = completionDao.getCompletions(householdId).map { completion ->
@@ -623,6 +654,7 @@ class LocalSyncRepository @Inject constructor(
             role = runCatching { HouseholdRole.valueOf(memberEntity.role) }.getOrDefault(HouseholdRole.MEMBER),
             isCurrentUser = memberEntity.isCurrentUser,
             joinedViaInviteId = memberEntity.joinedViaInviteId,
+            removedAt = memberEntity.removedAt,
         )
         return member to ownCompletions
     }

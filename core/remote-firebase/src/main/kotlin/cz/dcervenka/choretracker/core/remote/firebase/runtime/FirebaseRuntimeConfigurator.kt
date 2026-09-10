@@ -6,7 +6,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.google.firebase.firestore.PersistentCacheSettings
+import com.google.firebase.functions.FirebaseFunctions
 import cz.dcervenka.choretracker.core.remote.firebase.BuildConfig
+
+// The deleteAccount callable is pinned to europe-west1 (see functions/src/index.ts); the client
+// must request the same region or the call resolves to us-central1 and 404s.
+internal const val FIREBASE_FUNCTIONS_REGION = "europe-west1"
 
 internal object FirebaseRuntimeConfigurator {
     @Volatile
@@ -31,6 +36,10 @@ internal object FirebaseRuntimeConfigurator {
                     firestore.useEmulator(
                         BuildConfig.FIREBASE_FIRESTORE_EMULATOR_HOST,
                         BuildConfig.FIREBASE_FIRESTORE_EMULATOR_PORT,
+                    )
+                    FirebaseFunctions.getInstance(FIREBASE_FUNCTIONS_REGION).useEmulator(
+                        BuildConfig.FIREBASE_FUNCTIONS_EMULATOR_HOST,
+                        BuildConfig.FIREBASE_FUNCTIONS_EMULATOR_PORT,
                     )
                 }
 

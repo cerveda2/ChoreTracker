@@ -44,12 +44,27 @@ internal class RealtimeSyncApplier(
 
     suspend fun applyMembers(householdId: String, userId: String, members: List<HouseholdMember>) =
         mutex.withLock {
-            if (members.none { it.userId == userId }) {
+            // removedAt == null, not just presence: a soft-removed member's doc stays in the
+            // collection, so "I'm still listed" no longer means "I still have access" - this is
+            // the client side of the removedAt/active enforcement (see PR #80's clearAll path).
+            if (members.none { it.userId == userId && it.removedAt == null }) {
                 Timber.w(
-                    "applyMembers: userId=$userId no longer a member of household=$householdId - " +
+                    "applyMembers: userId=$userId no longer an active member of household=$householdId - " +
                         "clearing local data",
                 )
                 database.clearAll()
+                return@withLock
+            }
+            // Pending member operations are keyed by householdId, not their own member id (see
+            // enqueueOperation call sites in OfflineFirstHouseholdRepository), so there's no way
+            // to tell which member a pending op is actually about - a household with any pending
+            // member operation skips this reconciliation entirely (both the upsert below and the
+            // prune) rather than risk a stale snapshot clobbering a not-yet-pushed local change,
+            // e.g. reverting a just-set removedAt back to null, or deleting a just-added local
+            // member row, ahead of an unrelated snapshot for the same household arriving first.
+            val hasPendingMemberOps = pendingSyncOperationDao.getAll()
+                .any { it.entityType == "member" && it.entityId == householdId }
+            if (hasPendingMemberOps) {
                 return@withLock
             }
             deduplicateMembers(members).forEach { member ->
@@ -63,22 +78,18 @@ internal class RealtimeSyncApplier(
                         isCurrentUser = member.isCurrentUser,
                         email = member.email,
                         joinedViaInviteId = member.joinedViaInviteId,
+                        removedAt = member.removedAt,
                     ),
                 )
             }
-            // Pending member operations are keyed by householdId, not their own member id (see
-            // enqueueOperation call sites in OfflineFirstHouseholdRepository), so a household
-            // with any pending member operation skips this reconciliation entirely rather than
-            // risk deleting a not-yet-synced local member row (e.g. one just added locally,
-            // ahead of an unrelated snapshot for the same household arriving first).
-            val hasPendingMemberOps = pendingSyncOperationDao.getAll()
-                .any { it.entityType == "member" && it.entityId == householdId }
-            if (!hasPendingMemberOps) {
-                val memberIds = members.map { it.id }.toSet()
-                memberDao.getMembers(householdId)
-                    .filter { it.id !in memberIds }
-                    .forEach { memberDao.deleteById(it.id) }
-            }
+            // No prune step for soft-removed members: they stay present in the remote members
+            // collection (removedAt/active only), so they're never "absent from the listener" -
+            // same as chores' soft delete (see applyChores). This still handles a member row that
+            // genuinely vanished remotely for some other reason.
+            val memberIds = members.map { it.id }.toSet()
+            memberDao.getMembers(householdId)
+                .filter { it.id !in memberIds }
+                .forEach { memberDao.deleteById(it.id) }
         }
 
     suspend fun applyCompletions(householdId: String, completions: List<ChoreCompletion>) = mutex.withLock {

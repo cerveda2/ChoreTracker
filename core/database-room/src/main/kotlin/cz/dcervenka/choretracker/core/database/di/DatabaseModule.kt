@@ -38,6 +38,13 @@ private val MIGRATION_8_9 = object : Migration(8, 9) {
     }
 }
 
+private val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // INTEGER, not TEXT: InstantConverters stores Instant as epoch-millis Long.
+        db.execSQL("ALTER TABLE members ADD COLUMN removedAt INTEGER DEFAULT NULL")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -49,7 +56,7 @@ object DatabaseModule {
         context,
         ChoreTrackerDatabase::class.java,
         "chore-tracker.db",
-    ).addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+    ).addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
         .fallbackToDestructiveMigration(dropAllTables = true)
         .build()
 

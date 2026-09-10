@@ -6,16 +6,19 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateMemberInviteUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.DeleteMemberUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.DeleteAccountUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.LeaveHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInvitesUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveThemeSettingsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.RemoveMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetDynamicColorUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetThemeModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.TransferOwnershipUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCurrentMemberDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateHouseholdNameUseCase
@@ -50,7 +53,10 @@ class SettingsViewModel @Inject constructor(
     private val addMemberUseCase: AddMemberUseCase,
     private val createInviteUseCase: CreateInviteUseCase,
     private val createMemberInviteUseCase: CreateMemberInviteUseCase,
-    private val deleteMemberUseCase: DeleteMemberUseCase,
+    private val removeMemberUseCase: RemoveMemberUseCase,
+    private val transferOwnershipUseCase: TransferOwnershipUseCase,
+    private val leaveHouseholdUseCase: LeaveHouseholdUseCase,
+    private val deleteAccountUseCase: DeleteAccountUseCase,
     private val updateDisplayNameUseCase: UpdateDisplayNameUseCase,
     private val updateCurrentMemberDisplayNameUseCase: UpdateCurrentMemberDisplayNameUseCase,
     private val updateHouseholdNameUseCase: UpdateHouseholdNameUseCase,
@@ -191,8 +197,11 @@ class SettingsViewModel @Inject constructor(
             SettingsUiIntent.SaveHouseholdName -> saveHouseholdName()
             SettingsUiIntent.AddMember -> addMember()
             SettingsUiIntent.RefreshInvite -> refreshInvite()
-            is SettingsUiIntent.DeleteMember -> deleteMember(intent.memberId)
+            is SettingsUiIntent.RemoveMember -> removeMember(intent.memberId)
             is SettingsUiIntent.GenerateMemberInvite -> generateMemberInvite(intent.memberId)
+            is SettingsUiIntent.TransferOwnership -> transferOwnership(intent.newOwnerMemberId)
+            SettingsUiIntent.LeaveHousehold -> leaveHousehold()
+            SettingsUiIntent.DeleteAccount -> deleteAccount()
             is SettingsUiIntent.SetThemeMode -> viewModelScope.launch { setThemeModeUseCase(intent.mode) }
             is SettingsUiIntent.SetDynamicColor -> viewModelScope.launch { setDynamicColorUseCase(intent.enabled) }
             else -> Unit
@@ -263,13 +272,48 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private fun deleteMember(memberId: String) {
+    private fun removeMember(memberId: String) {
         val household = uiState.value.household ?: return
         viewModelScope.launch {
-            val result = deleteMemberUseCase(household.id, memberId)
+            val result = removeMemberUseCase(household.id, memberId)
             if (result is AppResult.Success) {
-                _events.send(SettingsUiEvent.MemberDeleted)
+                _events.send(SettingsUiEvent.MemberRemoved)
             } else if (result is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(result.message))
+            }
+        }
+    }
+
+    private fun transferOwnership(newOwnerMemberId: String) {
+        val household = uiState.value.household ?: return
+        viewModelScope.launch {
+            val result = transferOwnershipUseCase(household.id, newOwnerMemberId)
+            if (result is AppResult.Success) {
+                _events.send(SettingsUiEvent.OwnershipTransferred)
+            } else if (result is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(result.message))
+            }
+        }
+    }
+
+    private fun leaveHousehold() {
+        val household = uiState.value.household ?: return
+        viewModelScope.launch {
+            // On success the reactive observeCurrentHousehold -> ONBOARDING redirect handles
+            // navigation; only surface an error (e.g. offline).
+            val result = leaveHouseholdUseCase(household.id)
+            if (result is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(result.message))
+            }
+        }
+    }
+
+    private fun deleteAccount() {
+        viewModelScope.launch {
+            // On success the authState -> SignedOut redirect (via ObserveStartupDestinationUseCase)
+            // tears the screen down; only surface an error (e.g. offline, function failure).
+            val result = deleteAccountUseCase()
+            if (result is AppResult.Error) {
                 _events.send(SettingsUiEvent.Error(result.message))
             }
         }
