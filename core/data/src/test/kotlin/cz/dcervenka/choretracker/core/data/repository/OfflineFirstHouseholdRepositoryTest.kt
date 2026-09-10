@@ -280,15 +280,26 @@ class OfflineFirstHouseholdRepositoryTest {
 
     @Test
     fun `leaveHousehold rejects the owner - they must transfer first`() = runTest {
+        // household.ownerUserId is stale here (still the old owner) - the guard reads the
+        // caller's own real-time-synced role instead, so a real (but locally-stale) owner is
+        // still caught. See the isOwner comment in LocalSyncRepository.syncHousehold.
         val household = HouseholdEntity(
             id = "household-1",
             name = "Home",
-            ownerUserId = "user-1",
+            ownerUserId = "someone-else",
             inviteCode = "ABC123",
             createdAt = Instant.parse("2026-01-01T10:00:00Z"),
         )
+        val ownerMember = MemberEntity(
+            id = "member-self",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = HouseholdRole.OWNER.name,
+            isCurrentUser = true,
+        )
         coEvery { householdDao.getHousehold("household-1") } returns household
-        coEvery { memberDao.findByUserId("household-1", "user-1") } returns null
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns ownerMember
 
         val result = repository.leaveHousehold("household-1")
 
@@ -338,18 +349,54 @@ class OfflineFirstHouseholdRepositoryTest {
     }
 
     @Test
-    fun `transferOwnership rejects a placeholder target and a non-owner caller`() = runTest {
-        val ownedByOther = HouseholdEntity(
+    fun `transferOwnership rejects a non-owner caller`() = runTest {
+        // household.ownerUserId is stale here (points elsewhere) - the guard reads the caller's
+        // own real-time-synced role instead, so a plain MEMBER is rejected either way.
+        val household = HouseholdEntity(
             id = "household-1",
             name = "Home",
             ownerUserId = "someone-else",
             inviteCode = "ABC123",
             createdAt = Instant.parse("2026-01-01T10:00:00Z"),
         )
-        coEvery { householdDao.getHousehold("household-1") } returns ownedByOther
-        coEvery { memberDao.getMembers("household-1") } returns emptyList()
+        val caller = MemberEntity(
+            id = "member-caller",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = HouseholdRole.MEMBER.name,
+            isCurrentUser = true,
+        )
+        coEvery { householdDao.getHousehold("household-1") } returns household
+        coEvery { memberDao.getMembers("household-1") } returns listOf(caller)
 
         val result = repository.transferOwnership("household-1", "member-x")
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        coVerify(exactly = 0) { syncRepository.transferOwnership(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `transferOwnership rejects a placeholder target`() = runTest {
+        val household = HouseholdEntity(
+            id = "household-1",
+            name = "Home",
+            ownerUserId = "user-1",
+            inviteCode = "ABC123",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+        )
+        val owner = MemberEntity(
+            id = "member-owner",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = HouseholdRole.OWNER.name,
+            isCurrentUser = true,
+        )
+        coEvery { householdDao.getHousehold("household-1") } returns household
+        coEvery { memberDao.getMembers("household-1") } returns listOf(owner)
+
+        val result = repository.transferOwnership("household-1", "member-placeholder")
 
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
         coVerify(exactly = 0) { syncRepository.transferOwnership(any(), any(), any(), any()) }

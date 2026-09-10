@@ -48,7 +48,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         // Removed members drop out of "who currently shares the chores" (contributions, balance)
         // but stay in the raw `members` list passed to buildRecent/buildStaleness so their name
         // still resolves in history.
-        val activeMembers = members.filter { it.removedAt == null }
+        val activeMembers = activeMembersOf(members)
         val contributions = buildContributions(
             members = activeMembers,
             completions = activeCompletions,
@@ -93,7 +93,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         val periodCompletions = filterByPeriod(activeCompletions, period, timeZone, today)
         // Removed members drop out of every "current contributor" breakdown but stay in the raw
         // `members` list passed to buildStaleness so lastCompletedByNames still resolves.
-        val activeMembers = members.filter { it.removedAt == null }
+        val activeMembers = activeMembersOf(members)
         return StatsSnapshot(
             household = household,
             summary = buildSummary(periodCompletions),
@@ -377,6 +377,11 @@ class HouseholdStatisticsCalculator @Inject constructor() {
         }
     }
 }
+
+// Top-level, not a method: it only reads its parameter (no instance state), and keeping it out
+// of the class avoids tripping TooManyFunctions there.
+private fun activeMembersOf(members: List<HouseholdMember>): List<HouseholdMember> =
+    members.filter { it.removedAt == null }
 
 // Top-level, not a method: it only reads its parameter (no instance state), and keeping it out
 // of the class avoids tripping TooManyFunctions there. Null with fewer than two members, or when

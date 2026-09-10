@@ -12,8 +12,12 @@ import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
+import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
+import cz.dcervenka.choretracker.core.database.entity.MemberEntity
+import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import io.mockk.MockKAnnotations
@@ -25,11 +29,14 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.just
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import kotlin.time.Instant
 
 /**
  * Covers LocalSyncRepository's membership-exit paths (leave household, transfer ownership) - each a
@@ -141,4 +148,55 @@ class LocalSyncRepositoryMembershipTest {
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
         coVerify { remoteHouseholdDataSource.transferOwnership("household-1", "user-2", "user-2", "user-1") }
     }
+
+    @Test
+    fun `syncPendingOperations routes a just-transferred owner through owner sync despite a stale local ownerUserId`() =
+        runTest(coroutineRule.dispatcher) {
+            // households.ownerUserId has no real-time listener, so right after a transfer it can
+            // still read the old owner on this device - isOwner must be derived from the caller's
+            // own real-time-synced role instead, or their household-level mutations (rename here)
+            // get silently routed through performMemberSync and dropped.
+            val staleHousehold = HouseholdEntity(
+                id = "household-1",
+                name = "Home",
+                ownerUserId = "someone-else",
+                inviteCode = "ABC123",
+                createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+            )
+            val nowOwnerMember = MemberEntity(
+                id = "member-1",
+                householdId = "household-1",
+                userId = "user-1",
+                displayName = "Dana",
+                role = HouseholdRole.OWNER.name,
+                isCurrentUser = true,
+            )
+            val op = PendingSyncOperationEntity(
+                id = "op-1",
+                entityType = "member",
+                entityId = "household-1",
+                operationType = "rename",
+                payload = "New Name",
+                createdAt = Instant.parse("2026-01-04T10:00:00Z"),
+            )
+            coEvery { pendingSyncOperationDao.getAll() } returns listOf(op)
+            coEvery { householdDao.getHousehold("household-1") } returns staleHousehold
+            coEvery { memberDao.findByUserId("household-1", "user-1") } returns nowOwnerMember
+            coEvery { memberDao.getMembers("household-1") } returns listOf(nowOwnerMember)
+            coEvery { completionParticipantDao.getParticipants("household-1") } returns emptyList()
+            coEvery { choreDao.getChores("household-1") } returns emptyList()
+            coEvery { completionDao.getCompletions("household-1") } returns emptyList()
+            coEvery { inviteDao.getInvites("household-1") } returns emptyList()
+            coEvery { remoteHouseholdDataSource.upsertHouseholdSnapshot(any(), any()) } returns AppResult.Success(Unit)
+            coEvery { pendingSyncOperationDao.delete(any()) } just Runs
+            coEvery { syncStateDao.upsert(any()) } just Runs
+
+            val resultDeferred = async { repository.syncPendingOperations() }
+            advanceUntilIdle()
+            val result = resultDeferred.await()
+
+            assertThat(result).isInstanceOf(AppResult.Success::class.java)
+            coVerify { remoteHouseholdDataSource.upsertHouseholdSnapshot(any(), "user-1") }
+            coVerify(exactly = 0) { remoteHouseholdDataSource.upsertMemberSnapshot(any(), any(), any(), any()) }
+        }
 }

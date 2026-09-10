@@ -215,20 +215,28 @@ class LocalSyncRepository @Inject constructor(
                 createdAt = snapshot.household.createdAt,
             ),
         )
-        deduplicateMembers(snapshot.members).forEach { member ->
-            memberDao.upsert(
-                MemberEntity(
-                    id = member.id,
-                    householdId = member.householdId,
-                    userId = member.userId,
-                    displayName = member.displayName,
-                    role = member.role.name,
-                    isCurrentUser = member.isCurrentUser,
-                    email = member.email,
-                    joinedViaInviteId = member.joinedViaInviteId,
-                    removedAt = member.removedAt,
-                ),
-            )
+        // Same guard as RealtimeSyncApplier.applyMembers: a household with a pending member
+        // operation queued skips the member upsert entirely, rather than risk this pulled
+        // snapshot - which may predate that not-yet-pushed local change - clobbering it (e.g.
+        // reverting a just-set removedAt back to null).
+        val hasPendingMemberOps = pendingSyncOperationDao.getAll()
+            .any { it.entityType == "member" && it.entityId == snapshot.household.id }
+        if (!hasPendingMemberOps) {
+            deduplicateMembers(snapshot.members).forEach { member ->
+                memberDao.upsert(
+                    MemberEntity(
+                        id = member.id,
+                        householdId = member.householdId,
+                        userId = member.userId,
+                        displayName = member.displayName,
+                        role = member.role.name,
+                        isCurrentUser = member.isCurrentUser,
+                        email = member.email,
+                        joinedViaInviteId = member.joinedViaInviteId,
+                        removedAt = member.removedAt,
+                    ),
+                )
+            }
         }
         snapshot.chores.forEach { chore ->
             choreDao.upsert(
@@ -293,7 +301,13 @@ class LocalSyncRepository @Inject constructor(
         authenticatedUser: AppUser,
     ): AppResult.Error? {
         val now = Clock.System.now()
-        val isOwner = householdDao.getHousehold(householdId)?.ownerUserId == authenticatedUser.id
+        // Derived from the caller's own member row, not households.ownerUserId: that field has no
+        // real-time listener (observeRealtimeUpdates only watches members/completions/invites/
+        // chores), so after a transfer it stays stale on both ends until the next full restore -
+        // for the new owner that misroutes every household-level mutation (add/remove member,
+        // rename) through performMemberSync below, which silently drops them. The member's own
+        // `role` IS kept fresh by the real-time members listener, so it doesn't have that gap.
+        val isOwner = memberDao.findByUserId(householdId, authenticatedUser.id)?.role == HouseholdRole.OWNER.name
         val result = performRemoteSync(householdId, isOwner, authenticatedUser)
         if (result == null) {
             // buildSnapshot/buildMemberSync found no local household or member row to sync from -

@@ -116,7 +116,7 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
-    fun `applyMembers skips pruning when the household has a pending member operation`() = runTest {
+    fun `applyMembers skips the whole reconciliation when the household has a pending member operation`() = runTest {
         val staleMember = MemberEntity(
             id = "stale-member",
             householdId = "household-1",
@@ -137,9 +137,13 @@ class RealtimeSyncApplierTest {
             ),
         )
 
+        // The incoming snapshot is skipped entirely, not just its prune step - it may predate the
+        // not-yet-pushed local change the pending op represents (e.g. reverting a just-set
+        // removedAt back to null).
         applier.applyMembers("household-1", "user-1", listOf(sampleMembers()[0]))
 
         coVerify(exactly = 0) { memberDao.deleteById(any()) }
+        coVerify(exactly = 0) { memberDao.upsert(any()) }
     }
 
     @Test

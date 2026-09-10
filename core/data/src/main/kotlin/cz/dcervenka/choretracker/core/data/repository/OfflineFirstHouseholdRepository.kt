@@ -359,11 +359,16 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             user == null -> AppResult.Error("Sign in first.")
             user.isPreview -> AppResult.Error("Cannot transfer ownership in preview mode")
             household == null -> AppResult.Error("Household not found.")
-            household.ownerUserId != user.id -> AppResult.Error("Only the current owner can transfer ownership.")
+            previousOwner == null -> AppResult.Error("Current owner's membership was not found.")
+            // Checked against the caller's own (real-time-synced) role, not household.ownerUserId:
+            // that field is never updated by real-time sync, so right after a previous transfer it
+            // can still read the old owner on this device - see the isOwner comment in
+            // LocalSyncRepository.syncHousehold for the full explanation.
+            previousOwner.role != HouseholdRole.OWNER.name ->
+                AppResult.Error("Only the current owner can transfer ownership.")
             newOwner == null -> AppResult.Error("Member not found.")
             newOwnerUserId == null -> AppResult.Error("This member hasn't joined yet.")
             newOwnerUserId == user.id -> AppResult.Error("You're already the owner.")
-            previousOwner == null -> AppResult.Error("Current owner's membership was not found.")
             // Awaited: a fire-and-forget local flip would route the owner's next sync through
             // performMemberSync (which writes neither ownerUserId nor role) and lose the change.
             else -> when (
@@ -394,8 +399,10 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             user == null -> AppResult.Error("Sign in first.")
             user.isPreview -> AppResult.Error("Cannot leave a household in preview mode")
             household == null -> AppResult.Error("Household not found.")
-            household.ownerUserId == user.id -> AppResult.Error("Transfer ownership before leaving.")
             member == null -> AppResult.Error("Your membership was not found.")
+            // Checked against the caller's own (real-time-synced) role, not household.ownerUserId -
+            // see the matching comment on transferOwnership above.
+            member.role == HouseholdRole.OWNER.name -> AppResult.Error("Transfer ownership before leaving.")
             // selfMemberDocId == the uid for a linked member (memberDocumentId = userId ?: id, and
             // a leaver always has a userId), which is also the users/{uid} doc key.
             else -> syncRepository.leaveHousehold(householdId, member.userId ?: member.id)

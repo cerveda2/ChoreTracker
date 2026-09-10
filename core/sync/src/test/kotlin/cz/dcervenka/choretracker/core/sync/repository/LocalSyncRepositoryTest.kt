@@ -279,6 +279,7 @@ class LocalSyncRepositoryTest {
             val joinedMember = memberEntity.copy(joinedViaInviteId = "invite-1")
             coEvery { pendingSyncOperationDao.getAll() } returns listOf(op)
             coEvery { householdDao.getHousehold("household-1") } returns householdEntity
+            coEvery { memberDao.findByUserId("household-1", "user-1") } returns memberEntity
             coEvery { completionParticipantDao.getParticipants("household-1") } returns emptyList()
             coEvery { choreDao.getChores("household-1") } returns emptyList()
             coEvery { completionDao.getCompletions("household-1") } returns emptyList()
@@ -536,7 +537,7 @@ class LocalSyncRepositoryTest {
     }
 
     @Test
-    fun `restoreHouseholdForUser does not prune members when the household has a pending member op`() =
+    fun `restoreHouseholdForUser skips the whole member reconciliation when the household has a pending member op`() =
         runTest(coroutineRule.dispatcher) {
             val snapshot = buildSnapshot()
             val staleLocal = MemberEntity(
@@ -560,9 +561,12 @@ class LocalSyncRepositoryTest {
                 ),
             )
 
+            // The pulled snapshot is skipped entirely, not just its prune step - it may predate
+            // the not-yet-pushed local change the pending op represents.
             repository.restoreHouseholdForUser("user-1")
 
             coVerify(exactly = 0) { memberDao.deleteById(any()) }
+            coVerify(exactly = 0) { memberDao.upsert(any()) }
         }
 
     @Test

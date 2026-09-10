@@ -125,7 +125,8 @@ export const deleteAccount = onCall({ region: "europe-west1" }, async (request) 
 
   const db = getFirestore();
   const userRef = db.doc(`users/${uid}`);
-  const householdId: string | undefined = (await userRef.get()).get("householdId");
+  const directHouseholdId: string | undefined = (await userRef.get()).get("householdId");
+  const householdId = directHouseholdId ?? (await resolveActiveHouseholdId(db, uid));
 
   if (householdId) {
     const householdRef = db.doc(`households/${householdId}`);
@@ -143,6 +144,21 @@ export const deleteAccount = onCall({ region: "europe-west1" }, async (request) 
   await getAuth().deleteUser(uid);
   logger.info("deleteAccount: account removed", { uid, hadHousehold: householdId != null });
 });
+
+// users/{uid}.householdId can be stale or missing (e.g. lost to a prior partial sync) while the
+// caller is still an active member somewhere - without this fallback, resolveHouseholdMembership
+// is skipped entirely and the household (and, for a sole owner, its data) is silently orphaned.
+// Mirrors the Android client's own fallback (FirebaseHouseholdDataSource.resolveHouseholdId):
+// members.userId already has a collection-group index (firestore.indexes.json) for this exact
+// query, so this needs no new index.
+async function resolveActiveHouseholdId(db: Firestore, uid: string): Promise<string | undefined> {
+  const snap = await db.collectionGroup("members").where("userId", "==", uid).limit(1).get();
+  const doc = snap.docs[0];
+  if (!doc || doc.get("active") !== true) {
+    return undefined;
+  }
+  return doc.get("householdId");
+}
 
 async function resolveHouseholdMembership(
   db: Firestore,
