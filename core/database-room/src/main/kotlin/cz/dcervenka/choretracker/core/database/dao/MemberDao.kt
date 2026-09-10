@@ -47,6 +47,9 @@ interface MemberDao {
     @Query("UPDATE members SET isCurrentUser = 0 WHERE isCurrentUser = 1")
     suspend fun clearCurrentUser()
 
+    @Query("UPDATE members SET role = :role WHERE id = :memberId")
+    suspend fun updateRole(memberId: String, role: String)
+
     // Soft removal, mirroring ChoreDao.markDeleted. The row stays so chore history keeps
     // resolving the member's name; the repository layer filters removed members out of the
     // current-member lists.

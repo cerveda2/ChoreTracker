@@ -95,6 +95,17 @@ class HouseholdDaoTest {
     }
 
     @Test
+    fun `updateOwner only touches the targeted household`() = runTest {
+        dao.upsert(householdEntity("household-1"))
+        dao.upsert(householdEntity("household-2"))
+
+        dao.updateOwner("household-1", "user-new")
+
+        assertThat(dao.getHousehold("household-1")?.ownerUserId).isEqualTo("user-new")
+        assertThat(dao.getHousehold("household-2")?.ownerUserId).isNotEqualTo("user-new")
+    }
+
+    @Test
     fun `observeCurrentHousehold re-emits after a newer household is inserted`() = runTest {
         dao.upsert(householdEntity("household-1", createdAt = instantAt(1)))
 

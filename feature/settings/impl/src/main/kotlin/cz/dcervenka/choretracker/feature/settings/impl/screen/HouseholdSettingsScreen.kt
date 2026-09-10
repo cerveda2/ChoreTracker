@@ -18,19 +18,25 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +68,7 @@ import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HouseholdSettingsScreen(
     uiState: SettingsUiState,
@@ -77,6 +84,10 @@ fun HouseholdSettingsScreen(
         events.collect { event ->
             val msg = when (event) {
                 SettingsUiEvent.NameSaved -> msgNameSaved
+                SettingsUiEvent.OwnershipTransferred -> {
+                    onBack()
+                    return@collect
+                }
                 is SettingsUiEvent.Error -> event.message.ifBlank { msgError }
                 else -> return@collect
             }
@@ -87,6 +98,63 @@ fun HouseholdSettingsScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val shareMessage = stringResource(R.string.settings_invite_share_message)
+    val transferSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showTransferPicker by rememberSaveable { mutableStateOf(false) }
+    var transferTargetId by rememberSaveable { mutableStateOf<String?>(null) }
+    val transferTarget = uiState.members.firstOrNull { it.id == transferTargetId }
+
+    if (showTransferPicker) {
+        ModalBottomSheet(
+            onDismissRequest = { showTransferPicker = false },
+            sheetState = transferSheetState,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = spacing.large)
+                    .padding(bottom = spacing.large),
+                verticalArrangement = Arrangement.spacedBy(spacing.small),
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_transfer_ownership_picker_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(vertical = spacing.small),
+                )
+                uiState.eligibleTransferTargets.forEach { member ->
+                    TextButton(
+                        onClick = {
+                            transferTargetId = member.id
+                            showTransferPicker = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(text = member.displayName, modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+
+    if (transferTarget != null) {
+        AlertDialog(
+            onDismissRequest = { transferTargetId = null },
+            title = { Text(stringResource(R.string.settings_transfer_ownership_title, transferTarget.displayName)) },
+            text = { Text(stringResource(R.string.settings_transfer_ownership_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onIntent(SettingsUiIntent.TransferOwnership(transferTarget.id))
+                    transferTargetId = null
+                }) {
+                    Text(stringResource(R.string.settings_transfer_ownership_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { transferTargetId = null }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
+    }
 
     ChoreScaffold(
         snackbarHostState = snackbarHostState,
@@ -234,6 +302,35 @@ fun HouseholdSettingsScreen(
                                     text = stringResource(R.string.household_refresh_invite),
                                     onClick = { onIntent(SettingsUiIntent.RefreshInvite) },
                                     enabled = uiState.isOwner,
+                                )
+                            }
+                        }
+                    }
+                }
+                if (uiState.isOwner) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                            SectionHeader(title = stringResource(R.string.settings_membership_section))
+                            ListGroup {
+                                TextButton(
+                                    onClick = { showTransferPicker = true },
+                                    enabled = uiState.eligibleTransferTargets.isNotEmpty(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(spacing.small),
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.settings_transfer_ownership),
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                            }
+                            if (uiState.eligibleTransferTargets.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.settings_transfer_ownership_none),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = spacing.small),
                                 )
                             }
                         }

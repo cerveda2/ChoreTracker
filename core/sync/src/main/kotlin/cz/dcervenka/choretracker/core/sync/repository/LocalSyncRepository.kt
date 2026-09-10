@@ -185,13 +185,18 @@ class LocalSyncRepository @Inject constructor(
                     snapshot == null -> AppResult.Success(false).also {
                         Timber.d("restoreHouseholdForUser: no remote snapshot found")
                     }
-                    snapshot.members.none { it.userId == userId && it.removedAt == null } &&
-                        householdDao.getCurrentHouseholdForUser(userId) != null -> {
+                    snapshot.members.none { it.userId == userId && it.removedAt == null } -> {
+                        // Not an active member of the fetched household (removed, or left). Never
+                        // applySnapshot here - the fetch returns an empty-members sentinel with a
+                        // blank name/ownerUserId on PERMISSION_DENIED, and writing that into Room
+                        // corrupts local state. Wipe local data if any is still present.
                         Timber.w(
-                            "restoreHouseholdForUser: userId=$userId no longer an active member of " +
-                                "household=${snapshot.household.id} - clearing local data",
+                            "restoreHouseholdForUser: userId=$userId is not an active member of " +
+                                "household=${snapshot.household.id}",
                         )
-                        database.clearAll()
+                        if (householdDao.getCurrentHouseholdForUser(userId) != null) {
+                            database.clearAll()
+                        }
                         AppResult.Success(false)
                     }
                     else -> applySnapshot(snapshot)
@@ -429,6 +434,31 @@ class LocalSyncRepository @Inject constructor(
                 ),
             )
             AppResult.Success(Unit)
+        }
+    }
+
+    override suspend fun transferOwnership(
+        householdId: String,
+        newOwnerUserId: String,
+        newOwnerMemberDocId: String,
+        previousOwnerMemberDocId: String,
+    ): EmptyResult = remoteHouseholdDataSource.transferOwnership(
+        householdId = householdId,
+        newOwnerUserId = newOwnerUserId,
+        newOwnerMemberDocId = newOwnerMemberDocId,
+        previousOwnerMemberDocId = previousOwnerMemberDocId,
+    )
+
+    override suspend fun leaveHousehold(householdId: String, selfMemberDocId: String): EmptyResult {
+        return when (val result = remoteHouseholdDataSource.leaveHousehold(householdId, selfMemberDocId)) {
+            is AppResult.Error -> result
+            is AppResult.Success -> {
+                // Same wipe-and-redirect path a removed member takes (PR #80): clearing the
+                // tables makes observeHouseholdForUser emit null -> ObserveStartupDestinationUseCase
+                // -> ONBOARDING.
+                database.clearAll()
+                AppResult.Success(Unit)
+            }
         }
     }
 

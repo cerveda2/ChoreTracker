@@ -49,4 +49,13 @@ interface RemoteHouseholdDataSource {
     suspend fun markInviteConsumed(householdId: String, inviteId: String, consumedAt: Instant, consumedByMemberId: String): EmptyResult
 
     suspend fun deleteCompletion(householdId: String, completionId: String): EmptyResult
+
+    suspend fun transferOwnership(
+        householdId: String,
+        newOwnerUserId: String,
+        newOwnerMemberDocId: String,
+        previousOwnerMemberDocId: String,
+    ): EmptyResult
+
+    suspend fun leaveHousehold(householdId: String, selfMemberDocId: String): EmptyResult
 }

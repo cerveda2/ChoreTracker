@@ -137,10 +137,18 @@ service cloud.firestore {
         // member could self-update their own role to OWNER (undeletable, full write access) or
         // rewrite their logical id (colliding with another member's). displayName/email are the
         // only fields a member's own sync push legitimately changes after the initial join.
+        //
+        // The third branch is a member leaving the household on their own: they may set only
+        // active/removedAt on their own doc, and only to the leaving state. The active == false
+        // clause stops a removed member from reactivating themselves.
         allow update: if isHouseholdOwner(householdId) ||
           (isSelfMemberWrite(householdId, memberId) &&
             request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['displayName', 'email']));
+              .hasOnly(['displayName', 'email'])) ||
+          (isSelfMemberWrite(householdId, memberId) &&
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['active', 'removedAt']) &&
+            request.resource.data.active == false);
         allow delete: if isHouseholdOwner(householdId);
       }
 
