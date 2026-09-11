@@ -220,7 +220,14 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         inviteDao.markConsumed(invite.id, Clock.System.now(), consumedByMemberId)
         enqueueOperation("member", invite.householdId, "join", user.id)
         enqueueOperation("invite", invite.householdId, "consumed", invite.id)
-        scope.launch { syncRepository.syncPendingOperations() }
+        // Awaited, not fire-and-forget: firestore.rules' isHouseholdMember gate on the household
+        // read below only starts passing once this member-join write has actually landed. Racing
+        // the two let the pull's listener observe a not-yet-a-member state, fail PERMISSION_DENIED,
+        // and get misread by fetchHouseholdSnapshot's isPermissionDenied() heuristic (PR #80,
+        // intended for an existing member actually being removed) as "you're not a member" -
+        // surfacing as "household for that invite is no longer available" on an otherwise-
+        // successful join.
+        syncRepository.syncPendingOperations()
         if (householdDao.getHousehold(invite.householdId) == null) {
             // Unlike the push above, this pull can't be backgrounded - there's nothing local to
             // return below until the household this invite belongs to has actually been fetched.
