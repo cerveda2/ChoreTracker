@@ -49,13 +49,37 @@ export const onInviteAccepted = onDocumentUpdated(
     // document id - member docs are keyed by uid (see upsertMemberSnapshot/memberDocumentId on
     // the client), which isn't known here without the join actually completing first. Query by
     // the "id" field instead of doc(...) by path, which would silently miss every join.
+    //
+    // A targeted invite's claim briefly leaves TWO docs sharing this "id" field: the original
+    // placeholder (still keyed by its own id, userId null) and the one the joining client just
+    // wrote (keyed by uid) - see the cleanup below. Without an orderBy, which doc comes back
+    // first here is unspecified, so prefer whichever result is actually linked (has a userId)
+    // instead of trusting docs[0].
     const memberQuery = await db
       .collection(`households/${householdId}/members`)
       .where("id", "==", consumedByMemberId)
-      .limit(1)
       .get();
-    const memberSnap = memberQuery.docs[0];
+    const memberSnap = memberQuery.docs.find((doc) => doc.get("userId") != null) ?? memberQuery.docs[0];
     const joiningMemberUserId: string | undefined = memberSnap?.get("userId");
+
+    // A targeted (per-member) invite's targetMemberId is that placeholder's own doc id (see
+    // MembersSettingsScreen's GenerateMemberInvite / member.id on the client). Once claimed, the
+    // real member doc always lives at members/{uid} instead (memberDocumentId = userId ?: id in
+    // FirebaseHouseholdDataSource) - the client can never delete the leftover placeholder itself,
+    // since firestore.rules restricts member-doc delete to the household owner. Admin SDK bypasses
+    // that, so clean it up here, right as the claim completes.
+    const targetMemberId: string | undefined = after.targetMemberId;
+    if (targetMemberId && targetMemberId !== joiningMemberUserId) {
+      const placeholderRef = db.doc(`households/${householdId}/members/${targetMemberId}`);
+      const placeholderSnap = await placeholderRef.get();
+      if (placeholderSnap.exists && placeholderSnap.get("userId") == null) {
+        await placeholderRef.delete();
+        logger.info("onInviteAccepted: deleted stale placeholder member doc", {
+          householdId,
+          targetMemberId,
+        });
+      }
+    }
 
     // Self-join edge case: the owner consuming their own invite (e.g. reclaiming a placeholder
     // member). Don't notify yourself.
