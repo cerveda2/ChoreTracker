@@ -142,6 +142,9 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             members.filter { it.removedAt == null }.map(MemberEntity::asModel)
         }
 
+    override fun observeAllMembers(householdId: String): Flow<List<HouseholdMember>> =
+        memberDao.observeMembers(householdId).map { members -> members.map(MemberEntity::asModel) }
+
     override fun observeInvites(householdId: String): Flow<List<Invite>> =
         inviteDao.observeInvites(householdId).map { invites -> invites.map(InviteEntity::asModel) }
 

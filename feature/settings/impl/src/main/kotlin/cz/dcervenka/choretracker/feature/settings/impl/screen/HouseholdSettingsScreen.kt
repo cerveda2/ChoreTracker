@@ -282,13 +282,19 @@ fun HouseholdSettingsScreen(
                                     uiState.invites.forEach { invite ->
                                         val label = when {
                                             invite.consumedByMemberId != null -> {
+                                                // allMembers (unfiltered), not members: the member who
+                                                // consumed this invite may have since left or been
+                                                // removed - soft-removed rows keep their displayName so
+                                                // invite history can still resolve it.
                                                 val memberName =
-                                                    uiState.members.find { it.id == invite.consumedByMemberId }?.displayName
+                                                    uiState.allMembers.find { it.id == invite.consumedByMemberId }
+                                                        ?.displayName
                                                 labelForMember.format(memberName ?: "?")
                                             }
                                             invite.targetMemberId != null -> {
                                                 val memberName =
-                                                    uiState.members.find { it.id == invite.targetMemberId }?.displayName
+                                                    uiState.allMembers.find { it.id == invite.targetMemberId }
+                                                        ?.displayName
                                                 labelForMember.format(memberName ?: "?")
                                             }
                                             else -> labelOpen
