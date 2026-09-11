@@ -61,6 +61,9 @@ import cz.dcervenka.choretracker.core.model.household.Invite
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
+import io.github.alexzhirkevich.qrose.options.QrBrush
+import io.github.alexzhirkevich.qrose.options.QrColors
+import io.github.alexzhirkevich.qrose.options.solid
 import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -250,7 +253,12 @@ fun HouseholdSettingsScreen(
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         Image(
-                                            painter = rememberQrCodePainter(uiState.household.inviteCode),
+                                            painter = rememberQrCodePainter(
+                                                data = uiState.household.inviteCode,
+                                                colors = QrColors(
+                                                    dark = QrBrush.solid(MaterialTheme.colorScheme.onSurface),
+                                                ),
+                                            ),
                                             contentDescription = null,
                                             modifier = Modifier.size(180.dp),
                                         )
@@ -412,7 +420,10 @@ private fun InviteRow(
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
-                    painter = rememberQrCodePainter(invite.code),
+                    painter = rememberQrCodePainter(
+                        data = invite.code,
+                        colors = QrColors(dark = QrBrush.solid(MaterialTheme.colorScheme.onSurface)),
+                    ),
                     contentDescription = null,
                     modifier = Modifier.size(160.dp),
                 )

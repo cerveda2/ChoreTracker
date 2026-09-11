@@ -60,6 +60,9 @@ import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
+import io.github.alexzhirkevich.qrose.options.QrBrush
+import io.github.alexzhirkevich.qrose.options.QrColors
+import io.github.alexzhirkevich.qrose.options.solid
 import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -151,7 +154,10 @@ fun MembersSettingsScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Image(
-                        painter = rememberQrCodePainter(code),
+                        painter = rememberQrCodePainter(
+                            data = code,
+                            colors = QrColors(dark = QrBrush.solid(MaterialTheme.colorScheme.onSurface)),
+                        ),
                         contentDescription = null,
                         modifier = Modifier.size(180.dp),
                     )
