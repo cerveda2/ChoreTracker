@@ -57,7 +57,14 @@ fun ChoreTrackerRoot(
     val navController = rememberNavController()
     val rootDestination by viewModel.rootDestination.collectAsStateWithLifecycle()
     val themeSettings by viewModel.themeSettings.collectAsStateWithLifecycle()
-    val startDestination = remember(rootDestination) {
+    // NavHost's startDestination must stay fixed for the life of this composition - feeding it a
+    // changed value (keying this remember on rootDestination itself) makes NavHost rebuild its
+    // whole graph on every Auth/Onboarding/Main transition, racing the LaunchedEffect below
+    // (the actual, intended mechanism for those transitions) and crashing with "destination is
+    // not a direct child of this NavGraph". Keying on "have we left Loading yet" instead - a
+    // boolean that flips once and never again, since rootDestination never returns to Loading -
+    // computes the value once on the first non-Loading frame and never touches it again.
+    val startDestination = remember(rootDestination != RootDestination.Loading) {
         rootDestination.takeIf { it != RootDestination.Loading }?.route
     }
     val navBackStackEntry by navController.currentBackStackEntryAsState()
