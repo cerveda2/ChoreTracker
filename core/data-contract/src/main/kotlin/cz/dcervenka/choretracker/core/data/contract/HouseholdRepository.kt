@@ -17,6 +17,12 @@ interface HouseholdRepository {
 
     fun observeMembers(householdId: String): Flow<List<HouseholdMember>>
 
+    /**
+     * Unfiltered - includes soft-removed members, so callers that need to resolve a departed
+     * member's name (e.g. invite history) can, unlike [observeMembers]'s current-member lists.
+     */
+    fun observeAllMembers(householdId: String): Flow<List<HouseholdMember>>
+
     fun observeInvites(householdId: String): Flow<List<Invite>>
 
     suspend fun createHousehold(name: String, ownerDisplayName: String): AppResult<Household>

@@ -13,6 +13,8 @@ data class SettingsUiState(
     val userEmail: String? = null,
     val household: Household? = null,
     val members: List<HouseholdMember> = emptyList(),
+    /** Unfiltered, includes soft-removed members - for resolving a departed member's name (invite history). */
+    val allMembers: List<HouseholdMember> = emptyList(),
     val invites: List<Invite> = emptyList(),
     val accountDisplayNameInput: String = "",
     val householdNameInput: String = "",

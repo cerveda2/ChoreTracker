@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateMemberInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteAccountUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LeaveHouseholdUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveAllMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInvitesUseCase
@@ -63,6 +64,9 @@ class SettingsViewModelTest {
 
     @MockK
     lateinit var observeMembersUseCase: ObserveMembersUseCase
+
+    @MockK
+    lateinit var observeAllMembersUseCase: ObserveAllMembersUseCase
 
     @MockK
     lateinit var observeInvitesUseCase: ObserveInvitesUseCase
@@ -125,6 +129,7 @@ class SettingsViewModelTest {
         every { observeAuthStateUseCase() } returns authStateFlow
         every { observeCurrentHouseholdUseCase() } returns householdFlow
         every { observeMembersUseCase(any()) } answers { membersFlow }
+        every { observeAllMembersUseCase(any()) } answers { membersFlow }
         every { observeInvitesUseCase(any()) } returns MutableStateFlow(emptyList())
         every { observeThemeSettingsUseCase() } returns themeSettingsFlow
         every { observeReminderSettingsUseCase() } returns reminderSettingsFlow
@@ -305,6 +310,7 @@ private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
     observeAuthStateUseCase,
     observeCurrentHouseholdUseCase,
     observeMembersUseCase,
+    observeAllMembersUseCase,
     observeInvitesUseCase,
     observeThemeSettingsUseCase,
     observeReminderSettingsUseCase,

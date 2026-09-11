@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateMemberInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteAccountUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LeaveHouseholdUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveAllMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInvitesUseCase
@@ -46,6 +47,7 @@ class SettingsViewModel @Inject constructor(
     observeAuthStateUseCase: ObserveAuthStateUseCase,
     observeCurrentHouseholdUseCase: ObserveCurrentHouseholdUseCase,
     observeMembersUseCase: ObserveMembersUseCase,
+    observeAllMembersUseCase: ObserveAllMembersUseCase,
     observeInvitesUseCase: ObserveInvitesUseCase,
     observeThemeSettingsUseCase: ObserveThemeSettingsUseCase,
     observeReminderSettingsUseCase: ObserveReminderSettingsUseCase,
@@ -116,6 +118,7 @@ class SettingsViewModel @Inject constructor(
                 }
                 combine(
                     observeMembersUseCase(household.id),
+                    observeAllMembersUseCase(household.id),
                     observeInvitesUseCase(household.id),
                     combine(
                         accountDisplayNameInput,
@@ -128,10 +131,11 @@ class SettingsViewModel @Inject constructor(
                             memberInput = currentMember,
                         )
                     },
-                ) { members, invites, draftState ->
+                ) { members, allMembers, invites, draftState ->
                     draftState.copy(
                         household = household,
                         members = members,
+                        allMembers = allMembers,
                         invites = invites.sortedByDescending { it.createdAt },
                     )
                 }
