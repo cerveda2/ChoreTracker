@@ -59,6 +59,11 @@ class AndroidFeatureConventionPlugin : Plugin<Project> {
                 add("implementation", libsCatalog.findLibrary("androidx-lifecycle-runtime-compose").get())
                 add("implementation", libsCatalog.findLibrary("androidx-lifecycle-viewmodel-ktx").get())
                 add("implementation", libsCatalog.findLibrary("androidx-lifecycle-viewmodel-compose").get())
+                add("testImplementation", libsCatalog.findLibrary("junit4").get())
+                add("testImplementation", libsCatalog.findLibrary("google-truth").get())
+                add("testImplementation", libsCatalog.findLibrary("mockk").get())
+                add("testImplementation", libsCatalog.findLibrary("kotlinx-coroutines-test").get())
+                add("testImplementation", libsCatalog.findLibrary("turbine").get())
             }
         }
     }

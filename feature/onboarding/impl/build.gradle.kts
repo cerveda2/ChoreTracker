@@ -22,9 +22,4 @@ dependencies {
 
     testImplementation(projects.core.dataContract)
     testImplementation(projects.core.test)
-    testImplementation(libs.junit4)
-    testImplementation(libs.google.truth)
-    testImplementation(libs.mockk)
-    testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.turbine)
 }
