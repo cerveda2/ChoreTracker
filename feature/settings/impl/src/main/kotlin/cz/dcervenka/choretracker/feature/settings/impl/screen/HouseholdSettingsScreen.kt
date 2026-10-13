@@ -198,7 +198,7 @@ fun HouseholdSettingsScreen(
                             PrimaryButton(
                                 text = stringResource(R.string.settings_save_household_name),
                                 onClick = { onIntent(SettingsUiIntent.SaveHouseholdName) },
-                                enabled = uiState.isOwner,
+                                enabled = uiState.isOwner && uiState.householdNameInput.isNotBlank(),
                             )
                         }
                     }

@@ -210,7 +210,7 @@ private fun CreateHouseholdForm(
             PrimaryButton(
                 text = stringResource(R.string.onboarding_create_household),
                 onClick = { onIntent(OnboardingUiIntent.CreateHousehold) },
-                enabled = !uiState.isWorking,
+                enabled = !uiState.isWorking && uiState.householdName.isNotBlank(),
             )
         }
     }
