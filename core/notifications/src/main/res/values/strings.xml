@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="invite_notification_channel_name">Household invites</string>
+    <string name="invite_notification_channel_description">Notifies you when someone joins your household</string>
+    <!-- Referenced by name (titleLocKey/bodyLocKey) from functions/src/index.ts - keep the names in sync. -->
+    <string name="invite_accepted_notification_title">New household member</string>
+    <string name="invite_accepted_notification_body">%1$s joined your household</string>
+    <string name="invite_accepted_notification_body_anonymous">Someone joined your household</string>
+</resources>

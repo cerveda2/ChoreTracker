@@ -39,10 +39,19 @@ class InviteAcceptedMessagingService : FirebaseMessagingService() {
             ) == PackageManager.PERMISSION_GRANTED
         if (!hasPermission) return
 
+        // The push carries titleLocKey/bodyLocKey rather than literal text (see onInviteAccepted in
+        // functions/src/index.ts), so title/body are null here - resolve the same resources the
+        // system uses for the backgrounded case.
+        val joiningName = notification.bodyLocalizationArgs?.firstOrNull()
+        val body = if (joiningName != null) {
+            getString(R.string.invite_accepted_notification_body, joiningName)
+        } else {
+            getString(R.string.invite_accepted_notification_body_anonymous)
+        }
         val builder = NotificationCompat.Builder(this, INVITE_ACCEPTED_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(notification.title)
-            .setContentText(notification.body)
+            .setContentTitle(getString(R.string.invite_accepted_notification_title))
+            .setContentText(body)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
 

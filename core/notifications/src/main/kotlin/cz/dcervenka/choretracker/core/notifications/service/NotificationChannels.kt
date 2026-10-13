@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import androidx.core.app.NotificationManagerCompat
+import cz.dcervenka.choretracker.core.notifications.R
 
 // Must match the "com.google.firebase.messaging.default_notification_channel_id" meta-data
 // value in core/notifications/src/main/AndroidManifest.xml.
@@ -23,10 +24,10 @@ object NotificationChannels {
             if (created) return
             val channel = NotificationChannel(
                 INVITE_ACCEPTED_CHANNEL_ID,
-                "Household invites",
+                context.getString(R.string.invite_notification_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
-                description = "Notifies you when someone joins your household"
+                description = context.getString(R.string.invite_notification_channel_description)
             }
             NotificationManagerCompat.from(context).createNotificationChannel(channel)
             created = true

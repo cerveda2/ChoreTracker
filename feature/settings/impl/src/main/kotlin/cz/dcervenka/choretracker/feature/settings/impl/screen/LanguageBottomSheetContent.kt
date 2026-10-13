@@ -63,7 +63,7 @@ private fun LanguageRow(
             onClick = onSelect,
         )
         Text(
-            text = language.displayName,
+            text = language.displayName ?: stringResource(R.string.settings_language_system),
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(start = spacing.small),
         )

@@ -93,7 +93,7 @@ class AuthViewModel @Inject constructor(
                     workingMessage = application.getString(R.string.auth_opening_preview),
                     execute = {
                         continueInPreviewModeUseCase(
-                            state.displayName.ifBlank { "Preview User" },
+                            state.displayName.ifBlank { application.getString(R.string.auth_preview_default_name) },
                         )
                     },
                 )

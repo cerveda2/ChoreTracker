@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="invite_notification_channel_name">Pozvánky do domácnosti</string>
+    <string name="invite_notification_channel_description">Upozorní vás, když se někdo připojí k vaší domácnosti</string>
+    <string name="invite_accepted_notification_title">Nový člen domácnosti</string>
+    <string name="invite_accepted_notification_body">%1$s se připojil(a) k vaší domácnosti</string>
+    <string name="invite_accepted_notification_body_anonymous">Někdo se připojil k vaší domácnosti</string>
+</resources>
