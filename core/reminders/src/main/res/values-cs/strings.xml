@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="reminder_notification_channel_name">Připomínky úkolů</string>
+    <string name="reminder_notification_channel_description">Připomíná úkoly, které vyžadují pozornost</string>
     <plurals name="reminder_notification_title">
         <item quantity="one">%d úkol vyžaduje pozornost</item>
         <item quantity="few">%d úkoly vyžadují pozornost</item>

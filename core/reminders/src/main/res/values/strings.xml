@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="reminder_notification_channel_name">Chore reminders</string>
+    <string name="reminder_notification_channel_description">Reminds you about chores that need attention</string>
     <plurals name="reminder_notification_title">
         <item quantity="one">%d chore needs attention</item>
         <item quantity="other">%d chores need attention</item>

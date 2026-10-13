@@ -18,6 +18,7 @@
     <string name="auth_signing_in">Přihlašujeme vás…</string>
     <string name="auth_creating_account">Vytváříme váš účet…</string>
     <string name="auth_opening_preview">Otevírám ukázkový režim…</string>
+    <string name="auth_preview_default_name">Ukázkový uživatel</string>
     <string name="auth_validation_email_required">E-mail je povinný.</string>
     <string name="auth_validation_password_required">Heslo je povinné.</string>
     <string name="auth_validation_display_name_required">Zobrazované jméno je povinné.</string>
@@ -227,6 +228,7 @@
     </plurals>
     <string name="settings_language_title">Jazyk</string>
     <string name="settings_language_description">Jazyk zobrazení aplikace</string>
+    <string name="settings_language_system">Výchozí nastavení systému</string>
     <string name="settings_theme_title">Motiv</string>
     <string name="settings_theme_system">Systém</string>
     <string name="settings_theme_light">Světlý</string>

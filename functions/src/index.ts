@@ -101,14 +101,20 @@ export const onInviteAccepted = onDocumentUpdated(
       return;
     }
 
-    const joiningDisplayName: string = memberSnap?.get("displayName") || "Someone";
+    const joiningDisplayName: string | undefined = memberSnap?.get("displayName") || undefined;
 
     try {
+      // Localization keys, not literal text: the client resolves them against its own string
+      // resources (core/notifications/src/main/res), so the push follows the app's language.
+      // Deliberately no title/body alongside them - the Android FCM SDK prefers a literal title
+      // over titleLocKey whenever both are present.
+      const body = joiningDisplayName
+        ? { bodyLocKey: "invite_accepted_notification_body", bodyLocArgs: [joiningDisplayName] }
+        : { bodyLocKey: "invite_accepted_notification_body_anonymous" };
       await getMessaging().send({
         token: fcmToken,
-        notification: {
-          title: "New household member",
-          body: `${joiningDisplayName} joined your household`,
+        android: {
+          notification: { titleLocKey: "invite_accepted_notification_title", ...body },
         },
       });
       logger.info("onInviteAccepted: notified household owner", {

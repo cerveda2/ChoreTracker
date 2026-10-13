@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import androidx.core.app.NotificationManagerCompat
+import cz.dcervenka.choretracker.core.reminders.R
 
 internal const val CHORE_REMINDER_CHANNEL_ID = "chore_reminders"
 
@@ -21,10 +22,10 @@ object ReminderNotificationChannels {
             if (created) return
             val channel = NotificationChannel(
                 CHORE_REMINDER_CHANNEL_ID,
-                "Chore reminders",
+                context.getString(R.string.reminder_notification_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
-                description = "Reminds you about chores that need attention"
+                description = context.getString(R.string.reminder_notification_channel_description)
             }
             NotificationManagerCompat.from(context).createNotificationChannel(channel)
             created = true
