@@ -42,6 +42,7 @@ import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
+import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthMode
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiIntent
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiState
@@ -116,9 +117,9 @@ fun AuthScreen(
                     }
                 }
             }
-            uiState.errorMessage?.let { message ->
+            uiState.error?.let { error ->
                 Text(
-                    text = message,
+                    text = stringResource(error.toStringRes()),
                     color = MaterialTheme.colorScheme.error,
                 )
             }

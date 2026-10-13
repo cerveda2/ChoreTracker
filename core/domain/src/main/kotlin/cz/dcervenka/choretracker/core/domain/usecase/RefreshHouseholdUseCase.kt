@@ -20,7 +20,7 @@ class RefreshHouseholdUseCase @Inject constructor(
         val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
         if (user == null || user.isPreview) return pushResult
         return when (val pullResult = syncRepository.restoreHouseholdForUser(user.id)) {
-            is AppResult.Error -> AppResult.Error(pullResult.message, pullResult.cause)
+            is AppResult.Error -> AppResult.Error(pullResult.error, pullResult.cause)
             is AppResult.Success -> pushResult
         }
     }

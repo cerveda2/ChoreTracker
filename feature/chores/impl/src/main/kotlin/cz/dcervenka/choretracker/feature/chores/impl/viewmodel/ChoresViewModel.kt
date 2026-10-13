@@ -124,7 +124,7 @@ class ChoresViewModel @Inject constructor(
             if (result is AppResult.Success) {
                 _events.send(ChoresUiEvent.ChoreAdded)
             } else if (result is AppResult.Error) {
-                _events.send(ChoresUiEvent.Error(result.message))
+                _events.send(ChoresUiEvent.Error(result.error))
             }
         }
     }
@@ -149,9 +149,9 @@ class ChoresViewModel @Inject constructor(
                     add(updateChoreActiveUseCase(intent.choreId, intent.isActive))
                 }
             }
-            val error = results.filterIsInstance<AppResult.Error>().firstOrNull()
-            if (error != null) {
-                _events.send(ChoresUiEvent.Error(error.message))
+            val failure = results.filterIsInstance<AppResult.Error>().firstOrNull()
+            if (failure != null) {
+                _events.send(ChoresUiEvent.Error(failure.error))
             } else {
                 _events.send(ChoresUiEvent.ChoreSaved)
             }
@@ -164,7 +164,7 @@ class ChoresViewModel @Inject constructor(
             if (result is AppResult.Success) {
                 _events.send(ChoresUiEvent.ChoreDeleted)
             } else if (result is AppResult.Error) {
-                _events.send(ChoresUiEvent.Error(result.message))
+                _events.send(ChoresUiEvent.Error(result.error))
             }
         }
     }
@@ -183,7 +183,7 @@ class ChoresViewModel @Inject constructor(
                     val choreName = uiState.value.chores.find { it.id == intent.choreId }?.name.orEmpty()
                     _undoChannel.send(UndoEvent(result.value, choreName))
                 }
-                is AppResult.Error -> _events.send(ChoresUiEvent.Error(result.message))
+                is AppResult.Error -> _events.send(ChoresUiEvent.Error(result.error))
             }
         }
     }
@@ -192,7 +192,7 @@ class ChoresViewModel @Inject constructor(
         viewModelScope.launch {
             val result = deleteCompletionUseCase(completionId)
             if (result is AppResult.Error) {
-                _events.send(ChoresUiEvent.Error(result.message))
+                _events.send(ChoresUiEvent.Error(result.error))
             }
         }
     }

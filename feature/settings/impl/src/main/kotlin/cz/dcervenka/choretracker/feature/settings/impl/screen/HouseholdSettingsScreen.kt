@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
@@ -57,6 +58,7 @@ import cz.dcervenka.choretracker.core.design.components.EmptyState
 import cz.dcervenka.choretracker.core.design.components.ListGroup
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.SectionHeader
+import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.model.household.Invite
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
@@ -82,7 +84,7 @@ fun HouseholdSettingsScreen(
     val spacing = LocalSpacing.current
     val snackbarHostState = remember { SnackbarHostState() }
     val msgNameSaved = stringResource(R.string.settings_feedback_name_saved)
-    val msgError = stringResource(R.string.settings_feedback_error)
+    val resources = LocalResources.current
     LaunchedEffect(events) {
         events.collect { event ->
             val msg = when (event) {
@@ -91,7 +93,7 @@ fun HouseholdSettingsScreen(
                     onBack()
                     return@collect
                 }
-                is SettingsUiEvent.Error -> event.message.ifBlank { msgError }
+                is SettingsUiEvent.Error -> resources.getString(event.error.toStringRes())
                 else -> return@collect
             }
             snackbarHostState.showSnackbar(msg)

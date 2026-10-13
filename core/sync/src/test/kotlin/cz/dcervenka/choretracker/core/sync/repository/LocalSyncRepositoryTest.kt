@@ -21,6 +21,7 @@ import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
@@ -401,7 +402,7 @@ class LocalSyncRepositoryTest {
             coEvery { memberDao.getMembers("household-1") } returns listOf(memberEntity)
             coEvery { remoteHouseholdDataSource.upsertHouseholdSnapshot(any(), any()) } returns AppResult.Success(Unit)
             coEvery { remoteHouseholdDataSource.deleteCompletion(any(), any()) } returns
-                AppResult.Error("Missing or insufficient permissions.")
+                AppResult.Error(AppError.PERMISSION_DENIED)
             coEvery { pendingSyncOperationDao.delete(any()) } just Runs
 
             val resultDeferred = async { repository.syncPendingOperations() }
@@ -434,14 +435,14 @@ class LocalSyncRepositoryTest {
             coEvery { inviteDao.getInvites("household-1") } returns emptyList()
             coEvery { memberDao.getMembers("household-1") } returns listOf(memberEntity)
             coEvery { remoteHouseholdDataSource.upsertHouseholdSnapshot(any(), any()) } returns
-                AppResult.Error("Missing or insufficient permissions.")
+                AppResult.Error(AppError.PERMISSION_DENIED)
 
             val resultDeferred = async { repository.syncPendingOperations() }
             advanceUntilIdle()
             val result = resultDeferred.await()
 
             assertThat(result).isInstanceOf(AppResult.Error::class.java)
-            coVerify { syncStateDao.upsert(match { it.lastErrorMessage == "Missing or insufficient permissions." }) }
+            coVerify { syncStateDao.upsert(match { it.lastErrorMessage == AppError.PERMISSION_DENIED.name }) }
         }
 
     // restoreHouseholdForUser
@@ -449,12 +450,12 @@ class LocalSyncRepositoryTest {
     @Test
     fun `restoreHouseholdForUser returns Error when fetch fails`() = runTest(coroutineRule.dispatcher) {
         coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns
-            AppResult.Error("Network error")
+            AppResult.Error(AppError.NETWORK)
 
         val result = repository.restoreHouseholdForUser("user-1")
 
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
-        assertThat((result as AppResult.Error).message).isEqualTo("Network error")
+        assertThat((result as AppResult.Error).error).isEqualTo(AppError.NETWORK)
     }
 
     @Test

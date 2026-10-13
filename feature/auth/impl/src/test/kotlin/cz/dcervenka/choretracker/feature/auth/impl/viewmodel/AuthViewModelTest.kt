@@ -10,6 +10,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignInUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignUpUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.test.mock.sampleAuthenticatedState
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiIntent
@@ -60,9 +61,6 @@ class AuthViewModelTest {
         every { application.getString(R.string.auth_signing_in) } returns "Signing in"
         every { application.getString(R.string.auth_creating_account) } returns "Creating account"
         every { application.getString(R.string.auth_opening_preview) } returns "Opening preview"
-        every { application.getString(R.string.auth_validation_email_required) } returns "Email is required."
-        every { application.getString(R.string.auth_validation_password_required) } returns "Password is required."
-        every { application.getString(R.string.auth_validation_display_name_required) } returns "Display name is required."
         coEvery { signInUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { signUpUseCase(any(), any(), any()) } returns AppResult.Success(Unit)
         coEvery { continueInPreviewModeUseCase(any()) } returns AppResult.Success(Unit)
@@ -70,14 +68,14 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun `sign in error updates ui state with message`() = runTest(coroutineRule.dispatcher) {
-        coEvery { signInUseCase("dana@example.com", "wrong-password") } returns AppResult.Error("Invalid credentials")
+    fun `sign in error updates ui state with error`() = runTest(coroutineRule.dispatcher) {
+        coEvery { signInUseCase("dana@example.com", "wrong-password") } returns AppResult.Error(AppError.INVALID_CREDENTIALS)
         val viewModel = createViewModel()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect {}
         }
 
-        assertThat(viewModel.uiState.value.errorMessage).isNull()
+        assertThat(viewModel.uiState.value.error).isNull()
 
         viewModel.dispatch(AuthUiIntent.EmailChanged("dana@example.com"))
         advanceUntilIdle()
@@ -91,7 +89,7 @@ class AuthViewModelTest {
         advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.isWorking).isFalse()
-        assertThat(viewModel.uiState.value.errorMessage).isEqualTo("Invalid credentials")
+        assertThat(viewModel.uiState.value.error).isEqualTo(AppError.INVALID_CREDENTIALS)
         coVerify { signInUseCase("dana@example.com", "wrong-password") }
     }
 
@@ -122,7 +120,7 @@ class AuthViewModelTest {
             viewModel.dispatch(AuthUiIntent.SignUpClicked)
             advanceUntilIdle()
 
-            assertThat(viewModel.uiState.value.errorMessage).isEqualTo("Email is required.")
+            assertThat(viewModel.uiState.value.error).isEqualTo(AppError.EMAIL_REQUIRED)
             coVerify(exactly = 0) {
                 signUpUseCase(any(), any(), any())
             }
@@ -143,7 +141,7 @@ class AuthViewModelTest {
         viewModel.dispatch(AuthUiIntent.SignUpClicked)
         advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.errorMessage).isEqualTo("Display name is required.")
+        assertThat(viewModel.uiState.value.error).isEqualTo(AppError.DISPLAY_NAME_REQUIRED)
         coVerify(exactly = 0) { signUpUseCase(any(), any(), any()) }
     }
 

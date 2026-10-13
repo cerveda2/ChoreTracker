@@ -33,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
+import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiIntent
 import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiState
 
@@ -74,7 +75,7 @@ fun QrScanScreen(
                 },
                 // Latches on a failed attempt instead of immediately re-scanning the same code
                 // still sitting in frame, which looped a rejected/invalid code indefinitely.
-                enabled = !uiState.isWorking && uiState.errorMessage == null,
+                enabled = !uiState.isWorking && uiState.error == null,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -98,9 +99,9 @@ fun QrScanScreen(
                 .padding(bottom = spacing.large),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            uiState.errorMessage?.let { message ->
+            uiState.error?.let { error ->
                 Text(
-                    text = message,
+                    text = stringResource(error.toStringRes()),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodyMedium,
                 )

@@ -17,6 +17,7 @@ import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
@@ -129,7 +130,7 @@ class LocalSyncRepositoryMembershipTest {
 
     @Test
     fun `leaveHousehold keeps local data when the remote write fails`() = runTest(coroutineRule.dispatcher) {
-        coEvery { remoteHouseholdDataSource.leaveHousehold("household-1", "user-1") } returns AppResult.Error("offline")
+        coEvery { remoteHouseholdDataSource.leaveHousehold("household-1", "user-1") } returns AppResult.Error(AppError.NETWORK)
 
         val result = repository.leaveHousehold("household-1", "user-1")
 

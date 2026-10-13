@@ -15,6 +15,7 @@ import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
@@ -146,7 +147,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             "upsertHouseholdSnapshot: householdId=${snapshot.household.id} " +
                 "chores=${snapshot.chores.size} completions=${snapshot.completions.size}",
         )
-        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
         return runCatching {
             val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(snapshot.household.id)
             awaitTask(
@@ -177,10 +178,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             AppResult.Success(Unit)
         }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "upsertHouseholdSnapshot: failed")
-            AppResult.Error(
-                error.message ?: "Unable to sync household data.",
-                error,
-            )
+            AppResult.Error(error.toAppError(), error)
         }
     }
 
@@ -300,7 +298,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
         userId: String,
     ): EmptyResult {
         Timber.d("upsertMemberSnapshot: householdId=$householdId completions=${completions.size}")
-        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
         return runCatching {
             val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
             val memberDocumentId = member.userId ?: member.id
@@ -352,13 +350,13 @@ class FirebaseHouseholdDataSource @Inject constructor(
             AppResult.Success(Unit)
         }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "upsertMemberSnapshot: failed")
-            AppResult.Error(error.message ?: "Unable to sync member data.", error)
+            AppResult.Error(error.toAppError(), error)
         }
     }
 
     override suspend fun fetchInviteByCode(code: String): AppResult<Invite?> {
         Timber.d("fetchInviteByCode: code=$code")
-        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
         return runCatching {
             // Two gets instead of the old collectionGroup(INVITES_COLLECTION).whereEqualTo("code",
             // ...) query: a joining user isn't a household member yet, so they can't be granted a
@@ -379,7 +377,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             }
         }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "fetchInviteByCode: failed")
-            AppResult.Error(error.message ?: "Unable to fetch invite.", error)
+            AppResult.Error(error.toAppError(), error)
         }
     }
 
@@ -390,7 +388,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
         consumedByMemberId: String,
     ): EmptyResult {
         Timber.d("markInviteConsumed: householdId=$householdId inviteId=$inviteId")
-        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
         return runCatching {
             awaitTask(
                 db.collection(HOUSEHOLDS_COLLECTION)
@@ -408,13 +406,13 @@ class FirebaseHouseholdDataSource @Inject constructor(
             AppResult.Success(Unit)
         }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "markInviteConsumed: failed")
-            AppResult.Error(error.message ?: "Unable to mark invite as consumed.", error)
+            AppResult.Error(error.toAppError(), error)
         }
     }
 
     override suspend fun deleteCompletion(householdId: String, completionId: String): EmptyResult {
         Timber.d("deleteCompletion: householdId=$householdId completionId=$completionId")
-        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
         return runCatching {
             awaitTask(
                 db.collection(HOUSEHOLDS_COLLECTION)
@@ -427,7 +425,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             AppResult.Success(Unit)
         }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "deleteCompletion: failed")
-            AppResult.Error(error.message ?: "Unable to delete completion.", error)
+            AppResult.Error(error.toAppError(), error)
         }
     }
 
@@ -438,7 +436,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
         previousOwnerMemberDocId: String,
     ): EmptyResult {
         Timber.d("transferOwnership: householdId=$householdId newOwnerUserId=$newOwnerUserId")
-        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
         return runCatching {
             val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
             val members = householdRef.collection(MEMBERS_COLLECTION)
@@ -462,13 +460,13 @@ class FirebaseHouseholdDataSource @Inject constructor(
             AppResult.Success(Unit)
         }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "transferOwnership: failed")
-            AppResult.Error(error.message ?: "Unable to transfer ownership.", error)
+            AppResult.Error(error.toAppError(), error)
         }
     }
 
     override suspend fun leaveHousehold(householdId: String, selfMemberDocId: String): EmptyResult {
         Timber.d("leaveHousehold: householdId=$householdId selfMemberDocId=$selfMemberDocId")
-        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
         return runCatching {
             val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
             val batch = db.batch()
@@ -492,13 +490,13 @@ class FirebaseHouseholdDataSource @Inject constructor(
             AppResult.Success(Unit)
         }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "leaveHousehold: failed")
-            AppResult.Error(error.message ?: "Unable to leave household.", error)
+            AppResult.Error(error.toAppError(), error)
         }
     }
 
     override suspend fun fetchHouseholdSnapshot(userId: String): AppResult<HouseholdSnapshot?> {
         Timber.d("fetchHouseholdSnapshot: userId=$userId")
-        val db = firestore ?: return AppResult.Error("Firebase isn't configured yet.")
+        val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
         var resolvedHouseholdId: String? = null
         return runCatching {
             val householdId = resolveHouseholdId(db, userId)
@@ -548,10 +546,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
                 Timber.w("fetchHouseholdSnapshot: permission denied for householdId=$householdId, userId=$userId")
                 AppResult.Success(emptyMembersSnapshot(householdId))
             } else {
-                AppResult.Error(
-                    error.message ?: "Unable to load household data.",
-                    error,
-                )
+                AppResult.Error(error.toAppError(), error)
             }
         }
     }

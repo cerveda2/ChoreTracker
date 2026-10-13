@@ -17,6 +17,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
@@ -168,7 +169,7 @@ class ChoresViewModelTest {
 
     @Test
     fun `addChore emits an error event when the use case fails`() = runTest(coroutineRule.dispatcher) {
-        coEvery { addChoreUseCase(any(), any(), any(), any()) } returns AppResult.Error("Frequency must be positive.")
+        coEvery { addChoreUseCase(any(), any(), any(), any()) } returns AppResult.Error(AppError.INVALID_FREQUENCY)
         val viewModel = createViewModel()
 
         viewModel.events.test {
@@ -182,7 +183,7 @@ class ChoresViewModelTest {
             )
             advanceUntilIdle()
 
-            assertThat(awaitItem()).isEqualTo(ChoresUiEvent.Error("Frequency must be positive."))
+            assertThat(awaitItem()).isEqualTo(ChoresUiEvent.Error(AppError.INVALID_FREQUENCY))
         }
     }
 
@@ -252,14 +253,14 @@ class ChoresViewModelTest {
 
     @Test
     fun `deleteCompletion emits an error event when the use case fails`() = runTest(coroutineRule.dispatcher) {
-        coEvery { deleteCompletionUseCase(any()) } returns AppResult.Error("Not allowed.")
+        coEvery { deleteCompletionUseCase(any()) } returns AppResult.Error(AppError.COMPLETION_DELETE_FORBIDDEN)
         val viewModel = createViewModel()
 
         viewModel.events.test {
             viewModel.dispatch(ChoresUiIntent.DeleteCompletion("completion-1"))
             advanceUntilIdle()
 
-            assertThat(awaitItem()).isEqualTo(ChoresUiEvent.Error("Not allowed."))
+            assertThat(awaitItem()).isEqualTo(ChoresUiEvent.Error(AppError.COMPLETION_DELETE_FORBIDDEN))
         }
     }
 }

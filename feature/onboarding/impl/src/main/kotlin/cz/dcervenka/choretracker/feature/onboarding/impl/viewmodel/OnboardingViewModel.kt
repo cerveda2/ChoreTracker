@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.JoinHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveHouseholdRestoreStatusUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiIntent
 import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,7 +32,7 @@ class OnboardingViewModel @Inject constructor(
     private val displayName = MutableStateFlow("")
     private val inviteCode = MutableStateFlow("")
     private val isWorking = MutableStateFlow(false)
-    private val errorMessage = MutableStateFlow<String?>(null)
+    private val error = MutableStateFlow<AppError?>(null)
 
     private val authDisplayName = observeAuthStateUseCase().map { state ->
         val user = (state as? AuthState.Authenticated)?.user
@@ -44,14 +45,14 @@ class OnboardingViewModel @Inject constructor(
         displayName,
         inviteCode,
         isWorking,
-        errorMessage,
+        error,
     ) { currentHousehold, currentDisplayName, currentInvite, working, error ->
         OnboardingUiState(
             householdName = currentHousehold,
             displayName = currentDisplayName,
             inviteCode = currentInvite,
             isWorking = working,
-            errorMessage = error,
+            error = error,
         )
     }
 
@@ -63,7 +64,7 @@ class OnboardingViewModel @Inject constructor(
         currentState.copy(
             displayName = currentAuthDisplayName ?: currentState.displayName,
             canEditDisplayName = currentAuthDisplayName == null,
-            restoreErrorMessage = currentRestoreStatus.errorMessage,
+            restoreError = currentRestoreStatus.error,
             isRestoringRemoteHousehold = currentRestoreStatus.isRestoring,
         )
     }.stateIn(
@@ -79,7 +80,7 @@ class OnboardingViewModel @Inject constructor(
             is OnboardingUiIntent.InviteCodeChanged -> inviteCode.value = intent.value
             OnboardingUiIntent.CreateHousehold -> createHousehold()
             OnboardingUiIntent.JoinHousehold -> joinHousehold()
-            OnboardingUiIntent.ClearError -> errorMessage.value = null
+            OnboardingUiIntent.ClearError -> error.value = null
         }
     }
 
@@ -104,9 +105,9 @@ class OnboardingViewModel @Inject constructor(
     private fun submit(block: suspend () -> AppResult<*>) {
         viewModelScope.launch {
             isWorking.value = true
-            errorMessage.value = null
+            error.value = null
             when (val result = block()) {
-                is AppResult.Error -> errorMessage.value = result.message
+                is AppResult.Error -> error.value = result.error
                 is AppResult.Success -> Unit
             }
             isWorking.value = false

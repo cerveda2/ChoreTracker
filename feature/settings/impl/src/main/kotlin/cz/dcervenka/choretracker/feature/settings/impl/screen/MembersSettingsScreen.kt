@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -55,6 +56,7 @@ import cz.dcervenka.choretracker.core.design.components.ListGroup
 import cz.dcervenka.choretracker.core.design.components.MemberAvatar
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.SectionHeader
+import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
@@ -80,7 +82,7 @@ fun MembersSettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val msgMemberAdded = stringResource(R.string.settings_feedback_member_added)
     val msgMemberRemoved = stringResource(R.string.settings_feedback_member_deleted)
-    val msgError = stringResource(R.string.settings_feedback_error)
+    val resources = LocalResources.current
     var memberToRemove by rememberSaveable { mutableStateOf<String?>(null) }
     var sheetMemberId by rememberSaveable { mutableStateOf<String?>(null) }
     var memberInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
@@ -97,7 +99,9 @@ fun MembersSettingsScreen(
             when (event) {
                 SettingsUiEvent.MemberAdded -> snackbarHostState.showSnackbar(msgMemberAdded)
                 SettingsUiEvent.MemberRemoved -> snackbarHostState.showSnackbar(msgMemberRemoved)
-                is SettingsUiEvent.Error -> snackbarHostState.showSnackbar(event.message.ifBlank { msgError })
+                is SettingsUiEvent.Error -> snackbarHostState.showSnackbar(
+                    resources.getString(event.error.toStringRes()),
+                )
                 is SettingsUiEvent.MemberInviteGenerated -> memberInviteCode = event.code
                 else -> Unit
             }

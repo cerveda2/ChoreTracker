@@ -13,6 +13,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RefreshHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCompletionUseCase
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.sync.SyncState
@@ -127,12 +128,12 @@ class DashboardViewModelTest {
                 lastSyncedAt = null,
                 lastSyncAttemptAt = Instant.parse("2026-04-10T05:24:20Z"),
                 pendingOperations = 2,
-                lastErrorMessage = "Missing or insufficient permissions.",
+                lastError = AppError.PERMISSION_DENIED,
             )
 
             val state = awaitItem()
             assertThat(state.syncState?.pendingOperations).isEqualTo(2)
-            assertThat(state.syncState?.lastErrorMessage).contains("permissions")
+            assertThat(state.syncState?.lastError).isEqualTo(AppError.PERMISSION_DENIED)
         }
     }
 
@@ -185,14 +186,14 @@ class DashboardViewModelTest {
 
     @Test
     fun `retry sync emits an error event when the use case fails`() = runTest(coroutineRule.dispatcher) {
-        coEvery { retryPendingSyncUseCase() } returns AppResult.Error("Network error")
+        coEvery { retryPendingSyncUseCase() } returns AppResult.Error(AppError.NETWORK)
         val viewModel = createViewModel()
 
         viewModel.errorEvents.test {
             viewModel.dispatch(DashboardUiIntent.RetrySync)
             advanceUntilIdle()
 
-            assertThat(awaitItem()).isEqualTo("Network error")
+            assertThat(awaitItem()).isEqualTo(AppError.NETWORK)
         }
     }
 
@@ -241,7 +242,7 @@ class DashboardViewModelTest {
     @Test
     fun `log completion emits an error event when the use case fails`() = runTest(coroutineRule.dispatcher) {
         coEvery { logCompletionUseCase(any(), any(), any(), any()) } returns
-            AppResult.Error("At least one participant is required.")
+            AppResult.Error(AppError.PARTICIPANT_REQUIRED)
         val viewModel = createViewModel()
 
         viewModel.errorEvents.test {
@@ -256,35 +257,35 @@ class DashboardViewModelTest {
             )
             advanceUntilIdle()
 
-            assertThat(awaitItem()).isEqualTo("At least one participant is required.")
+            assertThat(awaitItem()).isEqualTo(AppError.PARTICIPANT_REQUIRED)
         }
     }
 
     @Test
     fun `update completion emits an error event when the use case fails`() = runTest(coroutineRule.dispatcher) {
         coEvery { updateCompletionUseCase(any(), any(), any()) } returns
-            AppResult.Error("Only the household owner or the person who logged this can edit it.")
+            AppResult.Error(AppError.COMPLETION_EDIT_FORBIDDEN)
         val viewModel = createViewModel()
 
         viewModel.errorEvents.test {
             viewModel.dispatch(DashboardUiIntent.UpdateCompletion("completion-1", "Note", listOf("member-1")))
             advanceUntilIdle()
 
-            assertThat(awaitItem()).isEqualTo("Only the household owner or the person who logged this can edit it.")
+            assertThat(awaitItem()).isEqualTo(AppError.COMPLETION_EDIT_FORBIDDEN)
         }
     }
 
     @Test
     fun `delete completion emits an error event when the use case fails`() = runTest(coroutineRule.dispatcher) {
         coEvery { deleteCompletionUseCase(any()) } returns
-            AppResult.Error("Only the household owner or the person who logged this can delete it.")
+            AppResult.Error(AppError.COMPLETION_DELETE_FORBIDDEN)
         val viewModel = createViewModel()
 
         viewModel.errorEvents.test {
             viewModel.dispatch(DashboardUiIntent.DeleteCompletion("completion-1"))
             advanceUntilIdle()
 
-            assertThat(awaitItem()).isEqualTo("Only the household owner or the person who logged this can delete it.")
+            assertThat(awaitItem()).isEqualTo(AppError.COMPLETION_DELETE_FORBIDDEN)
         }
     }
 

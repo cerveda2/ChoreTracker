@@ -6,6 +6,7 @@ import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.SyncRepository
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.test.mock.sampleAuthenticatedState
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
@@ -71,33 +72,33 @@ class RefreshHouseholdUseCaseTest {
 
     @Test
     fun `surfaces an error from the restore`() = runTest {
-        coEvery { syncRepository.restoreHouseholdForUser(any()) } returns AppResult.Error("Network error")
+        coEvery { syncRepository.restoreHouseholdForUser(any()) } returns AppResult.Error(AppError.NETWORK)
 
         val result = useCase()
 
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
-        assertThat((result as AppResult.Error).message).isEqualTo("Network error")
+        assertThat((result as AppResult.Error).error).isEqualTo(AppError.NETWORK)
     }
 
     @Test
     fun `surfaces an error from the push even when the pull succeeds`() = runTest {
-        coEvery { syncRepository.syncPendingOperations() } returns AppResult.Error("Push failed")
+        coEvery { syncRepository.syncPendingOperations() } returns AppResult.Error(AppError.SYNC_PARTIALLY_FAILED)
 
         val result = useCase()
 
         coVerify(exactly = 1) { syncRepository.restoreHouseholdForUser("user-1") }
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
-        assertThat((result as AppResult.Error).message).isEqualTo("Push failed")
+        assertThat((result as AppResult.Error).error).isEqualTo(AppError.SYNC_PARTIALLY_FAILED)
     }
 
     @Test
     fun `a pull failure takes precedence over a push failure`() = runTest {
-        coEvery { syncRepository.syncPendingOperations() } returns AppResult.Error("Push failed")
-        coEvery { syncRepository.restoreHouseholdForUser(any()) } returns AppResult.Error("Pull failed")
+        coEvery { syncRepository.syncPendingOperations() } returns AppResult.Error(AppError.SYNC_PARTIALLY_FAILED)
+        coEvery { syncRepository.restoreHouseholdForUser(any()) } returns AppResult.Error(AppError.NETWORK)
 
         val result = useCase()
 
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
-        assertThat((result as AppResult.Error).message).isEqualTo("Pull failed")
+        assertThat((result as AppResult.Error).error).isEqualTo(AppError.NETWORK)
     }
 }

@@ -9,6 +9,7 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.remote.contract.RemoteAuthDataSource
 import cz.dcervenka.choretracker.core.remote.firebase.runtime.FIREBASE_FUNCTIONS_REGION
 import cz.dcervenka.choretracker.core.remote.firebase.runtime.FirebaseRuntimeConfigurator
@@ -90,15 +91,10 @@ class FirebaseAuthDataSource @Inject constructor(
                     }
                     .addOnFailureListener { throwable ->
                         Timber.e(throwable, "signIn: failed")
-                        continuation.resume(
-                            AppResult.Error(
-                                throwable.message ?: "Unable to sign in.",
-                                throwable,
-                            ),
-                        )
+                        continuation.resume(AppResult.Error(throwable.toAppError(), throwable))
                     }
             }
-        } ?: AppResult.Error("Firebase isn't configured yet.")
+        } ?: AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
     }
 
     override suspend fun signUp(email: String, password: String, displayName: String): EmptyResult {
@@ -114,11 +110,7 @@ class FirebaseAuthDataSource @Inject constructor(
                     .addOnSuccessListener { result ->
                         val user = result.user
                         if (user == null) {
-                            continuation.resume(
-                                AppResult.Error(
-                                    "The Firebase account was created without a user instance.",
-                                ),
-                            )
+                            continuation.resume(AppResult.Error(AppError.UNKNOWN))
                         } else {
                             user.updateProfile(
                                 UserProfileChangeRequest.Builder()
@@ -135,33 +127,23 @@ class FirebaseAuthDataSource @Inject constructor(
                                 }
                                 .addOnFailureListener { throwable ->
                                     Timber.e(throwable, "signUp: profile update failed")
-                                    continuation.resume(
-                                        AppResult.Error(
-                                            throwable.message ?: "Unable to update profile.",
-                                            throwable,
-                                        ),
-                                    )
+                                    continuation.resume(AppResult.Error(throwable.toAppError(), throwable))
                                 }
                         }
                     }
                     .addOnFailureListener { throwable ->
-                        continuation.resume(
-                            AppResult.Error(
-                                throwable.message ?: "Unable to create account.",
-                                throwable,
-                            ),
-                        )
+                        continuation.resume(AppResult.Error(throwable.toAppError(), throwable))
                     }
             }
-        } ?: AppResult.Error("Firebase isn't configured yet.")
+        } ?: AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
     }
 
     override suspend fun updateDisplayName(displayName: String): EmptyResult {
         val sanitizedName = displayName.trim()
         val user = firebaseAuth?.currentUser
         return when {
-            sanitizedName.isBlank() -> AppResult.Error("Display name is required.")
-            user == null -> AppResult.Error("Sign in first.")
+            sanitizedName.isBlank() -> AppResult.Error(AppError.DISPLAY_NAME_REQUIRED)
+            user == null -> AppResult.Error(AppError.NOT_SIGNED_IN)
             else -> suspendCancellableCoroutine { continuation ->
                 user.updateProfile(
                     UserProfileChangeRequest.Builder()
@@ -177,12 +159,7 @@ class FirebaseAuthDataSource @Inject constructor(
                     }
                     .addOnFailureListener { throwable ->
                         Timber.e(throwable, "updateDisplayName: failed")
-                        continuation.resume(
-                            AppResult.Error(
-                                throwable.message ?: "Unable to update profile.",
-                                throwable,
-                            ),
-                        )
+                        continuation.resume(AppResult.Error(throwable.toAppError(), throwable))
                     }
             }
         }
@@ -203,8 +180,8 @@ class FirebaseAuthDataSource @Inject constructor(
         // locally once it succeeds; the authState -> SignedOut redirect and database.clearAll()
         // do the rest.
         return when {
-            auth == null || functions == null -> AppResult.Error("Firebase isn't configured yet.")
-            auth.currentUser == null -> AppResult.Error("Sign in first.")
+            auth == null || functions == null -> AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
+            auth.currentUser == null -> AppResult.Error(AppError.NOT_SIGNED_IN)
             else -> suspendCancellableCoroutine { continuation ->
                 functions.getHttpsCallable("deleteAccount").call()
                     .addOnSuccessListener {
@@ -214,20 +191,15 @@ class FirebaseAuthDataSource @Inject constructor(
                     }
                     .addOnFailureListener { throwable ->
                         Timber.e(throwable, "deleteAccount: failed")
-                        continuation.resume(
-                            AppResult.Error(
-                                throwable.message ?: "Unable to delete your account.",
-                                throwable,
-                            ),
-                        )
+                        continuation.resume(AppResult.Error(throwable.toAppError(), throwable))
                     }
             }
         }
     }
 
     private fun validateCredentials(email: String, password: String): EmptyResult? = when {
-        email.isBlank() -> AppResult.Error("Email is required.")
-        password.isBlank() -> AppResult.Error("Password is required.")
+        email.isBlank() -> AppResult.Error(AppError.EMAIL_REQUIRED)
+        password.isBlank() -> AppResult.Error(AppError.PASSWORD_REQUIRED)
         else -> null
     }
 
@@ -236,7 +208,7 @@ class FirebaseAuthDataSource @Inject constructor(
         password: String,
         displayName: String,
     ): EmptyResult? = when {
-        displayName.isBlank() -> AppResult.Error("Display name is required.")
+        displayName.isBlank() -> AppResult.Error(AppError.DISPLAY_NAME_REQUIRED)
         else -> validateCredentials(
             email = email,
             password = password,

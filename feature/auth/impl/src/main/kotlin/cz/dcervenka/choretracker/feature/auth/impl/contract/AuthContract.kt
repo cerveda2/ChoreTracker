@@ -2,6 +2,7 @@ package cz.dcervenka.choretracker.feature.auth.impl.contract
 
 import cz.dcervenka.choretracker.core.common.UiIntent
 import cz.dcervenka.choretracker.core.common.UiState
+import cz.dcervenka.choretracker.core.model.error.AppError
 
 data class AuthUiState(
     val email: String = "",
@@ -11,7 +12,7 @@ data class AuthUiState(
     val requiresConfiguration: Boolean = false,
     val isWorking: Boolean = false,
     val workingMessage: String? = null,
-    val errorMessage: String? = null,
+    val error: AppError? = null,
 ) : UiState
 
 enum class AuthMode {

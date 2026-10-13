@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.data.contract.StatsRepository
 import cz.dcervenka.choretracker.core.domain.HouseholdStatisticsCalculator
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import cz.dcervenka.choretracker.core.model.stats.HouseholdStatsInput
@@ -115,7 +116,7 @@ class CheckStaleChoresUseCaseTest {
 
     @Test
     fun `still checks staleness from local data when the remote sync fails`() = runTest {
-        coEvery { refreshHouseholdUseCase() } returns AppResult.Error("Network error")
+        coEvery { refreshHouseholdUseCase() } returns AppResult.Error(AppError.NETWORK)
         coEvery { statsRepository.getHouseholdStatsInput("household-1") } returns emptyStatsInput
         every { statisticsCalculator.buildStaleness(any(), any(), any(), any(), expectedToday) } returns
             listOf(staleness("chore-1", ChoreStatus.NEEDS_ATTENTION))

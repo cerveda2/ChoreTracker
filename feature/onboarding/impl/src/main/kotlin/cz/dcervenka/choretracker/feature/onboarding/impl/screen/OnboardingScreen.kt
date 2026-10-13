@@ -47,6 +47,7 @@ import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.SecondaryButton
+import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiIntent
 import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiState
 
@@ -82,10 +83,10 @@ fun OnboardingScreen(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (uiState.isRestoringRemoteHousehold || uiState.restoreErrorMessage != null) {
+            if (uiState.isRestoringRemoteHousehold || uiState.restoreError != null) {
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = if (uiState.restoreErrorMessage != null) {
+                        containerColor = if (uiState.restoreError != null) {
                             MaterialTheme.colorScheme.errorContainer
                         } else {
                             MaterialTheme.colorScheme.secondaryContainer
@@ -100,7 +101,7 @@ fun OnboardingScreen(
                     ) {
                         Text(
                             text = stringResource(
-                                if (uiState.restoreErrorMessage != null) {
+                                if (uiState.restoreError != null) {
                                     R.string.onboarding_restore_failed_title
                                 } else {
                                     R.string.onboarding_restoring_title
@@ -109,7 +110,7 @@ fun OnboardingScreen(
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
-                            text = if (uiState.restoreErrorMessage != null) {
+                            text = if (uiState.restoreError != null) {
                                 stringResource(R.string.onboarding_restore_failed_message)
                             } else {
                                 stringResource(R.string.onboarding_restoring_message)
@@ -120,8 +121,8 @@ fun OnboardingScreen(
                 }
             }
             OnboardingIllustration()
-            uiState.errorMessage?.let { message ->
-                Text(message, color = MaterialTheme.colorScheme.error)
+            uiState.error?.let { error ->
+                Text(stringResource(error.toStringRes()), color = MaterialTheme.colorScheme.error)
             }
             OutlinedTextField(
                 value = uiState.inviteCode,
