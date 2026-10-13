@@ -14,6 +14,7 @@ import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import io.mockk.MockKAnnotations
 import io.mockk.Runs
@@ -186,6 +187,40 @@ class OfflineFirstHouseholdRepositoryTest {
         coVerify {
             memberDao.claimPlaceholder("placeholder-id", "user-1", "dana@example.com", "UserTypedName", "invite-1")
         }
+    }
+
+    @Test
+    fun `joinHousehold reports the fetch error when the invite cannot be fetched`() = runTest {
+        coEvery { inviteDao.findByCode("ABCD1234") } returns null
+        coEvery { syncRepository.ensureInviteLocal("ABCD1234") } returns AppResult.Error(AppError.NETWORK)
+
+        val result = repository.joinHousehold("ABCD1234", "Dana")
+
+        assertThat((result as AppResult.Error).error).isEqualTo(AppError.NETWORK)
+    }
+
+    @Test
+    fun `joinHousehold reports the restore error when the household cannot be pulled`() = runTest {
+        val invite = InviteEntity(
+            id = "invite-1",
+            householdId = "household-1",
+            code = "ABCD1234",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+            consumedAt = null,
+            targetMemberId = null,
+            consumedByMemberId = null,
+        )
+        coEvery { inviteDao.findByCode("ABCD1234") } returns invite
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns null
+        coEvery { memberDao.upsert(any()) } just Runs
+        coEvery { inviteDao.markConsumed(any(), any(), any()) } just Runs
+        coEvery { pendingSyncOperationDao.upsert(any()) } just Runs
+        coEvery { householdDao.getHousehold("household-1") } returns null
+        coEvery { syncRepository.restoreHouseholdForUser("user-1") } returns AppResult.Error(AppError.NETWORK)
+
+        val result = repository.joinHousehold("ABCD1234", "Dana")
+
+        assertThat((result as AppResult.Error).error).isEqualTo(AppError.NETWORK)
     }
 
     @Test

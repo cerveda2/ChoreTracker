@@ -191,14 +191,18 @@ class OfflineFirstHouseholdRepository @Inject constructor(
 
     override suspend fun joinHousehold(code: String, currentUserDisplayName: String): AppResult<Household> {
         Timber.d("joinHousehold: code=$code displayName=$currentUserDisplayName")
-        if (inviteDao.findByCode(code.trim()) == null) {
+        val fetchResult = if (inviteDao.findByCode(code.trim()) == null) {
             syncRepository.ensureInviteLocal(code.trim())
+        } else {
+            null
         }
         val invite = inviteDao.findByCode(code.trim())
         val user = currentUser()
         return when {
-            invite == null -> AppResult.Error(AppError.INVITE_NOT_FOUND).also {
-                Timber.w("joinHousehold: invite not found for code=$code")
+            // ensureInviteLocal already reports a genuinely unknown code as INVITE_NOT_FOUND - any
+            // other error (e.g. NETWORK while offline) is the real reason the invite isn't local.
+            invite == null -> (fetchResult as? AppResult.Error ?: AppResult.Error(AppError.INVITE_NOT_FOUND)).also {
+                Timber.w("joinHousehold: invite unavailable for code=$code - ${it.error}")
             }
             user == null -> AppResult.Error(AppError.NOT_SIGNED_IN).also {
                 Timber.w("joinHousehold: user not authenticated")
@@ -232,13 +236,16 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         // surfacing as "household for that invite is no longer available" on an otherwise-
         // successful join.
         syncRepository.syncPendingOperations()
-        if (householdDao.getHousehold(invite.householdId) == null) {
+        val restoreResult = if (householdDao.getHousehold(invite.householdId) == null) {
             // Unlike the push above, this pull can't be backgrounded - there's nothing local to
             // return below until the household this invite belongs to has actually been fetched.
             syncRepository.restoreHouseholdForUser(user.id)
+        } else {
+            null
         }
         return householdDao.getHousehold(invite.householdId)
             ?.let { AppResult.Success(it.asModel()) }
+            ?: (restoreResult as? AppResult.Error)
             ?: AppResult.Error(AppError.INVITE_HOUSEHOLD_UNAVAILABLE)
     }
 
