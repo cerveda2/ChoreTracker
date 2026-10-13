@@ -18,6 +18,7 @@ import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRestoreStatus
@@ -85,10 +86,10 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                         restoreStatus.value = HouseholdRestoreStatus(isRestoring = true)
                         when (val restoreResult = syncRepository.restoreHouseholdForUser(user.id)) {
                             is AppResult.Error -> {
-                                Timber.e("observeCurrentHousehold: restore failed - ${restoreResult.message}")
+                                Timber.e("observeCurrentHousehold: restore failed - ${restoreResult.error}")
                                 restoreStatus.value = HouseholdRestoreStatus(
                                     isRestoring = false,
-                                    errorMessage = restoreResult.message,
+                                    error = restoreResult.error,
                                 )
                             }
                             is AppResult.Success -> {
@@ -152,10 +153,10 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         Timber.d("createHousehold: name=$name ownerDisplayName=$ownerDisplayName")
         val user = currentUser()
         return when {
-            user == null -> AppResult.Error("Sign in or continue in preview mode first.").also {
+            user == null -> AppResult.Error(AppError.NOT_SIGNED_IN).also {
                 Timber.w("createHousehold failed: user not authenticated")
             }
-            user.isPreview -> AppResult.Error("Cannot create household in preview mode.").also {
+            user.isPreview -> AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED).also {
                 Timber.w("createHousehold failed: preview user attempted write operation")
             }
             else -> {
@@ -196,13 +197,13 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         val invite = inviteDao.findByCode(code.trim())
         val user = currentUser()
         return when {
-            invite == null -> AppResult.Error("No household invite with that code was found.").also {
+            invite == null -> AppResult.Error(AppError.INVITE_NOT_FOUND).also {
                 Timber.w("joinHousehold: invite not found for code=$code")
             }
-            user == null -> AppResult.Error("Sign in or continue in preview mode first.").also {
+            user == null -> AppResult.Error(AppError.NOT_SIGNED_IN).also {
                 Timber.w("joinHousehold: user not authenticated")
             }
-            user.isPreview -> AppResult.Error("Cannot join household in preview mode.").also {
+            user.isPreview -> AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED).also {
                 Timber.w("joinHousehold failed: preview user attempted write operation")
             }
             else -> performJoin(invite, user, currentUserDisplayName)
@@ -238,14 +239,14 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         }
         return householdDao.getHousehold(invite.householdId)
             ?.let { AppResult.Success(it.asModel()) }
-            ?: AppResult.Error("The household for that invite is no longer available.")
+            ?: AppResult.Error(AppError.INVITE_HOUSEHOLD_UNAVAILABLE)
     }
 
     override suspend fun addMember(householdId: String, displayName: String): EmptyResult {
         Timber.d("addMember: householdId=$householdId displayName=$displayName")
         val user = currentUser()
         if (user?.isPreview == true) {
-            return AppResult.Error("Cannot add members in preview mode").also {
+            return AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED).also {
                 Timber.w("addMember failed: preview user attempted write operation")
             }
         }
@@ -267,7 +268,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     override suspend fun createInvite(householdId: String): AppResult<Invite> {
         val user = currentUser()
         if (user?.isPreview == true) {
-            return AppResult.Error("Cannot create invites in preview mode").also {
+            return AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED).also {
                 Timber.w("createInvite failed: preview user attempted write operation")
             }
         }
@@ -286,7 +287,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         val user = currentUser()
         if (user?.isPreview == true) {
             Timber.w("createMemberInvite failed: preview user attempted write operation")
-            return AppResult.Error("Cannot create invites in preview mode")
+            return AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED)
         }
         val existing = inviteDao.findPendingByTargetMember(householdId, memberId)
         return if (existing != null) {
@@ -304,7 +305,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         Timber.d("updateHouseholdName: householdId=$householdId name=$name")
         val user = currentUser()
         if (user?.isPreview == true) {
-            return AppResult.Error("Cannot update household in preview mode").also {
+            return AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED).also {
                 Timber.w("updateHouseholdName failed: preview user attempted write operation")
             }
         }
@@ -318,12 +319,12 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     override suspend fun updateCurrentMemberDisplayName(householdId: String, displayName: String): EmptyResult {
         val user = currentUser()
         return when {
-            user == null -> AppResult.Error("Sign in first.")
+            user == null -> AppResult.Error(AppError.NOT_SIGNED_IN)
             else -> {
                 val existing = memberDao.findByUserId(householdId, user.id)
                     ?: memberDao.findCurrentUser(householdId)
                 if (existing == null) {
-                    AppResult.Error("Current member record was not found.")
+                    AppResult.Error(AppError.OWN_MEMBERSHIP_NOT_FOUND)
                 } else {
                     val sanitizedName = displayName.trim().ifBlank { user.displayName }
                     memberDao.upsert(existing.copy(displayName = sanitizedName))
@@ -340,11 +341,11 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         val user = currentUser()
         if (user?.isPreview == true) {
             Timber.w("removeMember failed: preview user attempted write operation")
-            return AppResult.Error("Cannot remove members in preview mode")
+            return AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED)
         }
         val member = memberDao.getMembers(householdId).find { it.id == memberId }
         return if (member == null) {
-            AppResult.Error("Member not found.")
+            AppResult.Error(AppError.MEMBER_NOT_FOUND)
         } else {
             // Soft removal (mirrors OfflineFirstChoreRepository.deleteChore): the row stays so
             // chore history keeps resolving this member's name. The "delete" operationType is
@@ -366,19 +367,19 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         val newOwnerUserId = newOwner?.userId
         val previousOwner = members.find { it.userId == user?.id }
         return when {
-            user == null -> AppResult.Error("Sign in first.")
-            user.isPreview -> AppResult.Error("Cannot transfer ownership in preview mode")
-            household == null -> AppResult.Error("Household not found.")
-            previousOwner == null -> AppResult.Error("Current owner's membership was not found.")
+            user == null -> AppResult.Error(AppError.NOT_SIGNED_IN)
+            user.isPreview -> AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED)
+            household == null -> AppResult.Error(AppError.HOUSEHOLD_NOT_FOUND)
+            previousOwner == null -> AppResult.Error(AppError.OWN_MEMBERSHIP_NOT_FOUND)
             // Checked against the caller's own (real-time-synced) role, not household.ownerUserId:
             // that field is never updated by real-time sync, so right after a previous transfer it
             // can still read the old owner on this device - see the isOwner comment in
             // LocalSyncRepository.syncHousehold for the full explanation.
             previousOwner.role != HouseholdRole.OWNER.name ->
-                AppResult.Error("Only the current owner can transfer ownership.")
-            newOwner == null -> AppResult.Error("Member not found.")
-            newOwnerUserId == null -> AppResult.Error("This member hasn't joined yet.")
-            newOwnerUserId == user.id -> AppResult.Error("You're already the owner.")
+                AppResult.Error(AppError.NOT_HOUSEHOLD_OWNER)
+            newOwner == null -> AppResult.Error(AppError.MEMBER_NOT_FOUND)
+            newOwnerUserId == null -> AppResult.Error(AppError.MEMBER_NOT_JOINED)
+            newOwnerUserId == user.id -> AppResult.Error(AppError.ALREADY_OWNER)
             // Awaited: a fire-and-forget local flip would route the owner's next sync through
             // performMemberSync (which writes neither ownerUserId nor role) and lose the change.
             else -> when (
@@ -406,13 +407,13 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         val household = householdDao.getHousehold(householdId)
         val member = user?.let { memberDao.findByUserId(householdId, it.id) }
         return when {
-            user == null -> AppResult.Error("Sign in first.")
-            user.isPreview -> AppResult.Error("Cannot leave a household in preview mode")
-            household == null -> AppResult.Error("Household not found.")
-            member == null -> AppResult.Error("Your membership was not found.")
+            user == null -> AppResult.Error(AppError.NOT_SIGNED_IN)
+            user.isPreview -> AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED)
+            household == null -> AppResult.Error(AppError.HOUSEHOLD_NOT_FOUND)
+            member == null -> AppResult.Error(AppError.OWN_MEMBERSHIP_NOT_FOUND)
             // Checked against the caller's own (real-time-synced) role, not household.ownerUserId -
             // see the matching comment on transferOwnership above.
-            member.role == HouseholdRole.OWNER.name -> AppResult.Error("Transfer ownership before leaving.")
+            member.role == HouseholdRole.OWNER.name -> AppResult.Error(AppError.OWNER_CANNOT_LEAVE)
             // selfMemberDocId == the uid for a linked member (memberDocumentId = userId ?: id, and
             // a leaver always has a userId), which is also the users/{uid} doc key.
             else -> syncRepository.leaveHousehold(householdId, member.userId ?: member.id)

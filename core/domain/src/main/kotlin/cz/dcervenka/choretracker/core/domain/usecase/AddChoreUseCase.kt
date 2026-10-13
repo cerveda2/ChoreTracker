@@ -4,6 +4,7 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.data.contract.ChoreRepository
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.error.AppError
 import javax.inject.Inject
 
 class AddChoreUseCase @Inject constructor(
@@ -16,7 +17,7 @@ class AddChoreUseCase @Inject constructor(
         frequencyDays: Int? = null,
     ): EmptyResult {
         if (frequencyDays != null && frequencyDays <= 0) {
-            return AppResult.Error("Frequency must be a positive number.")
+            return AppResult.Error(AppError.INVALID_FREQUENCY)
         }
         return choreRepository.addChore(
             householdId = householdId,

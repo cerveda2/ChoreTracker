@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
@@ -30,6 +31,8 @@ import cz.dcervenka.choretracker.core.design.components.ListGroup
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.LogCompletionSheet
 import cz.dcervenka.choretracker.core.design.rememberSaveableStringList
+import cz.dcervenka.choretracker.core.design.toStringRes
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
 import kotlinx.coroutines.flow.Flow
@@ -38,7 +41,7 @@ import kotlinx.coroutines.flow.Flow
 fun RecentCompletionDetailScreen(
     completion: RecentCompletion?,
     uiState: DashboardUiState,
-    errorEvents: Flow<String>,
+    errorEvents: Flow<AppError>,
     onBack: () -> Unit,
     onDelete: () -> Unit,
     onUpdate: (note: String?, participantIds: List<String>) -> Unit,
@@ -49,10 +52,10 @@ fun RecentCompletionDetailScreen(
     val editSelectedMembers = rememberSaveableStringList()
     var editNote by rememberSaveable { mutableStateOf("") }
     val snackbarHostState = remember { SnackbarHostState() }
-    val fallbackErrorMessage = stringResource(R.string.dashboard_completion_action_error)
+    val resources = LocalResources.current
     LaunchedEffect(errorEvents) {
-        errorEvents.collect { message ->
-            snackbarHostState.showSnackbar(message.ifBlank { fallbackErrorMessage })
+        errorEvents.collect { error ->
+            snackbarHostState.showSnackbar(resources.getString(error.toStringRes()))
         }
     }
 

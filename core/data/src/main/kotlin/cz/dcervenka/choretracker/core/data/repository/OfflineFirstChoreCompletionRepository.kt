@@ -16,6 +16,7 @@ import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -102,7 +103,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
                 "hasNote=${note != null} completedAt=$completedAt",
         )
         val currentUserId = (authRepository.authState.first() as? AuthState.Authenticated)?.user?.id
-            ?: return AppResult.Error("Sign in or continue in preview mode first.").also {
+            ?: return AppResult.Error(AppError.NOT_SIGNED_IN).also {
                 Timber.w("logCompletion failed: user not authenticated")
             }
         val completionId = UUID.randomUUID().toString()
@@ -147,11 +148,11 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
         val existing = completionDao.getCompletion(completionId)
         val currentUserId = (authRepository.authState.first() as? AuthState.Authenticated)?.user?.id
         return when {
-            existing == null -> AppResult.Error("Completion not found")
-            currentUserId == null -> AppResult.Error("Sign in or continue in preview mode first.")
+            existing == null -> AppResult.Error(AppError.COMPLETION_NOT_FOUND)
+            currentUserId == null -> AppResult.Error(AppError.NOT_SIGNED_IN)
             !canModifyCompletion(existing, currentUserId) -> {
                 Timber.w("updateCompletion failed: userId=$currentUserId is not the owner or the author")
-                AppResult.Error("Only the household owner or the person who logged this can edit it.")
+                AppResult.Error(AppError.COMPLETION_EDIT_FORBIDDEN)
             }
             else -> {
                 completionDao.upsert(existing.copy(note = note?.takeIf(String::isNotBlank)))
@@ -183,10 +184,10 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
         val currentUserId = (authRepository.authState.first() as? AuthState.Authenticated)?.user?.id
         return when {
             existing == null -> AppResult.Success(Unit)
-            currentUserId == null -> AppResult.Error("Sign in or continue in preview mode first.")
+            currentUserId == null -> AppResult.Error(AppError.NOT_SIGNED_IN)
             !canModifyCompletion(existing, currentUserId) -> {
                 Timber.w("deleteCompletion failed: userId=$currentUserId is not the owner or the author")
-                AppResult.Error("Only the household owner or the person who logged this can delete it.")
+                AppResult.Error(AppError.COMPLETION_DELETE_FORBIDDEN)
             }
             else -> {
                 completionDao.deleteById(completionId)

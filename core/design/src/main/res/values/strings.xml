@@ -65,7 +65,6 @@
     <string name="dashboard_completion_loading">Loading completion…</string>
     <string name="dashboard_completion_delete_title">Delete this completion?</string>
     <string name="dashboard_completion_delete_message">This removes the logged entry. The chore itself is not affected.</string>
-    <string name="dashboard_completion_action_error">Something went wrong</string>
     <string name="dashboard_edit_completion">Edit completion</string>
     <string name="dashboard_balance_title">Balance</string>
     <string name="dashboard_balance_period">Last 30 days</string>
@@ -245,7 +244,6 @@
     <string name="settings_feedback_member_added">Member added</string>
     <string name="settings_feedback_member_deleted">Member removed</string>
     <string name="settings_feedback_name_saved">Name saved</string>
-    <string name="settings_feedback_error">Something went wrong</string>
 
     <string name="chores_title">Chores</string>
     <string name="chores_new_chore">New chore</string>
@@ -312,4 +310,31 @@
     <string name="common_mark_done">Mark %1$s done</string>
 
     <string name="dashboard_logged_snackbar">Logged: %s</string>
+
+    <string name="error_firebase_not_configured">Firebase isn\'t configured yet.</string>
+    <string name="error_not_signed_in">Sign in first.</string>
+    <string name="error_preview_mode_restricted">This isn\'t available in preview mode. Sign in to use it.</string>
+    <string name="error_invalid_frequency">Frequency must be a positive number.</string>
+    <string name="error_participant_required">At least one participant is required.</string>
+    <string name="error_invite_not_found">No invite with that code was found.</string>
+    <string name="error_invite_household_unavailable">The household for that invite is no longer available.</string>
+    <string name="error_household_not_found">Household not found.</string>
+    <string name="error_member_not_found">Member not found.</string>
+    <string name="error_own_membership_not_found">Your membership was not found.</string>
+    <string name="error_completion_not_found">Completion not found.</string>
+    <string name="error_completion_edit_forbidden">Only the household owner or the person who logged this can edit it.</string>
+    <string name="error_completion_delete_forbidden">Only the household owner or the person who logged this can delete it.</string>
+    <string name="error_not_household_owner">Only the current owner can transfer ownership.</string>
+    <string name="error_member_not_joined">This member hasn\'t joined yet.</string>
+    <string name="error_already_owner">You\'re already the owner.</string>
+    <string name="error_owner_cannot_leave">Transfer ownership before leaving.</string>
+    <string name="error_sync_partially_failed">Some changes couldn\'t be synced. We\'ll keep trying.</string>
+    <string name="error_invalid_credentials">Incorrect email or password.</string>
+    <string name="error_invalid_email">Enter a valid email address.</string>
+    <string name="error_email_already_in_use">An account with this email already exists.</string>
+    <string name="error_weak_password">Password is too weak. Choose a stronger one.</string>
+    <string name="error_too_many_requests">Too many attempts. Try again later.</string>
+    <string name="error_network">Couldn\'t reach the server. Check your connection and try again.</string>
+    <string name="error_permission_denied">You don\'t have permission to do that.</string>
+    <string name="error_unknown">Something went wrong</string>
 </resources>

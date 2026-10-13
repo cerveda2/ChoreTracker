@@ -13,6 +13,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RefreshHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCompletionUseCase
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
@@ -48,8 +49,8 @@ class DashboardViewModel @Inject constructor(
     private val _undoChannel = Channel<UndoEvent>(Channel.BUFFERED)
     val undoEvents: Flow<UndoEvent> = _undoChannel.receiveAsFlow()
 
-    private val _errorChannel = Channel<String>(Channel.BUFFERED)
-    val errorEvents: Flow<String> = _errorChannel.receiveAsFlow()
+    private val _errorChannel = Channel<AppError>(Channel.BUFFERED)
+    val errorEvents: Flow<AppError> = _errorChannel.receiveAsFlow()
 
     private val isRefreshing = MutableStateFlow(false)
 
@@ -132,7 +133,7 @@ class DashboardViewModel @Inject constructor(
                         ?.find { it.id == choreId }?.name.orEmpty()
                     _undoChannel.send(UndoEvent(result.value, choreName))
                 }
-                is AppResult.Error -> _errorChannel.send(result.message)
+                is AppResult.Error -> _errorChannel.send(result.error)
             }
         }
     }
@@ -141,7 +142,7 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             val result = updateCompletionUseCase(completionId, note, participantIds)
             if (result is AppResult.Error) {
-                _errorChannel.send(result.message)
+                _errorChannel.send(result.error)
             }
         }
     }
@@ -150,7 +151,7 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             val result = deleteCompletionUseCase(completionId)
             if (result is AppResult.Error) {
-                _errorChannel.send(result.message)
+                _errorChannel.send(result.error)
             }
         }
     }
@@ -159,7 +160,7 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             val result = retryPendingSyncUseCase()
             if (result is AppResult.Error) {
-                _errorChannel.send(result.message)
+                _errorChannel.send(result.error)
             }
         }
     }

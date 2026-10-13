@@ -24,6 +24,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.UpdateCurrentMemberDisplayN
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateDisplayNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateHouseholdNameUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.settings.ReminderSettings
 import cz.dcervenka.choretracker.core.model.settings.ThemeMode
 import cz.dcervenka.choretracker.core.model.settings.ThemeSettings
@@ -272,7 +273,7 @@ class SettingsViewModelTest {
     @Test
     fun `LeaveHousehold delegates to the use case and surfaces an error when it fails`() =
         runTest(coroutineRule.dispatcher) {
-            coEvery { leaveHouseholdUseCase(any()) } returns AppResult.Error("Connect to the internet to leave.")
+            coEvery { leaveHouseholdUseCase(any()) } returns AppResult.Error(AppError.NETWORK)
             val viewModel = createViewModel()
             authStateFlow.value = sampleAuthenticatedState()
             householdFlow.value = sampleHousehold()
@@ -284,7 +285,7 @@ class SettingsViewModelTest {
                     advanceUntilIdle()
 
                     coVerify { leaveHouseholdUseCase("household-1") }
-                    assertThat(awaitItem()).isEqualTo(SettingsUiEvent.Error("Connect to the internet to leave."))
+                    assertThat(awaitItem()).isEqualTo(SettingsUiEvent.Error(AppError.NETWORK))
                 }
                 cancelAndIgnoreRemainingEvents()
             }
@@ -293,7 +294,7 @@ class SettingsViewModelTest {
     @Test
     fun `DeleteAccount delegates to the use case and surfaces an error when it fails`() =
         runTest(coroutineRule.dispatcher) {
-            coEvery { deleteAccountUseCase() } returns AppResult.Error("Unable to delete your account.")
+            coEvery { deleteAccountUseCase() } returns AppResult.Error(AppError.UNKNOWN)
             val viewModel = createViewModel()
 
             viewModel.events.test {
@@ -301,7 +302,7 @@ class SettingsViewModelTest {
                 advanceUntilIdle()
 
                 coVerify { deleteAccountUseCase() }
-                assertThat(awaitItem()).isEqualTo(SettingsUiEvent.Error("Unable to delete your account."))
+                assertThat(awaitItem()).isEqualTo(SettingsUiEvent.Error(AppError.UNKNOWN))
             }
         }
 }

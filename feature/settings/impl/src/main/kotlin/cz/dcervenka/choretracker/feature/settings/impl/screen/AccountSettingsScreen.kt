@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import cz.dcervenka.choretracker.core.design.LocalSpacing
@@ -30,6 +31,7 @@ import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.ListGroup
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.SectionHeader
+import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiEvent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.SettingsUiState
@@ -46,12 +48,12 @@ fun AccountSettingsScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val snackbarHostState = remember { SnackbarHostState() }
     val msgNameSaved = stringResource(R.string.settings_feedback_name_saved)
-    val msgError = stringResource(R.string.settings_feedback_error)
+    val resources = LocalResources.current
     LaunchedEffect(events) {
         events.collect { event ->
             val msg = when (event) {
                 SettingsUiEvent.NameSaved -> msgNameSaved
-                is SettingsUiEvent.Error -> event.message.ifBlank { msgError }
+                is SettingsUiEvent.Error -> resources.getString(event.error.toStringRes())
                 else -> return@collect
             }
             snackbarHostState.showSnackbar(msg)

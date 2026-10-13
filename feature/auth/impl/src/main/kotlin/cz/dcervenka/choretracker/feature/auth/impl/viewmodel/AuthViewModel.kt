@@ -12,6 +12,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignInUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignUpUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiIntent
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -52,16 +53,16 @@ class AuthViewModel @Inject constructor(
     fun dispatch(intent: AuthUiIntent) {
         when (intent) {
             is AuthUiIntent.AuthModeChanged -> mutableUiState.update { current ->
-                current.copy(authMode = intent.value, errorMessage = null, workingMessage = null)
+                current.copy(authMode = intent.value, error = null, workingMessage = null)
             }
             is AuthUiIntent.DisplayNameChanged -> mutableUiState.update { current ->
-                current.copy(displayName = intent.value, errorMessage = null, workingMessage = null)
+                current.copy(displayName = intent.value, error = null, workingMessage = null)
             }
             is AuthUiIntent.EmailChanged -> mutableUiState.update { current ->
-                current.copy(email = intent.value, errorMessage = null, workingMessage = null)
+                current.copy(email = intent.value, error = null, workingMessage = null)
             }
             is AuthUiIntent.PasswordChanged -> mutableUiState.update { current ->
-                current.copy(password = intent.value, errorMessage = null, workingMessage = null)
+                current.copy(password = intent.value, error = null, workingMessage = null)
             }
             AuthUiIntent.SignInClicked -> submit { state ->
                 validateSignIn(state)?.let {
@@ -107,14 +108,14 @@ class AuthViewModel @Inject constructor(
             mutableUiState.update { current ->
                 current.copy(
                     isWorking = true,
-                    errorMessage = null,
+                    error = null,
                     workingMessage = submission.workingMessage,
                 )
             }
             when (val result = submission.execute()) {
                 is AppResult.Error -> {
                     mutableUiState.update { current ->
-                        current.copy(errorMessage = result.message, workingMessage = null)
+                        current.copy(error = result.error, workingMessage = null)
                     }
                 }
                 is AppResult.Success -> Unit
@@ -126,17 +127,15 @@ class AuthViewModel @Inject constructor(
     }
 
     private fun validateSignIn(state: AuthUiState): EmptyResult? = when {
-        state.email.isBlank() -> AppResult.Error(application.getString(R.string.auth_validation_email_required))
-        state.password.isBlank() -> AppResult.Error(application.getString(R.string.auth_validation_password_required))
+        state.email.isBlank() -> AppResult.Error(AppError.EMAIL_REQUIRED)
+        state.password.isBlank() -> AppResult.Error(AppError.PASSWORD_REQUIRED)
         else -> null
     }
 
     private fun validateSignUp(state: AuthUiState): EmptyResult? = when {
-        state.displayName.isBlank() -> AppResult.Error(
-            application.getString(R.string.auth_validation_display_name_required)
-        )
-        state.email.isBlank() -> AppResult.Error(application.getString(R.string.auth_validation_email_required))
-        state.password.isBlank() -> AppResult.Error(application.getString(R.string.auth_validation_password_required))
+        state.displayName.isBlank() -> AppResult.Error(AppError.DISPLAY_NAME_REQUIRED)
+        state.email.isBlank() -> AppResult.Error(AppError.EMAIL_REQUIRED)
+        state.password.isBlank() -> AppResult.Error(AppError.PASSWORD_REQUIRED)
         else -> null
     }
 

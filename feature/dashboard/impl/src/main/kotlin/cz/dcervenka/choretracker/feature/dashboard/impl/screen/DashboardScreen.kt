@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -46,7 +47,9 @@ import cz.dcervenka.choretracker.core.design.components.MemberAvatar
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.TopLevelBottomBarSpacer
 import cz.dcervenka.choretracker.core.design.rememberSaveableStringList
+import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.formatters.formatInstantForLocale
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
@@ -60,7 +63,7 @@ fun DashboardScreen(
     uiState: DashboardUiState,
     onIntent: (DashboardUiIntent) -> Unit,
     undoEvents: Flow<UndoEvent>,
-    errorEvents: Flow<String>,
+    errorEvents: Flow<AppError>,
     onLogChore: () -> Unit,
     onSeeAllCompletions: () -> Unit,
     onOpenCompletion: (String) -> Unit,
@@ -71,7 +74,7 @@ fun DashboardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val undoLabel = stringResource(R.string.common_undo)
     val loggedMessage = stringResource(R.string.dashboard_logged_snackbar)
-    val fallbackErrorMessage = stringResource(R.string.dashboard_completion_action_error)
+    val resources = LocalResources.current
 
     LaunchedEffect(undoEvents) {
         undoEvents.collect { event ->
@@ -87,8 +90,8 @@ fun DashboardScreen(
     }
 
     LaunchedEffect(errorEvents) {
-        errorEvents.collect { message ->
-            snackbarHostState.showSnackbar(message.ifBlank { fallbackErrorMessage })
+        errorEvents.collect { error ->
+            snackbarHostState.showSnackbar(resources.getString(error.toStringRes()))
         }
     }
 
@@ -133,7 +136,7 @@ fun DashboardScreen(
         val memberIndexById = uiState.members.withIndex().associate { (index, member) -> member.id to index }
         val syncState = uiState.syncState
         val hasSyncIssue = syncState != null &&
-            (syncState.pendingOperations > 0 || !syncState.lastErrorMessage.isNullOrBlank())
+            (syncState.pendingOperations > 0 || syncState.lastError != null)
         // Today's date, not a live clock - fixing it at first composition avoids reformatting
         // (a fresh SimpleDateFormat per formatInstantForLocale call) on every unrelated
         // recomposition of this screen.
@@ -200,7 +203,7 @@ fun DashboardScreen(
                     verticalArrangement = Arrangement.spacedBy(spacing.large),
                 ) {
                     syncState
-                        ?.takeIf { it.pendingOperations > 0 || !it.lastErrorMessage.isNullOrBlank() }
+                        ?.takeIf { it.pendingOperations > 0 || it.lastError != null }
                         ?.let { state ->
                             item {
                                 RemoteSyncBanner(

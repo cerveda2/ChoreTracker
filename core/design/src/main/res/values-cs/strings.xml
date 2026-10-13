@@ -67,7 +67,6 @@
     <string name="dashboard_completion_loading">Načítám splnění…</string>
     <string name="dashboard_completion_delete_title">Smazat toto splnění?</string>
     <string name="dashboard_completion_delete_message">Tím se odstraní zaznamenaný záznam. Samotný úkol není ovlivněn.</string>
-    <string name="dashboard_completion_action_error">Něco se pokazilo</string>
     <string name="dashboard_edit_completion">Upravit splnění</string>
     <string name="dashboard_balance_title">Bilance</string>
     <string name="dashboard_balance_period">Posledních 30 dní</string>
@@ -263,7 +262,6 @@
     <string name="settings_feedback_member_added">Člen přidán</string>
     <string name="settings_feedback_member_deleted">Člen odebrán</string>
     <string name="settings_feedback_name_saved">Název uložen</string>
-    <string name="settings_feedback_error">Něco se pokazilo</string>
 
     <string name="chores_title">Úkoly</string>
     <string name="chores_new_chore">Nový úkol</string>
@@ -330,4 +328,31 @@
     <string name="common_mark_done">Označit %1$s jako hotové</string>
 
     <string name="dashboard_logged_snackbar">Zaznamenáno: %s</string>
+
+    <string name="error_firebase_not_configured">Firebase ještě není nakonfigurováno.</string>
+    <string name="error_not_signed_in">Nejprve se přihlaste.</string>
+    <string name="error_preview_mode_restricted">V ukázkovém režimu to není k dispozici. Pro použití se přihlaste.</string>
+    <string name="error_invalid_frequency">Frekvence musí být kladné číslo.</string>
+    <string name="error_participant_required">Je potřeba alespoň jeden účastník.</string>
+    <string name="error_invite_not_found">Pozvánka s tímto kódem nebyla nalezena.</string>
+    <string name="error_invite_household_unavailable">Domácnost z této pozvánky už není dostupná.</string>
+    <string name="error_household_not_found">Domácnost nebyla nalezena.</string>
+    <string name="error_member_not_found">Člen nebyl nalezen.</string>
+    <string name="error_own_membership_not_found">Vaše členství nebylo nalezeno.</string>
+    <string name="error_completion_not_found">Splnění nebylo nalezeno.</string>
+    <string name="error_completion_edit_forbidden">Upravit ho může jen vlastník domácnosti nebo ten, kdo ho zaznamenal.</string>
+    <string name="error_completion_delete_forbidden">Smazat ho může jen vlastník domácnosti nebo ten, kdo ho zaznamenal.</string>
+    <string name="error_not_household_owner">Vlastnictví může předat jen současný vlastník.</string>
+    <string name="error_member_not_joined">Tento člen se ještě nepřipojil.</string>
+    <string name="error_already_owner">Už jste vlastníkem.</string>
+    <string name="error_owner_cannot_leave">Před odchodem předejte vlastnictví.</string>
+    <string name="error_sync_partially_failed">Některé změny se nepodařilo synchronizovat. Budeme to zkoušet znovu.</string>
+    <string name="error_invalid_credentials">Nesprávný e-mail nebo heslo.</string>
+    <string name="error_invalid_email">Zadejte platnou e-mailovou adresu.</string>
+    <string name="error_email_already_in_use">Účet s tímto e-mailem už existuje.</string>
+    <string name="error_weak_password">Heslo je příliš slabé. Zvolte silnější.</string>
+    <string name="error_too_many_requests">Příliš mnoho pokusů. Zkuste to později.</string>
+    <string name="error_network">Nepodařilo se spojit se serverem. Zkontrolujte připojení a zkuste to znovu.</string>
+    <string name="error_permission_denied">K této akci nemáte oprávnění.</string>
+    <string name="error_unknown">Něco se pokazilo</string>
 </resources>

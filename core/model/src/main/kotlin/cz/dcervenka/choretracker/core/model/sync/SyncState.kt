@@ -1,5 +1,6 @@
 package cz.dcervenka.choretracker.core.model.sync
 
+import cz.dcervenka.choretracker.core.model.error.AppError
 import kotlin.time.Instant
 
 data class SyncState(
@@ -7,5 +8,5 @@ data class SyncState(
     val lastSyncedAt: Instant?,
     val lastSyncAttemptAt: Instant?,
     val pendingOperations: Int,
-    val lastErrorMessage: String?,
+    val lastError: AppError?,
 )

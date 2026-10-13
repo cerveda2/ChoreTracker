@@ -3,6 +3,7 @@ package cz.dcervenka.choretracker.core.domain.usecase
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.data.contract.ChoreCompletionRepository
+import cz.dcervenka.choretracker.core.model.error.AppError
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -48,7 +49,7 @@ class UpdateCompletionUseCaseTest {
     fun `returns error result`() = runTest {
         coEvery {
             choreCompletionRepository.updateCompletion(any(), any(), any())
-        } returns AppResult.Error("Not authenticated")
+        } returns AppResult.Error(AppError.NOT_SIGNED_IN)
 
         val result = useCase("completion-1", null, listOf("member-1"))
 

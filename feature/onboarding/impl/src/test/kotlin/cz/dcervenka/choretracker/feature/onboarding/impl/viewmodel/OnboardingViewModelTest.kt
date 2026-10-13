@@ -7,6 +7,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.JoinHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveHouseholdRestoreStatusUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.HouseholdRestoreStatus
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import cz.dcervenka.choretracker.feature.onboarding.impl.contract.OnboardingUiIntent
@@ -80,18 +81,18 @@ class OnboardingViewModelTest {
 
         coVerify { createHouseholdUseCase("Family Home", "Dana") }
         assertThat(viewModel.uiState.value.isWorking).isFalse()
-        assertThat(viewModel.uiState.value.errorMessage).isNull()
+        assertThat(viewModel.uiState.value.error).isNull()
     }
 
     @Test
     fun `join household error updates message`() = runTest(coroutineRule.dispatcher) {
-        coEvery { joinHouseholdUseCase("BADCODE", "Dana") } returns AppResult.Error("Invite code is invalid")
+        coEvery { joinHouseholdUseCase("BADCODE", "Dana") } returns AppResult.Error(AppError.INVITE_NOT_FOUND)
         val viewModel = createViewModel()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect {}
         }
 
-        assertThat(viewModel.uiState.value.errorMessage).isNull()
+        assertThat(viewModel.uiState.value.error).isNull()
 
         viewModel.dispatch(OnboardingUiIntent.InviteCodeChanged("BADCODE"))
         advanceUntilIdle()
@@ -106,11 +107,11 @@ class OnboardingViewModelTest {
 
         coVerify { joinHouseholdUseCase("BADCODE", "Dana") }
         assertThat(viewModel.uiState.value.isWorking).isFalse()
-        assertThat(viewModel.uiState.value.errorMessage).isEqualTo("Invite code is invalid")
+        assertThat(viewModel.uiState.value.error).isEqualTo(AppError.INVITE_NOT_FOUND)
 
         viewModel.dispatch(OnboardingUiIntent.ClearError)
         advanceUntilIdle()
-        assertThat(viewModel.uiState.value.errorMessage).isNull()
+        assertThat(viewModel.uiState.value.error).isNull()
     }
 
     @Test
@@ -121,11 +122,11 @@ class OnboardingViewModelTest {
         }
 
         restoreStatusFlow.value = HouseholdRestoreStatus(
-            errorMessage = "Missing or insufficient permissions.",
+            error = AppError.PERMISSION_DENIED,
         )
         advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.restoreErrorMessage).contains("permissions")
+        assertThat(viewModel.uiState.value.restoreError).isEqualTo(AppError.PERMISSION_DENIED)
     }
 }
 

@@ -14,6 +14,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.sync.SyncState
 
 @Composable
@@ -21,7 +22,7 @@ internal fun RemoteSyncBanner(
     syncState: SyncState,
     onRetrySync: () -> Unit,
 ) {
-    val isError = !syncState.lastErrorMessage.isNullOrBlank()
+    val isError = syncState.lastError != null
     val containerColor = if (isError) {
         MaterialTheme.colorScheme.errorContainer
     } else {
@@ -68,16 +69,13 @@ internal fun RemoteSyncBanner(
 
 @Composable
 private fun syncBannerMessage(syncState: SyncState): String {
-    val errorMessage = syncState.lastErrorMessage.orEmpty()
-    return when {
-        errorMessage.contains("Missing or insufficient permissions", ignoreCase = true) ->
-            stringResource(R.string.dashboard_sync_failed_permissions)
-        errorMessage.isNotBlank() ->
-            stringResource(R.string.dashboard_sync_failed_generic)
-        else -> pluralStringResource(
+    return when (syncState.lastError) {
+        AppError.PERMISSION_DENIED -> stringResource(R.string.dashboard_sync_failed_permissions)
+        null -> pluralStringResource(
             R.plurals.dashboard_sync_pending_message,
             syncState.pendingOperations,
             syncState.pendingOperations,
         )
+        else -> stringResource(R.string.dashboard_sync_failed_generic)
     }
 }

@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
@@ -33,6 +34,7 @@ import cz.dcervenka.choretracker.core.design.rememberSaveableStringList
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
@@ -48,14 +50,14 @@ fun LogChoreScreen(
     uiState: DashboardUiState,
     onIntent: (DashboardUiIntent) -> Unit,
     undoEvents: Flow<UndoEvent>,
-    errorEvents: Flow<String>,
+    errorEvents: Flow<AppError>,
     onBack: () -> Unit,
 ) {
     val spacing = LocalSpacing.current
     val snackbarHostState = remember { SnackbarHostState() }
     val undoLabel = stringResource(R.string.common_undo)
     val loggedMessage = stringResource(R.string.dashboard_logged_snackbar)
-    val fallbackErrorMessage = stringResource(R.string.dashboard_completion_action_error)
+    val resources = LocalResources.current
 
     LaunchedEffect(undoEvents) {
         undoEvents.collect { event ->
@@ -71,8 +73,8 @@ fun LogChoreScreen(
     }
 
     LaunchedEffect(errorEvents) {
-        errorEvents.collect { message ->
-            snackbarHostState.showSnackbar(message.ifBlank { fallbackErrorMessage })
+        errorEvents.collect { error ->
+            snackbarHostState.showSnackbar(resources.getString(error.toStringRes()))
         }
     }
 

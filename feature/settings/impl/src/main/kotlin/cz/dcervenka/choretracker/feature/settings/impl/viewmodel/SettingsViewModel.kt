@@ -219,7 +219,7 @@ class SettingsViewModel @Inject constructor(
             if (result is AppResult.Success) {
                 _events.send(SettingsUiEvent.MemberInviteGenerated(result.value.code))
             } else if (result is AppResult.Error) {
-                _events.send(SettingsUiEvent.Error(result.message))
+                _events.send(SettingsUiEvent.Error(result.error))
             }
         }
     }
@@ -237,13 +237,13 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val authUpdate = updateDisplayNameUseCase(sanitizedName)
             if (authUpdate is AppResult.Error) {
-                _events.send(SettingsUiEvent.Error(authUpdate.message))
+                _events.send(SettingsUiEvent.Error(authUpdate.error))
                 return@launch
             }
             if (householdId != null) {
                 val memberUpdate = updateCurrentMemberDisplayNameUseCase(householdId, sanitizedName)
                 if (memberUpdate is AppResult.Error) {
-                    _events.send(SettingsUiEvent.Error(memberUpdate.message))
+                    _events.send(SettingsUiEvent.Error(memberUpdate.error))
                     return@launch
                 }
             }
@@ -258,7 +258,7 @@ class SettingsViewModel @Inject constructor(
             if (result is AppResult.Success) {
                 _events.send(SettingsUiEvent.NameSaved)
             } else if (result is AppResult.Error) {
-                _events.send(SettingsUiEvent.Error(result.message))
+                _events.send(SettingsUiEvent.Error(result.error))
             }
         }
     }
@@ -271,7 +271,7 @@ class SettingsViewModel @Inject constructor(
                 memberInput.value = ""
                 _events.send(SettingsUiEvent.MemberAdded)
             } else if (result is AppResult.Error) {
-                _events.send(SettingsUiEvent.Error(result.message))
+                _events.send(SettingsUiEvent.Error(result.error))
             }
         }
     }
@@ -283,7 +283,7 @@ class SettingsViewModel @Inject constructor(
             if (result is AppResult.Success) {
                 _events.send(SettingsUiEvent.MemberRemoved)
             } else if (result is AppResult.Error) {
-                _events.send(SettingsUiEvent.Error(result.message))
+                _events.send(SettingsUiEvent.Error(result.error))
             }
         }
     }
@@ -295,7 +295,7 @@ class SettingsViewModel @Inject constructor(
             if (result is AppResult.Success) {
                 _events.send(SettingsUiEvent.OwnershipTransferred)
             } else if (result is AppResult.Error) {
-                _events.send(SettingsUiEvent.Error(result.message))
+                _events.send(SettingsUiEvent.Error(result.error))
             }
         }
     }
@@ -307,7 +307,7 @@ class SettingsViewModel @Inject constructor(
             // navigation; only surface an error (e.g. offline).
             val result = leaveHouseholdUseCase(household.id)
             if (result is AppResult.Error) {
-                _events.send(SettingsUiEvent.Error(result.message))
+                _events.send(SettingsUiEvent.Error(result.error))
             }
         }
     }
@@ -318,7 +318,7 @@ class SettingsViewModel @Inject constructor(
             // tears the screen down; only surface an error (e.g. offline, function failure).
             val result = deleteAccountUseCase()
             if (result is AppResult.Error) {
-                _events.send(SettingsUiEvent.Error(result.message))
+                _events.send(SettingsUiEvent.Error(result.error))
             }
         }
     }

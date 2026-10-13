@@ -26,6 +26,7 @@ import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
+import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
@@ -129,7 +130,11 @@ class LocalSyncRepository @Inject constructor(
                     lastSyncedAt = it.lastSyncedAt,
                     lastSyncAttemptAt = it.lastSyncAttemptAt,
                     pendingOperations = it.pendingOperations,
-                    lastErrorMessage = it.lastErrorMessage,
+                    // The column stores AppError.name; rows written before typed errors hold raw
+                    // Firebase text and read back as UNKNOWN until the next sync overwrites them.
+                    lastError = it.lastErrorMessage?.let { name ->
+                        AppError.entries.firstOrNull { error -> error.name == name } ?: AppError.UNKNOWN
+                    },
                 )
             }
         }
@@ -176,8 +181,8 @@ class LocalSyncRepository @Inject constructor(
         Timber.d("restoreHouseholdForUser: userId=$userId")
         return when (val result = remoteHouseholdDataSource.fetchHouseholdSnapshot(userId)) {
             is AppResult.Error -> {
-                Timber.e("restoreHouseholdForUser: fetch failed - ${result.message}")
-                AppResult.Error(result.message, result.cause)
+                Timber.e("restoreHouseholdForUser: fetch failed - ${result.error}")
+                AppResult.Error(result.error, result.cause)
             }
             is AppResult.Success -> {
                 val snapshot = result.value
@@ -325,7 +330,7 @@ class LocalSyncRepository @Inject constructor(
             is AppResult.Error -> {
                 Timber.e(
                     result.cause,
-                    "syncPendingOperations: sync failed for household=$householdId - ${result.message}",
+                    "syncPendingOperations: sync failed for household=$householdId - ${result.error}",
                 )
                 syncStateDao.upsert(
                     SyncStateEntity(
@@ -333,10 +338,10 @@ class LocalSyncRepository @Inject constructor(
                         lastSyncedAt = null,
                         lastSyncAttemptAt = now,
                         pendingOperations = operationIds.size,
-                        lastErrorMessage = result.message,
+                        lastErrorMessage = result.error.name,
                     ),
                 )
-                AppResult.Error(result.message, result.cause)
+                AppResult.Error(result.error, result.cause)
             }
             is AppResult.Success -> {
                 Timber.d("syncPendingOperations: synced ${operationIds.size} operations for household=$householdId")
@@ -352,21 +357,17 @@ class LocalSyncRepository @Inject constructor(
                 // anything that failed (e.g. a delete/consume Firestore rejected) stays pending
                 // and is retried on the next sync, instead of being silently dropped.
                 operationIds.filterNot { it in failedOperationIds }.forEach { pendingSyncOperationDao.delete(it) }
-                val errorMessage = if (failedOperationIds.isEmpty()) {
-                    null
-                } else {
-                    "${failedOperationIds.size} change(s) couldn't be applied remotely and will retry."
-                }
+                val error = if (failedOperationIds.isEmpty()) null else AppError.SYNC_PARTIALLY_FAILED
                 syncStateDao.upsert(
                     SyncStateEntity(
                         householdId = householdId,
                         lastSyncedAt = now,
                         lastSyncAttemptAt = now,
                         pendingOperations = failedOperationIds.size,
-                        lastErrorMessage = errorMessage,
+                        lastErrorMessage = error?.name,
                     ),
                 )
-                errorMessage?.let { AppResult.Error(it) }
+                error?.let { AppResult.Error(it) }
             }
         }
     }
@@ -421,7 +422,7 @@ class LocalSyncRepository @Inject constructor(
                 val result = remoteHouseholdDataSource.deleteCompletion(householdId, op.entityId)
                 if (result is AppResult.Error) {
                     Timber.e(
-                        "syncPendingOperations: remote completion delete failed for ${op.entityId} — ${result.message}",
+                        "syncPendingOperations: remote completion delete failed for ${op.entityId} — ${result.error}",
                     )
                     failedOperationIds += op.id
                 }
@@ -434,7 +435,7 @@ class LocalSyncRepository @Inject constructor(
         if (result is AppResult.Error) return result
         val invite = (result as AppResult.Success).value
         return if (invite == null) {
-            AppResult.Error("No invite with that code was found.")
+            AppResult.Error(AppError.INVITE_NOT_FOUND)
         } else {
             inviteDao.upsert(
                 InviteEntity(
@@ -532,7 +533,7 @@ class LocalSyncRepository @Inject constructor(
                 )
                 if (result is AppResult.Error) {
                     Timber.e(
-                        "syncPendingOperations: remote invite consumed failed for ${op.payload} — ${result.message}",
+                        "syncPendingOperations: remote invite consumed failed for ${op.payload} — ${result.error}",
                     )
                     failedOperationIds += op.id
                 }
