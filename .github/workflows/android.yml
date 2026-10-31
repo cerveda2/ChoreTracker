@@ -237,3 +237,53 @@ jobs:
 
       - name: Deploy functions
         run: firebase deploy --only functions --token ${{ secrets.FIREBASE_TOKEN }}
+
+  # Dev runs on every PR (so a debug build can test rule/function changes before merge) and on every
+  # push to main (so an abandoned PR's changes don't linger in dev). Serialized across PRs, since
+  # they all share the one dev project.
+  deploy-firestore-dev:
+    name: Deploy Firestore rules and indexes (dev)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: deploy-firestore-dev
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy rules and indexes
+        run: firebase deploy --project dev --only firestore --token ${{ secrets.FIREBASE_TOKEN }}
+
+  deploy-functions-dev:
+    name: Deploy Cloud Functions (dev)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: deploy-functions-dev
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install functions dependencies
+        working-directory: functions
+        run: npm ci
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy functions
+        run: firebase deploy --project dev --only functions --token ${{ secrets.FIREBASE_TOKEN }}

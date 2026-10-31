@@ -6,6 +6,7 @@ Personal offline-first Android household chore tracker for couples. Built by Dav
 
 - Room uses a destructive migration fallback
 - Firebase Auth + Firestore are optional — the app works in preview/offline mode
+- Two Firebase projects: debug builds (`cz.dcervenka.choretracker.debug`, "ChoreTracker Dev", amber launcher icon) use the dev project `choretracker-dev-1faf5` (`.firebaserc` alias `dev`) via `app/src/debug/google-services.json`; release builds use production `choretracker-fb576` via `app/google-services.json`. Both install side by side. CI deploys rules/indexes/functions automatically: every PR deploys to dev (so a debug build can test the change before merge), every push to `main` deploys to production and dev.
 
 ## Key Conventions
 
