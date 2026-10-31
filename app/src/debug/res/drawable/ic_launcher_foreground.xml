@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#2F5D50"
+        android:pathData="M54,24 L87,52 L76,52 L76,84 L32,84 L32,52 L21,52 Z" />
+    <!-- "DEV" in place of the release icon's checkmark -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F6F0E7"
+        android:strokeWidth="3.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M37.5,61 L37.5,75 L40.5,75 A4,7 0 0,0 40.5,61 Z M56,61 L50,61 L50,75 L56,75 M50,68 L55,68 M61.5,61 L66,75 L70.5,61" />
+</vector>
