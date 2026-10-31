@@ -1,43 +1,67 @@
 name: Release
 
-# Push a tag matching version.properties (v{major}.{minor}.{release}+{build}, e.g. v0.1.0+1) on a
-# commit that's on main. Builds the upload-key-signed AAB/APK into a draft GitHub Release, then
-# deploys the production backend.
+# Merging a version bump in version.properties into main releases that version: builds the
+# upload-key-signed AAB/APK, tags the commit v{major}.{minor}.{patch}, creates a draft GitHub
+# Release, then deploys the production backend. "Run workflow" (on main) retries a release whose
+# build failed; a failed backend deploy is retried with "Re-run failed jobs" instead.
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+    paths:
+      - version.properties
+  workflow_dispatch:
 
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build signed release
+  version:
+    name: Read version
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: write
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      release: ${{ steps.version.outputs.release }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Verify tag matches version.properties and is on main
+      - name: Read version.properties
+        id: version
         run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Releases only run from main"
+            exit 1
+          fi
           prop() { grep "^version.$1=" version.properties | cut -d= -f2; }
-          expected="v$(prop major).$(prop minor).$(prop release)+$(prop build)"
-          if [ "$GITHUB_REF_NAME" != "$expected" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME doesn't match version.properties (expected $expected)"
-            exit 1
+          tag="v$(prop major).$(prop minor).$(prop patch)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          # A change to version.properties that doesn't bump the version (e.g. a comment) mustn't
+          # release the same version twice.
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+            echo "::notice::$tag is already released - skipping"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
           fi
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::$GITHUB_REF_NAME isn't on main - only merged commits can be released"
-            exit 1
-          fi
+
+  build:
+    name: Build signed release
+    needs: version
+    if: needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ needs.version.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -74,6 +98,13 @@ jobs:
           apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
           "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk
 
+      # A draft release doesn't create its tag until it's published, so tag explicitly - the tag is
+      # the record of what shipped.
+      - name: Tag the release
+        run: |
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
+
       # Created here rather than in a later job: on a public repo, passing the signed builds between
       # jobs as workflow artifacts would make them downloadable by anyone. A draft is only visible to
       # collaborators.
@@ -81,8 +112,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
-          gh release create "$GITHUB_REF_NAME" --draft --verify-tag --generate-notes
-          --title "$GITHUB_REF_NAME"
+          gh release create "$TAG" --draft --verify-tag --generate-notes --title "$TAG"
           app/build/outputs/bundle/release/app-release.aab
           app/build/outputs/apk/release/app-release.apk
           app/build/outputs/mapping/release/mapping.txt
