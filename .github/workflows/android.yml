@@ -8,7 +8,9 @@ on:
 
 concurrency:
   group: android-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Superseded PR runs are cancelled; runs on main are queued instead, so a deploy is never killed
+  # mid-flight by the next merge.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   wrapper-validation:
