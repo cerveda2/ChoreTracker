@@ -204,4 +204,3 @@ jobs:
     uses: ./.github/workflows/deploy-firebase.yml
     with:
       project: dev
-    secrets: inherit

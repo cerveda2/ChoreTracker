@@ -25,7 +25,7 @@ class ObserveCurrentDashboardUseCase @Inject constructor(
             .flatMapLatest { household ->
                 statsRepository.observeHouseholdStatsInput(household.id).map { input ->
                     statisticsCalculator.dashboardSnapshot(
-                        household = input.household,
+                        household = household,
                         members = input.members,
                         chores = input.chores,
                         completions = input.completions,

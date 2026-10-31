@@ -83,4 +83,33 @@ class ObserveCurrentStatsUseCaseTest {
             assertThat(awaitItem()).isEqualTo(snapshot)
         }
     }
+
+    @Test
+    fun `uses the current household rather than the stats input's placeholder`() = runTest {
+        val household = sampleHousehold(id = "preview-household").copy(name = "Sunny Flat")
+        val input = HouseholdStatsInput(
+            household = household.copy(name = "Household"),
+            members = emptyList(),
+            chores = emptyList(),
+            completions = emptyList(),
+        )
+        val snapshot = sampleStatsSnapshot().copy(household = household)
+        every { statsRepository.observeHouseholdStatsInput(household.id) } returns MutableStateFlow(input)
+        every {
+            statisticsCalculator.statsSnapshot(
+                household = household,
+                members = input.members,
+                chores = input.chores,
+                completions = input.completions,
+                period = StatsPeriod.MONTH,
+                today = expectedToday,
+            )
+        } returns snapshot
+
+        useCase(StatsPeriod.MONTH).test {
+            householdFlow.value = household
+
+            assertThat(awaitItem().household.name).isEqualTo("Sunny Flat")
+        }
+    }
 }
