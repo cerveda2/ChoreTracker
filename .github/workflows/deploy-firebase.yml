@@ -10,6 +10,11 @@ on:
         description: ".firebaserc alias to deploy to (dev or prod)"
         required: true
         type: string
+    # The caller must pass it by name even though it lives in the dev/prod environment - otherwise it
+    # silently arrives empty.
+    secrets:
+      FIREBASE_SERVICE_ACCOUNT:
+        required: true
   workflow_dispatch:
     inputs:
       project:
@@ -25,9 +30,10 @@ jobs:
     name: Deploy to ${{ inputs.project }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # Production only ships from main: a manual run must be dispatched on main, and release.yml
-    # verifies the tagged commit is on main before calling this.
+    # Production only ships from main: a manual run must be dispatched on main, and release.yml only
+    # runs on main. The prod environment's secret is also restricted to main.
     if: github.event_name != 'workflow_dispatch' || inputs.project != 'prod' || github.ref == 'refs/heads/main'
+    environment: ${{ inputs.project }}
     concurrency:
       group: deploy-firebase-${{ inputs.project }}
       cancel-in-progress: false
@@ -50,5 +56,16 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
+      - name: Write service account key
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-sa.json"
+
       - name: Deploy rules, indexes and functions
-        run: firebase deploy --project ${{ inputs.project }} --only firestore,functions --token ${{ secrets.FIREBASE_TOKEN }}
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
+        run: firebase deploy --project ${{ inputs.project }} --only firestore,functions
+
+      - name: Remove service account key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/firebase-sa.json"

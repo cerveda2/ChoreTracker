@@ -204,4 +204,5 @@ jobs:
     uses: ./.github/workflows/deploy-firebase.yml
     with:
       project: dev
-    secrets: inherit
+    secrets:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
