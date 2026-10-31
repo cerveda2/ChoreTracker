@@ -1,0 +1,54 @@
+name: Deploy Firebase
+
+# Deploys Firestore rules + indexes and Cloud Functions to one Firebase project. Called by
+# android.yml (dev, on every PR and push to main) and release.yml (prod, on a version tag), and
+# runnable by hand from the Actions tab for a backend-only fix.
+on:
+  workflow_call:
+    inputs:
+      project:
+        description: ".firebaserc alias to deploy to (dev or prod)"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      project:
+        description: ".firebaserc alias to deploy to"
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.project }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Production only ships from main: a manual run must be dispatched on main, and release.yml
+    # verifies the tagged commit is on main before calling this.
+    if: github.event_name != 'workflow_dispatch' || inputs.project != 'prod' || github.ref == 'refs/heads/main'
+    concurrency:
+      group: deploy-firebase-${{ inputs.project }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install functions dependencies
+        working-directory: functions
+        run: npm ci
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy rules, indexes and functions
+        run: firebase deploy --project ${{ inputs.project }} --only firestore,functions --token ${{ secrets.FIREBASE_TOKEN }}

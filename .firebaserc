@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "choretracker-fb576",
-    "dev": "choretracker-dev-1faf5"
+    "default": "choretracker-dev-1faf5",
+    "dev": "choretracker-dev-1faf5",
+    "prod": "choretracker-fb576"
   }
 }
