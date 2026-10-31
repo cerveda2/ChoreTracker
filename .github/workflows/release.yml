@@ -1,0 +1,96 @@
+name: Release
+
+# Push a tag matching version.properties (v{major}.{minor}.{release}+{build}, e.g. v0.1.0+1) on a
+# commit that's on main. Builds the upload-key-signed AAB/APK into a draft GitHub Release, then
+# deploys the production backend.
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build signed release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag matches version.properties and is on main
+        run: |
+          prop() { grep "^version.$1=" version.properties | cut -d= -f2; }
+          expected="v$(prop major).$(prop minor).$(prop release)+$(prop build)"
+          if [ "$GITHUB_REF_NAME" != "$expected" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match version.properties (expected $expected)"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF_NAME isn't on main - only merged commits can be released"
+            exit 1
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle executable
+        run: chmod +x gradlew
+
+      - name: Decode upload keystore
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+
+      # The Crashlytics plugin uploads the R8 mapping file as part of these tasks. No configuration
+      # cache, so the signing passwords never end up in a cache entry.
+      - name: Build signed AAB and APK
+        env:
+          STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: >
+          ./gradlew bundleRelease assembleRelease --no-configuration-cache
+          -Pchoretracker.release.storeFile="$RUNNER_TEMP/upload.jks"
+          -Pchoretracker.release.storePassword="$STORE_PASSWORD"
+          -Pchoretracker.release.keyAlias=upload
+          -Pchoretracker.release.keyPassword="$KEY_PASSWORD"
+
+      - name: Verify APK signature
+        run: |
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
+          "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk
+
+      # Created here rather than in a later job: on a public repo, passing the signed builds between
+      # jobs as workflow artifacts would make them downloadable by anyone. A draft is only visible to
+      # collaborators.
+      - name: Create draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag --generate-notes
+          --title "$GITHUB_REF_NAME"
+          app/build/outputs/bundle/release/app-release.aab
+          app/build/outputs/apk/release/app-release.apk
+          app/build/outputs/mapping/release/mapping.txt
+
+  deploy-backend:
+    name: Deploy Firebase (prod)
+    needs: build
+    uses: ./.github/workflows/deploy-firebase.yml
+    with:
+      project: prod
+    secrets: inherit
