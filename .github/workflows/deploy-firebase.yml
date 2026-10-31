@@ -10,6 +10,11 @@ on:
         description: ".firebaserc alias to deploy to (dev or prod)"
         required: true
         type: string
+    # The caller must pass it by name even though it lives in the dev/prod environment - otherwise it
+    # silently arrives empty.
+    secrets:
+      FIREBASE_SERVICE_ACCOUNT:
+        required: true
   workflow_dispatch:
     inputs:
       project:
