@@ -32,6 +32,12 @@ android {
     }
 
     buildTypes {
+        // Debug builds install alongside the release app and talk to the dev Firebase project
+        // (app/src/debug/google-services.json), never to production (app/google-services.json).
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-dev"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
