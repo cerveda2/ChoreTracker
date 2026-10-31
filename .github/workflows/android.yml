@@ -140,6 +140,35 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
+  assemble-release:
+    name: Assemble release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # setup-gradle below already caches the Gradle User Home - setup-java's own `cache: gradle`
+      # would duplicate that with a separate, less precise cache of the same paths.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle executable
+        run: chmod +x gradlew
+
+      - name: Assemble release
+        # Unsigned (CI has no choretracker.release.* signing properties) - this job exists to catch
+        # R8 / resource-shrinking breakage before merge rather than at release time. The Crashlytics
+        # mapping upload is skipped since these builds are never distributed.
+        run: ./gradlew assembleRelease -x uploadCrashlyticsMappingFileRelease
+
   functions-typecheck:
     name: Cloud Functions typecheck
     runs-on: ubuntu-latest

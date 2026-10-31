@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The invite-accepted push names these strings via titleLocKey/bodyLocKey (functions/src/index.ts)
+     and the FCM SDK resolves them with getIdentifier while the app is backgrounded, so the resource
+     shrinker must keep them even if no Kotlin code references them. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@string/invite_accepted_notification_title,@string/invite_accepted_notification_body,@string/invite_accepted_notification_body_anonymous" />

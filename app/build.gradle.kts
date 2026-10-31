@@ -16,13 +16,30 @@ android {
         applicationId = "cz.dcervenka.choretracker"
     }
 
+    signingConfigs {
+        // Upload-key signing, configured outside the repo (e.g. ~/.gradle/gradle.properties, or -P
+        // in CI). Without choretracker.release.storeFile the release build is simply left unsigned
+        // (app-release-unsigned.apk) instead of failing or silently falling back to the debug key.
+        val storeFilePath = providers.gradleProperty("choretracker.release.storeFile").orNull
+        if (storeFilePath != null) {
+            create("release") {
+                storeFile = file(storeFilePath)
+                storePassword = providers.gradleProperty("choretracker.release.storePassword").get()
+                keyAlias = providers.gradleProperty("choretracker.release.keyAlias").get()
+                keyPassword = providers.gradleProperty("choretracker.release.keyPassword").get()
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 }
