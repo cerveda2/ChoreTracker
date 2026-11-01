@@ -92,6 +92,15 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x gradlew
 
+      # Robolectric downloads its ~200 MB Android runtime jar into ~/.m2 at test time, outside
+      # setup-gradle's cache. restore-keys reuses it after an unrelated dependency bump.
+      - name: Cache Robolectric runtime jars
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
+          restore-keys: robolectric-
+
       - name: Run unit tests
         # 'test' (not 'testDebugUnitTest') so the plain-JVM modules (core:domain, core:model,
         # core:common, ...) are covered too - testDebugUnitTest only exists on Android modules
