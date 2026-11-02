@@ -99,4 +99,28 @@ class FirebaseHouseholdDataSourceTest {
             assertThat(fields["active"]).isEqualTo(false)
         }
     }
+
+    // canHaveDepartedRemotely
+
+    @Test
+    fun `canHaveDepartedRemotely is true for another account still active locally`() {
+        assertThat(activeMember.canHaveDepartedRemotely(currentUserId = "owner-1")).isTrue()
+    }
+
+    @Test
+    fun `canHaveDepartedRemotely is false for the current user, whose doc a first push creates`() {
+        assertThat(activeMember.canHaveDepartedRemotely(currentUserId = "user-1")).isFalse()
+    }
+
+    @Test
+    fun `canHaveDepartedRemotely is false for a placeholder without an account`() {
+        assertThat(activeMember.copy(userId = null).canHaveDepartedRemotely(currentUserId = "owner-1")).isFalse()
+    }
+
+    @Test
+    fun `canHaveDepartedRemotely is false for a member already departed locally`() {
+        val departed = activeMember.copy(removedAt = Instant.parse("2026-11-02T10:00:00Z"))
+
+        assertThat(departed.canHaveDepartedRemotely(currentUserId = "owner-1")).isFalse()
+    }
 }
