@@ -19,6 +19,7 @@ dependencies {
     compileOnly(libs.kotlin.gradle.plugin)
     compileOnly(libs.ksp.gradle.plugin)
     compileOnly(libs.hilt.gradle.plugin)
+    compileOnly(libs.room.gradle.plugin)
     compileOnly(libs.firebase.crashlytics.gradle.plugin)
     compileOnly(libs.detekt.gradle.plugin)
     compileOnly(libs.detekt.formatting)

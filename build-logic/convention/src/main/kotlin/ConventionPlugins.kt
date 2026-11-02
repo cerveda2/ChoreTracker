@@ -1,3 +1,4 @@
+import androidx.room.gradle.RoomExtension
 import com.android.build.api.dsl.CommonExtension
 import io.gitlab.arturbosch.detekt.Detekt
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
@@ -104,6 +105,10 @@ class RoomConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         with(target) {
             pluginManager.apply("com.google.devtools.ksp")
+            pluginManager.apply("androidx.room")
+            extensions.configure<RoomExtension> {
+                schemaDirectory("$projectDir/schemas")
+            }
             dependencies {
                 add("implementation", libsCatalog.findLibrary("room-runtime").get())
                 add("implementation", libsCatalog.findLibrary("room-ktx").get())

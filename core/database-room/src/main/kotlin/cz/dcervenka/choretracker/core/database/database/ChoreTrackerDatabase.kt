@@ -35,7 +35,7 @@ import kotlinx.coroutines.withContext
         SyncStateEntity::class,
     ],
     version = 10,
-    exportSchema = false,
+    exportSchema = true,
 )
 @TypeConverters(InstantConverters::class)
 abstract class ChoreTrackerDatabase : RoomDatabase() {
