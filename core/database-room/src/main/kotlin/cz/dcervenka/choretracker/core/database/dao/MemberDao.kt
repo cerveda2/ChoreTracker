@@ -53,7 +53,7 @@ interface MemberDao {
     // Soft removal, mirroring ChoreDao.markDeleted. The row stays so chore history keeps
     // resolving the member's name; the repository layer filters removed members out of the
     // current-member lists.
-    @Query("UPDATE members SET removedAt = :removedAt WHERE id = :memberId")
+    @Query("UPDATE members SET removedAt = :removedAt, email = NULL WHERE id = :memberId")
     suspend fun markRemoved(memberId: String, removedAt: Instant)
 
     @Query("DELETE FROM members WHERE id = :id")

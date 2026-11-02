@@ -77,7 +77,6 @@ class FirebaseConventionPlugin : Plugin<Project> {
                 dependencies {
                     add("implementation", platform(libsCatalog.findLibrary("firebase-bom").get()))
                     add("implementation", libsCatalog.findLibrary("firebase-crashlytics").get())
-                    add("implementation", libsCatalog.findLibrary("firebase-analytics").get())
                 }
             }
         }

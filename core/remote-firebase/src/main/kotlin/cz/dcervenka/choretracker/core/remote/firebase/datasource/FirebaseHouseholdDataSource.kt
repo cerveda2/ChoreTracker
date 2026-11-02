@@ -194,17 +194,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             val memberDocumentId = member.userId ?: member.id
             membershipBatch.set(
                 householdRef.collection(MEMBERS_COLLECTION).document(memberDocumentId),
-                buildMap {
-                    put("id", member.id)
-                    put("householdId", member.householdId)
-                    put("userId", member.userId)
-                    put("displayName", member.displayName)
-                    put("role", member.role.name)
-                    put("active", member.removedAt == null)
-                    put("removedAt", member.removedAt?.asTimestamp())
-                    member.email?.let { put("email", it) }
-                    member.joinedViaInviteId?.let { put("joinedViaInviteId", it) }
-                },
+                member.toFirestoreFields(),
                 SetOptions.merge(),
             )
             if (member.userId != null) {
@@ -212,7 +202,9 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     householdRef.collection(MEMBERS_COLLECTION).document(member.id),
                 )
             }
-            member.userId?.let { memberUserId ->
+            // Not for departed members: this would restore the household pointer of someone who left
+            // and recreate the user record of someone who deleted their account.
+            member.userId?.takeIf { member.removedAt == null }?.let { memberUserId ->
                 membershipBatch.set(
                     db.collection(USERS_COLLECTION).document(memberUserId),
                     mapOf(
@@ -305,17 +297,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             val memberBatch = db.batch()
             memberBatch.set(
                 householdRef.collection(MEMBERS_COLLECTION).document(memberDocumentId),
-                buildMap {
-                    put("id", member.id)
-                    put("householdId", member.householdId)
-                    put("userId", member.userId)
-                    put("displayName", member.displayName)
-                    put("role", member.role.name)
-                    put("active", member.removedAt == null)
-                    put("removedAt", member.removedAt?.asTimestamp())
-                    member.email?.let { put("email", it) }
-                    member.joinedViaInviteId?.let { put("joinedViaInviteId", it) }
-                },
+                member.toFirestoreFields(),
                 SetOptions.merge(),
             )
             memberBatch.set(
@@ -470,12 +452,12 @@ class FirebaseHouseholdDataSource @Inject constructor(
         return runCatching {
             val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
             val batch = db.batch()
-            // Only active/removedAt on the caller's own member doc - the self-leave rules branch
+            // Only active/removedAt/email on the caller's own member doc - the self-leave rules branch
             // rejects anything else. NOT the full member map (upsertMemberSnapshot), which would
             // also try to re-push completions after active flips to false and get denied.
             batch.set(
                 householdRef.collection(MEMBERS_COLLECTION).document(selfMemberDocId),
-                mapOf("active" to false, "removedAt" to Timestamp.now()),
+                mapOf("active" to false, "removedAt" to Timestamp.now(), "email" to FieldValue.delete()),
                 SetOptions.merge(),
             )
             // Drop the household pointer so a later restoreHouseholdForUser resolves to no
@@ -683,6 +665,23 @@ internal fun <T> Result<T>.rethrowCancellation(): Result<T> =
 
 internal fun Throwable.isPermissionDenied(): Boolean =
     this is FirebaseFirestoreException && code == FirebaseFirestoreException.Code.PERMISSION_DENIED
+
+// A departed member's name stays so history keeps resolving, but their email has no further use.
+internal fun HouseholdMember.toFirestoreFields(): Map<String, Any?> = buildMap {
+    put("id", id)
+    put("householdId", householdId)
+    put("userId", userId)
+    put("displayName", displayName)
+    put("role", role.name)
+    put("active", removedAt == null)
+    put("removedAt", removedAt?.asTimestamp())
+    if (removedAt != null) {
+        put("email", FieldValue.delete())
+    } else {
+        email?.let { put("email", it) }
+    }
+    joinedViaInviteId?.let { put("joinedViaInviteId", it) }
+}
 
 private fun Timestamp?.asInstant(): Instant = this?.let { firebaseTimestamp ->
     Instant.fromEpochMilliseconds(firebaseTimestamp.toDate().time)
