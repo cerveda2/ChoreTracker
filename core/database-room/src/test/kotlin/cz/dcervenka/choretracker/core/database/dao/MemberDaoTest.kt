@@ -119,6 +119,17 @@ class MemberDaoTest {
     }
 
     @Test
+    fun `markRemoved clears the email of only the targeted member`() = runTest {
+        dao.upsert(memberEntity("member-1", email = "one@example.com"))
+        dao.upsert(memberEntity("member-2", email = "two@example.com"))
+
+        dao.markRemoved("member-1", instantAt(42))
+
+        assertThat(dao.findById("household-1", "member-1")?.email).isNull()
+        assertThat(dao.findById("household-1", "member-2")?.email).isEqualTo("two@example.com")
+    }
+
+    @Test
     fun `markRemoved stamps removedAt on only the targeted member and keeps the row`() = runTest {
         dao.upsert(memberEntity("member-1"))
         dao.upsert(memberEntity("member-2"))

@@ -3,7 +3,6 @@ package cz.dcervenka.choretracker
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
-import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import cz.dcervenka.choretracker.core.notifications.repository.FcmTokenRegistrar
 import cz.dcervenka.choretracker.core.notifications.service.NotificationChannels
@@ -61,11 +60,8 @@ class ChoreTrackerApplication : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         // Crashlytics stays on in debug too - a crash on a device that isn't attached to a
-        // debugger (e.g. casual testing away from a computer) is still worth capturing, and
-        // unlike analytics it doesn't corrupt an aggregate metric by being there. Analytics
-        // stays release-only since dev sessions would otherwise skew DAU/retention/funnels.
+        // debugger (e.g. casual testing away from a computer) is still worth capturing.
         FirebaseCrashlytics.getInstance().isCrashlyticsCollectionEnabled = true
-        FirebaseAnalytics.getInstance(this).setAnalyticsCollectionEnabled(!BuildConfig.DEBUG)
         NotificationChannels.ensureCreated(this)
         ReminderNotificationChannels.ensureCreated(this)
         choreReminderScheduler.get()

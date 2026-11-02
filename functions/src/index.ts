@@ -242,9 +242,13 @@ async function resolveHouseholdMembership(
   }
 
   // Soft-remove the caller's own row - same shape as the client's leaveHousehold write. Completions
-  // and invites are untouched by construction, so history keeps resolving the departed name.
+  // and invites are untouched by construction, so history keeps resolving the departed name; the
+  // email has no further use.
   await membersRef
     .doc(uid)
-    .set({ active: false, removedAt: FieldValue.serverTimestamp() }, { merge: true });
+    .set(
+      { active: false, removedAt: FieldValue.serverTimestamp(), email: FieldValue.delete() },
+      { merge: true },
+    );
   logger.info("deleteAccount: member soft-removed", { uid, householdId });
 }
