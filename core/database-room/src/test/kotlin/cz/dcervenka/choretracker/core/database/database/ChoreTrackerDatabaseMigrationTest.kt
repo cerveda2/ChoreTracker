@@ -17,6 +17,9 @@ private const val DATABASE_NAME = "chore-tracker.db"
 // The oldest schema a released build can have on disk, and the oldest one exported.
 private const val BASELINE_VERSION = 10
 
+// Devices on a shipped version hold this hash, so a rewritten export must fail here, not crash them on open.
+private const val BASELINE_IDENTITY_HASH = "906948c5bcf252996be9593c76217b79"
+
 // Robolectric 4.16.1's newest supported SDK is 36; targetSdk is 37, ahead of what
 // Robolectric ships shadows for yet. Pin the test SDK explicitly until Robolectric catches up.
 @RunWith(RobolectricTestRunner::class)
@@ -34,6 +37,16 @@ class ChoreTrackerDatabaseMigrationTest {
         helper.createDatabase(DATABASE_NAME, BASELINE_VERSION).close()
 
         helper.runMigrationsAndValidate(DATABASE_NAME, BASELINE_VERSION, validateDroppedTables = true).close()
+    }
+
+    @Test
+    fun `baseline schema export is unchanged`() {
+        helper.createDatabase(DATABASE_NAME, BASELINE_VERSION).use { db ->
+            db.query("SELECT identity_hash FROM room_master_table").use { cursor ->
+                cursor.moveToFirst()
+                assertThat(cursor.getString(0)).isEqualTo(BASELINE_IDENTITY_HASH)
+            }
+        }
     }
 
     // Goes through the production builder, so a version bump without a registered migration fails here.
