@@ -89,9 +89,16 @@ Full setup: [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
 
 ### Deploying rules, indexes, and Cloud Functions
 
-CI deploys `firestore.rules`, `firestore.indexes.json`, and `functions/` automatically on every push to `main` — merging a PR *is* the deploy, there's no separate release step or maintenance window to pick.
+Debug builds (`cz.dcervenka.choretracker.debug`) use the dev project `choretracker-dev-1faf5`; release builds use production, `choretracker-fb576`. `.firebaserc` defines the aliases `dev` and `prod`, and `default` points at dev.
 
-To try a rules, index, or function change against the real project before merging (the project id is already set in `.firebaserc`, so no `--project` flag is needed):
+CI deploys `firestore.rules`, `firestore.indexes.json`, and `functions/`:
+
+- **Dev** — on every pull request and every push to `main`, so a debug build can test a backend change before it merges.
+- **Production** — only with a [release](#releasing), or by running the "Deploy Firebase" workflow from the Actions tab on `main` with `prod` for a backend-only fix. Merging a PR alone never touches production.
+
+Production gets backend changes together with an app release, and old and new app versions run side by side until everyone updates, so rules and functions must keep working with the previous release too.
+
+To try a rules, index, or function change by hand, the commands below target the dev project (the `default` alias), so no `--project` flag is needed. The Firebase CLI never targets production without an explicit `--project prod`.
 
 ```bash
 npm install -g firebase-tools   # once, if you don't already have it
@@ -105,8 +112,12 @@ npm --prefix functions ci
 firebase deploy --only functions
 ```
 
-Manually deploying affects the real `choretracker-fb576` project this app runs against day to day. Prefer the [Firestore Emulator Suite](docs/FIREBASE_SETUP.md#6-emulator-first-development) first for anything rules-related — it never touches production data.
+Prefer the [Firestore Emulator Suite](docs/FIREBASE_SETUP.md#6-emulator-first-development) first for anything rules-related — it doesn't touch any cloud project.
 
 ## CI
 
-GitHub Actions runs Detekt, Android lint, the full test suite (`./gradlew test`), `assembleDebug`, and a Cloud Functions typecheck (`npm run build` in `functions/`) on every push and pull request. On push to `main`, it also deploys `firestore.rules`, `firestore.indexes.json`, and `functions/` to the live Firebase project — see [Deploying rules, indexes, and Cloud Functions](#deploying-rules-indexes-and-cloud-functions) above.
+GitHub Actions ([`android.yml`](.github/workflows/android.yml)) runs Gradle wrapper validation, Detekt, Android lint, the full test suite (`./gradlew test`), `assembleDebug`, an unsigned `assembleRelease` (to catch R8 and resource-shrinking breakage before merge), and a Cloud Functions typecheck (`npm run build` in `functions/`) on every push to `main` and every pull request. It also deploys the Firebase backend to the dev project — see [Deploying rules, indexes, and Cloud Functions](#deploying-rules-indexes-and-cloud-functions) above.
+
+## Releasing
+
+Bump `version.major`/`minor`/`patch` in `version.properties` in a PR. Merging it to `main` runs [`release.yml`](.github/workflows/release.yml): it builds the signed AAB/APK, tags the commit `v{major}.{minor}.{patch}`, creates a draft GitHub Release, then deploys the production backend. Distribute the build once the run is green. A version that's already tagged is skipped; the workflow's header comment covers retrying a failed run.
