@@ -78,6 +78,23 @@ service cloud.firestore {
         );
     }
 
+    // Leaving or removal keeps the member doc (keyed by uid), so coming back is an update, not the
+    // create above. Same invite check as a first join. id and role can't change: history keeps
+    // resolving, and nobody returns as owner.
+    function isSelfRejoinWithValidInvite(householdId, memberId) {
+      return isSelfMemberWrite(householdId, memberId) &&
+        resource.data.get('active', true) == false &&
+        request.resource.data.active == true &&
+        request.resource.data.get('removedAt', null) == null &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['active', 'removedAt', 'joinedViaInviteId', 'displayName', 'email']) &&
+        isValidJoinInvite(
+          householdId,
+          request.resource.data.get('joinedViaInviteId', ''),
+          resource.data.get('id', ''),
+        );
+    }
+
     function isOwnMembershipRecord() {
       return isSignedIn() &&
         resource.data.userId == request.auth.uid;
@@ -140,7 +157,8 @@ service cloud.firestore {
         //
         // The third branch is a member leaving the household on their own: they may set only
         // active/removedAt on their own doc, and only to the leaving state, and drop their email.
-        // The active == false clause stops a removed member from reactivating themselves.
+        // The active == false clause stops a removed member from reactivating themselves; coming
+        // back takes a valid invite, the fourth branch.
         allow update: if isHouseholdOwner(householdId) ||
           (isSelfMemberWrite(householdId, memberId) &&
             request.resource.data.diff(resource.data).affectedKeys()
@@ -148,7 +166,8 @@ service cloud.firestore {
           (isSelfMemberWrite(householdId, memberId) &&
             request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['active', 'removedAt', 'email']) &&
-            request.resource.data.active == false);
+            request.resource.data.active == false) ||
+          isSelfRejoinWithValidInvite(householdId, memberId);
         allow delete: if isHouseholdOwner(householdId);
       }
 

@@ -10,6 +10,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.Source
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.chore.Chore
@@ -192,15 +193,17 @@ class FirebaseHouseholdDataSource @Inject constructor(
         if (snapshot.members.isEmpty()) return
 
         val membersRef = householdRef.collection(MEMBERS_COLLECTION)
-        // A transaction because this device's copy of a member can predate their departure, and writing
-        // it would undo that departure. filterNot finishes first, as Firestore needs reads before writes.
+        // A transaction because this device's copy of a member can predate their departure or return, and
+        // writing it would undo that. filterNot finishes first, as Firestore needs reads before writes.
         awaitTask(
             db.runTransaction { transaction ->
                 snapshot.members
                     .filterNot { member ->
-                        member.canHaveDepartedRemotely(currentUserId) &&
-                            transaction.get(membersRef.document(member.userId ?: member.id))
-                                .getBoolean("active") == false
+                        // A placeholder has no account to leave with. Rules also deny member reads until the
+                        // current user's own doc exists, so checking only other accounts keeps a first push working.
+                        val otherUserId = member.userId?.takeIf { it != currentUserId } ?: return@filterNot false
+                        val remote = transaction.get(membersRef.document(otherUserId))
+                        member.isOutdatedBy(remote.getBoolean("active"), remote.getString("joinedViaInviteId"))
                     }
                     .forEach { member ->
                         val memberDocumentId = member.userId ?: member.id
@@ -370,6 +373,21 @@ class FirebaseHouseholdDataSource @Inject constructor(
             }
         }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "fetchInviteByCode: failed")
+            AppResult.Error(error.toAppError(), error)
+        }
+    }
+
+    // By userId rather than members/{uid}: rules deny a non-member's get of a member doc that doesn't exist.
+    override suspend fun fetchOwnMemberId(householdId: String, userId: String): AppResult<String?> {
+        Timber.d("fetchOwnMemberId: householdId=$householdId")
+        val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
+        return runCatching {
+            val ownDoc = awaitTask(
+                db.collectionGroup(MEMBERS_COLLECTION).whereEqualTo("userId", userId).get(Source.SERVER),
+            ).documents.firstOrNull { it.getString("householdId") == householdId }
+            AppResult.Success(ownDoc?.let { it.getString("id") ?: it.id })
+        }.rethrowCancellation().getOrElse { error ->
+            Timber.e(error, "fetchOwnMemberId: failed")
             AppResult.Error(error.toAppError(), error)
         }
     }
@@ -677,10 +695,14 @@ internal fun <T> Result<T>.rethrowCancellation(): Result<T> =
 internal fun Throwable.isPermissionDenied(): Boolean =
     this is FirebaseFirestoreException && code == FirebaseFirestoreException.Code.PERMISSION_DENIED
 
-// A placeholder has no account to leave with. Rules also deny member reads until the current user's
-// own doc exists, so checking only other accounts keeps a household's first push working.
-internal fun HouseholdMember.canHaveDepartedRemotely(currentUserId: String): Boolean =
-    userId != null && userId != currentUserId && removedAt == null
+// Whether this copy of another account predates their own change: leaving, or rejoining through a new
+// invite after this copy recorded their departure.
+internal fun HouseholdMember.isOutdatedBy(remoteActive: Boolean?, remoteJoinedViaInviteId: String?): Boolean =
+    if (removedAt == null) {
+        remoteActive == false
+    } else {
+        remoteActive == true && remoteJoinedViaInviteId != joinedViaInviteId
+    }
 
 // A departed member's name stays so history keeps resolving, but their email has no further use.
 internal fun HouseholdMember.toFirestoreFields(): Map<String, Any?> = buildMap {
