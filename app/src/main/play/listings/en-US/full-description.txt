@@ -1,0 +1,14 @@
+Chore Tracker helps couples and households keep chores fair, without the nagging.
+
+Log a chore in one tap, see who has been carrying the load, and spot what needs doing before it piles up.
+
+• Quick logging: mark a chore done in one tap, for yourself, someone else or everyone together, for today, yesterday or any date, with an optional note.
+• Fairness at a glance: the dashboard shows how evenly the work was shared over the last 30 days.
+• Chores that keep up: give each chore a category and a frequency, and overdue or due-soon chores are flagged automatically.
+• Insights: see each person's share of the work, the split by chore type, the last six months, and whose turn is next.
+• Made for sharing: invite your partner or housemates with a code or a QR code, and everyone sees the same chores and history.
+• Works offline: log chores without a connection, and changes sync when you're back online.
+• Gentle reminders: an optional daily reminder when chores need attention.
+• English and Czech, light and dark theme.
+
+Privacy: no ads and no usage analytics. Your household's data is visible only to its members, and you can delete your account and its data at any time in the app.
