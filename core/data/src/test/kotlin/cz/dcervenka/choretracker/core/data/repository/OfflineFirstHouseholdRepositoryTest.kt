@@ -77,6 +77,7 @@ class OfflineFirstHouseholdRepositoryTest {
         coEvery { householdDao.getCurrentHousehold() } returns null
         coEvery { householdDao.getCurrentHouseholdForUser(any()) } returns null
         coEvery { syncRepository.syncPendingOperations() } returns AppResult.Success(Unit)
+        coEvery { syncRepository.fetchOwnMemberId(any(), any()) } returns AppResult.Success(null)
         coEvery { syncRepository.restoreHouseholdForUser("user-1") } coAnswers {
             localHousehold.value = HouseholdEntity(
                 id = "household-1",
@@ -217,10 +218,112 @@ class OfflineFirstHouseholdRepositoryTest {
         coEvery { pendingSyncOperationDao.upsert(any()) } just Runs
         coEvery { householdDao.getHousehold("household-1") } returns null
         coEvery { syncRepository.restoreHouseholdForUser("user-1") } returns AppResult.Error(AppError.NETWORK)
+        coEvery { pendingSyncOperationDao.deleteByEntityId(any()) } just Runs
+        coEvery { inviteDao.deleteById(any()) } just Runs
 
         val result = repository.joinHousehold("ABCD1234", "Dana")
 
         assertThat((result as AppResult.Error).error).isEqualTo(AppError.NETWORK)
+    }
+
+    @Test
+    fun `joinHousehold discards the failed join so it can't block later syncs`() = runTest {
+        val invite = InviteEntity(
+            id = "invite-1",
+            householdId = "household-1",
+            code = "ABCD1234",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+            consumedAt = null,
+            targetMemberId = null,
+            consumedByMemberId = null,
+        )
+        val joined = MemberEntity(
+            id = "member-1",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = HouseholdRole.MEMBER.name,
+            isCurrentUser = true,
+        )
+        coEvery { inviteDao.findByCode("ABCD1234") } returns invite
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returnsMany listOf(null, joined, joined)
+        coEvery { memberDao.upsert(any()) } just Runs
+        coEvery { memberDao.deleteById(any()) } just Runs
+        coEvery { inviteDao.markConsumed(any(), any(), any()) } just Runs
+        coEvery { inviteDao.deleteById(any()) } just Runs
+        coEvery { pendingSyncOperationDao.upsert(any()) } just Runs
+        coEvery { pendingSyncOperationDao.deleteByEntityId(any()) } just Runs
+        coEvery { householdDao.getHousehold("household-1") } returns null
+        coEvery { syncRepository.restoreHouseholdForUser("user-1") } returns AppResult.Success(false)
+
+        val result = repository.joinHousehold("ABCD1234", "Dana")
+
+        assertThat((result as AppResult.Error).error).isEqualTo(AppError.INVITE_HOUSEHOLD_UNAVAILABLE)
+        coVerify { pendingSyncOperationDao.deleteByEntityId("household-1") }
+        coVerify { memberDao.deleteById("member-1") }
+        coVerify { inviteDao.deleteById("invite-1") }
+    }
+
+    @Test
+    fun `joinHousehold rejoins under the logical id of the caller's departed member doc`() = runTest {
+        val household = HouseholdEntity(
+            id = "household-1",
+            name = "Home",
+            ownerUserId = "other-user",
+            inviteCode = "ABCD1234",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+        )
+        val invite = InviteEntity(
+            id = "invite-2",
+            householdId = "household-1",
+            code = "ABCD1234",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+            consumedAt = null,
+            targetMemberId = null,
+            consumedByMemberId = null,
+        )
+        val rejoined = MemberEntity(
+            id = "member-1",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = HouseholdRole.MEMBER.name,
+            isCurrentUser = true,
+        )
+        coEvery { syncRepository.fetchOwnMemberId("household-1", "user-1") } returns AppResult.Success("member-1")
+        coEvery { inviteDao.findByCode("ABCD1234") } returns invite
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returnsMany listOf(null, rejoined)
+        coEvery { memberDao.upsert(any()) } just Runs
+        coEvery { inviteDao.markConsumed(any(), any(), any()) } just Runs
+        coEvery { pendingSyncOperationDao.upsert(any()) } just Runs
+        coEvery { householdDao.getHousehold("household-1") } returns household
+
+        val result = repository.joinHousehold("ABCD1234", "Dana")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify { memberDao.upsert(match { it.id == "member-1" && it.joinedViaInviteId == "invite-2" }) }
+        coVerify { inviteDao.markConsumed("invite-2", any(), "member-1") }
+    }
+
+    @Test
+    fun `joinHousehold reports a failed member lookup without writing anything`() = runTest {
+        val invite = InviteEntity(
+            id = "invite-1",
+            householdId = "household-1",
+            code = "ABCD1234",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+            consumedAt = null,
+            targetMemberId = null,
+            consumedByMemberId = null,
+        )
+        coEvery { inviteDao.findByCode("ABCD1234") } returns invite
+        coEvery { syncRepository.fetchOwnMemberId("household-1", "user-1") } returns AppResult.Error(AppError.NETWORK)
+
+        val result = repository.joinHousehold("ABCD1234", "Dana")
+
+        assertThat((result as AppResult.Error).error).isEqualTo(AppError.NETWORK)
+        coVerify(exactly = 0) { memberDao.upsert(any()) }
+        coVerify(exactly = 0) { pendingSyncOperationDao.upsert(any()) }
     }
 
     @Test

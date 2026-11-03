@@ -100,27 +100,41 @@ class FirebaseHouseholdDataSourceTest {
         }
     }
 
-    // canHaveDepartedRemotely
+    // isOutdatedBy
+
+    private val departedMember = activeMember.copy(
+        joinedViaInviteId = "invite-1",
+        removedAt = Instant.parse("2026-11-02T10:00:00Z"),
+    )
 
     @Test
-    fun `canHaveDepartedRemotely is true for another account still active locally`() {
-        assertThat(activeMember.canHaveDepartedRemotely(currentUserId = "owner-1")).isTrue()
+    fun `isOutdatedBy is true for a member active here who has since left`() {
+        assertThat(activeMember.isOutdatedBy(remoteActive = false, remoteJoinedViaInviteId = null)).isTrue()
     }
 
     @Test
-    fun `canHaveDepartedRemotely is false for the current user, whose doc a first push creates`() {
-        assertThat(activeMember.canHaveDepartedRemotely(currentUserId = "user-1")).isFalse()
+    fun `isOutdatedBy is false for a member active on both sides`() {
+        assertThat(activeMember.isOutdatedBy(remoteActive = true, remoteJoinedViaInviteId = null)).isFalse()
     }
 
     @Test
-    fun `canHaveDepartedRemotely is false for a placeholder without an account`() {
-        assertThat(activeMember.copy(userId = null).canHaveDepartedRemotely(currentUserId = "owner-1")).isFalse()
+    fun `isOutdatedBy is true for a member departed here who has since rejoined through a new invite`() {
+        assertThat(departedMember.isOutdatedBy(remoteActive = true, remoteJoinedViaInviteId = "invite-2")).isTrue()
     }
 
     @Test
-    fun `canHaveDepartedRemotely is false for a member already departed locally`() {
-        val departed = activeMember.copy(removedAt = Instant.parse("2026-11-02T10:00:00Z"))
+    fun `isOutdatedBy is false for a removal made here on the membership the server still has`() {
+        assertThat(departedMember.isOutdatedBy(remoteActive = true, remoteJoinedViaInviteId = "invite-1")).isFalse()
+    }
 
-        assertThat(departed.canHaveDepartedRemotely(currentUserId = "owner-1")).isFalse()
+    @Test
+    fun `isOutdatedBy is false for a member departed on both sides`() {
+        assertThat(departedMember.isOutdatedBy(remoteActive = false, remoteJoinedViaInviteId = "invite-1")).isFalse()
+    }
+
+    @Test
+    fun `isOutdatedBy is false when the server has no doc yet`() {
+        assertThat(activeMember.isOutdatedBy(remoteActive = null, remoteJoinedViaInviteId = null)).isFalse()
+        assertThat(departedMember.isOutdatedBy(remoteActive = null, remoteJoinedViaInviteId = null)).isFalse()
     }
 }

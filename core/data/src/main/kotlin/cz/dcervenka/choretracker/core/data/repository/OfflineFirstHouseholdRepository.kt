@@ -219,7 +219,12 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         user: AppUser,
         currentUserDisplayName: String,
     ): AppResult<Household> {
-        memberDao.resolveMemberForInvite(invite, user, currentUserDisplayName)
+        // Leaving or removal keeps the member doc, and rules only let it come back under its original id.
+        val previousMemberId = when (val result = syncRepository.fetchOwnMemberId(invite.householdId, user.id)) {
+            is AppResult.Error -> return result
+            is AppResult.Success -> result.value
+        }
+        memberDao.resolveMemberForInvite(invite, user, currentUserDisplayName, previousMemberId)
         val resolvedMember = memberDao.findByUserId(invite.householdId, user.id)
         if (invite.targetMemberId != null && resolvedMember != null && resolvedMember.id != invite.targetMemberId) {
             inviteDao.updateTargetMemberId(invite.id, resolvedMember.id)
@@ -245,8 +250,14 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         }
         return householdDao.getHousehold(invite.householdId)
             ?.let { AppResult.Success(it.asModel()) }
-            ?: (restoreResult as? AppResult.Error)
-            ?: AppResult.Error(AppError.INVITE_HOUSEHOLD_UNAVAILABLE)
+            ?: run {
+                // Left queued, a denied join is retried first on every sync, which stops at it and never
+                // pushes anything queued after it.
+                pendingSyncOperationDao.deleteByEntityId(invite.householdId)
+                memberDao.findByUserId(invite.householdId, user.id)?.let { memberDao.deleteById(it.id) }
+                inviteDao.deleteById(invite.id)
+                (restoreResult as? AppResult.Error) ?: AppResult.Error(AppError.INVITE_HOUSEHOLD_UNAVAILABLE)
+            }
     }
 
     override suspend fun addMember(householdId: String, displayName: String): EmptyResult {
@@ -473,9 +484,10 @@ private suspend fun MemberDao.resolveMemberForInvite(
     invite: InviteEntity,
     user: AppUser,
     currentUserDisplayName: String,
+    previousMemberId: String?,
 ) {
     val targetMemberId = invite.targetMemberId
-    if (targetMemberId != null) {
+    if (targetMemberId != null && previousMemberId == null) {
         val placeholder = findById(invite.householdId, targetMemberId)
         when {
             placeholder != null && placeholder.userId == null ->
@@ -503,7 +515,7 @@ private suspend fun MemberDao.resolveMemberForInvite(
     } else if (findByUserId(invite.householdId, user.id) == null) {
         upsert(
             MemberEntity(
-                id = UUID.randomUUID().toString(),
+                id = previousMemberId ?: UUID.randomUUID().toString(),
                 householdId = invite.householdId,
                 userId = user.id,
                 displayName = currentUserDisplayName.ifBlank { user.displayName },

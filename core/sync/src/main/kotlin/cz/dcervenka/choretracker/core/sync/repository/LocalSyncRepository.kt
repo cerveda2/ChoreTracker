@@ -452,6 +452,9 @@ class LocalSyncRepository @Inject constructor(
         }
     }
 
+    override suspend fun fetchOwnMemberId(householdId: String, userId: String): AppResult<String?> =
+        remoteHouseholdDataSource.fetchOwnMemberId(householdId, userId)
+
     override suspend fun transferOwnership(
         householdId: String,
         newOwnerUserId: String,

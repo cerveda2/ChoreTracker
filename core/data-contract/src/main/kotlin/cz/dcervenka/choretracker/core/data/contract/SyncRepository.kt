@@ -14,6 +14,9 @@ interface SyncRepository {
 
     suspend fun ensureInviteLocal(code: String): EmptyResult
 
+    /** The logical id of the caller's member doc in that household, also after leaving or removal. */
+    suspend fun fetchOwnMemberId(householdId: String, userId: String): AppResult<String?>
+
     /** Atomically hands household ownership to another linked member. */
     suspend fun transferOwnership(
         householdId: String,
