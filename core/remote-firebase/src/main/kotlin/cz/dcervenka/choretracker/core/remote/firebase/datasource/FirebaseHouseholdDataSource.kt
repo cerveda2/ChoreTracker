@@ -167,6 +167,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
                 db = db,
                 householdRef = householdRef,
                 snapshot = snapshot,
+                currentUserId = userId,
             )
             upsertHouseholdContent(
                 db = db,
@@ -186,38 +187,48 @@ class FirebaseHouseholdDataSource @Inject constructor(
         db: FirebaseFirestore,
         householdRef: DocumentReference,
         snapshot: HouseholdSnapshot,
+        currentUserId: String,
     ) {
         if (snapshot.members.isEmpty()) return
 
-        val membershipBatch = db.batch()
-        snapshot.members.forEach { member ->
-            val memberDocumentId = member.userId ?: member.id
-            membershipBatch.set(
-                householdRef.collection(MEMBERS_COLLECTION).document(memberDocumentId),
-                member.toFirestoreFields(),
-                SetOptions.merge(),
-            )
-            if (member.userId != null) {
-                membershipBatch.delete(
-                    householdRef.collection(MEMBERS_COLLECTION).document(member.id),
-                )
-            }
-            // Not for departed members: this would restore the household pointer of someone who left
-            // and recreate the user record of someone who deleted their account.
-            member.userId?.takeIf { member.removedAt == null }?.let { memberUserId ->
-                membershipBatch.set(
-                    db.collection(USERS_COLLECTION).document(memberUserId),
-                    mapOf(
-                        "userId" to memberUserId,
-                        "householdId" to snapshot.household.id,
-                        "displayName" to member.displayName,
-                        "updatedAt" to Timestamp.now(),
-                    ),
-                    SetOptions.merge(),
-                )
-            }
-        }
-        awaitTask(membershipBatch.commit())
+        val membersRef = householdRef.collection(MEMBERS_COLLECTION)
+        // A transaction because this device's copy of a member can predate their departure, and writing
+        // it would undo that departure. filterNot finishes first, as Firestore needs reads before writes.
+        awaitTask(
+            db.runTransaction { transaction ->
+                snapshot.members
+                    .filterNot { member ->
+                        member.canHaveDepartedRemotely(currentUserId) &&
+                            transaction.get(membersRef.document(member.userId ?: member.id))
+                                .getBoolean("active") == false
+                    }
+                    .forEach { member ->
+                        val memberDocumentId = member.userId ?: member.id
+                        transaction.set(
+                            membersRef.document(memberDocumentId),
+                            member.toFirestoreFields(),
+                            SetOptions.merge(),
+                        )
+                        if (member.userId != null) {
+                            transaction.delete(membersRef.document(member.id))
+                        }
+                        // Not for departed members: this would restore the household pointer of someone
+                        // who left and recreate the user record of someone who deleted their account.
+                        member.userId?.takeIf { member.removedAt == null }?.let { memberUserId ->
+                            transaction.set(
+                                db.collection(USERS_COLLECTION).document(memberUserId),
+                                mapOf(
+                                    "userId" to memberUserId,
+                                    "householdId" to snapshot.household.id,
+                                    "displayName" to member.displayName,
+                                    "updatedAt" to Timestamp.now(),
+                                ),
+                                SetOptions.merge(),
+                            )
+                        }
+                    }
+            },
+        )
     }
 
     private suspend fun upsertHouseholdContent(
@@ -665,6 +676,11 @@ internal fun <T> Result<T>.rethrowCancellation(): Result<T> =
 
 internal fun Throwable.isPermissionDenied(): Boolean =
     this is FirebaseFirestoreException && code == FirebaseFirestoreException.Code.PERMISSION_DENIED
+
+// A placeholder has no account to leave with. Rules also deny member reads until the current user's
+// own doc exists, so checking only other accounts keeps a household's first push working.
+internal fun HouseholdMember.canHaveDepartedRemotely(currentUserId: String): Boolean =
+    userId != null && userId != currentUserId && removedAt == null
 
 // A departed member's name stays so history keeps resolving, but their email has no further use.
 internal fun HouseholdMember.toFirestoreFields(): Map<String, Any?> = buildMap {
