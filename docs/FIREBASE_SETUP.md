@@ -85,7 +85,7 @@ choretracker.firebase.useEmulators=true
 Notes:
 
 - `10.0.2.2` is correct for the Android emulator.
-- For a physical device, replace the host with your machine's LAN IP.
+- For a physical device, replace the host with your machine's LAN IP and add it to [`network_security_config.xml`](../app/src/debug/res/xml/network_security_config.xml), which only permits cleartext for `10.0.2.2`, `localhost` and `127.0.0.1`.
 - Firebase Auth and Firestore emulator support is configured in `core:remote-firebase`.
 
 ## 7. Verify in app
