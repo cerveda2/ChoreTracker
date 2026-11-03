@@ -145,6 +145,7 @@ class LocalSyncRepositoryTest {
         every { remoteHouseholdDataSource.observeCompletions(any()) } returns MutableStateFlow(emptyList())
         every { remoteHouseholdDataSource.observeInvites(any()) } returns MutableStateFlow(emptyList())
         every { remoteHouseholdDataSource.observeChores(any()) } returns MutableStateFlow(emptyList())
+        coEvery { remoteHouseholdDataSource.fetchMembers(any(), any()) } returns AppResult.Success(sampleMembers())
         // ensureEmailSynced runs on first authenticated sync; return null so it exits early
         coEvery { householdDao.getCurrentHouseholdForUser(any()) } returns null
         // Real-time subscription init block — paused dispatcher means this never runs unless a

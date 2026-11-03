@@ -20,6 +20,7 @@ import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
+import cz.dcervenka.choretracker.core.test.mock.sampleMembers
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import io.mockk.MockKAnnotations
 import io.mockk.Runs
@@ -99,6 +100,7 @@ class LocalSyncRepositoryMembershipTest {
         every { remoteHouseholdDataSource.observeCompletions(any()) } returns MutableStateFlow(emptyList())
         every { remoteHouseholdDataSource.observeInvites(any()) } returns MutableStateFlow(emptyList())
         every { remoteHouseholdDataSource.observeChores(any()) } returns MutableStateFlow(emptyList())
+        coEvery { remoteHouseholdDataSource.fetchMembers(any(), any()) } returns AppResult.Success(sampleMembers())
         coEvery { householdDao.getCurrentHouseholdForUser(any()) } returns null
         every { householdDao.observeHouseholdForUser(any()) } returns MutableStateFlow(null)
         coEvery { database.clearAll() } just Runs

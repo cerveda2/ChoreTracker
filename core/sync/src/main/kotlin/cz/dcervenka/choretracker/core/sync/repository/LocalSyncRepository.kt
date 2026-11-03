@@ -367,8 +367,20 @@ class LocalSyncRepository @Inject constructor(
                         lastErrorMessage = error?.name,
                     ),
                 )
+                if (operations.any { it.id in operationIdSet && it.entityType == "member" }) {
+                    resyncMembers(householdId, authenticatedUser.id)
+                }
                 error?.let { AppResult.Error(it) }
             }
+        }
+    }
+
+    // applyMembers drops listener snapshots while a member op is queued, and Firestore doesn't resend unchanged
+    // docs, so a departure or rejoin that landed during the push would stay invisible locally until a full restore.
+    private suspend fun resyncMembers(householdId: String, userId: String) {
+        when (val result = remoteHouseholdDataSource.fetchMembers(householdId, userId)) {
+            is AppResult.Error -> Timber.w("resyncMembers: fetch failed for household=$householdId - ${result.error}")
+            is AppResult.Success -> realtimeSyncApplier.applyMembers(householdId, userId, result.value)
         }
     }
 
