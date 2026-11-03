@@ -392,6 +392,23 @@ class FirebaseHouseholdDataSource @Inject constructor(
         }
     }
 
+    // Server only: offline, a default get can answer from an empty cache, which reads as everyone having left.
+    override suspend fun fetchMembers(householdId: String, currentUserId: String): AppResult<List<HouseholdMember>> {
+        Timber.d("fetchMembers: householdId=$householdId")
+        val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
+        return runCatching {
+            val members = awaitTask(
+                db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
+                    .collection(MEMBERS_COLLECTION)
+                    .get(Source.SERVER),
+            ).documents.map { it.asMember(currentUserId, householdId) }
+            AppResult.Success(members)
+        }.rethrowCancellation().getOrElse { error ->
+            Timber.e(error, "fetchMembers: failed")
+            AppResult.Error(error.toAppError(), error)
+        }
+    }
+
     override suspend fun markInviteConsumed(
         householdId: String,
         inviteId: String,
