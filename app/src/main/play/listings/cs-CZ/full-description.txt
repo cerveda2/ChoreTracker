@@ -1,0 +1,14 @@
+Chore Tracker pomáhá párům a domácnostem dělit se o domácí práce spravedlivě, bez připomínání a dohadování.
+
+Zaznamenejte hotovou práci jedním klepnutím, podívejte se, kdo toho poslední dobou udělal víc, a všimněte si, co je potřeba udělat, dřív než se to nahromadí.
+
+• Rychlé zaznamenání: označte úkol jako hotový jedním klepnutím, za sebe, za někoho jiného nebo za všechny společně, na dnešek, včerejšek nebo libovolný den, s volitelnou poznámkou.
+• Spravedlnost na první pohled: přehled ukazuje, jak rovnoměrně jste si práci rozdělili za posledních 30 dní.
+• Úkoly, které se hlídají samy: každému úkolu nastavte kategorii a četnost a úkoly po termínu nebo s blížícím se termínem se označí samy.
+• Statistiky: podíl práce každého člena, rozdělení podle typu úkolů, posledních šest měsíců a kdo je na řadě.
+• Pro dva i víc: pozvěte partnera nebo spolubydlící kódem nebo QR kódem a všichni uvidí stejné úkoly a historii.
+• Funguje offline: úkoly zaznamenáte i bez připojení a změny se synchronizují, jakmile budete zase online.
+• Šetrné připomínky: volitelné denní upozornění, když některé úkoly vyžadují pozornost.
+• Čeština a angličtina, světlý a tmavý motiv.
+
+Soukromí: žádné reklamy a žádná analytika používání. Data vaší domácnosti vidí jen její členové a svůj účet i jeho data můžete v aplikaci kdykoli smazat.
