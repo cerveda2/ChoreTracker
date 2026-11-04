@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -110,9 +111,12 @@ private fun PeriodSelector(
                 selected = selected == period,
                 onClick = { onSelect(period) },
                 shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                contentPadding = PaddingValues(horizontal = LocalSpacing.current.xSmall),
+                icon = {},
                 label = {
                     Text(
                         text = stringResource(period.labelRes()),
+                        style = MaterialTheme.typography.labelMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
