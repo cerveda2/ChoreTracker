@@ -38,11 +38,13 @@ class ChoreReminderWorker @AssistedInject constructor(
         try {
             if (reminderSettingsRepository.getSettings().enabled) {
                 val staleChores = checkStaleChoresUseCase()
-                // Re-read enabled rather than reusing the check above: checkStaleChoresUseCase()
-                // syncs with the remote household first, which can take long enough for the user
-                // to have toggled reminders off from this same run.
-                if (staleChores.isNotEmpty() && reminderSettingsRepository.getSettings().enabled) {
-                    postGroupedNotification(staleChores)
+                // Read the muted chores and re-read enabled only now, rather than before the check
+                // above: checkStaleChoresUseCase() syncs with the remote household first, which can
+                // take long enough for the user to have changed either from this same run.
+                val mutedChoreIds = reminderSettingsRepository.getMutedChoreIds()
+                val choresToRemind = staleChores.filterNot { it.choreId in mutedChoreIds }
+                if (choresToRemind.isNotEmpty() && reminderSettingsRepository.getSettings().enabled) {
+                    postGroupedNotification(choresToRemind)
                 }
             }
             return Result.success()

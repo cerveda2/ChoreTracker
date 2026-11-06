@@ -1,5 +1,6 @@
 package cz.dcervenka.choretracker.core.data.contract
 
+import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
@@ -8,7 +9,12 @@ import kotlinx.coroutines.flow.Flow
 interface ChoreRepository {
     fun observeChores(householdId: String): Flow<List<Chore>>
 
-    suspend fun addChore(householdId: String, name: String, category: ChoreCategory, frequencyDays: Int? = null): EmptyResult
+    suspend fun addChore(
+        householdId: String,
+        name: String,
+        category: ChoreCategory,
+        frequencyDays: Int? = null,
+    ): AppResult<String>
 
     suspend fun deleteChore(choreId: String): EmptyResult
 

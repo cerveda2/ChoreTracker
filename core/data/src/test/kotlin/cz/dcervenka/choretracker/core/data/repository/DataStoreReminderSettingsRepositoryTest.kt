@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import com.google.common.truth.Truth.assertThat
+import cz.dcervenka.choretracker.core.model.settings.ReminderSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
@@ -68,5 +69,30 @@ class DataStoreReminderSettingsRepositoryTest {
         assertThat(settings.enabled).isFalse()
         assertThat(settings.hour).isEqualTo(18)
         assertThat(settings.minute).isEqualTo(15)
+    }
+
+    @Test
+    fun `no chores are muted when nothing has been persisted yet`() = runTest {
+        assertThat(repository.getMutedChoreIds()).isEmpty()
+    }
+
+    @Test
+    fun `setChoreMuted adds and removes a chore without touching the others`() = runTest {
+        repository.setChoreMuted("chore-1", muted = true)
+        repository.setChoreMuted("chore-2", muted = true)
+        repository.setChoreMuted("chore-1", muted = false)
+
+        assertThat(repository.getMutedChoreIds()).containsExactly("chore-2")
+        assertThat(repository.observeMutedChoreIds().first()).containsExactly("chore-2")
+    }
+
+    @Test
+    fun `muting a chore leaves the reminder settings unchanged`() = runTest {
+        repository.setEnabled(true)
+        repository.setReminderTime(hour = 20, minute = 30)
+
+        repository.setChoreMuted("chore-1", muted = true)
+
+        assertThat(repository.getSettings()).isEqualTo(ReminderSettings(enabled = true, hour = 20, minute = 30))
     }
 }

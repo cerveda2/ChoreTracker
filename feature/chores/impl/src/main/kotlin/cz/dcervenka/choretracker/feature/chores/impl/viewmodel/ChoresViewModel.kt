@@ -10,7 +10,10 @@ import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveMutedReminderChoresUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveStaleChoresUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SetChoreReminderMutedUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreCategoryUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
@@ -44,6 +47,8 @@ class ChoresViewModel @Inject constructor(
     observeChoresUseCase: ObserveChoresUseCase,
     observeMembersUseCase: ObserveMembersUseCase,
     observeStaleChoresUseCase: ObserveStaleChoresUseCase,
+    observeReminderSettingsUseCase: ObserveReminderSettingsUseCase,
+    observeMutedReminderChoresUseCase: ObserveMutedReminderChoresUseCase,
     private val addChoreUseCase: AddChoreUseCase,
     private val updateChoreNameUseCase: UpdateChoreNameUseCase,
     private val updateChoreCategoryUseCase: UpdateChoreCategoryUseCase,
@@ -52,6 +57,7 @@ class ChoresViewModel @Inject constructor(
     private val deleteChoreUseCase: DeleteChoreUseCase,
     private val logCompletionUseCase: LogCompletionUseCase,
     private val deleteCompletionUseCase: DeleteCompletionUseCase,
+    private val setChoreReminderMutedUseCase: SetChoreReminderMutedUseCase,
 ) : ViewModel() {
 
     private val _events = Channel<ChoresUiEvent>(Channel.BUFFERED)
@@ -73,13 +79,17 @@ class ChoresViewModel @Inject constructor(
                 observeChoresUseCase(household.id),
                 observeMembersUseCase(household.id),
                 observeStaleChoresUseCase(),
-            ) { chores, members, staleChores ->
+                observeReminderSettingsUseCase(),
+                observeMutedReminderChoresUseCase(),
+            ) { chores, members, staleChores, reminderSettings, mutedReminderChoreIds ->
                 ChoresBaseData(
                     householdId = household.id,
                     chores = chores.filter { it.deletedAt == null },
                     staleness = staleChores.associateBy { it.choreId },
                     members = members,
                     isOwner = members.any { it.isCurrentUser && it.role == HouseholdRole.OWNER },
+                    remindersEnabled = reminderSettings.enabled,
+                    mutedReminderChoreIds = mutedReminderChoreIds,
                 )
             }
         }
@@ -91,6 +101,8 @@ class ChoresViewModel @Inject constructor(
                 staleness = base.staleness,
                 members = base.members,
                 isOwner = base.isOwner,
+                remindersEnabled = base.remindersEnabled,
+                mutedReminderChoreIds = base.mutedReminderChoreIds,
                 filter = currentFilter,
                 query = currentQuery,
             )
@@ -110,7 +122,12 @@ class ChoresViewModel @Inject constructor(
             is ChoresUiIntent.DeleteChore -> deleteChore(intent.choreId)
             is ChoresUiIntent.LogCompletion -> logCompletion(intent)
             is ChoresUiIntent.DeleteCompletion -> deleteCompletion(intent.completionId)
+            is ChoresUiIntent.SetChoreReminder -> setChoreReminder(intent.choreId, intent.enabled)
         }
+    }
+
+    private fun setChoreReminder(choreId: String, enabled: Boolean) {
+        viewModelScope.launch { setChoreReminderMutedUseCase(choreId, muted = !enabled) }
     }
 
     private fun addChore(intent: ChoresUiIntent.AddChore) {
@@ -122,6 +139,7 @@ class ChoresViewModel @Inject constructor(
                 frequencyDays = intent.frequencyDays,
             )
             if (result is AppResult.Success) {
+                if (!intent.reminderEnabled) setChoreReminderMutedUseCase(result.value, muted = true)
                 _events.send(ChoresUiEvent.ChoreAdded)
             } else if (result is AppResult.Error) {
                 _events.send(ChoresUiEvent.Error(result.error))
@@ -203,5 +221,7 @@ class ChoresViewModel @Inject constructor(
         val staleness: Map<String, ChoreStaleness>,
         val members: List<HouseholdMember>,
         val isOwner: Boolean,
+        val remindersEnabled: Boolean,
+        val mutedReminderChoreIds: Set<String>,
     )
 }

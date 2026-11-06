@@ -48,6 +48,8 @@ internal fun ChoreEditorSheet(
     onDismiss: () -> Unit,
     onSave: (name: String, category: ChoreCategory, frequencyDays: Int?, isActive: Boolean) -> Unit,
     onDelete: (() -> Unit)? = null,
+    reminderEnabled: Boolean? = null,
+    onReminderChange: (Boolean) -> Unit = {},
 ) {
     val spacing = LocalSpacing.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -213,6 +215,27 @@ internal fun ChoreEditorSheet(
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Switch(checked = !isActive, onCheckedChange = { isActive = !it }, enabled = isOwner)
+                }
+            }
+
+            if (reminderEnabled != null && isActive) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(spacing.medium),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.chores_editor_reminder_label),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = stringResource(R.string.chores_editor_reminder_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = reminderEnabled, onCheckedChange = onReminderChange)
                 }
             }
 
