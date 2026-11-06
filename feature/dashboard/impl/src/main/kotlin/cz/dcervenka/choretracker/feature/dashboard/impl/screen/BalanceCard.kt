@@ -81,6 +81,7 @@ private fun BalanceBody(balance: BalanceSummary, members: List<HouseholdMember>)
     // it with the (nonexistent) leader/lagging member's name.
     val leaderMember = members.find { it.id == balance.leaderMemberId } ?: members.first()
     val laggingMember = members.find { it.id == balance.laggingMemberId } ?: members.first()
+    val orderedMembers = leaderFirstOrder(members, leaderMember.id, laggingMember.id, balance.countsByMemberId)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -96,12 +97,12 @@ private fun BalanceBody(balance: BalanceSummary, members: List<HouseholdMember>)
             verticalArrangement = Arrangement.spacedBy(spacing.small),
         ) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.medium)) {
-                members.forEachIndexed { index, member ->
+                orderedMembers.forEach { member ->
                     val count = balance.countsByMemberId[member.id] ?: 0
                     Text(
                         text = "${member.displayName} · $count",
                         style = MaterialTheme.typography.labelMedium,
-                        color = palette.color(index),
+                        color = palette.colorFor(member.id, memberIds),
                     )
                 }
             }
@@ -111,14 +112,14 @@ private fun BalanceBody(balance: BalanceSummary, members: List<HouseholdMember>)
                     .height(14.dp)
                     .clip(RoundedCornerShape(7.dp)),
             ) {
-                members.forEachIndexed { index, member ->
+                orderedMembers.forEach { member ->
                     val count = balance.countsByMemberId[member.id] ?: 0
                     if (count > 0) {
                         Box(
                             modifier = Modifier
                                 .weight(count.toFloat() / total)
                                 .fillMaxHeight()
-                                .background(palette.color(index)),
+                                .background(palette.colorFor(member.id, memberIds)),
                         )
                     }
                 }
@@ -138,6 +139,20 @@ private fun BalanceBody(balance: BalanceSummary, members: List<HouseholdMember>)
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
+
+// Leader first and lagging member last, so each flanking avatar sits next to its own label and
+// bar segment and the card reads in the same order as the sentence; anyone else goes in between,
+// most completions first. Colors still come from `members` order via MemberPalette.colorFor.
+internal fun leaderFirstOrder(
+    members: List<HouseholdMember>,
+    leaderId: String,
+    laggingId: String,
+    countsByMemberId: Map<String, Int>,
+): List<HouseholdMember> = members.sortedWith(
+    compareByDescending<HouseholdMember> { it.id == leaderId }
+        .thenBy { it.id == laggingId }
+        .thenByDescending { countsByMemberId[it.id] ?: 0 },
+)
 
 @Composable
 private fun balanceSentence(balance: BalanceSummary, members: List<HouseholdMember>): String {
