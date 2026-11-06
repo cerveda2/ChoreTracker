@@ -180,7 +180,9 @@ private fun CreateHouseholdForm(
     onIntent: (OnboardingUiIntent) -> Unit,
 ) {
     val spacing = LocalSpacing.current
-    Card {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
