@@ -2,8 +2,9 @@ name: Release
 
 # Merging a version bump in version.properties into main releases that version: builds the
 # upload-key-signed AAB/APK, tags the commit v{major}.{minor}.{patch}, creates a draft GitHub
-# Release, then deploys the production backend. "Run workflow" (on main) retries a release whose
-# build failed; a failed backend deploy is retried with "Re-run failed jobs" instead.
+# Release, deploys the production backend, then uploads the AAB to Play's internal testing track.
+# "Run workflow" (on main) retries a release whose build failed; a failed backend deploy or Play
+# upload is retried with "Re-run failed jobs" instead.
 on:
   push:
     branches:
@@ -125,3 +126,55 @@ jobs:
       project: prod
     secrets:
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+  # After the backend deploy, so testers never get an app whose backend changes aren't live yet.
+  publish-play:
+    name: Publish to Play internal testing
+    needs: [version, deploy-backend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: prod
+    permissions:
+      # Reading a draft release's assets needs write access.
+      contents: write
+    env:
+      TAG: ${{ needs.version.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The Feat:/Bug: commit subjects since the previous release, in English only; Play caps
+      # release notes at 500 characters.
+      - name: Write release notes
+        run: |
+          previous=$(git describe --tags --abbrev=0 --match 'v*' "$TAG^")
+          notes=$(git log --format=%s "$previous..$TAG" \
+            | sed -nE 's/ \(#[0-9]+\)$//; s/^Feat: /- New: /p; s/^Bug: /- Fixed: /p' \
+            | awk '{ n += length($0) + 1; if (n > 500) exit; print }')
+          mkdir -p "$RUNNER_TEMP/whatsnew"
+          echo "${notes:-Small fixes and improvements.}" > "$RUNNER_TEMP/whatsnew/whatsnew-en-US"
+          cat "$RUNNER_TEMP/whatsnew/whatsnew-en-US"
+
+      # From the draft release rather than a workflow artifact, which anyone could download on this
+      # public repo.
+      - name: Download the release build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release download "$TAG" --dir "$RUNNER_TEMP/release"
+          --pattern app-release.aab --pattern mapping.txt
+
+      # Pinned to a commit: the action handles the Play service account key.
+      - name: Upload to Play
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: cz.dcervenka.choretracker
+          releaseFiles: ${{ runner.temp }}/release/app-release.aab
+          mappingFile: ${{ runner.temp }}/release/mapping.txt
+          whatsNewDirectory: ${{ runner.temp }}/whatsnew
+          track: internal
+          status: completed
