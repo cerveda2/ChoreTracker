@@ -139,6 +139,7 @@ class ChoresViewModel @Inject constructor(
                 frequencyDays = intent.frequencyDays,
             )
             if (result is AppResult.Success) {
+                if (!intent.reminderEnabled) setChoreReminderMutedUseCase(result.value, muted = true)
                 _events.send(ChoresUiEvent.ChoreAdded)
             } else if (result is AppResult.Error) {
                 _events.send(ChoresUiEvent.Error(result.error))

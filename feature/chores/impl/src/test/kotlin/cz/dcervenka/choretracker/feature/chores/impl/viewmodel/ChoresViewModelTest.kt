@@ -117,7 +117,7 @@ class ChoresViewModelTest {
         every { observeStaleChoresUseCase() } returns staleChoresFlow
         every { observeReminderSettingsUseCase() } returns reminderSettingsFlow
         every { observeMutedReminderChoresUseCase() } returns mutedReminderChoreIdsFlow
-        coEvery { addChoreUseCase(any(), any(), any(), any()) } returns AppResult.Success(Unit)
+        coEvery { addChoreUseCase(any(), any(), any(), any()) } returns AppResult.Success("chore-1")
         coEvery { updateChoreNameUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreCategoryUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreFrequencyUseCase(any(), any()) } returns AppResult.Success(Unit)
@@ -178,11 +178,34 @@ class ChoresViewModelTest {
                     name = "Vacuum",
                     category = ChoreCategory.CLEANING,
                     frequencyDays = 7,
+                    reminderEnabled = true,
                 ),
             )
             advanceUntilIdle()
 
             coVerify { addChoreUseCase("household-1", "Vacuum", ChoreCategory.CLEANING, 7) }
+            coVerify(exactly = 0) { setChoreReminderMutedUseCase(any(), any()) }
+            assertThat(awaitItem()).isEqualTo(ChoresUiEvent.ChoreAdded)
+        }
+    }
+
+    @Test
+    fun `addChore with the reminder switched off mutes the new chore`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.events.test {
+            viewModel.dispatch(
+                ChoresUiIntent.AddChore(
+                    householdId = "household-1",
+                    name = "Vacuum",
+                    category = ChoreCategory.CLEANING,
+                    frequencyDays = 7,
+                    reminderEnabled = false,
+                ),
+            )
+            advanceUntilIdle()
+
+            coVerify { setChoreReminderMutedUseCase("chore-1", muted = true) }
             assertThat(awaitItem()).isEqualTo(ChoresUiEvent.ChoreAdded)
         }
     }
@@ -199,11 +222,13 @@ class ChoresViewModelTest {
                     name = "Vacuum",
                     category = ChoreCategory.CLEANING,
                     frequencyDays = -1,
+                    reminderEnabled = false,
                 ),
             )
             advanceUntilIdle()
 
             assertThat(awaitItem()).isEqualTo(ChoresUiEvent.Error(AppError.INVALID_FREQUENCY))
+            coVerify(exactly = 0) { setChoreReminderMutedUseCase(any(), any()) }
         }
     }
 

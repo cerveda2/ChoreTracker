@@ -100,6 +100,7 @@ fun ChoresScreen(
     var searchExpanded by rememberSaveable { mutableStateOf(false) }
     var editingChoreId by rememberSaveable { mutableStateOf<String?>(null) }
     var showNewChoreSheet by rememberSaveable { mutableStateOf(false) }
+    var newChoreReminderEnabled by rememberSaveable { mutableStateOf(true) }
     var logChoreId by rememberSaveable { mutableStateOf<String?>(null) }
     var logNote by rememberSaveable { mutableStateOf("") }
     val logMembers = rememberSaveableStringList()
@@ -159,7 +160,13 @@ fun ChoresScreen(
             )
         },
         floatingActionButton = {
-            ExtendedLogFab(text = stringResource(R.string.chores_new_chore), onClick = { showNewChoreSheet = true })
+            ExtendedLogFab(
+                text = stringResource(R.string.chores_new_chore),
+                onClick = {
+                    newChoreReminderEnabled = true
+                    showNewChoreSheet = true
+                },
+            )
         },
         bottomBar = { TopLevelBottomBarSpacer() },
     ) { innerPadding ->
@@ -290,10 +297,13 @@ fun ChoresScreen(
                         name = name,
                         category = category,
                         frequencyDays = frequencyDays,
+                        reminderEnabled = newChoreReminderEnabled,
                     ),
                 )
                 showNewChoreSheet = false
             },
+            reminderEnabled = newChoreReminderEnabled.takeIf { uiState.remindersEnabled },
+            onReminderChange = { newChoreReminderEnabled = it },
         )
     }
 

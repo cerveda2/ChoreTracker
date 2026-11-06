@@ -22,7 +22,7 @@ class AddChoreUseCaseTest {
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
-        coEvery { choreRepository.addChore(any(), any(), any(), any()) } returns AppResult.Success(Unit)
+        coEvery { choreRepository.addChore(any(), any(), any(), any()) } returns AppResult.Success("chore-1")
         useCase = AddChoreUseCase(choreRepository)
     }
 
@@ -52,6 +52,13 @@ class AddChoreUseCaseTest {
                 frequencyDays = 6,
             )
         }
+    }
+
+    @Test
+    fun `returns the new chore's id from the repository`() = runTest {
+        val result = useCase("household-1", "Kitchen", ChoreCategory.COOKING)
+
+        assertThat(result).isEqualTo(AppResult.Success("chore-1"))
     }
 
     @Test

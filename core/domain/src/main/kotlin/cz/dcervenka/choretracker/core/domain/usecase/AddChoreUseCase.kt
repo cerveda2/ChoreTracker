@@ -1,7 +1,6 @@
 package cz.dcervenka.choretracker.core.domain.usecase
 
 import cz.dcervenka.choretracker.core.common.AppResult
-import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.data.contract.ChoreRepository
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.error.AppError
@@ -15,7 +14,7 @@ class AddChoreUseCase @Inject constructor(
         name: String,
         category: ChoreCategory,
         frequencyDays: Int? = null,
-    ): EmptyResult {
+    ): AppResult<String> {
         if (frequencyDays != null && frequencyDays <= 0) {
             return AppResult.Error(AppError.INVALID_FREQUENCY)
         }
