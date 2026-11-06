@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import cz.dcervenka.choretracker.core.data.contract.ReminderSettingsRepository
 import cz.dcervenka.choretracker.core.data.di.ReminderSettingsDataStore
 import cz.dcervenka.choretracker.core.model.settings.ReminderSettings
@@ -20,6 +21,7 @@ import javax.inject.Singleton
 private val ENABLED_KEY = booleanPreferencesKey("enabled")
 private val HOUR_KEY = intPreferencesKey("hour")
 private val MINUTE_KEY = intPreferencesKey("minute")
+private val MUTED_CHORE_IDS_KEY = stringSetPreferencesKey("muted_chore_ids")
 
 @Singleton
 class DataStoreReminderSettingsRepository @Inject constructor(
@@ -46,6 +48,19 @@ class DataStoreReminderSettingsRepository @Inject constructor(
             preferences[MINUTE_KEY] = minute
         }
     }
+
+    override fun observeMutedChoreIds(): Flow<Set<String>> = safeData.map(::toMutedChoreIds)
+
+    override suspend fun getMutedChoreIds(): Set<String> = toMutedChoreIds(safeData.first())
+
+    override suspend fun setChoreMuted(choreId: String, muted: Boolean) {
+        dataStore.edit { preferences ->
+            val current = preferences[MUTED_CHORE_IDS_KEY].orEmpty()
+            preferences[MUTED_CHORE_IDS_KEY] = if (muted) current + choreId else current - choreId
+        }
+    }
+
+    private fun toMutedChoreIds(preferences: Preferences): Set<String> = preferences[MUTED_CHORE_IDS_KEY].orEmpty()
 
     private fun toReminderSettings(preferences: Preferences): ReminderSettings {
         val defaults = ReminderSettings()

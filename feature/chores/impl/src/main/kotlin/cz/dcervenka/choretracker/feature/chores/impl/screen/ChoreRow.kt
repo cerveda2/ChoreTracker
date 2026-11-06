@@ -1,11 +1,27 @@
 package cz.dcervenka.choretracker.feature.chores.impl.screen
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
+import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreListRow
 import cz.dcervenka.choretracker.core.design.components.DoneButton
@@ -29,6 +45,8 @@ internal fun ChoreRow(
     onQuickLog: () -> Unit,
     onOpenSheet: () -> Unit,
     modifier: Modifier = Modifier,
+    reminderEnabled: Boolean? = null,
+    onReminderChange: (Boolean) -> Unit = {},
 ) {
     // A paused chore keeps whatever staleness it had when paused, but shouldn't read as urgent -
     // no fraction at all means no freshness bar, no tertiary tint, and an outlined (not filled)
@@ -69,12 +87,44 @@ internal fun ChoreRow(
             )
         },
         onClick = onOpenSheet,
-        belowSubtitle = freshness?.let { (value, color) ->
+        belowSubtitle = if (freshness != null || reminderEnabled != null) {
             {
-                FreshnessBar(fraction = value, color = color)
+                Column(verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.xSmall)) {
+                    freshness?.let { (value, color) -> FreshnessBar(fraction = value, color = color) }
+                    reminderEnabled?.let { enabled ->
+                        ChoreReminderToggle(enabled = enabled, onChange = onReminderChange)
+                    }
+                }
             }
+        } else {
+            null
         },
     )
+}
+
+@Composable
+private fun ChoreReminderToggle(enabled: Boolean, onChange: (Boolean) -> Unit) {
+    val color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier = Modifier
+            .heightIn(min = 32.dp)
+            .clip(MaterialTheme.shapes.extraSmall)
+            .toggleable(value = enabled, role = Role.Switch, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(LocalSpacing.current.xSmall),
+    ) {
+        Icon(
+            imageVector = if (enabled) Icons.Outlined.NotificationsActive else Icons.Outlined.NotificationsOff,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            text = stringResource(if (enabled) R.string.chores_reminder_on else R.string.chores_reminder_off),
+            style = MaterialTheme.typography.labelMedium,
+            color = color,
+        )
+    }
 }
 
 @Composable

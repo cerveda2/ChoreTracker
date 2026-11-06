@@ -10,7 +10,10 @@ import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveMutedReminderChoresUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveStaleChoresUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SetChoreReminderMutedUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreCategoryUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
@@ -20,6 +23,7 @@ import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
+import cz.dcervenka.choretracker.core.model.settings.ReminderSettings
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.test.mock.sampleChore
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
@@ -59,6 +63,12 @@ class ChoresViewModelTest {
     lateinit var observeStaleChoresUseCase: ObserveStaleChoresUseCase
 
     @MockK
+    lateinit var observeReminderSettingsUseCase: ObserveReminderSettingsUseCase
+
+    @MockK
+    lateinit var observeMutedReminderChoresUseCase: ObserveMutedReminderChoresUseCase
+
+    @MockK
     lateinit var addChoreUseCase: AddChoreUseCase
 
     @MockK
@@ -82,10 +92,15 @@ class ChoresViewModelTest {
     @MockK
     lateinit var deleteCompletionUseCase: DeleteCompletionUseCase
 
+    @MockK
+    lateinit var setChoreReminderMutedUseCase: SetChoreReminderMutedUseCase
+
     private val householdFlow = MutableStateFlow<Household?>(null)
     private val choresFlow = MutableStateFlow(emptyList<Chore>())
     private val membersFlow = MutableStateFlow(emptyList<HouseholdMember>())
     private val staleChoresFlow = MutableStateFlow(emptyList<ChoreStaleness>())
+    private val reminderSettingsFlow = MutableStateFlow(ReminderSettings())
+    private val mutedReminderChoreIdsFlow = MutableStateFlow(emptySet<String>())
 
     @Before
     fun setUp() {
@@ -94,10 +109,14 @@ class ChoresViewModelTest {
         choresFlow.value = emptyList()
         membersFlow.value = emptyList()
         staleChoresFlow.value = emptyList()
+        reminderSettingsFlow.value = ReminderSettings()
+        mutedReminderChoreIdsFlow.value = emptySet()
         every { observeCurrentHouseholdUseCase() } returns householdFlow
         every { observeChoresUseCase(any()) } answers { choresFlow }
         every { observeMembersUseCase(any()) } answers { membersFlow }
         every { observeStaleChoresUseCase() } returns staleChoresFlow
+        every { observeReminderSettingsUseCase() } returns reminderSettingsFlow
+        every { observeMutedReminderChoresUseCase() } returns mutedReminderChoreIdsFlow
         coEvery { addChoreUseCase(any(), any(), any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreNameUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreCategoryUseCase(any(), any()) } returns AppResult.Success(Unit)
@@ -106,6 +125,7 @@ class ChoresViewModelTest {
         coEvery { deleteChoreUseCase(any()) } returns AppResult.Success(Unit)
         coEvery { logCompletionUseCase(any(), any(), any(), any(), any()) } returns AppResult.Success("completion-1")
         coEvery { deleteCompletionUseCase(any()) } returns AppResult.Success(Unit)
+        coEvery { setChoreReminderMutedUseCase(any(), any()) } returns Unit
     }
 
     @Test
@@ -263,6 +283,35 @@ class ChoresViewModelTest {
             assertThat(awaitItem()).isEqualTo(ChoresUiEvent.Error(AppError.COMPLETION_DELETE_FORBIDDEN))
         }
     }
+
+    @Test
+    fun `ui state exposes whether reminders are on and which chores are muted`() = runTest(coroutineRule.dispatcher) {
+        householdFlow.value = sampleHousehold()
+        reminderSettingsFlow.value = ReminderSettings(enabled = true)
+        mutedReminderChoreIdsFlow.value = setOf("chore-1")
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            awaitItem()
+            val state = awaitItem()
+            assertThat(state.remindersEnabled).isTrue()
+            assertThat(state.mutedReminderChoreIds).containsExactly("chore-1")
+        }
+    }
+
+    @Test
+    fun `setChoreReminder mutes a chore when turned off and unmutes it when turned on`() =
+        runTest(coroutineRule.dispatcher) {
+            val viewModel = createViewModel()
+
+            viewModel.dispatch(ChoresUiIntent.SetChoreReminder("chore-1", enabled = false))
+            advanceUntilIdle()
+            coVerify { setChoreReminderMutedUseCase("chore-1", muted = true) }
+
+            viewModel.dispatch(ChoresUiIntent.SetChoreReminder("chore-1", enabled = true))
+            advanceUntilIdle()
+            coVerify { setChoreReminderMutedUseCase("chore-1", muted = false) }
+        }
 }
 
 private fun ChoresViewModelTest.createViewModel() = ChoresViewModel(
@@ -270,6 +319,8 @@ private fun ChoresViewModelTest.createViewModel() = ChoresViewModel(
     observeChoresUseCase,
     observeMembersUseCase,
     observeStaleChoresUseCase,
+    observeReminderSettingsUseCase,
+    observeMutedReminderChoresUseCase,
     addChoreUseCase,
     updateChoreNameUseCase,
     updateChoreCategoryUseCase,
@@ -278,4 +329,5 @@ private fun ChoresViewModelTest.createViewModel() = ChoresViewModel(
     deleteChoreUseCase,
     logCompletionUseCase,
     deleteCompletionUseCase,
+    setChoreReminderMutedUseCase,
 )
