@@ -234,11 +234,9 @@ fun ChoresScreen(
                                                 staleness = uiState.staleness[chore.id],
                                                 onQuickLog = { quickLog(chore) },
                                                 onOpenSheet = { editingChoreId = chore.id },
-                                                reminderEnabled = (chore.id !in uiState.mutedReminderChoreIds)
-                                                    .takeIf { uiState.remindersEnabled && chore.isActive },
-                                                onReminderChange = { enabled ->
-                                                    onIntent(ChoresUiIntent.SetChoreReminder(chore.id, enabled))
-                                                },
+                                                reminderMuted = uiState.remindersEnabled &&
+                                                    chore.isActive &&
+                                                    chore.id in uiState.mutedReminderChoreIds,
                                             )
                                         }
                                     }
