@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -178,6 +179,7 @@ fun SettingsScreen(
                                         Icon(
                                             imageVector = Icons.Outlined.Share,
                                             contentDescription = stringResource(R.string.settings_invite_share),
+                                            modifier = Modifier.offset(x = (-1).dp),
                                         )
                                     }
                                 },
