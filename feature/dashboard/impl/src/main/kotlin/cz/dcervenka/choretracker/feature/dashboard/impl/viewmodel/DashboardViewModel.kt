@@ -4,10 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.DismissNotificationsBannerUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentDashboardUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveNotificationsBannerDismissedUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveRecentCompletionsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RefreshHouseholdUseCase
@@ -39,11 +41,13 @@ class DashboardViewModel @Inject constructor(
     observeMembersUseCase: ObserveMembersUseCase,
     observeRecentCompletionsUseCase: ObserveRecentCompletionsUseCase,
     observeSyncStateUseCase: ObserveSyncStateUseCase,
+    observeNotificationsBannerDismissedUseCase: ObserveNotificationsBannerDismissedUseCase,
     private val logCompletionUseCase: LogCompletionUseCase,
     private val updateCompletionUseCase: UpdateCompletionUseCase,
     private val deleteCompletionUseCase: DeleteCompletionUseCase,
     private val retryPendingSyncUseCase: RetryPendingSyncUseCase,
     private val refreshHouseholdUseCase: RefreshHouseholdUseCase,
+    private val dismissNotificationsBannerUseCase: DismissNotificationsBannerUseCase,
 ) : ViewModel() {
 
     private val _undoChannel = Channel<UndoEvent>(Channel.BUFFERED)
@@ -72,7 +76,11 @@ class DashboardViewModel @Inject constructor(
                     isRefreshing = refreshing,
                 )
             }
-        }.stateIn(
+        }
+        .combine(observeNotificationsBannerDismissedUseCase()) { state, bannerDismissed ->
+            state.copy(notificationsBannerDismissed = bannerDismissed)
+        }
+        .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = DashboardUiState(),
@@ -109,6 +117,7 @@ class DashboardViewModel @Inject constructor(
             is DashboardUiIntent.DeleteCompletion -> deleteCompletion(intent.completionId)
             DashboardUiIntent.RetrySync -> retrySync()
             DashboardUiIntent.Refresh -> refresh()
+            DashboardUiIntent.DismissNotificationsBanner -> viewModelScope.launch { dismissNotificationsBannerUseCase() }
         }
     }
 

@@ -4,10 +4,12 @@ import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.DismissNotificationsBannerUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentDashboardUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveNotificationsBannerDismissedUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveRecentCompletionsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RefreshHouseholdUseCase
@@ -59,6 +61,9 @@ class DashboardViewModelTest {
     lateinit var observeSyncStateUseCase: ObserveSyncStateUseCase
 
     @MockK
+    lateinit var observeNotificationsBannerDismissedUseCase: ObserveNotificationsBannerDismissedUseCase
+
+    @MockK
     lateinit var logCompletionUseCase: LogCompletionUseCase
 
     @MockK
@@ -73,11 +78,15 @@ class DashboardViewModelTest {
     @MockK
     lateinit var refreshHouseholdUseCase: RefreshHouseholdUseCase
 
+    @MockK
+    lateinit var dismissNotificationsBannerUseCase: DismissNotificationsBannerUseCase
+
     private val dashboardFlow = MutableStateFlow(sampleDashboardSnapshot())
     private val householdFlow = MutableStateFlow<Household?>(null)
     private val membersFlow = MutableStateFlow(emptyList<HouseholdMember>())
     private val completionsFlow = MutableStateFlow(sampleDashboardSnapshot().recentCompletions)
     private val syncStateFlow = MutableStateFlow<SyncState?>(null)
+    private val bannerDismissedFlow = MutableStateFlow(false)
 
     @Before
     fun setUp() {
@@ -85,16 +94,19 @@ class DashboardViewModelTest {
         dashboardFlow.value = sampleDashboardSnapshot()
         householdFlow.value = null
         membersFlow.value = emptyList()
+        bannerDismissedFlow.value = false
         every { observeCurrentDashboardUseCase() } returns dashboardFlow
         every { observeCurrentHouseholdUseCase() } returns householdFlow
         every { observeMembersUseCase(any()) } answers { membersFlow }
         every { observeRecentCompletionsUseCase(any(), any()) } answers { completionsFlow }
         every { observeSyncStateUseCase(any()) } answers { syncStateFlow }
+        every { observeNotificationsBannerDismissedUseCase() } returns bannerDismissedFlow
         coEvery { logCompletionUseCase(any(), any(), any(), any()) } returns AppResult.Success("completion-id")
         coEvery { updateCompletionUseCase(any(), any(), any()) } returns AppResult.Success(Unit)
         coEvery { deleteCompletionUseCase(any()) } returns AppResult.Success(Unit)
         coEvery { retryPendingSyncUseCase() } returns AppResult.Success(Unit)
         coEvery { refreshHouseholdUseCase() } returns AppResult.Success(Unit)
+        coEvery { dismissNotificationsBannerUseCase() } coAnswers { bannerDismissedFlow.value = true }
     }
 
     @Test
@@ -300,6 +312,21 @@ class DashboardViewModelTest {
             expectNoEvents()
         }
     }
+
+    @Test
+    fun `dismissing the notifications banner persists it and updates ui state`() = runTest(coroutineRule.dispatcher) {
+        householdFlow.value = sampleHousehold()
+        val viewModel = createViewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.notificationsBannerDismissed).isFalse()
+
+        viewModel.dispatch(DashboardUiIntent.DismissNotificationsBanner)
+        advanceUntilIdle()
+
+        coVerify { dismissNotificationsBannerUseCase() }
+        assertThat(viewModel.uiState.value.notificationsBannerDismissed).isTrue()
+    }
 }
 
 private fun DashboardViewModelTest.createViewModel() = DashboardViewModel(
@@ -308,9 +335,11 @@ private fun DashboardViewModelTest.createViewModel() = DashboardViewModel(
     observeMembersUseCase = observeMembersUseCase,
     observeRecentCompletionsUseCase = observeRecentCompletionsUseCase,
     observeSyncStateUseCase = observeSyncStateUseCase,
+    observeNotificationsBannerDismissedUseCase = observeNotificationsBannerDismissedUseCase,
     logCompletionUseCase = logCompletionUseCase,
     updateCompletionUseCase = updateCompletionUseCase,
     deleteCompletionUseCase = deleteCompletionUseCase,
     retryPendingSyncUseCase = retryPendingSyncUseCase,
     refreshHouseholdUseCase = refreshHouseholdUseCase,
+    dismissNotificationsBannerUseCase = dismissNotificationsBannerUseCase,
 )
