@@ -12,6 +12,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -86,18 +87,57 @@ class FcmTokenRegistrarTest {
     }
 
     @Test
-    fun `clears the previous user's token on sign-out`() = runTest(coroutineRule.dispatcher) {
+    fun `clearCurrentUserToken clears the signed-in user's token`() = runTest(coroutineRule.dispatcher) {
         authState.value = AuthState.Authenticated(
             AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
         )
         createRegistrar()
         advanceUntilIdle()
-        coVerify(exactly = 1) { tokenWriter.requestRegistration() }
+
+        registrar.clearCurrentUserToken()
+
+        coVerify(exactly = 1) { tokenWriter.clearToken("user-1") }
+    }
+
+    @Test
+    fun `clearCurrentUserToken does nothing for a preview user`() = runTest(coroutineRule.dispatcher) {
+        authState.value = AuthState.Authenticated(
+            AppUser(id = "preview-user", email = null, displayName = "Preview User", isPreview = true),
+        )
+        createRegistrar()
+        advanceUntilIdle()
+
+        registrar.clearCurrentUserToken()
+
+        coVerify(exactly = 0) { tokenWriter.clearToken(any()) }
+    }
+
+    @Test
+    fun `clearCurrentUserToken gives up when the write doesn't finish in time`() = runTest(coroutineRule.dispatcher) {
+        authState.value = AuthState.Authenticated(
+            AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
+        )
+        coEvery { tokenWriter.clearToken(any()) } coAnswers { awaitCancellation() }
+        createRegistrar()
+        advanceUntilIdle()
+
+        registrar.clearCurrentUserToken()
+
+        coVerify(exactly = 1) { tokenWriter.clearToken("user-1") }
+    }
+
+    @Test
+    fun `does not try to clear the token once already signed out`() = runTest(coroutineRule.dispatcher) {
+        authState.value = AuthState.Authenticated(
+            AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
+        )
+        createRegistrar()
+        advanceUntilIdle()
 
         authState.value = AuthState.SignedOut
         advanceUntilIdle()
 
-        coVerify(exactly = 1) { tokenWriter.clearToken("user-1") }
+        coVerify(exactly = 0) { tokenWriter.clearToken(any()) }
     }
 
     @Test
