@@ -10,10 +10,12 @@ import cz.dcervenka.choretracker.core.data.contract.ChoreCompletionRepository
 import cz.dcervenka.choretracker.core.data.contract.ChoreRepository
 import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
 import cz.dcervenka.choretracker.core.data.contract.InviteNotificationSettingsRepository
+import cz.dcervenka.choretracker.core.data.contract.NotificationsBannerRepository
 import cz.dcervenka.choretracker.core.data.contract.ReminderSettingsRepository
 import cz.dcervenka.choretracker.core.data.contract.StatsRepository
 import cz.dcervenka.choretracker.core.data.contract.ThemeSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.DataStoreInviteNotificationSettingsRepository
+import cz.dcervenka.choretracker.core.data.repository.DataStoreNotificationsBannerRepository
 import cz.dcervenka.choretracker.core.data.repository.DataStoreReminderSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.DataStoreThemeSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstChoreCompletionRepository
@@ -41,6 +43,10 @@ annotation class InviteNotificationSettingsDataStore
 @Qualifier
 @Retention(AnnotationRetention.RUNTIME)
 annotation class ThemeSettingsDataStore
+
+@Qualifier
+@Retention(AnnotationRetention.RUNTIME)
+annotation class NotificationsBannerDataStore
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -75,6 +81,11 @@ abstract class DataRepositoryModule {
     @Binds
     abstract fun bindThemeSettingsRepository(impl: DataStoreThemeSettingsRepository): ThemeSettingsRepository
 
+    @Binds
+    abstract fun bindNotificationsBannerRepository(
+        impl: DataStoreNotificationsBannerRepository,
+    ): NotificationsBannerRepository
+
     companion object {
         @Provides
         @Singleton
@@ -99,6 +110,14 @@ abstract class DataRepositoryModule {
         fun provideThemeSettingsDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
             PreferenceDataStoreFactory.create(
                 produceFile = { context.preferencesDataStoreFile("theme_settings") },
+            )
+
+        @Provides
+        @Singleton
+        @NotificationsBannerDataStore
+        fun provideNotificationsBannerDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
+            PreferenceDataStoreFactory.create(
+                produceFile = { context.preferencesDataStoreFile("notifications_banner") },
             )
     }
 }

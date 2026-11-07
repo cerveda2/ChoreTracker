@@ -19,4 +19,5 @@ sealed interface DashboardUiIntent : UiIntent {
     data class DeleteCompletion(val completionId: String) : DashboardUiIntent
     data object RetrySync : DashboardUiIntent
     data object Refresh : DashboardUiIntent
+    data object DismissNotificationsBanner : DashboardUiIntent
 }
