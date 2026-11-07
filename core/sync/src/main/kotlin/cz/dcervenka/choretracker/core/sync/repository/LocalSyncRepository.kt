@@ -492,6 +492,16 @@ class LocalSyncRepository @Inject constructor(
         }
     }
 
+    override suspend fun deleteHousehold(householdId: String): EmptyResult {
+        return when (val result = remoteHouseholdDataSource.deleteHousehold(householdId)) {
+            is AppResult.Error -> result
+            is AppResult.Success -> {
+                database.clearAll()
+                AppResult.Success(Unit)
+            }
+        }
+    }
+
     // A row absent from the pulled snapshot might just not have synced yet, not actually be
     // deleted remotely - pruning it here would discard local data that a pending operation is
     // still waiting to push. member/invite pending operations are keyed by householdId (not

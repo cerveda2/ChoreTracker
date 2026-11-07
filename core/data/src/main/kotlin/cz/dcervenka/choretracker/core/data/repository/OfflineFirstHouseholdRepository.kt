@@ -438,6 +438,22 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         }
     }
 
+    override suspend fun deleteHousehold(householdId: String): EmptyResult {
+        Timber.d("deleteHousehold: householdId=$householdId")
+        val user = currentUser()
+        val household = householdDao.getHousehold(householdId)
+        val member = user?.let { memberDao.findByUserId(householdId, it.id) }
+        return when {
+            user == null -> AppResult.Error(AppError.NOT_SIGNED_IN)
+            user.isPreview -> AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED)
+            household == null -> AppResult.Error(AppError.HOUSEHOLD_NOT_FOUND)
+            member == null -> AppResult.Error(AppError.OWN_MEMBERSHIP_NOT_FOUND)
+            // Own role, not household.ownerUserId - see the matching comment on transferOwnership.
+            member.role != HouseholdRole.OWNER.name -> AppResult.Error(AppError.NOT_HOUSEHOLD_OWNER)
+            else -> syncRepository.deleteHousehold(householdId)
+        }
+    }
+
     private suspend fun stampCurrentUserEmail(user: AppUser) {
         val email = user.email ?: return
         val householdId = householdDao.getCurrentHouseholdForUser(user.id)?.id ?: return

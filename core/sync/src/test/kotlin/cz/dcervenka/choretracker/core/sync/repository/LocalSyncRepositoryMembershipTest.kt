@@ -141,6 +141,26 @@ class LocalSyncRepositoryMembershipTest {
     }
 
     @Test
+    fun `deleteHousehold wipes local data after the remote call succeeds`() = runTest(coroutineRule.dispatcher) {
+        coEvery { remoteHouseholdDataSource.deleteHousehold("household-1") } returns AppResult.Success(Unit)
+
+        val result = repository.deleteHousehold("household-1")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify { database.clearAll() }
+    }
+
+    @Test
+    fun `deleteHousehold keeps local data when the remote call fails`() = runTest(coroutineRule.dispatcher) {
+        coEvery { remoteHouseholdDataSource.deleteHousehold("household-1") } returns AppResult.Error(AppError.NETWORK)
+
+        val result = repository.deleteHousehold("household-1")
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        coVerify(exactly = 0) { database.clearAll() }
+    }
+
+    @Test
     fun `transferOwnership delegates to the remote data source`() = runTest(coroutineRule.dispatcher) {
         coEvery {
             remoteHouseholdDataSource.transferOwnership("household-1", "user-2", "user-2", "user-1")

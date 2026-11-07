@@ -26,6 +26,7 @@ interface RemoteAuthDataSource {
     suspend fun deleteAccount(): EmptyResult
 }
 
+@Suppress("TooManyFunctions")
 interface RemoteHouseholdDataSource {
     fun observeMembers(householdId: String, currentUserId: String): Flow<List<HouseholdMember>>
 
@@ -64,4 +65,6 @@ interface RemoteHouseholdDataSource {
     ): EmptyResult
 
     suspend fun leaveHousehold(householdId: String, selfMemberDocId: String): EmptyResult
+
+    suspend fun deleteHousehold(householdId: String): EmptyResult
 }

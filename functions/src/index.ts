@@ -175,6 +175,53 @@ export const deleteAccount = onCall({ region: "europe-west1" }, async (request) 
   logger.info("deleteAccount: account removed", { uid, hadHousehold: householdId != null });
 });
 
+// Owner-only, and deletes the household for every member. Members' users/{uid}.householdId is
+// left pointing here on purpose: their next household read is refused, which wipes their local
+// data the same way a removed member's is. Only the caller's own pointer is dropped.
+export const deleteHousehold = onCall({ region: "europe-west1" }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "You must be signed in to delete a household.");
+  }
+  const householdId = request.data?.householdId;
+  if (typeof householdId !== "string" || householdId.length === 0) {
+    throw new HttpsError("invalid-argument", "householdId is required.");
+  }
+
+  const db = getFirestore();
+  const householdRef = db.doc(`households/${householdId}`);
+  const householdSnap = await householdRef.get();
+  // Missing means a retry after a lost response - succeed so the caller still clears local data.
+  if (householdSnap.exists) {
+    if (householdSnap.get("ownerUserId") !== uid) {
+      throw new HttpsError("permission-denied", "Only the household owner can delete it.");
+    }
+    await deleteHouseholdTree(db, householdId, householdRef);
+    logger.info("deleteHousehold: household deleted", { uid, householdId });
+  }
+
+  const userRef = db.doc(`users/${uid}`);
+  if ((await userRef.get()).get("householdId") === householdId) {
+    await userRef.update({ householdId: FieldValue.delete() });
+  }
+});
+
+// recursiveDelete removes the household doc after its subcollections, so a partial failure keeps
+// ownerUserId in place and the caller can retry.
+async function deleteHouseholdTree(
+  db: Firestore,
+  householdId: string,
+  householdRef: DocumentReference,
+): Promise<void> {
+  const codes = await db.collection("inviteCodes").where("householdId", "==", householdId).get();
+  if (!codes.empty) {
+    const batch = db.batch();
+    codes.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+  }
+  await db.recursiveDelete(householdRef);
+}
+
 // users/{uid}.householdId can be stale or missing (e.g. lost to a prior partial sync) while the
 // caller is still an active member somewhere - without this fallback, resolveHouseholdMembership
 // is skipped entirely and the household (and, for a sole owner, its data) is silently orphaned.
@@ -211,17 +258,7 @@ async function resolveHouseholdMembership(
     .sort((a, b) => a.id.localeCompare(b.id));
 
   if (isOwner && coLinked.length === 0) {
-    // Sole owner: tear the whole household down (the "delete household" case deferred from 9b).
-    const codes = await db
-      .collection("inviteCodes")
-      .where("householdId", "==", householdId)
-      .get();
-    if (!codes.empty) {
-      const batch = db.batch();
-      codes.docs.forEach((doc) => batch.delete(doc.ref));
-      await batch.commit();
-    }
-    await db.recursiveDelete(householdRef);
+    await deleteHouseholdTree(db, householdId, householdRef);
     logger.info("deleteAccount: sole-owner household torn down", { uid, householdId });
     return;
   }

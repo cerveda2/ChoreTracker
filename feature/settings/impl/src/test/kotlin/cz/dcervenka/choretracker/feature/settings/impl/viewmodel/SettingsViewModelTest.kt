@@ -7,6 +7,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateMemberInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteAccountUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.DeleteHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LeaveHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAllMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
@@ -89,6 +90,9 @@ class SettingsViewModelTest {
 
     @MockK
     lateinit var leaveHouseholdUseCase: LeaveHouseholdUseCase
+
+    @MockK
+    lateinit var deleteHouseholdUseCase: DeleteHouseholdUseCase
 
     @MockK
     lateinit var deleteAccountUseCase: DeleteAccountUseCase
@@ -292,6 +296,27 @@ class SettingsViewModelTest {
         }
 
     @Test
+    fun `DeleteHousehold delegates to the use case and surfaces an error when it fails`() =
+        runTest(coroutineRule.dispatcher) {
+            coEvery { deleteHouseholdUseCase(any()) } returns AppResult.Error(AppError.PERMISSION_DENIED)
+            val viewModel = createViewModel()
+            authStateFlow.value = sampleAuthenticatedState()
+            householdFlow.value = sampleHousehold()
+
+            viewModel.uiState.test {
+                advanceUntilIdle()
+                viewModel.events.test {
+                    viewModel.dispatch(SettingsUiIntent.DeleteHousehold)
+                    advanceUntilIdle()
+
+                    coVerify { deleteHouseholdUseCase("household-1") }
+                    assertThat(awaitItem()).isEqualTo(SettingsUiEvent.Error(AppError.PERMISSION_DENIED))
+                }
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
     fun `DeleteAccount delegates to the use case and surfaces an error when it fails`() =
         runTest(coroutineRule.dispatcher) {
             coEvery { deleteAccountUseCase() } returns AppResult.Error(AppError.UNKNOWN)
@@ -322,6 +347,7 @@ private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
     removeMemberUseCase,
     transferOwnershipUseCase,
     leaveHouseholdUseCase,
+    deleteHouseholdUseCase,
     deleteAccountUseCase,
     updateDisplayNameUseCase,
     updateCurrentMemberDisplayNameUseCase,
