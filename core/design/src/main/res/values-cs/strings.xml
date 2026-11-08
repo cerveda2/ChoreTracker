@@ -210,7 +210,7 @@
     <string name="settings_leave_household_title">Opustit tuto domácnost?</string>
     <string name="settings_leave_household_message">Ztratíte přístup k této domácnosti. Vaše dřívější splnění zůstanou ostatním viditelná.</string>
     <string name="settings_leave_household_owner_hint">Nejprve předejte vlastnictví, pak můžete odejít.</string>
-    <string name="settings_leave_household_sole_owner_hint">Jste jediný člen. Domácnost odstraníte smazáním svého účtu.</string>
+    <string name="settings_leave_household_sole_owner_hint">Jste jediný člen. Domácnost můžete smazat ve Správě domácnosti.</string>
     <string name="settings_transfer_ownership">Předat vlastnictví</string>
     <string name="settings_transfer_ownership_picker_title">Vyberte nového vlastníka</string>
     <string name="settings_transfer_ownership_title">Udělat vlastníkem člena %1$s?</string>
@@ -223,6 +223,10 @@
     <string name="settings_delete_account_title">Smazat váš účet?</string>
     <string name="settings_delete_account_message">Váš účet a jeho data budou trvale odstraněny. Pokud jste jediný člen, smaže se i domácnost. Splnění, která jste sdíleli, zůstanou ostatním členům viditelná.</string>
     <string name="settings_delete_account_confirm">Smazat účet</string>
+    <string name="settings_delete_household">Smazat domácnost</string>
+    <string name="settings_delete_household_title">Smazat tuto domácnost?</string>
+    <string name="settings_delete_household_message">Všechny úkoly a historie splnění budou trvale smazány. Poté můžete založit novou domácnost nebo se připojit k jiné.</string>
+    <string name="settings_delete_household_message_members">Všechny úkoly a historie splnění budou trvale smazány pro všechny a %1$s ztratí přístup.</string>
     <plurals name="settings_members_description">
         <item quantity="one">%1$d aktivní člen domácnosti</item>
         <item quantity="few">%1$d aktivní členové domácnosti</item>

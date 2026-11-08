@@ -20,6 +20,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -47,6 +53,18 @@ class AuthViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = AuthUiState(),
     )
+
+    init {
+        // When the app starts signed out, this screen is the NavHost's start destination and its entry
+        // stays under the signed-in app, so signing out returns to this ViewModel with the old form.
+        observeAuthStateUseCase()
+            .map { it is AuthState.Authenticated }
+            .distinctUntilChanged()
+            .drop(1)
+            .filter { authenticated -> !authenticated }
+            .onEach { mutableUiState.value = AuthUiState() }
+            .launchIn(viewModelScope)
+    }
 
     fun clearPreviewState() = clearPreviewModeUseCase()
 

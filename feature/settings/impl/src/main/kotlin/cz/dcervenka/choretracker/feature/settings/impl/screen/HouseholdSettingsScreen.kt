@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -107,6 +108,7 @@ fun HouseholdSettingsScreen(
     var showTransferPicker by rememberSaveable { mutableStateOf(false) }
     var transferTargetId by rememberSaveable { mutableStateOf<String?>(null) }
     val transferTarget = uiState.members.firstOrNull { it.id == transferTargetId }
+    var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
 
     if (showTransferPicker) {
         ModalBottomSheet(
@@ -155,6 +157,39 @@ fun HouseholdSettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { transferTargetId = null }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
+    }
+
+    if (showDeleteConfirm) {
+        val otherMemberNames = uiState.eligibleTransferTargets.joinToString { it.displayName }
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text(stringResource(R.string.settings_delete_household_title)) },
+            text = {
+                Text(
+                    if (otherMemberNames.isEmpty()) {
+                        stringResource(R.string.settings_delete_household_message)
+                    } else {
+                        stringResource(R.string.settings_delete_household_message_members, otherMemberNames)
+                    },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    onIntent(SettingsUiIntent.DeleteHousehold)
+                }) {
+                    Text(
+                        text = stringResource(R.string.settings_delete_household),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             },
@@ -348,6 +383,36 @@ fun HouseholdSettingsScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = spacing.small),
                                 )
+                            }
+                        }
+                    }
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                            SectionHeader(title = stringResource(R.string.settings_danger_zone_section))
+                            ListGroup {
+                                TextButton(
+                                    onClick = { showDeleteConfirm = true },
+                                    enabled = !uiState.isDeletingHousehold,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(spacing.small),
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.settings_delete_household),
+                                        color = if (uiState.isDeletingHousehold) {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        } else {
+                                            MaterialTheme.colorScheme.error
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    if (uiState.isDeletingHousehold) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

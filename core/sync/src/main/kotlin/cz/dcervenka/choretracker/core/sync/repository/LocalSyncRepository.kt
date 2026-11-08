@@ -48,6 +48,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retry
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -72,6 +74,8 @@ class LocalSyncRepository @Inject constructor(
 ) : SyncRepository {
 
     private var emailSyncedThisSession = false
+
+    private val syncMutex = Mutex()
 
     private val realtimeSyncApplier = RealtimeSyncApplier(
         memberDao = memberDao,
@@ -143,11 +147,16 @@ class LocalSyncRepository @Inject constructor(
     // see SyncModule) so that a UI-triggered call - e.g. a screen popping its own back stack
     // right after dispatching a mutation - can't cut the remote push short. The caller still
     // suspends until the push finishes; it just can no longer cancel it out from under itself.
+    // syncMutex: deleteHousehold waits for a push already running here instead of racing it.
     override suspend fun syncPendingOperations(): EmptyResult = syncScope.async {
+        syncMutex.withLock { pushPendingOperations() }
+    }.await()
+
+    private suspend fun pushPendingOperations(): EmptyResult {
         val authenticatedUser = (authRepository.authState.first() as? AuthState.Authenticated)?.user
         val shouldSkipSync = authenticatedUser == null || authenticatedUser.isPreview
         if (shouldSkipSync) {
-            return@async AppResult.Success(Unit)
+            return AppResult.Success(Unit)
         }
 
         val currentEmail = authenticatedUser.email
@@ -174,8 +183,8 @@ class LocalSyncRepository @Inject constructor(
             }
         }
 
-        syncError ?: AppResult.Success(Unit)
-    }.await()
+        return syncError ?: AppResult.Success(Unit)
+    }
 
     override suspend fun restoreHouseholdForUser(userId: String): AppResult<Boolean> {
         Timber.d("restoreHouseholdForUser: userId=$userId")
@@ -491,6 +500,21 @@ class LocalSyncRepository @Inject constructor(
             }
         }
     }
+
+    // syncScope, like syncPendingOperations: leaving the screen mid-call mustn't skip the local wipe
+    // once the household may already be gone remotely. Under syncMutex, so a push already running
+    // here lands before the delete, and the wipe clears the queue before the next one starts.
+    override suspend fun deleteHousehold(householdId: String): EmptyResult = syncScope.async {
+        syncMutex.withLock {
+            when (val result = remoteHouseholdDataSource.deleteHousehold(householdId)) {
+                is AppResult.Error -> result
+                is AppResult.Success -> {
+                    database.clearAll()
+                    AppResult.Success(Unit)
+                }
+            }
+        }
+    }.await()
 
     // A row absent from the pulled snapshot might just not have synced yet, not actually be
     // deleted remotely - pruning it here would discard local data that a pending operation is

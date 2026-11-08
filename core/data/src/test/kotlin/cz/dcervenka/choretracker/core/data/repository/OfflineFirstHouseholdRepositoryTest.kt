@@ -446,6 +446,76 @@ class OfflineFirstHouseholdRepositoryTest {
     }
 
     @Test
+    fun `deleteHousehold delegates to the sync repository for the owner by own role`() = runTest {
+        val household = HouseholdEntity(
+            id = "household-1",
+            name = "Home",
+            ownerUserId = "someone-else",
+            inviteCode = "ABC123",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+        )
+        val ownerMember = MemberEntity(
+            id = "member-self",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = HouseholdRole.OWNER.name,
+            isCurrentUser = true,
+        )
+        coEvery { householdDao.getHousehold("household-1") } returns household
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns ownerMember
+        coEvery { syncRepository.deleteHousehold("household-1") } returns AppResult.Success(Unit)
+
+        val result = repository.deleteHousehold("household-1")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify { syncRepository.deleteHousehold("household-1") }
+    }
+
+    @Test
+    fun `deleteHousehold rejects a non-owner`() = runTest {
+        val household = HouseholdEntity(
+            id = "household-1",
+            name = "Home",
+            ownerUserId = "owner-user",
+            inviteCode = "ABC123",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+        )
+        val selfMember = MemberEntity(
+            id = "member-self",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = HouseholdRole.MEMBER.name,
+            isCurrentUser = true,
+        )
+        coEvery { householdDao.getHousehold("household-1") } returns household
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns selfMember
+
+        val result = repository.deleteHousehold("household-1")
+
+        assertThat(result).isEqualTo(AppResult.Error(AppError.NOT_HOUSEHOLD_OWNER))
+        coVerify(exactly = 0) { syncRepository.deleteHousehold(any()) }
+    }
+
+    @Test
+    fun `deleteHousehold reports a missing own membership without deleting`() = runTest {
+        coEvery { householdDao.getHousehold("household-1") } returns HouseholdEntity(
+            id = "household-1",
+            name = "Home",
+            ownerUserId = "user-1",
+            inviteCode = "ABC123",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+        )
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns null
+
+        val result = repository.deleteHousehold("household-1")
+
+        assertThat(result).isEqualTo(AppResult.Error(AppError.OWN_MEMBERSHIP_NOT_FOUND))
+        coVerify(exactly = 0) { syncRepository.deleteHousehold(any()) }
+    }
+
+    @Test
     fun `transferOwnership issues the sync call then swaps owner and roles locally`() = runTest {
         val household = HouseholdEntity(
             id = "household-1",

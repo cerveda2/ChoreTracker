@@ -7,6 +7,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateMemberInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteAccountUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.DeleteHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LeaveHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAllMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
@@ -58,6 +59,7 @@ class SettingsViewModel @Inject constructor(
     private val removeMemberUseCase: RemoveMemberUseCase,
     private val transferOwnershipUseCase: TransferOwnershipUseCase,
     private val leaveHouseholdUseCase: LeaveHouseholdUseCase,
+    private val deleteHouseholdUseCase: DeleteHouseholdUseCase,
     private val deleteAccountUseCase: DeleteAccountUseCase,
     private val updateDisplayNameUseCase: UpdateDisplayNameUseCase,
     private val updateCurrentMemberDisplayNameUseCase: UpdateCurrentMemberDisplayNameUseCase,
@@ -73,6 +75,7 @@ class SettingsViewModel @Inject constructor(
     private val accountDisplayNameInput = MutableStateFlow("")
     private val householdNameInput = MutableStateFlow("")
     private val memberInput = MutableStateFlow("")
+    private val isDeletingHousehold = MutableStateFlow(false)
 
     private val currentHousehold = observeCurrentHouseholdUseCase()
         .onEach { household -> currentHouseholdId = household?.id }
@@ -147,10 +150,12 @@ class SettingsViewModel @Inject constructor(
         householdState,
         observeThemeSettingsUseCase(),
         observeReminderSettingsUseCase(),
-    ) { state, householdUiState, themeSettings, reminderSettings ->
+        isDeletingHousehold,
+    ) { state, householdUiState, themeSettings, reminderSettings, deletingHousehold ->
         val stateWithSettings = householdUiState.copy(
             themeSettings = themeSettings,
             reminderSettings = reminderSettings,
+            isDeletingHousehold = deletingHousehold,
         )
         when (state) {
             is AuthState.Authenticated -> {
@@ -194,6 +199,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    @Suppress("CyclomaticComplexMethod")
     private fun handleActionIntent(intent: SettingsUiIntent) {
         when (intent) {
             SettingsUiIntent.SaveAccountDisplayName -> saveAccountDisplayName()
@@ -205,6 +211,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsUiIntent.GenerateMemberInvite -> generateMemberInvite(intent.memberId)
             is SettingsUiIntent.TransferOwnership -> transferOwnership(intent.newOwnerMemberId)
             SettingsUiIntent.LeaveHousehold -> leaveHousehold()
+            SettingsUiIntent.DeleteHousehold -> deleteHousehold()
             SettingsUiIntent.DeleteAccount -> deleteAccount()
             is SettingsUiIntent.SetThemeMode -> viewModelScope.launch { setThemeModeUseCase(intent.mode) }
             is SettingsUiIntent.SetDynamicColor -> viewModelScope.launch { setDynamicColorUseCase(intent.enabled) }
@@ -306,6 +313,20 @@ class SettingsViewModel @Inject constructor(
             // On success the reactive observeCurrentHousehold -> ONBOARDING redirect handles
             // navigation; only surface an error (e.g. offline).
             val result = leaveHouseholdUseCase(household.id)
+            if (result is AppResult.Error) {
+                _events.send(SettingsUiEvent.Error(result.error))
+            }
+        }
+    }
+
+    private fun deleteHousehold() {
+        val household = uiState.value.household
+        if (household == null || isDeletingHousehold.value) return
+        isDeletingHousehold.value = true
+        viewModelScope.launch {
+            // Same reactive ONBOARDING redirect as leaveHousehold on success.
+            val result = deleteHouseholdUseCase(household.id)
+            isDeletingHousehold.value = false
             if (result is AppResult.Error) {
                 _events.send(SettingsUiEvent.Error(result.error))
             }
