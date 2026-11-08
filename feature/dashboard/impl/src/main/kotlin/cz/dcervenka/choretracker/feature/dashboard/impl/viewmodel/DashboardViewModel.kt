@@ -97,9 +97,12 @@ class DashboardViewModel @Inject constructor(
                 observeSyncStateUseCase(household.id),
                 isRefreshing,
             ) { snapshot, members, completions, syncState, refreshing ->
+                val currentMember = members.find { it.isCurrentUser }
                 DashboardUiState(
                     snapshot = snapshot,
                     members = members,
+                    isManager = currentMember?.role == HouseholdRole.OWNER || currentMember?.role == HouseholdRole.ADMIN,
+                    currentUserId = currentMember?.userId,
                     allCompletions = completions,
                     syncState = syncState,
                     isRefreshing = refreshing,

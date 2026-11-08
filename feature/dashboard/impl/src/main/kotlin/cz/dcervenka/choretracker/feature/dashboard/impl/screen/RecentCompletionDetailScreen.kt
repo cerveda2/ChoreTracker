@@ -105,22 +105,27 @@ fun RecentCompletionDetailScreen(
                 title = completion.choreName,
                 onBackClick = onBack,
                 actions = {
-                    IconButton(onClick = {
-                        editNote = completion.note.orEmpty()
-                        editSelectedMembers.clear()
-                        editSelectedMembers.addAll(completion.participantMemberIds)
-                        showEditSheet = true
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = stringResource(R.string.dashboard_edit_completion),
-                        )
-                    }
-                    IconButton(onClick = { showDeleteDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = stringResource(R.string.common_delete),
-                        )
+                    // Mirrors firestore.rules: members may change only the completions they logged.
+                    val canModify = uiState.isManager ||
+                        (uiState.currentUserId != null && completion.createdByUserId == uiState.currentUserId)
+                    if (canModify) {
+                        IconButton(onClick = {
+                            editNote = completion.note.orEmpty()
+                            editSelectedMembers.clear()
+                            editSelectedMembers.addAll(completion.participantMemberIds)
+                            showEditSheet = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = stringResource(R.string.dashboard_edit_completion),
+                            )
+                        }
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = stringResource(R.string.common_delete),
+                            )
+                        }
                     }
                 },
             )

@@ -62,6 +62,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
                     participantNames = completionParticipants
                         .mapNotNull { memberMap[it.memberId]?.displayName },
                     participantMemberIds = completionParticipants.map { it.memberId },
+                    createdByUserId = completion.createdByUserId,
                 )
             }
         }
@@ -86,6 +87,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
                     participantNames = completionParticipants
                         .mapNotNull { memberMap[it.memberId]?.displayName },
                     participantMemberIds = completionParticipants.map { it.memberId },
+                    createdByUserId = completion.createdByUserId,
                 )
             }
         }

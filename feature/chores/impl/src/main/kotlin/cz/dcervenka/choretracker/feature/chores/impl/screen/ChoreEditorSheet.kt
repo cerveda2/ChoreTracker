@@ -104,6 +104,13 @@ internal fun ChoreEditorSheet(
                 text = chore?.name?.takeIf { it.isNotBlank() } ?: stringResource(R.string.chores_new_chore),
                 style = MaterialTheme.typography.headlineSmall,
             )
+            if (!canEdit) {
+                Text(
+                    text = stringResource(R.string.chores_editor_read_only),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
             OutlinedTextField(
                 value = name,
@@ -268,6 +275,12 @@ internal fun ChoreEditorSheet(
                                 color = MaterialTheme.colorScheme.error,
                             )
                         }
+                    } else if (chore != null && !canDelete) {
+                        Text(
+                            text = stringResource(R.string.error_chore_delete_forbidden),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             } else {

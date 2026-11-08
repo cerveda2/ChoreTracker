@@ -282,6 +282,7 @@
     <string name="chores_editor_add_action">Add chore</string>
     <string name="chores_editor_reminder_label">Remind me when it\'s due</string>
     <string name="chores_editor_reminder_description">Only for you</string>
+    <string name="chores_editor_read_only">Only the owner, an admin or whoever added this chore can change it.</string>
     <string name="chores_reminder_off">Reminder off</string>
     <string name="chores_delete_title">Delete this chore?</string>
     <string name="chores_delete_message">This removes the chore from active planning while keeping existing completion history readable.</string>

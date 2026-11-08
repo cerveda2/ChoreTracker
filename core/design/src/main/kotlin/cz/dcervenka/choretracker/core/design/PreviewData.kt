@@ -110,6 +110,7 @@ object PreviewData {
                 completedAt = now,
                 participantNames = listOf("Dana"),
                 participantMemberIds = listOf("member-1"),
+                createdByUserId = "user-1",
             ),
             RecentCompletion(
                 completionId = "completion-2",
@@ -118,6 +119,7 @@ object PreviewData {
                 completedAt = now,
                 participantNames = listOf("Dana", "Alex"),
                 participantMemberIds = listOf("member-1", "member-2"),
+                createdByUserId = "user-2",
             ),
         ),
         staleChores = listOf(
