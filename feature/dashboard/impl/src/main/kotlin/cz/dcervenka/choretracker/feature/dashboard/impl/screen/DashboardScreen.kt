@@ -1,5 +1,9 @@
 package cz.dcervenka.choretracker.feature.dashboard.impl.screen
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,10 +30,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalMemberPalette
 import cz.dcervenka.choretracker.core.design.LocalSpacing
@@ -44,6 +53,7 @@ import cz.dcervenka.choretracker.core.design.components.ListGroup
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.LogCompletionSheet
 import cz.dcervenka.choretracker.core.design.components.MemberAvatar
+import cz.dcervenka.choretracker.core.design.components.NotificationsOffBanner
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.TopLevelBottomBarSpacer
 import cz.dcervenka.choretracker.core.design.rememberSaveableStringList
@@ -69,12 +79,27 @@ fun DashboardScreen(
     onOpenCompletion: (String) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenChores: () -> Unit,
+    notificationPromptSettled: Boolean,
 ) {
     val spacing = LocalSpacing.current
     val snackbarHostState = remember { SnackbarHostState() }
     val undoLabel = stringResource(R.string.common_undo)
     val loggedMessage = stringResource(R.string.dashboard_logged_snackbar)
     val resources = LocalResources.current
+    val context = LocalContext.current
+    // Not before the first-run permission prompt is answered, so it isn't announced as "off" yet.
+    // Re-read on resume: the banner's action leaves for the system settings screen and comes back.
+    if (notificationPromptSettled && !LocalInspectionMode.current) {
+        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+            val notificationManager = NotificationManagerCompat.from(context)
+            // A blocked channel (e.g. only "Household invites") silences that feature just the same.
+            val enabled = notificationManager.areNotificationsEnabled() &&
+                notificationManager.notificationChannelsCompat.none {
+                    it.importance == NotificationManagerCompat.IMPORTANCE_NONE
+                }
+            onIntent(DashboardUiIntent.SystemNotificationsChanged(enabled))
+        }
+    }
 
     LaunchedEffect(undoEvents) {
         undoEvents.collect { event ->
@@ -212,6 +237,28 @@ fun DashboardScreen(
                                 )
                             }
                         }
+                    if (uiState.showNotificationsBanner) {
+                        item {
+                            NotificationsOffBanner(
+                                onTurnOn = {
+                                    try {
+                                        context.startActivity(
+                                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+                                        )
+                                    } catch (ignored: ActivityNotFoundException) {
+                                        context.startActivity(
+                                            Intent(
+                                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                                Uri.fromParts("package", context.packageName, null),
+                                            ),
+                                        )
+                                    }
+                                },
+                                onDismiss = { onIntent(DashboardUiIntent.DismissNotificationsBanner) },
+                            )
+                        }
+                    }
                     item {
                         BalanceCard(balance = snapshot.balance, members = uiState.members)
                     }
@@ -315,6 +362,7 @@ private fun DashboardScreenPreview() {
             onOpenCompletion = {},
             onOpenSettings = {},
             onOpenChores = {},
+            notificationPromptSettled = true,
         )
     }
 }
