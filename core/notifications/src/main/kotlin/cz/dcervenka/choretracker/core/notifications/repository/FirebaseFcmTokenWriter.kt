@@ -43,6 +43,8 @@ class FirebaseFcmTokenWriter @Inject constructor() : FcmTokenWriter {
                             "userId" to userId,
                             FCM_TOKEN_FIELD to token,
                             "updatedAt" to Timestamp.now(),
+                            // Lets onFcmTokenWritten tell which account registered this token last.
+                            "fcmTokenUpdatedAt" to FieldValue.serverTimestamp(),
                         ),
                         SetOptions.merge(),
                     ),

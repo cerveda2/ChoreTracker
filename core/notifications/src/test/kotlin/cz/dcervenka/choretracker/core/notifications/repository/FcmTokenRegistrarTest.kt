@@ -226,6 +226,39 @@ class FcmTokenRegistrarTest {
     }
 
     @Test
+    fun `onIdRegistered does not write the token back while signing out`() = runTest(coroutineRule.dispatcher) {
+        authState.value = AuthState.Authenticated(
+            AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
+        )
+        createRegistrar()
+        advanceUntilIdle()
+
+        registrar.clearCurrentUserToken()
+        registrar.onIdRegistered("id-late")
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { tokenWriter.writeToken(any(), "id-late") }
+    }
+
+    @Test
+    fun `onIdRegistered writes again after signing back in`() = runTest(coroutineRule.dispatcher) {
+        val user = AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana")
+        authState.value = AuthState.Authenticated(user)
+        createRegistrar()
+        advanceUntilIdle()
+        registrar.clearCurrentUserToken()
+        authState.value = AuthState.SignedOut
+        advanceUntilIdle()
+
+        authState.value = AuthState.Authenticated(user)
+        advanceUntilIdle()
+        registrar.onIdRegistered("id-new")
+        advanceUntilIdle()
+
+        coVerify { tokenWriter.writeToken("user-1", "id-new") }
+    }
+
+    @Test
     fun `onIdRegistered does not write while notifications are disabled`() = runTest(coroutineRule.dispatcher) {
         inviteNotificationsEnabled.value = false
         authState.value = AuthState.Authenticated(

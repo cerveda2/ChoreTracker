@@ -10,6 +10,7 @@ import cz.dcervenka.choretracker.core.data.contract.ChoreCompletionRepository
 import cz.dcervenka.choretracker.core.data.contract.ChoreRepository
 import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
 import cz.dcervenka.choretracker.core.data.contract.InviteNotificationSettingsRepository
+import cz.dcervenka.choretracker.core.data.contract.PushTokenRepository
 import cz.dcervenka.choretracker.core.data.contract.ReminderSettingsRepository
 import cz.dcervenka.choretracker.core.data.contract.StatsRepository
 import cz.dcervenka.choretracker.core.data.contract.ThemeSettingsRepository
@@ -22,6 +23,7 @@ import cz.dcervenka.choretracker.core.data.repository.OfflineFirstHouseholdRepos
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstStatsRepository
 import cz.dcervenka.choretracker.core.data.repository.PreviewAwareAuthRepository
 import dagger.Binds
+import dagger.BindsOptionalOf
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -74,6 +76,10 @@ abstract class DataRepositoryModule {
 
     @Binds
     abstract fun bindThemeSettingsRepository(impl: DataStoreThemeSettingsRepository): ThemeSettingsRepository
+
+    // Bound by core/notifications; optional so that module stays removable on its own.
+    @BindsOptionalOf
+    abstract fun optionalPushTokenRepository(): PushTokenRepository
 
     companion object {
         @Provides

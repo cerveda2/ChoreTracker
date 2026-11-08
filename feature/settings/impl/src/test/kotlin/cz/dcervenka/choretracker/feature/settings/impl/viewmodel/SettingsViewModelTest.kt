@@ -203,6 +203,26 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `sign out shows progress and ignores a repeat while it runs`() = runTest(coroutineRule.dispatcher) {
+        val signingOut = CompletableDeferred<EmptyResult>()
+        coEvery { signOutUseCase() } coAnswers { signingOut.await() }
+        val viewModel = createViewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        viewModel.dispatch(SettingsUiIntent.SignOut)
+        viewModel.dispatch(SettingsUiIntent.SignOut)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isSigningOut).isTrue()
+        coVerify(exactly = 1) { signOutUseCase() }
+
+        signingOut.complete(AppResult.Success(Unit))
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.isSigningOut).isFalse()
+    }
+
+    @Test
     fun `uiState reflects theme and reminder settings`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
         themeSettingsFlow.value = ThemeSettings(mode = ThemeMode.DARK, dynamicColor = true)

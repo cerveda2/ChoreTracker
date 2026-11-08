@@ -41,6 +41,11 @@ class FcmTokenRegistrar @Inject constructor(
     @NotificationScope private val scope: CoroutineScope,
 ) : PushTokenRepository {
 
+    // Set by clearCurrentUserToken until the sign-out it precedes lands, so a registration
+    // callback arriving in between can't write the token straight back.
+    @Volatile
+    private var signingOutUserId: String? = null
+
     // Signing out is handled by clearCurrentUserToken, called before it happens: by the time
     // authState reports it, rules already deny the write to the signed-out user's doc.
     init {
@@ -48,6 +53,7 @@ class FcmTokenRegistrar @Inject constructor(
             .flatMapLatest { authState ->
                 val user = (authState as? AuthState.Authenticated)?.user
                 if (user == null || user.isPreview) {
+                    signingOutUserId = null
                     emptyFlow()
                 } else {
                     inviteNotificationSettingsRepository.observeEnabled(user.id).map { enabled -> user.id to enabled }
@@ -73,18 +79,20 @@ class FcmTokenRegistrar @Inject constructor(
     fun onIdRegistered(installationId: String) {
         scope.launch {
             val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
-            if (user == null || user.isPreview) return@launch
+            if (user == null || user.isPreview || user.id == signingOutUserId) return@launch
             if (inviteNotificationSettingsRepository.isEnabled(user.id)) {
                 tokenWriter.writeToken(user.id, installationId)
             }
         }
     }
 
-    // Bounded so signing out offline isn't held up: the write stays queued under this user and is
-    // sent the next time they sign in on this device, before their new token is registered.
+    // Bounded so signing out offline isn't held up for long. An unfinished write stays queued under
+    // this user and is sent if they sign in here again; if another account signs in instead, the
+    // onFcmTokenWritten function moves the token off this one.
     override suspend fun clearCurrentUserToken() {
         val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
         if (user == null || user.isPreview) return
+        signingOutUserId = user.id
         withTimeoutOrNull(SIGN_OUT_CLEAR_TIMEOUT) { tokenWriter.clearToken(user.id) }
     }
 

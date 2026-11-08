@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -21,6 +23,7 @@ import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -224,8 +227,16 @@ fun SettingsScreen(
                 }
             }
             item(key = "sign_out") {
-                TextButton(onClick = { showSignOutConfirm = true }) {
+                TextButton(onClick = { showSignOutConfirm = true }, enabled = !uiState.isSigningOut) {
                     Text(stringResource(R.string.settings_sign_out))
+                    if (uiState.isSigningOut) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(start = spacing.small)
+                                .size(18.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    }
                 }
             }
         }
