@@ -72,6 +72,7 @@
     <string name="dashboard_completion_delete_title">Smazat toto splnění?</string>
     <string name="dashboard_completion_delete_message">Tím se odstraní zaznamenaný záznam. Samotný úkol není ovlivněn.</string>
     <string name="dashboard_edit_completion">Upravit splnění</string>
+    <string name="dashboard_completion_read_only">Tento záznam může upravit jen vlastník, správce nebo ten, kdo ho zaznamenal.</string>
     <string name="dashboard_balance_title">Bilance</string>
     <string name="dashboard_balance_period">Posledních 30 dní</string>
     <string name="dashboard_balance_even">Skoro vyrovnáno.</string>
@@ -148,6 +149,14 @@
     <string name="settings_make_admin">Jmenovat správcem</string>
     <string name="settings_remove_admin">Odebrat roli správce</string>
     <string name="settings_step_down_admin">Vzdát se role správce</string>
+    <string name="settings_household_name_manager_only">Domácnost může přejmenovat jen vlastník nebo správce.</string>
+    <string name="household_invite_manager_only">Nový kód pozvánky může vytvořit jen vlastník nebo správce.</string>
+    <string name="settings_transfer_ownership_owner_only">Vlastnictví může předat jen vlastník.</string>
+    <string name="settings_delete_household_owner_only">Domácnost může smazat jen vlastník.</string>
+    <string name="household_add_member_manager_only">Členy může přidávat jen vlastník nebo správce.</string>
+    <string name="settings_member_actions_manager_only">Členy může spravovat jen vlastník nebo správce.</string>
+    <string name="settings_member_admin_owner_only">Správce může odebrat a role měnit jen vlastník.</string>
+    <string name="settings_member_role_owner_only">Role může měnit jen vlastník.</string>
     <string name="household_delete_member_title">Odebrat tohoto člena?</string>
     <string name="household_delete_member_message">Při příští synchronizaci ztratí přístup k této domácnosti. Jeho dřívější splnění zůstanou viditelná v historii.</string>
     <string name="household_invite_section">Pozvánka</string>

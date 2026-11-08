@@ -235,6 +235,13 @@ fun HouseholdSettingsScreen(
                                 onClick = { onIntent(SettingsUiIntent.SaveHouseholdName) },
                                 enabled = uiState.isManager && uiState.householdNameInput.isNotBlank(),
                             )
+                            if (!uiState.isManager) {
+                                Text(
+                                    text = stringResource(R.string.settings_household_name_manager_only),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
                 }
@@ -354,66 +361,85 @@ fun HouseholdSettingsScreen(
                                     onClick = { onIntent(SettingsUiIntent.RefreshInvite) },
                                     enabled = uiState.isManager,
                                 )
+                                if (!uiState.isManager) {
+                                    Text(
+                                        text = stringResource(R.string.household_invite_manager_only),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
                             }
                         }
                     }
                 }
-                if (uiState.isOwner) {
-                    item {
-                        Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
-                            SectionHeader(title = stringResource(R.string.settings_membership_section))
-                            ListGroup {
-                                TextButton(
-                                    onClick = { showTransferPicker = true },
-                                    enabled = uiState.eligibleTransferTargets.isNotEmpty(),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(spacing.small),
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.settings_transfer_ownership),
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                }
-                            }
-                            if (uiState.eligibleTransferTargets.isEmpty()) {
+                // Shown to everyone, so members can see these exist and who can use them.
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                        SectionHeader(title = stringResource(R.string.settings_membership_section))
+                        ListGroup {
+                            TextButton(
+                                onClick = { showTransferPicker = true },
+                                enabled = uiState.isOwner && uiState.eligibleTransferTargets.isNotEmpty(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(spacing.small),
+                            ) {
                                 Text(
-                                    text = stringResource(R.string.settings_transfer_ownership_none),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = spacing.small),
+                                    text = stringResource(R.string.settings_transfer_ownership),
+                                    modifier = Modifier.weight(1f),
                                 )
                             }
                         }
+                        val transferHint = when {
+                            !uiState.isOwner -> R.string.settings_transfer_ownership_owner_only
+                            uiState.eligibleTransferTargets.isEmpty() -> R.string.settings_transfer_ownership_none
+                            else -> null
+                        }
+                        if (transferHint != null) {
+                            Text(
+                                text = stringResource(transferHint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = spacing.small),
+                            )
+                        }
                     }
-                    item {
-                        Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
-                            SectionHeader(title = stringResource(R.string.settings_danger_zone_section))
-                            ListGroup {
-                                TextButton(
-                                    onClick = { showDeleteConfirm = true },
-                                    enabled = !uiState.isDeletingHousehold,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(spacing.small),
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.settings_delete_household),
-                                        color = if (uiState.isDeletingHousehold) {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        } else {
-                                            MaterialTheme.colorScheme.error
-                                        },
-                                        modifier = Modifier.weight(1f),
+                }
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                        SectionHeader(title = stringResource(R.string.settings_danger_zone_section))
+                        ListGroup {
+                            TextButton(
+                                onClick = { showDeleteConfirm = true },
+                                enabled = uiState.isOwner && !uiState.isDeletingHousehold,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(spacing.small),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.settings_delete_household),
+                                    color = if (uiState.isOwner && !uiState.isDeletingHousehold) {
+                                        MaterialTheme.colorScheme.error
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                )
+                                if (uiState.isDeletingHousehold) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp,
                                     )
-                                    if (uiState.isDeletingHousehold) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(18.dp),
-                                            strokeWidth = 2.dp,
-                                        )
-                                    }
                                 }
                             }
+                        }
+                        if (!uiState.isOwner) {
+                            Text(
+                                text = stringResource(R.string.settings_delete_household_owner_only),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = spacing.small),
+                            )
                         }
                     }
                 }

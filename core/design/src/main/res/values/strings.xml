@@ -70,6 +70,7 @@
     <string name="dashboard_completion_delete_title">Delete this completion?</string>
     <string name="dashboard_completion_delete_message">This removes the logged entry. The chore itself is not affected.</string>
     <string name="dashboard_edit_completion">Edit completion</string>
+    <string name="dashboard_completion_read_only">Only the owner, an admin or whoever logged this can change it.</string>
     <string name="dashboard_balance_title">Balance</string>
     <string name="dashboard_balance_period">Last 30 days</string>
     <string name="dashboard_balance_even">Nearly even.</string>
@@ -136,6 +137,14 @@
     <string name="settings_make_admin">Make admin</string>
     <string name="settings_remove_admin">Remove admin</string>
     <string name="settings_step_down_admin">Step down from admin</string>
+    <string name="settings_household_name_manager_only">Only the owner or an admin can rename the household.</string>
+    <string name="household_invite_manager_only">Only the owner or an admin can create a new invite code.</string>
+    <string name="settings_transfer_ownership_owner_only">Only the owner can transfer ownership.</string>
+    <string name="settings_delete_household_owner_only">Only the owner can delete the household.</string>
+    <string name="household_add_member_manager_only">Only the owner or an admin can add members.</string>
+    <string name="settings_member_actions_manager_only">Only the owner or an admin can manage members.</string>
+    <string name="settings_member_admin_owner_only">Only the owner can remove an admin or change roles.</string>
+    <string name="settings_member_role_owner_only">Only the owner can change roles.</string>
     <string name="household_delete_member_title">Remove this member?</string>
     <string name="household_delete_member_message">They lose access to this household on their next sync. Their past completions stay visible in history.</string>
     <string name="household_invite_section">Invite</string>

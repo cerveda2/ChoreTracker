@@ -20,6 +20,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -117,14 +118,8 @@ fun MembersSettingsScreen(
             MemberSheetContent(
                 member = sheetMember,
                 color = palette.color(uiState.members.indexOf(sheetMember).coerceAtLeast(0)),
-                canInvite = uiState.isManager && sheetMember.userId == null,
-                canRemove = uiState.isManager &&
-                    !sheetMember.isCurrentUser &&
-                    sheetMember.role != HouseholdRole.OWNER &&
-                    (uiState.isOwner || sheetMember.role == HouseholdRole.MEMBER),
-                canChangeRole = uiState.isOwner && sheetMember.userId != null &&
-                    !sheetMember.isCurrentUser,
-                canStepDown = uiState.isAdmin && sheetMember.isCurrentUser,
+                isManager = uiState.isManager,
+                isOwner = uiState.isOwner,
                 onInviteClick = {
                     memberInviteName = sheetMember.displayName
                     onIntent(SettingsUiIntent.GenerateMemberInvite(sheetMember.id))
@@ -281,6 +276,13 @@ fun MembersSettingsScreen(
                             onClick = { onIntent(SettingsUiIntent.AddMember) },
                             enabled = uiState.isManager && uiState.memberInput.isNotBlank(),
                         )
+                        if (!uiState.isManager) {
+                            Text(
+                                text = stringResource(R.string.household_add_member_manager_only),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }
@@ -302,16 +304,29 @@ private fun memberSubtitle(member: HouseholdMember): String {
 private fun MemberSheetContent(
     member: HouseholdMember,
     color: Color,
-    canInvite: Boolean,
-    canRemove: Boolean,
-    canChangeRole: Boolean,
-    canStepDown: Boolean,
+    isManager: Boolean,
+    isOwner: Boolean,
     onInviteClick: () -> Unit,
     onRemoveClick: () -> Unit,
     onRoleClick: () -> Unit,
     onStepDownClick: () -> Unit,
 ) {
     val spacing = LocalSpacing.current
+    // Mirrors firestore.rules. Every action that applies to this member is shown, disabled when the
+    // viewer's role can't use it, with the reason underneath.
+    val showInvite = member.userId == null
+    val showRemove = !member.isCurrentUser && member.role != HouseholdRole.OWNER
+    val showRoleChange = member.userId != null && !member.isCurrentUser && member.role != HouseholdRole.OWNER
+    val showStepDown = member.isCurrentUser && member.role == HouseholdRole.ADMIN
+    val canRemove = isManager && (isOwner || member.role == HouseholdRole.MEMBER)
+    val restriction = when {
+        !showInvite && !showRemove && !showRoleChange -> null
+        !isManager -> R.string.settings_member_actions_manager_only
+        isOwner -> null
+        member.role == HouseholdRole.ADMIN -> R.string.settings_member_admin_owner_only
+        showRoleChange -> R.string.settings_member_role_owner_only
+        else -> null
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -334,10 +349,11 @@ private fun MemberSheetContent(
                 )
             }
         }
-        if (canInvite) {
+        if (showInvite) {
             HorizontalDivider()
             TextButton(
                 onClick = onInviteClick,
+                enabled = isManager,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Icon(imageVector = Icons.Outlined.Link, contentDescription = null)
@@ -349,42 +365,57 @@ private fun MemberSheetContent(
                 )
             }
         }
-        if (canRemove) {
+        if (showRemove) {
             HorizontalDivider()
             TextButton(
                 onClick = onRemoveClick,
+                enabled = canRemove,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Icon(
                     imageVector = Icons.Outlined.PersonRemove,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
+                    tint = if (canRemove) MaterialTheme.colorScheme.error else LocalContentColor.current,
                 )
                 Text(
                     text = stringResource(R.string.household_delete_member),
-                    color = MaterialTheme.colorScheme.error,
+                    color = if (canRemove) MaterialTheme.colorScheme.error else Color.Unspecified,
                     modifier = Modifier
                         .weight(1f)
                         .padding(start = spacing.medium),
                 )
             }
         }
-        if (canChangeRole || canStepDown) {
+        if (showRoleChange) {
             HorizontalDivider()
             TextButton(
-                onClick = if (canStepDown) onStepDownClick else onRoleClick,
+                onClick = onRoleClick,
+                enabled = isOwner,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
                     stringResource(
-                        when {
-                            canStepDown -> R.string.settings_step_down_admin
-                            member.role == HouseholdRole.ADMIN -> R.string.settings_remove_admin
-                            else -> R.string.settings_make_admin
+                        if (member.role == HouseholdRole.ADMIN) {
+                            R.string.settings_remove_admin
+                        } else {
+                            R.string.settings_make_admin
                         },
                     ),
                 )
             }
+        }
+        if (showStepDown) {
+            HorizontalDivider()
+            TextButton(onClick = onStepDownClick, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.settings_step_down_admin))
+            }
+        }
+        if (restriction != null) {
+            Text(
+                text = stringResource(restriction),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
