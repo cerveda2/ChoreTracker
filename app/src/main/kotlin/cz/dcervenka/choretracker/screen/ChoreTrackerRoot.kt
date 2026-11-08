@@ -57,6 +57,7 @@ fun ChoreTrackerRoot(
     val navController = rememberNavController()
     val rootDestination by viewModel.rootDestination.collectAsStateWithLifecycle()
     val themeSettings by viewModel.themeSettings.collectAsStateWithLifecycle()
+    var notificationPromptSettled by remember { mutableStateOf(false) }
     // NavHost's startDestination must stay fixed for the life of this composition - feeding it a
     // changed value (keying this remember on rootDestination itself) makes NavHost rebuild its
     // whole graph on every Auth/Onboarding/Main transition, racing the LaunchedEffect below
@@ -179,13 +180,14 @@ fun ChoreTrackerRoot(
                         navController = navController,
                         onOpenSettings = { navigateToTab(SettingsDestination.route) },
                         onOpenChores = { navigateToTab(ChoresDestination.route) },
+                        notificationPromptSettled = { notificationPromptSettled },
                     )
                     choresScreen()
                     statsScreen(navController = navController)
                     settingsScreen(navController = navController)
                 }
                 if (rootDestination == RootDestination.Main) {
-                    NotificationPermissionRequest()
+                    NotificationPermissionRequest(onSettled = { notificationPromptSettled = true })
                 }
             }
         }
