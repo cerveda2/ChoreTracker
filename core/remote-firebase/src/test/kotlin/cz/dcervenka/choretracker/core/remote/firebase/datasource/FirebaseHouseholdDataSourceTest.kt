@@ -75,9 +75,15 @@ class FirebaseHouseholdDataSourceTest {
     @Test
     fun `toFirestoreFields keeps an active member's email`() {
         val fields = activeMember.toFirestoreFields()
+        assertThat(fields).doesNotContainKey("role")
 
         assertThat(fields["email"]).isEqualTo("dana@example.com")
         assertThat(fields["active"]).isEqualTo(true)
+    }
+
+    @Test
+    fun `toFirestoreFields writes role only for an explicit role decision`() {
+        assertThat(activeMember.toFirestoreFields(writeRole = true)["role"]).isEqualTo("MEMBER")
     }
 
     @Test

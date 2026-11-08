@@ -14,4 +14,5 @@ data class ChoreEntity(
     val deletedAt: Instant?,
     val frequencyDays: Int? = null,
     val category: String = "OTHER",
+    val createdByUserId: String? = null,
 )

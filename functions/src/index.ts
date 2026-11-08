@@ -283,14 +283,18 @@ async function resolveHouseholdMembership(
   const membersSnap = await membersRef.get();
   const isOwner = householdSnap.get("ownerUserId") === uid;
 
-  // Member docs carry no join timestamp, so "oldest co-member" is not computable - fall back to a
-  // deterministic pick: the lowest document id (which is the uid for a linked member).
+  // Member docs carry no join timestamp. Prefer an admin, then pick the lowest document id
+  // (the uid for a linked member) for a deterministic fallback.
   const coLinked = membersSnap.docs
     .filter((doc) => {
       const memberUserId = doc.get("userId");
       return typeof memberUserId === "string" && memberUserId !== uid && doc.get("active") === true;
     })
-    .sort((a, b) => a.id.localeCompare(b.id));
+    .sort((a, b) => {
+      const aAdmin = a.get("role") === "ADMIN" ? 0 : 1;
+      const bAdmin = b.get("role") === "ADMIN" ? 0 : 1;
+      return aAdmin - bAdmin || a.id.localeCompare(b.id);
+    });
 
   if (isOwner && coLinked.length === 0) {
     await deleteHouseholdTree(db, householdId, householdRef);
@@ -319,7 +323,7 @@ async function resolveHouseholdMembership(
   await membersRef
     .doc(uid)
     .set(
-      { active: false, removedAt: FieldValue.serverTimestamp(), email: FieldValue.delete() },
+      { active: false, removedAt: FieldValue.serverTimestamp(), email: FieldValue.delete(), role: "MEMBER" },
       { merge: true },
     );
   logger.info("deleteAccount: member soft-removed", { uid, householdId });

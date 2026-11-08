@@ -2,12 +2,20 @@ package cz.dcervenka.choretracker.core.data.repository
 
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
+import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.SyncRepository
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
+import cz.dcervenka.choretracker.core.database.dao.CompletionDao
+import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
+import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
+import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
+import cz.dcervenka.choretracker.core.model.auth.AppUser
+import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.error.AppError
 import io.mockk.MockKAnnotations
 import io.mockk.Runs
 import io.mockk.coEvery
@@ -31,6 +39,15 @@ class OfflineFirstChoreRepositoryTest {
     lateinit var choreDao: ChoreDao
 
     @MockK
+    lateinit var completionDao: CompletionDao
+
+    @MockK
+    lateinit var memberDao: MemberDao
+
+    @MockK
+    lateinit var authRepository: AuthRepository
+
+    @MockK
     lateinit var pendingSyncOperationDao: PendingSyncOperationDao
 
     @MockK
@@ -47,10 +64,32 @@ class OfflineFirstChoreRepositoryTest {
         coEvery { choreDao.updateName(any(), any()) } just Runs
         coEvery { choreDao.updateFrequencyDays(any(), any()) } just Runs
         coEvery { choreDao.updateCategory(any(), any()) } just Runs
+        coEvery { choreDao.getChore(any()) } returns ChoreEntity(
+            id = "chore-1",
+            householdId = "household-1",
+            name = "Kitchen",
+            isActive = true,
+            createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+            deletedAt = null,
+        )
+        coEvery { memberDao.findByUserId(any(), any()) } returns MemberEntity(
+            id = "member-1",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Owner",
+            role = "OWNER",
+            isCurrentUser = true,
+        )
+        every { authRepository.authState } returns MutableStateFlow(
+            AuthState.Authenticated(AppUser("user-1", "owner@example.com", "Owner")),
+        )
         coEvery { pendingSyncOperationDao.upsert(any()) } just Runs
         coEvery { syncRepository.syncPendingOperations() } returns AppResult.Success(Unit)
         repository = OfflineFirstChoreRepository(
             choreDao = choreDao,
+            completionDao = completionDao,
+            memberDao = memberDao,
+            authRepository = authRepository,
             pendingSyncOperationDao = pendingSyncOperationDao,
             syncRepository = syncRepository,
             scope = CoroutineScope(Dispatchers.Unconfined),
@@ -169,6 +208,45 @@ class OfflineFirstChoreRepositoryTest {
 
         coVerify(exactly = 1) { syncRepository.syncPendingOperations() }
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
+    }
+
+    @Test
+    fun `member can delete a chore they created before it has completions`() = runTest {
+        coEvery { memberDao.findByUserId(any(), any()) } returns MemberEntity(
+            id = "member-1", householdId = "household-1", userId = "user-1",
+            displayName = "Member", role = "MEMBER", isCurrentUser = true,
+        )
+        coEvery { choreDao.getChore("chore-1") } returns ChoreEntity(
+            id = "chore-1", householdId = "household-1", name = "Kitchen",
+            isActive = true, createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+            deletedAt = null, createdByUserId = "user-1",
+        )
+        coEvery { completionDao.getCompletions("household-1") } returns emptyList()
+
+        assertThat(repository.deleteChore("chore-1")).isInstanceOf(AppResult.Success::class.java)
+        coVerify { choreDao.markDeleted("chore-1", any()) }
+    }
+
+    @Test
+    fun `member cannot delete a chore once anyone has completed it`() = runTest {
+        coEvery { memberDao.findByUserId(any(), any()) } returns MemberEntity(
+            id = "member-1", householdId = "household-1", userId = "user-1",
+            displayName = "Member", role = "MEMBER", isCurrentUser = true,
+        )
+        coEvery { choreDao.getChore("chore-1") } returns ChoreEntity(
+            id = "chore-1", householdId = "household-1", name = "Kitchen",
+            isActive = true, createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+            deletedAt = null, createdByUserId = "user-1",
+        )
+        coEvery { completionDao.getCompletions("household-1") } returns listOf(
+            CompletionEntity(
+                id = "completion-1", householdId = "household-1", choreId = "chore-1",
+                createdAt = Instant.parse("2026-01-02T00:00:00Z"), createdByUserId = "user-1", note = null,
+            ),
+        )
+
+        assertThat(repository.deleteChore("chore-1")).isEqualTo(AppResult.Error(AppError.CHORE_DELETE_FORBIDDEN))
+        coVerify(exactly = 0) { choreDao.markDeleted(any(), any()) }
     }
 
     // updateChoreActive

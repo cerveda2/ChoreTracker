@@ -227,13 +227,13 @@ fun HouseholdSettingsScreen(
                                     capitalization = KeyboardCapitalization.Words,
                                     autoCorrectEnabled = true,
                                 ),
-                                enabled = uiState.isOwner,
+                                enabled = uiState.isManager,
                                 modifier = Modifier.fillMaxWidth(),
                             )
                             PrimaryButton(
                                 text = stringResource(R.string.settings_save_household_name),
                                 onClick = { onIntent(SettingsUiIntent.SaveHouseholdName) },
-                                enabled = uiState.isOwner && uiState.householdNameInput.isNotBlank(),
+                                enabled = uiState.isManager && uiState.householdNameInput.isNotBlank(),
                             )
                         }
                     }
@@ -352,7 +352,7 @@ fun HouseholdSettingsScreen(
                                 PrimaryButton(
                                     text = stringResource(R.string.household_refresh_invite),
                                     onClick = { onIntent(SettingsUiIntent.RefreshInvite) },
-                                    enabled = uiState.isOwner,
+                                    enabled = uiState.isManager,
                                 )
                             }
                         }

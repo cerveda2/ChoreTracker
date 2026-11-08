@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.Flow
 interface ChoreRepository {
     fun observeChores(householdId: String): Flow<List<Chore>>
 
+    fun observeCompletedChoreIds(householdId: String): Flow<Set<String>>
+
     suspend fun addChore(
         householdId: String,
         name: String,

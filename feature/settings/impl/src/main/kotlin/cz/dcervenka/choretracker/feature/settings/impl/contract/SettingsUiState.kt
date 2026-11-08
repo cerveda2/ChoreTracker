@@ -29,6 +29,12 @@ data class SettingsUiState(
     val isOwner: Boolean
         get() = members.any { it.isCurrentUser && it.role == HouseholdRole.OWNER }
 
+    val isAdmin: Boolean
+        get() = members.any { it.isCurrentUser && it.role == HouseholdRole.ADMIN }
+
+    val isManager: Boolean
+        get() = isOwner || isAdmin
+
     /** Linked members (real accounts) other than the current user - the only valid transfer targets. */
     val eligibleTransferTargets: List<HouseholdMember>
         get() = members.filter { !it.isCurrentUser && it.userId != null }

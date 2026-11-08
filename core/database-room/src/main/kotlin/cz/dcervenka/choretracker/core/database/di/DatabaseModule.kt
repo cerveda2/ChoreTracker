@@ -45,6 +45,12 @@ private val MIGRATION_9_10 = object : Migration(9, 10) {
     }
 }
 
+private val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE chores ADD COLUMN createdByUserId TEXT DEFAULT NULL")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -56,7 +62,7 @@ object DatabaseModule {
         context,
         ChoreTrackerDatabase::class.java,
         "chore-tracker.db",
-    ).addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+    ).addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
         .build()
 
     @Provides

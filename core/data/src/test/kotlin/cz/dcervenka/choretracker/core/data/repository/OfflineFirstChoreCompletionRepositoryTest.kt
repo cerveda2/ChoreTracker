@@ -7,12 +7,11 @@ import cz.dcervenka.choretracker.core.data.contract.SyncRepository
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
-import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntity
-import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
+import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import io.mockk.MockKAnnotations
@@ -46,9 +45,6 @@ class OfflineFirstChoreCompletionRepositoryTest {
     lateinit var memberDao: MemberDao
 
     @MockK
-    lateinit var householdDao: HouseholdDao
-
-    @MockK
     lateinit var pendingSyncOperationDao: PendingSyncOperationDao
 
     @MockK
@@ -69,6 +65,14 @@ class OfflineFirstChoreCompletionRepositoryTest {
     fun setUp() {
         MockKAnnotations.init(this)
         every { authRepository.authState } returns authState
+        coEvery { memberDao.findByUserId(any(), any()) } returns MemberEntity(
+            id = "member-1",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = "MEMBER",
+            isCurrentUser = true,
+        )
         coEvery { completionDao.upsert(any()) } just Runs
         coEvery { participantDao.insertAll(any()) } just Runs
         coEvery { pendingSyncOperationDao.upsert(any()) } just Runs
@@ -78,7 +82,6 @@ class OfflineFirstChoreCompletionRepositoryTest {
             participantDao = participantDao,
             choreDao = choreDao,
             memberDao = memberDao,
-            householdDao = householdDao,
             pendingSyncOperationDao = pendingSyncOperationDao,
             authRepository = authRepository,
             syncRepository = syncRepository,
@@ -188,14 +191,6 @@ class OfflineFirstChoreCompletionRepositoryTest {
         note = "Original note",
     )
 
-    private fun household(ownerUserId: String) = HouseholdEntity(
-        id = "household-1",
-        name = "Home",
-        ownerUserId = ownerUserId,
-        inviteCode = "ABC123",
-        createdAt = Instant.parse("2026-01-01T10:00:00Z"),
-    )
-
     @Test
     fun `updateCompletion succeeds when the caller is the original author`() = runTest {
         coEvery { completionDao.getCompletion("completion-1") } returns completion(createdByUserId = "user-1")
@@ -210,7 +205,10 @@ class OfflineFirstChoreCompletionRepositoryTest {
     @Test
     fun `updateCompletion succeeds when the caller is the household owner`() = runTest {
         coEvery { completionDao.getCompletion("completion-1") } returns completion(createdByUserId = "other-user")
-        coEvery { householdDao.getHousehold("household-1") } returns household(ownerUserId = "user-1")
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns MemberEntity(
+            id = "member-1", householdId = "household-1", userId = "user-1",
+            displayName = "Dana", role = "OWNER", isCurrentUser = true,
+        )
         coEvery { participantDao.deleteByCompletionId(any()) } just Runs
 
         val result = repository.updateCompletion("completion-1", note = "Edited", participantMemberIds = emptyList())
@@ -220,9 +218,21 @@ class OfflineFirstChoreCompletionRepositoryTest {
     }
 
     @Test
+    fun `updateCompletion succeeds when the caller is a household admin`() = runTest {
+        coEvery { completionDao.getCompletion("completion-1") } returns completion(createdByUserId = "other-user")
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns MemberEntity(
+            id = "member-1", householdId = "household-1", userId = "user-1",
+            displayName = "Dana", role = "ADMIN", isCurrentUser = true,
+        )
+        coEvery { participantDao.deleteByCompletionId(any()) } just Runs
+
+        assertThat(repository.updateCompletion("completion-1", "Edited", emptyList()))
+            .isInstanceOf(AppResult.Success::class.java)
+    }
+
+    @Test
     fun `updateCompletion fails when the caller is neither the author nor the owner`() = runTest {
         coEvery { completionDao.getCompletion("completion-1") } returns completion(createdByUserId = "other-user")
-        coEvery { householdDao.getHousehold("household-1") } returns household(ownerUserId = "yet-another-user")
 
         val result = repository.updateCompletion("completion-1", note = "Edited", participantMemberIds = emptyList())
 
@@ -247,7 +257,6 @@ class OfflineFirstChoreCompletionRepositoryTest {
     @Test
     fun `deleteCompletion fails when the caller is neither the author nor the owner`() = runTest {
         coEvery { completionDao.getCompletion("completion-1") } returns completion(createdByUserId = "other-user")
-        coEvery { householdDao.getHousehold("household-1") } returns household(ownerUserId = "yet-another-user")
 
         val result = repository.deleteCompletion("completion-1")
 

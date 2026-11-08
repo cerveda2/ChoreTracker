@@ -117,10 +117,14 @@ fun MembersSettingsScreen(
             MemberSheetContent(
                 member = sheetMember,
                 color = palette.color(uiState.members.indexOf(sheetMember).coerceAtLeast(0)),
-                canInvite = uiState.isOwner && sheetMember.userId == null,
-                canRemove = uiState.isOwner &&
+                canInvite = uiState.isManager && sheetMember.userId == null,
+                canRemove = uiState.isManager &&
                     !sheetMember.isCurrentUser &&
-                    sheetMember.role != HouseholdRole.OWNER,
+                    sheetMember.role != HouseholdRole.OWNER &&
+                    (uiState.isOwner || sheetMember.role == HouseholdRole.MEMBER),
+                canChangeRole = uiState.isOwner && sheetMember.userId != null &&
+                    !sheetMember.isCurrentUser,
+                canStepDown = uiState.isAdmin && sheetMember.isCurrentUser,
                 onInviteClick = {
                     memberInviteName = sheetMember.displayName
                     onIntent(SettingsUiIntent.GenerateMemberInvite(sheetMember.id))
@@ -128,6 +132,19 @@ fun MembersSettingsScreen(
                 },
                 onRemoveClick = {
                     memberToRemove = sheetMember.id
+                    sheetMemberId = null
+                },
+                onRoleClick = {
+                    val nextRole = if (sheetMember.role == HouseholdRole.ADMIN) {
+                        HouseholdRole.MEMBER
+                    } else {
+                        HouseholdRole.ADMIN
+                    }
+                    onIntent(SettingsUiIntent.SetMemberRole(sheetMember.id, nextRole))
+                    sheetMemberId = null
+                },
+                onStepDownClick = {
+                    onIntent(SettingsUiIntent.SetMemberRole(sheetMember.id, HouseholdRole.MEMBER))
                     sheetMemberId = null
                 },
             )
@@ -256,13 +273,13 @@ fun MembersSettingsScreen(
                                 capitalization = KeyboardCapitalization.Words,
                                 autoCorrectEnabled = true,
                             ),
-                            enabled = uiState.isOwner,
+                            enabled = uiState.isManager,
                             modifier = Modifier.fillMaxWidth(),
                         )
                         PrimaryButton(
                             text = stringResource(R.string.household_add_member),
                             onClick = { onIntent(SettingsUiIntent.AddMember) },
-                            enabled = uiState.isOwner && uiState.memberInput.isNotBlank(),
+                            enabled = uiState.isManager && uiState.memberInput.isNotBlank(),
                         )
                     }
                 }
@@ -287,8 +304,12 @@ private fun MemberSheetContent(
     color: Color,
     canInvite: Boolean,
     canRemove: Boolean,
+    canChangeRole: Boolean,
+    canStepDown: Boolean,
     onInviteClick: () -> Unit,
     onRemoveClick: () -> Unit,
+    onRoleClick: () -> Unit,
+    onStepDownClick: () -> Unit,
 ) {
     val spacing = LocalSpacing.current
     Column(
@@ -348,6 +369,23 @@ private fun MemberSheetContent(
                 )
             }
         }
+        if (canChangeRole || canStepDown) {
+            HorizontalDivider()
+            TextButton(
+                onClick = if (canStepDown) onStepDownClick else onRoleClick,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    stringResource(
+                        when {
+                            canStepDown -> R.string.settings_step_down_admin
+                            member.role == HouseholdRole.ADMIN -> R.string.settings_remove_admin
+                            else -> R.string.settings_make_admin
+                        },
+                    ),
+                )
+            }
+        }
     }
 }
 
@@ -377,6 +415,7 @@ private fun RemoveMemberDialog(
 private fun HouseholdRole.localizedName(): String = stringResource(
     when (this) {
         HouseholdRole.OWNER -> R.string.household_role_owner
+        HouseholdRole.ADMIN -> R.string.household_role_admin
         HouseholdRole.MEMBER -> R.string.household_role_member
     },
 )

@@ -56,7 +56,7 @@ import javax.inject.Singleton
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 
-@Suppress("TooManyFunctions", "LongParameterList")
+@Suppress("TooManyFunctions", "LongParameterList", "LargeClass")
 @Singleton
 class LocalSyncRepository @Inject constructor(
     private val authRepository: AuthRepository,
@@ -252,7 +252,11 @@ class LocalSyncRepository @Inject constructor(
                 )
             }
         }
-        snapshot.chores.forEach { chore ->
+        val pendingChoreIds = pendingSyncOperationDao.getAll()
+            .filter { it.entityType == "chore" }
+            .map { it.entityId }
+            .toSet()
+        snapshot.chores.filterNot { it.id in pendingChoreIds }.forEach { chore ->
             choreDao.upsert(
                 ChoreEntity(
                     id = chore.id,
@@ -263,10 +267,15 @@ class LocalSyncRepository @Inject constructor(
                     deletedAt = chore.deletedAt,
                     frequencyDays = chore.frequencyDays,
                     category = chore.category.name,
+                    createdByUserId = chore.createdByUserId,
                 ),
             )
         }
-        snapshot.completions.forEach { completion ->
+        val pendingCompletionIds = pendingSyncOperationDao.getAll()
+            .filter { it.entityType == "completion" }
+            .map { it.entityId }
+            .toSet()
+        snapshot.completions.filterNot { it.id in pendingCompletionIds }.forEach { completion ->
             completionDao.upsert(
                 CompletionEntity(
                     id = completion.id,
@@ -308,6 +317,7 @@ class LocalSyncRepository @Inject constructor(
         return AppResult.Success(true)
     }
 
+    @Suppress("CyclomaticComplexMethod")
     private suspend fun syncHousehold(
         householdId: String,
         operationIds: List<String>,
@@ -321,8 +331,14 @@ class LocalSyncRepository @Inject constructor(
         // for the new owner that misroutes every household-level mutation (add/remove member,
         // rename) through performMemberSync below, which silently drops them. The member's own
         // `role` IS kept fresh by the real-time members listener, so it doesn't have that gap.
-        val isOwner = memberDao.findByUserId(householdId, authenticatedUser.id)?.role == HouseholdRole.OWNER.name
-        val result = performRemoteSync(householdId, isOwner, authenticatedUser)
+        val role = memberDao.findByUserId(householdId, authenticatedUser.id)?.role
+        val isOwner = role == HouseholdRole.OWNER.name
+        val isAdmin = role == HouseholdRole.ADMIN.name
+        val writeJoinRole = operations.any {
+            it.id in operationIds && it.entityType == "member" && it.operationType == "join"
+        }
+        val householdWriteFields = householdWriteFields(operations, operationIds.toSet())
+        val result = performRemoteSync(householdId, isOwner, authenticatedUser, writeJoinRole, householdWriteFields)
         if (result == null) {
             // buildSnapshot/buildMemberSync found no local household or member row to sync from -
             // these operations can never succeed from this state, so discard them instead of
@@ -355,12 +371,17 @@ class LocalSyncRepository @Inject constructor(
             is AppResult.Success -> {
                 Timber.d("syncPendingOperations: synced ${operationIds.size} operations for household=$householdId")
                 val operationIdSet = operationIds.toSet()
+                val uploadErrors = uploadQueuedChanges(householdId, operations, operationIdSet, isAdmin)
+                // Rules rejected these (e.g. a role changed while they were queued), so a retry can't
+                // succeed, and while queued they'd keep the listener from correcting the local copy.
+                val rejectedOperationIds = uploadErrors.filterValues { it == AppError.PERMISSION_DENIED }.keys
                 val failedOperationIds = buildSet {
-                    // Member removal has no dedicated remote call - it's a soft removedAt/active
-                    // field write that rides the full-snapshot push in performRemoteSync above,
-                    // same as a chore's deletedAt.
+                    // Owner member removal rides the full snapshot. Admin removal and all chore
+                    // changes use targeted writes below; completion deletes and invite consumption
+                    // already have their own remote calls.
                     addAll(deleteRemoteCompletions(householdId, operations, operationIdSet))
                     addAll(consumeRemoteInvites(householdId, operations, operationIdSet))
+                    addAll(uploadErrors.keys - rejectedOperationIds)
                 }
                 // Only operations that actually landed remotely are cleared from the queue -
                 // anything that failed (e.g. a delete/consume Firestore rejected) stays pending
@@ -379,9 +400,31 @@ class LocalSyncRepository @Inject constructor(
                 if (operations.any { it.id in operationIdSet && it.entityType == "member" }) {
                     resyncMembers(householdId, authenticatedUser.id)
                 }
+                if (rejectedOperationIds.isNotEmpty()) {
+                    Timber.w("syncPendingOperations: dropped rejected uploads $rejectedOperationIds, re-pulling")
+                    restoreHouseholdForUser(authenticatedUser.id)
+                }
                 error?.let { AppResult.Error(it) }
             }
         }
+    }
+
+    private suspend fun householdWriteFields(
+        operations: List<PendingSyncOperationEntity>,
+        operationIds: Set<String>,
+    ): Set<String> {
+        val queued = operations.filter { it.id in operationIds }
+        if (queued.any { it.entityType == "household" && it.operationType == "upsert" }) {
+            return setOf("id", "name", "ownerUserId", "inviteCode", "createdAt")
+        }
+        val fields = mutableSetOf<String>()
+        if (queued.any { it.entityType == "household" && it.operationType == "rename" }) fields += "name"
+        for (op in queued.filter { it.entityType == "invite" && it.operationType == "upsert" }) {
+            if (inviteDao.findByCode(op.payload)?.let { it.targetMemberId == null } == true) {
+                fields += "inviteCode"
+            }
+        }
+        return fields
     }
 
     // applyMembers drops listener snapshots while a member op is queued, and Firestore doesn't resend unchanged
@@ -397,27 +440,141 @@ class LocalSyncRepository @Inject constructor(
         householdId: String,
         isOwner: Boolean,
         authenticatedUser: AppUser,
+        writeJoinRole: Boolean,
+        householdWriteFields: Set<String>,
     ): EmptyResult? = if (isOwner) {
-        performOwnerSync(householdId, authenticatedUser)
+        performOwnerSync(householdId, authenticatedUser, householdWriteFields)
     } else {
-        performMemberSync(householdId, authenticatedUser)
+        performMemberSync(householdId, authenticatedUser, writeJoinRole)
     }
 
-    private suspend fun performOwnerSync(householdId: String, authenticatedUser: AppUser): EmptyResult? {
+    private suspend fun performOwnerSync(
+        householdId: String,
+        authenticatedUser: AppUser,
+        householdWriteFields: Set<String>,
+    ): EmptyResult? {
         val snapshot = buildSnapshot(householdId, authenticatedUser.id, authenticatedUser.email)
             ?: return null
-        return remoteHouseholdDataSource.upsertHouseholdSnapshot(snapshot, authenticatedUser.id)
+        return remoteHouseholdDataSource.upsertHouseholdSnapshot(
+            snapshot.copy(householdWriteFields = householdWriteFields),
+            authenticatedUser.id,
+        )
     }
 
-    private suspend fun performMemberSync(householdId: String, authenticatedUser: AppUser): EmptyResult? {
+    private suspend fun performMemberSync(
+        householdId: String,
+        authenticatedUser: AppUser,
+        writeJoinRole: Boolean,
+    ): EmptyResult? {
         val (member, completions) = buildMemberSync(householdId, authenticatedUser.id) ?: return null
         return remoteHouseholdDataSource.upsertMemberSnapshot(
             householdId = householdId,
             member = member.copy(email = authenticatedUser.email),
             completions = completions,
             userId = authenticatedUser.id,
+            writeRole = writeJoinRole,
         )
     }
+
+    @Suppress("CyclomaticComplexMethod")
+    private suspend fun uploadQueuedChanges(
+        householdId: String,
+        operations: List<PendingSyncOperationEntity>,
+        operationIds: Set<String>,
+        isAdmin: Boolean,
+    ): Map<String, AppError> {
+        val errors = mutableMapOf<String, AppError>()
+        for (op in operations.filter { it.id in operationIds }) {
+            val result = when {
+                op.entityType == "chore" -> {
+                    val chore = choreDao.getChore(op.entityId)
+                    if (chore == null) {
+                        AppResult.Error(AppError.CHORE_EDIT_FORBIDDEN)
+                    } else {
+                        remoteHouseholdDataSource.upsertChore(chore.asChoreModel())
+                    }
+                }
+                isAdmin && op.entityType == "completion" && op.operationType != "delete" -> {
+                    val completion = completionDao.getCompletion(op.entityId)
+                    if (completion == null) {
+                        AppResult.Error(AppError.COMPLETION_NOT_FOUND)
+                    } else {
+                        val participantIds = completionParticipantDao.getParticipants(householdId)
+                            .filter { it.completionId == completion.id }
+                            .map { it.memberId }
+                        remoteHouseholdDataSource.upsertCompletion(
+                            ChoreCompletion(
+                                id = completion.id,
+                                householdId = completion.householdId,
+                                choreId = completion.choreId,
+                                createdAt = completion.createdAt,
+                                createdByUserId = completion.createdByUserId,
+                                note = completion.note,
+                                participantMemberIds = participantIds,
+                            ),
+                        )
+                    }
+                }
+                isAdmin && op.entityType == "household" && op.operationType == "rename" ->
+                    remoteHouseholdDataSource.updateHouseholdName(householdId, op.payload)
+                isAdmin && op.entityType == "invite" && op.operationType == "upsert" -> {
+                    val invite = inviteDao.findByCode(op.payload)
+                    if (invite == null) {
+                        AppResult.Error(AppError.INVITE_NOT_FOUND)
+                    } else {
+                        remoteHouseholdDataSource.upsertInvite(invite.asInviteModel())
+                    }
+                }
+                isAdmin && op.entityType == "member" && op.operationType == "upsert" -> {
+                    val member = memberDao.getMembers(householdId).find { it.id == op.payload }
+                    if (member == null || member.userId != null || member.removedAt != null) {
+                        AppResult.Success(Unit)
+                    } else {
+                        remoteHouseholdDataSource.upsertPlaceholder(member.asMemberModel())
+                    }
+                }
+                isAdmin && op.entityType == "member" && op.operationType == "delete" ->
+                    remoteHouseholdDataSource.removeMember(householdId, op.payload)
+                else -> continue
+            }
+            if (result is AppResult.Error) errors[op.id] = result.error
+        }
+        return errors
+    }
+
+    private fun ChoreEntity.asChoreModel(): Chore = Chore(
+        id = id,
+        householdId = householdId,
+        name = name,
+        isActive = isActive,
+        createdAt = createdAt,
+        deletedAt = deletedAt,
+        frequencyDays = frequencyDays,
+        category = runCatching { ChoreCategory.valueOf(category) }.getOrDefault(ChoreCategory.OTHER),
+        createdByUserId = createdByUserId,
+    )
+
+    private fun InviteEntity.asInviteModel(): Invite = Invite(
+        id = id,
+        householdId = householdId,
+        code = code,
+        createdAt = createdAt,
+        consumedAt = consumedAt,
+        targetMemberId = targetMemberId,
+        consumedByMemberId = consumedByMemberId,
+    )
+
+    private fun MemberEntity.asMemberModel(): HouseholdMember = HouseholdMember(
+        id = id,
+        householdId = householdId,
+        userId = userId,
+        displayName = displayName,
+        role = runCatching { HouseholdRole.valueOf(role) }.getOrDefault(HouseholdRole.MEMBER),
+        isCurrentUser = isCurrentUser,
+        email = email,
+        joinedViaInviteId = joinedViaInviteId,
+        removedAt = removedAt,
+    )
 
     private suspend fun ensureEmailSynced(userId: String, email: String) {
         val householdId = householdDao.getCurrentHouseholdForUser(userId)?.id ?: return
@@ -475,6 +632,9 @@ class LocalSyncRepository @Inject constructor(
 
     override suspend fun fetchOwnMemberId(householdId: String, userId: String): AppResult<String?> =
         remoteHouseholdDataSource.fetchOwnMemberId(householdId, userId)
+
+    override suspend fun setMemberRole(householdId: String, memberDocId: String, role: String): EmptyResult =
+        remoteHouseholdDataSource.setMemberRole(householdId, memberDocId, role)
 
     override suspend fun transferOwnership(
         householdId: String,
@@ -648,6 +808,7 @@ class LocalSyncRepository @Inject constructor(
                     deletedAt = chore.deletedAt,
                     frequencyDays = chore.frequencyDays,
                     category = runCatching { ChoreCategory.valueOf(chore.category) }.getOrDefault(ChoreCategory.OTHER),
+                    createdByUserId = chore.createdByUserId,
                 )
             },
             completions = completions,

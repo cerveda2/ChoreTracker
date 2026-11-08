@@ -80,6 +80,21 @@ class OfflineFirstHouseholdRepositoryTest {
         every { householdDao.observeHouseholdForUser(any()) } returns localHousehold
         coEvery { householdDao.getCurrentHousehold() } returns null
         coEvery { householdDao.getCurrentHouseholdForUser(any()) } returns null
+        coEvery { householdDao.getHousehold(any()) } returns HouseholdEntity(
+            id = "household-1",
+            name = "Home",
+            ownerUserId = "user-1",
+            inviteCode = "ABC123",
+            createdAt = Instant.parse("2026-01-01T10:00:00Z"),
+        )
+        coEvery { memberDao.findByUserId(any(), any()) } returns MemberEntity(
+            id = "member-owner",
+            householdId = "household-1",
+            userId = "user-1",
+            displayName = "Dana",
+            role = HouseholdRole.OWNER.name,
+            isCurrentUser = true,
+        )
         coEvery { syncRepository.syncPendingOperations() } returns AppResult.Success(Unit)
         coEvery { syncRepository.fetchOwnMemberId(any(), any()) } returns AppResult.Success(null)
         coEvery { syncRepository.restoreHouseholdForUser("user-1") } coAnswers {
@@ -354,6 +369,7 @@ class OfflineFirstHouseholdRepositoryTest {
         )
         coEvery { memberDao.getMembers("household-1") } returns listOf(member)
         coEvery { memberDao.markRemoved(any(), any()) } just Runs
+        coEvery { memberDao.updateRole(any(), any()) } just Runs
         coEvery { pendingSyncOperationDao.upsert(any()) } just Runs
 
         val result = repository.removeMember("household-1", "member-2")
@@ -367,6 +383,27 @@ class OfflineFirstHouseholdRepositoryTest {
             )
         }
         coVerify { syncRepository.syncPendingOperations() }
+    }
+
+    @Test
+    fun `removeMember resets a removed admin to member`() = runTest {
+        val admin = MemberEntity(
+            id = "member-2",
+            householdId = "household-1",
+            userId = "user-2",
+            displayName = "Bob",
+            role = HouseholdRole.ADMIN.name,
+            isCurrentUser = false,
+        )
+        coEvery { memberDao.getMembers("household-1") } returns listOf(admin)
+        coEvery { memberDao.markRemoved(any(), any()) } just Runs
+        coEvery { memberDao.updateRole(any(), any()) } just Runs
+        coEvery { pendingSyncOperationDao.upsert(any()) } just Runs
+
+        val result = repository.removeMember("household-1", "member-2")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify { memberDao.updateRole("member-2", HouseholdRole.MEMBER.name) }
     }
 
     @Test
@@ -569,7 +606,42 @@ class OfflineFirstHouseholdRepositoryTest {
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
         coVerify { householdDao.updateOwner("household-1", "user-2") }
         coVerify { memberDao.updateRole("member-target", HouseholdRole.OWNER.name) }
-        coVerify { memberDao.updateRole("member-owner", HouseholdRole.MEMBER.name) }
+        coVerify { memberDao.updateRole("member-owner", HouseholdRole.ADMIN.name) }
+    }
+
+    @Test
+    fun `owner promotes a linked member after the remote role write succeeds`() = runTest {
+        coEvery { memberDao.getMembers("household-1") } returns listOf(
+            MemberEntity(
+                id = "member-target", householdId = "household-1", userId = "user-2",
+                displayName = "Bob", role = HouseholdRole.MEMBER.name, isCurrentUser = false,
+            ),
+        )
+        coEvery { syncRepository.setMemberRole("household-1", "user-2", "ADMIN") } returns AppResult.Success(Unit)
+        coEvery { memberDao.updateRole(any(), any()) } just Runs
+
+        assertThat(repository.setMemberRole("household-1", "member-target", HouseholdRole.ADMIN))
+            .isInstanceOf(AppResult.Success::class.java)
+        coVerify { syncRepository.setMemberRole("household-1", "user-2", "ADMIN") }
+        coVerify { memberDao.updateRole("member-target", "ADMIN") }
+    }
+
+    @Test
+    fun `admin cannot promote another member`() = runTest {
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns MemberEntity(
+            id = "member-admin", householdId = "household-1", userId = "user-1",
+            displayName = "Dana", role = HouseholdRole.ADMIN.name, isCurrentUser = true,
+        )
+        coEvery { memberDao.getMembers("household-1") } returns listOf(
+            MemberEntity(
+                id = "member-target", householdId = "household-1", userId = "user-2",
+                displayName = "Bob", role = HouseholdRole.MEMBER.name, isCurrentUser = false,
+            ),
+        )
+
+        assertThat(repository.setMemberRole("household-1", "member-target", HouseholdRole.ADMIN))
+            .isEqualTo(AppResult.Error(AppError.NOT_HOUSEHOLD_OWNER))
+        coVerify(exactly = 0) { syncRepository.setMemberRole(any(), any(), any()) }
     }
 
     @Test

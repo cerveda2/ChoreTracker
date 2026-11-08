@@ -260,7 +260,13 @@ fun ChoresScreen(
     if (editingChore != null) {
         ChoreEditorSheet(
             chore = editingChore,
-            isOwner = uiState.isOwner,
+            canEdit = uiState.isManager ||
+                (uiState.currentUserId != null && editingChore.createdByUserId == uiState.currentUserId),
+            canDelete = uiState.isManager ||
+                (
+                    uiState.currentUserId != null && editingChore.createdByUserId == uiState.currentUserId &&
+                        editingChore.id !in uiState.completedChoreIds
+                    ),
             onDismiss = { editingChoreId = null },
             onSave = { name, category, frequencyDays, isActive ->
                 onIntent(
@@ -288,7 +294,7 @@ fun ChoresScreen(
     if (showNewChoreSheet && householdId != null) {
         ChoreEditorSheet(
             chore = null,
-            isOwner = uiState.isOwner,
+            canEdit = true,
             onDismiss = { showNewChoreSheet = false },
             onSave = { name, category, frequencyDays, _ ->
                 onIntent(
@@ -302,7 +308,7 @@ fun ChoresScreen(
                 )
                 showNewChoreSheet = false
             },
-            reminderEnabled = newChoreReminderEnabled.takeIf { uiState.remindersEnabled && uiState.isOwner },
+            reminderEnabled = newChoreReminderEnabled.takeIf { uiState.remindersEnabled },
             onReminderChange = { newChoreReminderEnabled = it },
         )
     }

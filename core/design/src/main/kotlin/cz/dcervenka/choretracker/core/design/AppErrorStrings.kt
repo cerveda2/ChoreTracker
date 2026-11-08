@@ -23,6 +23,9 @@ fun AppError.toStringRes(): Int = when (this) {
     AppError.COMPLETION_EDIT_FORBIDDEN -> R.string.error_completion_edit_forbidden
     AppError.COMPLETION_DELETE_FORBIDDEN -> R.string.error_completion_delete_forbidden
     AppError.NOT_HOUSEHOLD_OWNER -> R.string.error_not_household_owner
+    AppError.NOT_HOUSEHOLD_MANAGER -> R.string.error_not_household_manager
+    AppError.CHORE_EDIT_FORBIDDEN -> R.string.error_chore_edit_forbidden
+    AppError.CHORE_DELETE_FORBIDDEN -> R.string.error_chore_delete_forbidden
     AppError.MEMBER_NOT_JOINED -> R.string.error_member_not_joined
     AppError.ALREADY_OWNER -> R.string.error_already_owner
     AppError.OWNER_CANNOT_LEAVE -> R.string.error_owner_cannot_leave

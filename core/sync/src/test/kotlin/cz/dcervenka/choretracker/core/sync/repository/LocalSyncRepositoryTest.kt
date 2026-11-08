@@ -50,6 +50,7 @@ import org.junit.Rule
 import org.junit.Test
 import kotlin.time.Instant
 
+@Suppress("LargeClass")
 class LocalSyncRepositoryTest {
 
     @get:Rule
@@ -146,6 +147,7 @@ class LocalSyncRepositoryTest {
         every { remoteHouseholdDataSource.observeInvites(any()) } returns MutableStateFlow(emptyList())
         every { remoteHouseholdDataSource.observeChores(any()) } returns MutableStateFlow(emptyList())
         coEvery { remoteHouseholdDataSource.fetchMembers(any(), any()) } returns AppResult.Success(sampleMembers())
+        coEvery { remoteHouseholdDataSource.upsertChore(any()) } returns AppResult.Success(Unit)
         // ensureEmailSynced runs on first authenticated sync; return null so it exits early
         coEvery { householdDao.getCurrentHouseholdForUser(any()) } returns null
         // Real-time subscription init block — paused dispatcher means this never runs unless a
@@ -265,7 +267,143 @@ class LocalSyncRepositoryTest {
 
             assertThat(result).isInstanceOf(AppResult.Success::class.java)
             coVerify { remoteHouseholdDataSource.upsertHouseholdSnapshot(any(), "user-1") }
+            coVerify { remoteHouseholdDataSource.upsertChore(match { it.id == "chore-1" }) }
+            coVerify {
+                remoteHouseholdDataSource.upsertHouseholdSnapshot(
+                    match { it.householdWriteFields.isEmpty() },
+                    "user-1",
+                )
+            }
         }
+
+    @Test
+    fun `admin rename uploads only the household name`() = runTest(coroutineRule.dispatcher) {
+        val op = PendingSyncOperationEntity(
+            id = "op-1",
+            entityType = "household",
+            entityId = "household-1",
+            operationType = "rename",
+            payload = "New name",
+            createdAt = Instant.parse("2026-01-04T10:00:00Z"),
+        )
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(op)
+        coEvery { householdDao.getHousehold("household-1") } returns householdEntity
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns
+            memberEntity.copy(role = HouseholdRole.ADMIN.name)
+        coEvery { completionParticipantDao.getParticipants("household-1") } returns emptyList()
+        coEvery { completionDao.getCompletions("household-1") } returns emptyList()
+        coEvery { remoteHouseholdDataSource.upsertMemberSnapshot(any(), any(), any(), any()) } returns
+            AppResult.Success(Unit)
+        coEvery { remoteHouseholdDataSource.updateHouseholdName("household-1", "New name") } returns
+            AppResult.Success(Unit)
+        coEvery { pendingSyncOperationDao.delete("op-1") } just Runs
+
+        val resultDeferred = async { repository.syncPendingOperations() }
+        advanceUntilIdle()
+        assertThat(resultDeferred.await()).isInstanceOf(AppResult.Success::class.java)
+        coVerify { remoteHouseholdDataSource.updateHouseholdName("household-1", "New name") }
+        coVerify(exactly = 0) { remoteHouseholdDataSource.upsertHouseholdSnapshot(any(), any()) }
+    }
+
+    @Test
+    fun `admin edit of another member's completion uploads that completion`() = runTest(coroutineRule.dispatcher) {
+        val op = PendingSyncOperationEntity(
+            id = "op-1",
+            entityType = "completion",
+            entityId = "completion-1",
+            operationType = "upsert",
+            payload = "Edited",
+            createdAt = Instant.parse("2026-01-04T10:00:00Z"),
+        )
+        val completion = CompletionEntity(
+            id = "completion-1",
+            householdId = "household-1",
+            choreId = "chore-1",
+            createdAt = Instant.parse("2026-01-03T10:00:00Z"),
+            createdByUserId = "user-2",
+            note = "Edited",
+        )
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(op)
+        coEvery { completionDao.getCompletion("completion-1") } returns completion
+        coEvery { householdDao.getHousehold("household-1") } returns householdEntity
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns
+            memberEntity.copy(role = HouseholdRole.ADMIN.name)
+        coEvery { completionParticipantDao.getParticipants("household-1") } returns emptyList()
+        coEvery { completionDao.getCompletions("household-1") } returns listOf(completion)
+        coEvery { remoteHouseholdDataSource.upsertMemberSnapshot(any(), any(), any(), any()) } returns
+            AppResult.Success(Unit)
+        coEvery { remoteHouseholdDataSource.upsertCompletion(any()) } returns AppResult.Success(Unit)
+        coEvery { pendingSyncOperationDao.delete("op-1") } just Runs
+
+        val resultDeferred = async { repository.syncPendingOperations() }
+        advanceUntilIdle()
+        assertThat(resultDeferred.await()).isInstanceOf(AppResult.Success::class.java)
+        coVerify {
+            remoteHouseholdDataSource.upsertCompletion(
+                match { it.id == "completion-1" && it.createdByUserId == "user-2" && it.note == "Edited" },
+            )
+        }
+    }
+
+    @Test
+    fun `a chore upload rejected by the rules is dropped and the household re-pulled`() =
+        runTest(coroutineRule.dispatcher) {
+            val op = PendingSyncOperationEntity(
+                id = "op-1",
+                entityType = "chore",
+                entityId = "chore-1",
+                operationType = "rename",
+                payload = "Queued offline",
+                createdAt = Instant.parse("2026-01-04T10:00:00Z"),
+            )
+            coEvery { pendingSyncOperationDao.getAll() } returns listOf(op)
+            coEvery { choreDao.getChore("chore-1") } returns choreEntity
+            coEvery { householdDao.getHousehold("household-1") } returns householdEntity
+            coEvery { memberDao.findByUserId("household-1", "user-1") } returns
+                memberEntity.copy(role = HouseholdRole.ADMIN.name)
+            coEvery { completionParticipantDao.getParticipants("household-1") } returns emptyList()
+            coEvery { remoteHouseholdDataSource.upsertMemberSnapshot(any(), any(), any(), any()) } returns
+                AppResult.Success(Unit)
+            coEvery { remoteHouseholdDataSource.upsertChore(any()) } returns
+                AppResult.Error(AppError.PERMISSION_DENIED)
+            coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(null)
+            coEvery { pendingSyncOperationDao.delete("op-1") } just Runs
+
+            val resultDeferred = async { repository.syncPendingOperations() }
+            advanceUntilIdle()
+
+            assertThat(resultDeferred.await()).isInstanceOf(AppResult.Success::class.java)
+            coVerify { pendingSyncOperationDao.delete("op-1") }
+            coVerify { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") }
+        }
+
+    @Test
+    fun `a chore upload that fails for other reasons stays queued`() = runTest(coroutineRule.dispatcher) {
+        val op = PendingSyncOperationEntity(
+            id = "op-1",
+            entityType = "chore",
+            entityId = "chore-1",
+            operationType = "rename",
+            payload = "Queued offline",
+            createdAt = Instant.parse("2026-01-04T10:00:00Z"),
+        )
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(op)
+        coEvery { choreDao.getChore("chore-1") } returns choreEntity
+        coEvery { householdDao.getHousehold("household-1") } returns householdEntity
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns
+            memberEntity.copy(role = HouseholdRole.ADMIN.name)
+        coEvery { completionParticipantDao.getParticipants("household-1") } returns emptyList()
+        coEvery { remoteHouseholdDataSource.upsertMemberSnapshot(any(), any(), any(), any()) } returns
+            AppResult.Success(Unit)
+        coEvery { remoteHouseholdDataSource.upsertChore(any()) } returns AppResult.Error(AppError.NETWORK)
+
+        val resultDeferred = async { repository.syncPendingOperations() }
+        advanceUntilIdle()
+
+        assertThat(resultDeferred.await()).isEqualTo(AppResult.Error(AppError.SYNC_PARTIALLY_FAILED))
+        coVerify(exactly = 0) { pendingSyncOperationDao.delete(any()) }
+        coVerify(exactly = 0) { remoteHouseholdDataSource.fetchHouseholdSnapshot(any()) }
+    }
 
     @Test
     fun `syncPendingOperations includes joinedViaInviteId in the owner's pushed snapshot`() =
@@ -332,7 +470,7 @@ class LocalSyncRepositoryTest {
             coEvery { completionParticipantDao.getParticipants("household-1") } returns emptyList()
             coEvery { completionDao.getCompletions("household-1") } returns emptyList()
             coEvery {
-                remoteHouseholdDataSource.upsertMemberSnapshot(any(), any(), any(), any())
+                remoteHouseholdDataSource.upsertMemberSnapshot(any(), any(), any(), any(), true)
             } returns AppResult.Success(Unit)
             coEvery { pendingSyncOperationDao.delete(any()) } just Runs
 
@@ -347,6 +485,7 @@ class LocalSyncRepositoryTest {
                     member = match { it.joinedViaInviteId == "invite-1" && it.id == "member-2" },
                     completions = any(),
                     userId = "user-2",
+                    writeRole = true,
                 )
             }
         }

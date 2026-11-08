@@ -9,7 +9,6 @@ import cz.dcervenka.choretracker.core.data.di.ApplicationScope
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
-import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
@@ -17,6 +16,7 @@ import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntit
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.error.AppError
+import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -36,7 +36,6 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
     private val participantDao: CompletionParticipantDao,
     private val choreDao: ChoreDao,
     private val memberDao: MemberDao,
-    private val householdDao: HouseholdDao,
     private val pendingSyncOperationDao: PendingSyncOperationDao,
     private val authRepository: AuthRepository,
     private val syncRepository: SyncRepository,
@@ -151,7 +150,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
             existing == null -> AppResult.Error(AppError.COMPLETION_NOT_FOUND)
             currentUserId == null -> AppResult.Error(AppError.NOT_SIGNED_IN)
             !canModifyCompletion(existing, currentUserId) -> {
-                Timber.w("updateCompletion failed: userId=$currentUserId is not the owner or the author")
+                Timber.w("updateCompletion failed: userId=$currentUserId is not a manager or the author")
                 AppResult.Error(AppError.COMPLETION_EDIT_FORBIDDEN)
             }
             else -> {
@@ -186,7 +185,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
             existing == null -> AppResult.Success(Unit)
             currentUserId == null -> AppResult.Error(AppError.NOT_SIGNED_IN)
             !canModifyCompletion(existing, currentUserId) -> {
-                Timber.w("deleteCompletion failed: userId=$currentUserId is not the owner or the author")
+                Timber.w("deleteCompletion failed: userId=$currentUserId is not a manager or the author")
                 AppResult.Error(AppError.COMPLETION_DELETE_FORBIDDEN)
             }
             else -> {
@@ -209,10 +208,10 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
         }
     }
 
-    // Mirrors firestore.rules' completions update/delete rule: the household owner can modify
-    // any completion; a regular member can only modify one they authored themselves.
+    // Mirrors firestore.rules: managers can modify any completion, members only their own.
     private suspend fun canModifyCompletion(completion: CompletionEntity, currentUserId: String): Boolean {
         if (completion.createdByUserId == currentUserId) return true
-        return householdDao.getHousehold(completion.householdId)?.ownerUserId == currentUserId
+        return memberDao.findByUserId(completion.householdId, currentUserId)?.role in
+            setOf(HouseholdRole.OWNER.name, HouseholdRole.ADMIN.name)
     }
 }

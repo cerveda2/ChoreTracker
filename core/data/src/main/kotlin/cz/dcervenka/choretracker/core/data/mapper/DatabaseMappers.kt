@@ -43,6 +43,7 @@ internal fun ChoreEntity.asModel(): Chore = Chore(
     deletedAt = deletedAt,
     frequencyDays = frequencyDays,
     category = runCatching { ChoreCategory.valueOf(category) }.getOrDefault(ChoreCategory.OTHER),
+    createdByUserId = createdByUserId,
 )
 
 internal fun InviteEntity.asModel(): Invite = Invite(

@@ -43,7 +43,22 @@ interface RemoteHouseholdDataSource {
         member: HouseholdMember,
         completions: List<ChoreCompletion>,
         userId: String,
+        writeRole: Boolean = false,
     ): EmptyResult
+
+    suspend fun upsertChore(chore: Chore): EmptyResult
+
+    suspend fun upsertCompletion(completion: ChoreCompletion): EmptyResult
+
+    suspend fun updateHouseholdName(householdId: String, name: String): EmptyResult
+
+    suspend fun upsertInvite(invite: Invite): EmptyResult
+
+    suspend fun upsertPlaceholder(member: HouseholdMember): EmptyResult
+
+    suspend fun removeMember(householdId: String, memberDocId: String): EmptyResult
+
+    suspend fun setMemberRole(householdId: String, memberDocId: String, role: String): EmptyResult
 
     suspend fun fetchHouseholdSnapshot(userId: String): AppResult<HouseholdSnapshot?>
 

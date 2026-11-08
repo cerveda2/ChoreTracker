@@ -18,6 +18,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseC
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveThemeSettingsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RemoveMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetDynamicColorUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SetMemberRoleUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetThemeModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.TransferOwnershipUseCase
@@ -44,6 +45,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
+@Suppress("TooManyFunctions")
 class SettingsViewModel @Inject constructor(
     observeAuthStateUseCase: ObserveAuthStateUseCase,
     observeCurrentHouseholdUseCase: ObserveCurrentHouseholdUseCase,
@@ -57,6 +59,7 @@ class SettingsViewModel @Inject constructor(
     private val createInviteUseCase: CreateInviteUseCase,
     private val createMemberInviteUseCase: CreateMemberInviteUseCase,
     private val removeMemberUseCase: RemoveMemberUseCase,
+    private val setMemberRoleUseCase: SetMemberRoleUseCase,
     private val transferOwnershipUseCase: TransferOwnershipUseCase,
     private val leaveHouseholdUseCase: LeaveHouseholdUseCase,
     private val deleteHouseholdUseCase: DeleteHouseholdUseCase,
@@ -210,6 +213,7 @@ class SettingsViewModel @Inject constructor(
             SettingsUiIntent.AddMember -> addMember()
             SettingsUiIntent.RefreshInvite -> refreshInvite()
             is SettingsUiIntent.RemoveMember -> removeMember(intent.memberId)
+            is SettingsUiIntent.SetMemberRole -> setMemberRole(intent)
             is SettingsUiIntent.GenerateMemberInvite -> generateMemberInvite(intent.memberId)
             is SettingsUiIntent.TransferOwnership -> transferOwnership(intent.newOwnerMemberId)
             SettingsUiIntent.LeaveHousehold -> leaveHousehold()
@@ -235,7 +239,10 @@ class SettingsViewModel @Inject constructor(
 
     private fun refreshInvite() {
         uiState.value.household?.let { h ->
-            viewModelScope.launch { createInviteUseCase(h.id) }
+            viewModelScope.launch {
+                val result = createInviteUseCase(h.id)
+                if (result is AppResult.Error) _events.send(SettingsUiEvent.Error(result.error))
+            }
         }
     }
 
@@ -294,6 +301,14 @@ class SettingsViewModel @Inject constructor(
             } else if (result is AppResult.Error) {
                 _events.send(SettingsUiEvent.Error(result.error))
             }
+        }
+    }
+
+    private fun setMemberRole(intent: SettingsUiIntent.SetMemberRole) {
+        val household = uiState.value.household ?: return
+        viewModelScope.launch {
+            val result = setMemberRoleUseCase(household.id, intent.memberId, intent.role)
+            if (result is AppResult.Error) _events.send(SettingsUiEvent.Error(result.error))
         }
     }
 

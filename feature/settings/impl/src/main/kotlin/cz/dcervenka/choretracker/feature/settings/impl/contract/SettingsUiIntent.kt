@@ -1,6 +1,7 @@
 package cz.dcervenka.choretracker.feature.settings.impl.contract
 
 import cz.dcervenka.choretracker.core.common.UiIntent
+import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.settings.ThemeMode
 
 sealed interface SettingsUiIntent : UiIntent {
@@ -13,6 +14,7 @@ sealed interface SettingsUiIntent : UiIntent {
     data object AddMember : SettingsUiIntent
     data object RefreshInvite : SettingsUiIntent
     data class RemoveMember(val memberId: String) : SettingsUiIntent
+    data class SetMemberRole(val memberId: String, val role: HouseholdRole) : SettingsUiIntent
     data class GenerateMemberInvite(val memberId: String) : SettingsUiIntent
     data class TransferOwnership(val newOwnerMemberId: String) : SettingsUiIntent
     data object LeaveHousehold : SettingsUiIntent
