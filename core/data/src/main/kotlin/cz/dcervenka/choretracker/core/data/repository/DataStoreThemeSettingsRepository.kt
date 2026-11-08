@@ -4,16 +4,13 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import cz.dcervenka.choretracker.core.data.contract.ThemeSettingsRepository
 import cz.dcervenka.choretracker.core.data.di.ThemeSettingsDataStore
 import cz.dcervenka.choretracker.core.model.settings.ThemeMode
 import cz.dcervenka.choretracker.core.model.settings.ThemeSettings
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
-import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -25,11 +22,7 @@ class DataStoreThemeSettingsRepository @Inject constructor(
     @ThemeSettingsDataStore private val dataStore: DataStore<Preferences>,
 ) : ThemeSettingsRepository {
 
-    // DataStore's data Flow throws IOException on a corrupted/unreadable preferences file -
-    // fall back to defaults instead of letting that kill this Flow's collectors permanently.
-    private val safeData: Flow<Preferences> = dataStore.data.catch { error ->
-        if (error is IOException) emit(emptyPreferences()) else throw error
-    }
+    private val safeData: Flow<Preferences> = dataStore.safeData
 
     override fun observeSettings(): Flow<ThemeSettings> = safeData.map(::toThemeSettings)
 

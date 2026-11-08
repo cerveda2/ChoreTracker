@@ -17,11 +17,15 @@ import androidx.core.content.ContextCompat
 /**
  * Requests POST_NOTIFICATIONS (API 33+) once per composition, so "invite accepted" pushes can
  * actually be shown. Renders no UI of its own - call once from the root composition, gated on
- * having reached the signed-in main app (see ChoreTrackerRoot.kt).
+ * having reached the signed-in main app (see ChoreTrackerRoot.kt). [onSettled] runs once there's
+ * nothing left to ask: right away when there's nothing to request, otherwise once the user answers.
  */
 @Composable
-fun NotificationPermissionRequest() {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+fun NotificationPermissionRequest(onSettled: () -> Unit = {}) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+        LaunchedEffect(Unit) { onSettled() }
+        return
+    }
 
     val context = LocalContext.current
     var permissionGranted by remember {
@@ -34,10 +38,15 @@ fun NotificationPermissionRequest() {
     }
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
-    ) { granted -> permissionGranted = granted }
+    ) { granted ->
+        permissionGranted = granted
+        onSettled()
+    }
 
     LaunchedEffect(Unit) {
-        if (!permissionGranted) {
+        if (permissionGranted) {
+            onSettled()
+        } else {
             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
