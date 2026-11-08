@@ -124,6 +124,20 @@ describe("household roles", () => {
     assert.equal(await writeAs(owner, `households/home/members/${member.uid}`, { role: "MEMBER" }, ["role"]), 200);
   });
 
+  it("lets an invite name only its own creator, and never change it", async () => {
+    const { owner, admin } = await seed();
+    const invite = "households/home/invites/invite-3";
+    const fields = { id: "invite-3", householdId: "home", code: "CODE3" };
+    assert.equal(await writeAs(admin, invite, { ...fields, createdByUserId: owner.uid }), 403);
+    assert.equal(await writeAs(admin, invite, { ...fields, createdByUserId: admin.uid }), 200);
+    // A retried upload resends the same value; changing it is denied, even to the owner.
+    assert.equal(await writeAs(admin, invite, { createdByUserId: admin.uid }, ["createdByUserId"]), 200);
+    assert.equal(await writeAs(owner, invite, { createdByUserId: owner.uid }, ["createdByUserId"]), 403);
+    // The owner's snapshot upload leaves it out, which keeps it.
+    assert.equal(await writeAs(owner, invite, { code: "CODE3" }, ["code"]), 200);
+    assert.equal((await db.doc(invite).get()).get("createdByUserId"), admin.uid);
+  });
+
   it("rejects an elevated self-join and permits only an admin self-demotion", async () => {
     const { admin, member, outsider } = await seed();
     const ownPath = `households/home/members/${outsider.uid}`;

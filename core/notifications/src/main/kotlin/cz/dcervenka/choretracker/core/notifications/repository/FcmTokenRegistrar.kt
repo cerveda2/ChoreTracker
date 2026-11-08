@@ -26,7 +26,7 @@ private val SIGN_OUT_CLEAR_TIMEOUT = 3.seconds
 /**
  * Keeps this device's FCM installation ID written onto the signed-in user's
  * `users/{uid}.fcmToken` field, so the "invite accepted" Cloud Function can push a notification to
- * a household owner. Mirrors LocalSyncRepository's authState.flatMapLatest {...}.launchIn(scope)
+ * whoever sent the invite. Mirrors LocalSyncRepository's authState.flatMapLatest {...}.launchIn(scope)
  * pattern - see core/sync/.../repository/LocalSyncRepository.kt.
  *
  * Also reacts to [InviteNotificationSettingsRepository]'s on/off toggle: when disabled, the token

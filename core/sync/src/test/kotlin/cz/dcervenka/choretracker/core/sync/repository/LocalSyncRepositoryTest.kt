@@ -306,6 +306,40 @@ class LocalSyncRepositoryTest {
     }
 
     @Test
+    fun `admin invite upload names the uploading user as its creator`() = runTest(coroutineRule.dispatcher) {
+        val op = PendingSyncOperationEntity(
+            id = "op-1",
+            entityType = "invite",
+            entityId = "household-1",
+            operationType = "upsert",
+            payload = "CODE42",
+            createdAt = Instant.parse("2026-01-04T10:00:00Z"),
+        )
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(op)
+        coEvery { householdDao.getHousehold("household-1") } returns householdEntity
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns
+            memberEntity.copy(role = HouseholdRole.ADMIN.name)
+        coEvery { completionParticipantDao.getParticipants("household-1") } returns emptyList()
+        coEvery { completionDao.getCompletions("household-1") } returns emptyList()
+        coEvery { remoteHouseholdDataSource.upsertMemberSnapshot(any(), any(), any(), any()) } returns
+            AppResult.Success(Unit)
+        coEvery { inviteDao.findByCode("CODE42") } returns InviteEntity(
+            id = "invite-2",
+            householdId = "household-1",
+            code = "CODE42",
+            createdAt = Instant.parse("2026-01-04T10:00:00Z"),
+            consumedAt = null,
+        )
+        coEvery { remoteHouseholdDataSource.upsertInvite(any(), any()) } returns AppResult.Success(Unit)
+        coEvery { pendingSyncOperationDao.delete("op-1") } just Runs
+
+        val resultDeferred = async { repository.syncPendingOperations() }
+        advanceUntilIdle()
+        assertThat(resultDeferred.await()).isInstanceOf(AppResult.Success::class.java)
+        coVerify { remoteHouseholdDataSource.upsertInvite(match { it.id == "invite-2" }, "user-1") }
+    }
+
+    @Test
     fun `admin edit of another member's completion uploads that completion`() = runTest(coroutineRule.dispatcher) {
         val op = PendingSyncOperationEntity(
             id = "op-1",

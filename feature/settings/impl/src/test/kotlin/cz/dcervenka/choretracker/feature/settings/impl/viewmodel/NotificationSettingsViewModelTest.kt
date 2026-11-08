@@ -2,12 +2,19 @@ package cz.dcervenka.choretracker.feature.settings.impl.viewmodel
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInviteNotificationsEnabledUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetInviteNotificationsEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetReminderEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetReminderTimeUseCase
+import cz.dcervenka.choretracker.core.model.household.Household
+import cz.dcervenka.choretracker.core.model.household.HouseholdMember
+import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.settings.ReminderSettings
+import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
+import cz.dcervenka.choretracker.core.test.mock.sampleMembers
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import cz.dcervenka.choretracker.feature.settings.impl.contract.NotificationSettingsUiIntent
 import io.mockk.MockKAnnotations
@@ -16,6 +23,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
@@ -34,6 +42,12 @@ class NotificationSettingsViewModelTest {
     lateinit var observeInviteNotificationsEnabledUseCase: ObserveInviteNotificationsEnabledUseCase
 
     @MockK
+    lateinit var observeCurrentHouseholdUseCase: ObserveCurrentHouseholdUseCase
+
+    @MockK
+    lateinit var observeMembersUseCase: ObserveMembersUseCase
+
+    @MockK
     lateinit var setReminderEnabledUseCase: SetReminderEnabledUseCase
 
     @MockK
@@ -44,12 +58,16 @@ class NotificationSettingsViewModelTest {
 
     private val reminderSettingsFlow = MutableStateFlow(ReminderSettings())
     private val inviteNotificationsEnabledFlow = MutableStateFlow(true)
+    private val householdFlow = MutableStateFlow<Household?>(null)
+    private val membersFlow = MutableStateFlow(emptyList<HouseholdMember>())
 
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
         every { observeReminderSettingsUseCase() } returns reminderSettingsFlow
         every { observeInviteNotificationsEnabledUseCase() } returns inviteNotificationsEnabledFlow
+        every { observeCurrentHouseholdUseCase() } returns householdFlow
+        every { observeMembersUseCase(any()) } returns membersFlow
         coEvery { setReminderEnabledUseCase(any()) } returns Unit
         coEvery { setReminderTimeUseCase(any(), any()) } returns Unit
         coEvery { setInviteNotificationsEnabledUseCase(any()) } returns Unit
@@ -58,10 +76,32 @@ class NotificationSettingsViewModelTest {
     private fun createViewModel() = NotificationSettingsViewModel(
         observeReminderSettingsUseCase,
         observeInviteNotificationsEnabledUseCase,
+        observeCurrentHouseholdUseCase,
+        observeMembersUseCase,
         setReminderEnabledUseCase,
         setReminderTimeUseCase,
         setInviteNotificationsEnabledUseCase,
     )
+
+    @Test
+    fun `only the owner and admins can turn invite notifications on or off`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        householdFlow.value = sampleHousehold()
+        membersFlow.value = sampleMembers()
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.canInvite).isTrue()
+
+        membersFlow.value = sampleMembers().map { it.copy(isCurrentUser = it.id == "member-2") }
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.canInvite).isFalse()
+
+        membersFlow.value = sampleMembers().map {
+            it.copy(isCurrentUser = it.id == "member-2", role = HouseholdRole.ADMIN)
+        }
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.canInvite).isTrue()
+    }
 
     @Test
     fun `maps observed settings into ui state`() = runTest(coroutineRule.dispatcher) {

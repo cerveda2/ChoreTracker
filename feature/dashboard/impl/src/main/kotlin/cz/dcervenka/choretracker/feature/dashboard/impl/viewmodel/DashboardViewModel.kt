@@ -119,11 +119,11 @@ class DashboardViewModel @Inject constructor(
             }
         }
         .combine(notificationsBanner) { state, banner ->
-            // Only for notifications this user would actually get: invite-accepted pushes go to the owner alone.
-            val isOwner = state.members.any { it.isCurrentUser && it.role == HouseholdRole.OWNER }
+            // Only for notifications this user would actually get: invite-accepted pushes go to whoever
+            // sent the invite, and only the owner and admins can.
             state.copy(
                 showNotificationsBanner = banner.blocked &&
-                    (banner.remindersEnabled || (banner.inviteNotificationsEnabled && isOwner)),
+                    (banner.remindersEnabled || (banner.inviteNotificationsEnabled && state.isManager)),
             )
         }
         .combine(combine(networkAvailable, syncsRemotely, ::Pair)) { state, (online, syncsRemotely) ->
