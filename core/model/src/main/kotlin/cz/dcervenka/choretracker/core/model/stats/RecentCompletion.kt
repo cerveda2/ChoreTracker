@@ -9,4 +9,5 @@ data class RecentCompletion(
     val completedAt: Instant,
     val participantNames: List<String>,
     val participantMemberIds: List<String>,
+    val createdByUserId: String,
 )

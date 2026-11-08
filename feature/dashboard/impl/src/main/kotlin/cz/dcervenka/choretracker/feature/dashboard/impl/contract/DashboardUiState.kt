@@ -9,6 +9,8 @@ import cz.dcervenka.choretracker.core.model.sync.SyncState
 data class DashboardUiState(
     val snapshot: DashboardSnapshot? = null,
     val members: List<HouseholdMember> = emptyList(),
+    val isManager: Boolean = false,
+    val currentUserId: String? = null,
     val allCompletions: List<RecentCompletion> = emptyList(),
     val syncState: SyncState? = null,
     val isRefreshing: Boolean = false,

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -98,6 +99,10 @@ fun RecentCompletionDetailScreen(
         )
     }
 
+    // Mirrors firestore.rules: members may change only the completions they logged.
+    val canModify = uiState.isManager ||
+        (uiState.currentUserId != null && completion.createdByUserId == uiState.currentUserId)
+
     ChoreScaffold(
         snackbarHostState = snackbarHostState,
         topBar = {
@@ -105,18 +110,21 @@ fun RecentCompletionDetailScreen(
                 title = completion.choreName,
                 onBackClick = onBack,
                 actions = {
-                    IconButton(onClick = {
-                        editNote = completion.note.orEmpty()
-                        editSelectedMembers.clear()
-                        editSelectedMembers.addAll(completion.participantMemberIds)
-                        showEditSheet = true
-                    }) {
+                    IconButton(
+                        onClick = {
+                            editNote = completion.note.orEmpty()
+                            editSelectedMembers.clear()
+                            editSelectedMembers.addAll(completion.participantMemberIds)
+                            showEditSheet = true
+                        },
+                        enabled = canModify,
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = stringResource(R.string.dashboard_edit_completion),
                         )
                     }
-                    IconButton(onClick = { showDeleteDialog = true }) {
+                    IconButton(onClick = { showDeleteDialog = true }, enabled = canModify) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = stringResource(R.string.common_delete),
@@ -143,6 +151,13 @@ fun RecentCompletionDetailScreen(
                         dateSkeleton = "yMMMdHm",
                     )
                 }
+            }
+            if (!canModify) {
+                Text(
+                    text = stringResource(R.string.dashboard_completion_read_only),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

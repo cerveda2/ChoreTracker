@@ -23,6 +23,7 @@ import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
+import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.settings.ReminderSettings
 import cz.dcervenka.choretracker.core.model.sync.SyncState
 import cz.dcervenka.choretracker.core.test.mock.sampleChore
@@ -413,6 +414,30 @@ class DashboardViewModelTest {
         coVerify { dismissNotificationsBannerUseCase() }
         assertThat(viewModel.uiState.value.showNotificationsBanner).isFalse()
     }
+
+    @Test
+    fun `ui state exposes the current user's id and whether they manage the household`() =
+        runTest(coroutineRule.dispatcher) {
+            householdFlow.value = sampleHousehold()
+            dashboardFlow.value = sampleDashboardSnapshot()
+            membersFlow.value = sampleMembers()
+            val viewModel = createViewModel()
+            backgroundScope.launch { viewModel.uiState.collect {} }
+            advanceUntilIdle()
+            assertThat(viewModel.uiState.value.isManager).isTrue()
+            assertThat(viewModel.uiState.value.currentUserId).isEqualTo("user-1")
+
+            membersFlow.value = sampleMembers().map { it.copy(isCurrentUser = it.id == "member-2") }
+            advanceUntilIdle()
+            assertThat(viewModel.uiState.value.isManager).isFalse()
+            assertThat(viewModel.uiState.value.currentUserId).isEqualTo("user-2")
+
+            membersFlow.value = sampleMembers().map {
+                it.copy(isCurrentUser = it.id == "member-2", role = if (it.id == "member-2") HouseholdRole.ADMIN else it.role)
+            }
+            advanceUntilIdle()
+            assertThat(viewModel.uiState.value.isManager).isTrue()
+        }
 
     @Test
     fun `notifications banner only shows for notifications the user would get`() =

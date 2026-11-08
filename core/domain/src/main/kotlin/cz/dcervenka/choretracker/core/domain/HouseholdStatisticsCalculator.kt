@@ -162,6 +162,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
                     participantNames = completion.participantMemberIds
                         .mapNotNull { memberId -> memberMap[memberId]?.displayName },
                     participantMemberIds = completion.participantMemberIds,
+                    createdByUserId = completion.createdByUserId,
                 )
             }
     }
