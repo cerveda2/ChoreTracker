@@ -1,4 +1,4 @@
-package cz.dcervenka.choretracker.feature.dashboard.impl.screen
+package cz.dcervenka.choretracker.core.design.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,12 +20,14 @@ import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 
 @Composable
-internal fun NotificationsOffBanner(
+fun NotificationsOffBanner(
     onTurnOn: () -> Unit,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val spacing = LocalSpacing.current
     Card(
+        modifier = modifier,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,

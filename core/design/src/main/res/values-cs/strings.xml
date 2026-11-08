@@ -46,7 +46,7 @@
     <string name="dashboard_sync_failed_generic">Nepodařilo se nahrát vaše poslední změny. Jsou uloženy na zařízení a budeme to zkoušet znovu.</string>
     <string name="dashboard_sync_pending_title">Čekají změny k nahrání</string>
     <string name="dashboard_notifications_off_title">Oznámení jsou vypnutá</string>
-    <string name="dashboard_notifications_off_message">Zapněte je, abyste dostávali připomenutí úkolů a věděli, když se někdo připojí k vaší domácnosti.</string>
+    <string name="dashboard_notifications_off_message">Zapněte je, abyste dostávali připomenutí a upozornění zapnutá v Nastavení.</string>
     <string name="dashboard_notifications_off_action">Zapnout</string>
     <plurals name="dashboard_sync_pending_message">
         <item quantity="one">Ještě je třeba nahrát %1$d lokální změnu do vaší domácnosti.</item>

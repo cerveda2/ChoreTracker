@@ -6,16 +6,21 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DismissNotificationsBannerUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentDashboardUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveInviteNotificationsEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveNotificationsBannerDismissedUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveRecentCompletionsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RefreshHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCompletionUseCase
+import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.error.AppError
+import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
@@ -28,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -42,6 +48,9 @@ class DashboardViewModel @Inject constructor(
     observeRecentCompletionsUseCase: ObserveRecentCompletionsUseCase,
     observeSyncStateUseCase: ObserveSyncStateUseCase,
     observeNotificationsBannerDismissedUseCase: ObserveNotificationsBannerDismissedUseCase,
+    observeReminderSettingsUseCase: ObserveReminderSettingsUseCase,
+    observeInviteNotificationsEnabledUseCase: ObserveInviteNotificationsEnabledUseCase,
+    observeAuthStateUseCase: ObserveAuthStateUseCase,
     private val logCompletionUseCase: LogCompletionUseCase,
     private val updateCompletionUseCase: UpdateCompletionUseCase,
     private val deleteCompletionUseCase: DeleteCompletionUseCase,
@@ -57,6 +66,26 @@ class DashboardViewModel @Inject constructor(
     val errorEvents: Flow<AppError> = _errorChannel.receiveAsFlow()
 
     private val isRefreshing = MutableStateFlow(false)
+
+    // Null until the screen reports it, so the banner stays hidden rather than guessing.
+    private val systemNotificationsEnabled = MutableStateFlow<Boolean?>(null)
+
+    // Starts hidden instead of waiting for these reads, so the dashboard itself never waits on them.
+    private val notificationsBanner: Flow<NotificationsBannerInputs> = combine(
+        systemNotificationsEnabled,
+        observeNotificationsBannerDismissedUseCase(),
+        observeReminderSettingsUseCase(),
+        observeInviteNotificationsEnabledUseCase(),
+        observeAuthStateUseCase(),
+    ) { systemEnabled, dismissed, reminderSettings, inviteNotificationsEnabled, authState ->
+        NotificationsBannerInputs(
+            blocked = systemEnabled == false &&
+                !dismissed &&
+                (authState as? AuthState.Authenticated)?.user?.isPreview != true,
+            remindersEnabled = reminderSettings.enabled,
+            inviteNotificationsEnabled = inviteNotificationsEnabled,
+        )
+    }.onStart { emit(NotificationsBannerInputs()) }
 
     val uiState: StateFlow<DashboardUiState> = observeCurrentHouseholdUseCase()
         .filterNotNull()
@@ -77,8 +106,13 @@ class DashboardViewModel @Inject constructor(
                 )
             }
         }
-        .combine(observeNotificationsBannerDismissedUseCase()) { state, bannerDismissed ->
-            state.copy(notificationsBannerDismissed = bannerDismissed)
+        .combine(notificationsBanner) { state, banner ->
+            // Only for notifications this user would actually get: invite-accepted pushes go to the owner alone.
+            val isOwner = state.members.any { it.isCurrentUser && it.role == HouseholdRole.OWNER }
+            state.copy(
+                showNotificationsBanner = banner.blocked &&
+                    (banner.remindersEnabled || (banner.inviteNotificationsEnabled && isOwner)),
+            )
         }
         .stateIn(
             scope = viewModelScope,
@@ -118,6 +152,7 @@ class DashboardViewModel @Inject constructor(
             DashboardUiIntent.RetrySync -> retrySync()
             DashboardUiIntent.Refresh -> refresh()
             DashboardUiIntent.DismissNotificationsBanner -> viewModelScope.launch { dismissNotificationsBannerUseCase() }
+            is DashboardUiIntent.SystemNotificationsChanged -> systemNotificationsEnabled.value = intent.enabled
         }
     }
 
@@ -181,4 +216,10 @@ class DashboardViewModel @Inject constructor(
             isRefreshing.value = false
         }
     }
+
+    private data class NotificationsBannerInputs(
+        val blocked: Boolean = false,
+        val remindersEnabled: Boolean = false,
+        val inviteNotificationsEnabled: Boolean = false,
+    )
 }

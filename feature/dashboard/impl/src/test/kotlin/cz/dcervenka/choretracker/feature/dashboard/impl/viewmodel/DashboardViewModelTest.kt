@@ -6,18 +6,24 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DismissNotificationsBannerUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentDashboardUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveInviteNotificationsEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveNotificationsBannerDismissedUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveRecentCompletionsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RefreshHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCompletionUseCase
+import cz.dcervenka.choretracker.core.model.auth.AppUser
+import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
+import cz.dcervenka.choretracker.core.model.settings.ReminderSettings
 import cz.dcervenka.choretracker.core.model.sync.SyncState
 import cz.dcervenka.choretracker.core.test.mock.sampleChore
 import cz.dcervenka.choretracker.core.test.mock.sampleDashboardSnapshot
@@ -64,6 +70,15 @@ class DashboardViewModelTest {
     lateinit var observeNotificationsBannerDismissedUseCase: ObserveNotificationsBannerDismissedUseCase
 
     @MockK
+    lateinit var observeReminderSettingsUseCase: ObserveReminderSettingsUseCase
+
+    @MockK
+    lateinit var observeInviteNotificationsEnabledUseCase: ObserveInviteNotificationsEnabledUseCase
+
+    @MockK
+    lateinit var observeAuthStateUseCase: ObserveAuthStateUseCase
+
+    @MockK
     lateinit var logCompletionUseCase: LogCompletionUseCase
 
     @MockK
@@ -87,6 +102,9 @@ class DashboardViewModelTest {
     private val completionsFlow = MutableStateFlow(sampleDashboardSnapshot().recentCompletions)
     private val syncStateFlow = MutableStateFlow<SyncState?>(null)
     private val bannerDismissedFlow = MutableStateFlow(false)
+    private val reminderSettingsFlow = MutableStateFlow(ReminderSettings())
+    private val inviteNotificationsEnabledFlow = MutableStateFlow(true)
+    private val authStateFlow = MutableStateFlow<AuthState>(AuthState.Authenticated(sampleUser()))
 
     @Before
     fun setUp() {
@@ -95,12 +113,18 @@ class DashboardViewModelTest {
         householdFlow.value = null
         membersFlow.value = emptyList()
         bannerDismissedFlow.value = false
+        reminderSettingsFlow.value = ReminderSettings()
+        inviteNotificationsEnabledFlow.value = true
+        authStateFlow.value = AuthState.Authenticated(sampleUser())
         every { observeCurrentDashboardUseCase() } returns dashboardFlow
         every { observeCurrentHouseholdUseCase() } returns householdFlow
         every { observeMembersUseCase(any()) } answers { membersFlow }
         every { observeRecentCompletionsUseCase(any(), any()) } answers { completionsFlow }
         every { observeSyncStateUseCase(any()) } answers { syncStateFlow }
         every { observeNotificationsBannerDismissedUseCase() } returns bannerDismissedFlow
+        every { observeReminderSettingsUseCase() } returns reminderSettingsFlow
+        every { observeInviteNotificationsEnabledUseCase() } returns inviteNotificationsEnabledFlow
+        every { observeAuthStateUseCase() } returns authStateFlow
         coEvery { logCompletionUseCase(any(), any(), any(), any()) } returns AppResult.Success("completion-id")
         coEvery { updateCompletionUseCase(any(), any(), any()) } returns AppResult.Success(Unit)
         coEvery { deleteCompletionUseCase(any()) } returns AppResult.Success(Unit)
@@ -314,18 +338,69 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun `dismissing the notifications banner persists it and updates ui state`() = runTest(coroutineRule.dispatcher) {
+    fun `notifications banner stays hidden until the screen reports notifications are off`() =
+        runTest(coroutineRule.dispatcher) {
+            householdFlow.value = sampleHousehold()
+            membersFlow.value = sampleMembers()
+            val viewModel = createViewModel()
+            backgroundScope.launch { viewModel.uiState.collect {} }
+            advanceUntilIdle()
+            assertThat(viewModel.uiState.value.showNotificationsBanner).isFalse()
+
+            viewModel.dispatch(DashboardUiIntent.SystemNotificationsChanged(enabled = false))
+            advanceUntilIdle()
+            assertThat(viewModel.uiState.value.showNotificationsBanner).isTrue()
+
+            viewModel.dispatch(DashboardUiIntent.SystemNotificationsChanged(enabled = true))
+            advanceUntilIdle()
+            assertThat(viewModel.uiState.value.showNotificationsBanner).isFalse()
+        }
+
+    @Test
+    fun `dismissing the notifications banner persists it and hides it`() = runTest(coroutineRule.dispatcher) {
         householdFlow.value = sampleHousehold()
+        membersFlow.value = sampleMembers()
         val viewModel = createViewModel()
         backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.dispatch(DashboardUiIntent.SystemNotificationsChanged(enabled = false))
         advanceUntilIdle()
-        assertThat(viewModel.uiState.value.notificationsBannerDismissed).isFalse()
+        assertThat(viewModel.uiState.value.showNotificationsBanner).isTrue()
 
         viewModel.dispatch(DashboardUiIntent.DismissNotificationsBanner)
         advanceUntilIdle()
 
         coVerify { dismissNotificationsBannerUseCase() }
-        assertThat(viewModel.uiState.value.notificationsBannerDismissed).isTrue()
+        assertThat(viewModel.uiState.value.showNotificationsBanner).isFalse()
+    }
+
+    @Test
+    fun `notifications banner only shows for notifications the user would get`() =
+        runTest(coroutineRule.dispatcher) {
+            householdFlow.value = sampleHousehold()
+            // Invite-accepted pushes only go to the owner, so a member with reminders off gets nothing.
+            membersFlow.value = sampleMembers().map { it.copy(isCurrentUser = it.id == "member-2") }
+            val viewModel = createViewModel()
+            backgroundScope.launch { viewModel.uiState.collect {} }
+            viewModel.dispatch(DashboardUiIntent.SystemNotificationsChanged(enabled = false))
+            advanceUntilIdle()
+            assertThat(viewModel.uiState.value.showNotificationsBanner).isFalse()
+
+            reminderSettingsFlow.value = ReminderSettings(enabled = true)
+            advanceUntilIdle()
+            assertThat(viewModel.uiState.value.showNotificationsBanner).isTrue()
+        }
+
+    @Test
+    fun `notifications banner never shows in preview mode`() = runTest(coroutineRule.dispatcher) {
+        householdFlow.value = sampleHousehold()
+        membersFlow.value = sampleMembers()
+        authStateFlow.value = AuthState.Authenticated(sampleUser().copy(isPreview = true))
+        val viewModel = createViewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.dispatch(DashboardUiIntent.SystemNotificationsChanged(enabled = false))
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.showNotificationsBanner).isFalse()
     }
 }
 
@@ -336,6 +411,9 @@ private fun DashboardViewModelTest.createViewModel() = DashboardViewModel(
     observeRecentCompletionsUseCase = observeRecentCompletionsUseCase,
     observeSyncStateUseCase = observeSyncStateUseCase,
     observeNotificationsBannerDismissedUseCase = observeNotificationsBannerDismissedUseCase,
+    observeReminderSettingsUseCase = observeReminderSettingsUseCase,
+    observeInviteNotificationsEnabledUseCase = observeInviteNotificationsEnabledUseCase,
+    observeAuthStateUseCase = observeAuthStateUseCase,
     logCompletionUseCase = logCompletionUseCase,
     updateCompletionUseCase = updateCompletionUseCase,
     deleteCompletionUseCase = deleteCompletionUseCase,
@@ -343,3 +421,5 @@ private fun DashboardViewModelTest.createViewModel() = DashboardViewModel(
     refreshHouseholdUseCase = refreshHouseholdUseCase,
     dismissNotificationsBannerUseCase = dismissNotificationsBannerUseCase,
 )
+
+private fun sampleUser() = AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana")

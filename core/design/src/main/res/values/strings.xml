@@ -46,7 +46,7 @@
     <string name="dashboard_sync_failed_generic">We couldn\'t upload your latest changes. Your changes are still saved on this device and we\'ll keep trying.</string>
     <string name="dashboard_sync_pending_title">Changes waiting to upload</string>
     <string name="dashboard_notifications_off_title">Notifications are off</string>
-    <string name="dashboard_notifications_off_message">Turn them on to get chore reminders and hear when someone joins your household.</string>
+    <string name="dashboard_notifications_off_message">Turn them on to get the reminders and alerts enabled in Settings.</string>
     <string name="dashboard_notifications_off_action">Turn on</string>
     <plurals name="dashboard_sync_pending_message">
         <item quantity="one">We still need to upload %1$d local change to your household.</item>

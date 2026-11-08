@@ -20,4 +20,5 @@ sealed interface DashboardUiIntent : UiIntent {
     data object RetrySync : DashboardUiIntent
     data object Refresh : DashboardUiIntent
     data object DismissNotificationsBanner : DashboardUiIntent
+    data class SystemNotificationsChanged(val enabled: Boolean) : DashboardUiIntent
 }

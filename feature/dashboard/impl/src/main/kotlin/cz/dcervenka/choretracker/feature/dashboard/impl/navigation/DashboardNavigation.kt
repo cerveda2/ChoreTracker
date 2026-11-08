@@ -19,6 +19,7 @@ fun NavGraphBuilder.dashboardScreen(
     navController: NavHostController,
     onOpenSettings: () -> Unit,
     onOpenChores: () -> Unit,
+    notificationPromptSettled: () -> Boolean,
 ) {
     composable(route = DashboardDestination.route) {
         val viewModel: DashboardViewModel = hiltViewModel()
@@ -38,6 +39,7 @@ fun NavGraphBuilder.dashboardScreen(
             },
             onOpenSettings = onOpenSettings,
             onOpenChores = onOpenChores,
+            notificationPromptSettled = notificationPromptSettled(),
         )
     }
 
