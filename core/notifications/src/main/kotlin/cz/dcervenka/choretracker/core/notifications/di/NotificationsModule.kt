@@ -1,5 +1,7 @@
 package cz.dcervenka.choretracker.core.notifications.di
 
+import cz.dcervenka.choretracker.core.data.contract.PushTokenRepository
+import cz.dcervenka.choretracker.core.notifications.repository.FcmTokenRegistrar
 import cz.dcervenka.choretracker.core.notifications.repository.FcmTokenWriter
 import cz.dcervenka.choretracker.core.notifications.repository.FirebaseFcmTokenWriter
 import dagger.Binds
@@ -23,6 +25,9 @@ abstract class NotificationsModule {
 
     @Binds
     abstract fun bindFcmTokenWriter(impl: FirebaseFcmTokenWriter): FcmTokenWriter
+
+    @Binds
+    abstract fun bindPushTokenRepository(impl: FcmTokenRegistrar): PushTokenRepository
 
     companion object {
         @Provides

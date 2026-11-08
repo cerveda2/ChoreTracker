@@ -1,4 +1,4 @@
-import { onDocumentUpdated } from "firebase-functions/v2/firestore";
+import { onDocumentUpdated, onDocumentWritten } from "firebase-functions/v2/firestore";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { initializeApp } from "firebase-admin/app";
@@ -8,6 +8,7 @@ import {
   Firestore,
   DocumentReference,
   DocumentSnapshot,
+  Timestamp,
 } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import { getMessaging } from "firebase-admin/messaging";
@@ -139,6 +140,38 @@ export const onInviteAccepted = onDocumentUpdated(
     }
   },
 );
+
+// A device's token belongs to whoever registered it last. The app clears its token before
+// signing out, but that can't happen offline, when Firebase signs the user out itself, or after
+// a reinstall - so when another account registers the same token, take it off the old one, or
+// that account's pushes keep reaching a device someone else is now using.
+export const onFcmTokenWritten = onDocumentWritten("users/{userId}", async (event) => {
+  const token = event.data?.after?.get("fcmToken");
+  // Stamped (server time) only by the app's token registration - membership syncs write this doc
+  // too. Older app versions don't stamp it; their writes and tokens are left alone.
+  const claimedAt: Timestamp | undefined = event.data?.after?.get("fcmTokenUpdatedAt");
+  const previousClaim: Timestamp | undefined = event.data?.before?.get("fcmTokenUpdatedAt");
+  if (typeof token !== "string" || !claimedAt || (previousClaim && claimedAt.isEqual(previousClaim))) {
+    return;
+  }
+  const db = getFirestore();
+  const holders = await db.collection("users").where("fcmToken", "==", token).get();
+  // Triggers can run late and out of order, so the claim times decide, not which runs first.
+  const previous = holders.docs.filter((doc) => {
+    const theirClaim: Timestamp | undefined = doc.get("fcmTokenUpdatedAt");
+    return doc.id !== event.params.userId && theirClaim !== undefined && theirClaim.toMillis() < claimedAt.toMillis();
+  });
+  if (previous.length === 0) {
+    return;
+  }
+  const batch = db.batch();
+  previous.forEach((doc) => batch.update(doc.ref, { fcmToken: FieldValue.delete() }));
+  await batch.commit();
+  logger.info("onFcmTokenWritten: moved token to its new account", {
+    userId: event.params.userId,
+    clearedFrom: previous.map((doc) => doc.id),
+  });
+});
 
 // Google Play requires an in-app account deletion path. Routed through the Admin SDK rather than
 // the client because admin.auth().deleteUser() has no recent-login requirement - the client SDK's
