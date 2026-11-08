@@ -18,6 +18,7 @@ Personal offline-first Android household chore tracker for couples. Built by Dav
 - Do NOT add comments, docstrings, or annotations to unchanged code
 - Firestore security rules: `firestore.rules` in project root
 - Backend changes (`firestore.rules`, `firestore.indexes.json`, `functions/`) reach production together with an app release, and must keep working with the previous release too — old and new app versions run side by side until everyone updates. Ship them before (never after) the app that needs them, keep rules accepting both the old and the new data shape until the old version is gone, and never change something the current production app depends on (e.g. #106's switch to localized push keys left older builds with empty invite notifications).
+- `functions/test/` runs the callables and `firestore.rules` against the Auth/Firestore/Functions emulators under a `demo-` project, on every PR ("Cloud Functions emulator tests"). Run it locally with `npm run test:emulators` in `functions/` (needs the Firebase CLI and Java 21), and add cases there with any new callable or rules change.
 - Offline-first writes: `core/data`'s `OfflineFirst*Repository` classes push local writes to Firestore via a fire-and-forget `@ApplicationScope` coroutine, not an awaited call — the local Room write is the source of truth and must never block on the network. Only await a push/pull when the return value genuinely depends on it (e.g. `joinHousehold` needs the pulled household to return one). See PR #86.
 
 ## Git Conventions
