@@ -2,6 +2,7 @@ package cz.dcervenka.choretracker.core.notifications.repository
 
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.InviteNotificationSettingsRepository
+import cz.dcervenka.choretracker.core.data.contract.PushTokenRepository
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.notifications.di.NotificationScope
 import kotlinx.coroutines.CoroutineScope
@@ -9,16 +10,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration.Companion.seconds
+
+private val SIGN_OUT_CLEAR_TIMEOUT = 3.seconds
 
 /**
  * Keeps this device's FCM installation ID written onto the signed-in user's
@@ -36,24 +39,23 @@ class FcmTokenRegistrar @Inject constructor(
     private val tokenWriter: FcmTokenWriter,
     private val inviteNotificationSettingsRepository: InviteNotificationSettingsRepository,
     @NotificationScope private val scope: CoroutineScope,
-) {
+) : PushTokenRepository {
 
-    // Tracks the last signed-in, non-preview user so signing out can clear that user's token
-    // (see below) instead of just abandoning the subscription - otherwise a stale token keeps
-    // this device registered for the signed-out user's household push notifications, which
-    // matters on a shared/reused device (e.g. two household members testing on one phone).
-    private var lastAuthenticatedUserId: String? = null
+    // Set by clearCurrentUserToken until the sign-out it precedes lands, so a registration
+    // callback arriving in between can't write the token straight back.
+    @Volatile
+    private var signingOutUserId: String? = null
 
+    // Signing out is handled by clearCurrentUserToken, called before it happens: by the time
+    // authState reports it, rules already deny the write to the signed-out user's doc.
     init {
         authRepository.authState
             .flatMapLatest { authState ->
                 val user = (authState as? AuthState.Authenticated)?.user
                 if (user == null || user.isPreview) {
-                    val previousUserId = lastAuthenticatedUserId
-                    lastAuthenticatedUserId = null
-                    if (previousUserId != null) flowOf(previousUserId to false) else emptyFlow()
+                    signingOutUserId = null
+                    emptyFlow()
                 } else {
-                    lastAuthenticatedUserId = user.id
                     inviteNotificationSettingsRepository.observeEnabled(user.id).map { enabled -> user.id to enabled }
                 }
             }
@@ -77,11 +79,21 @@ class FcmTokenRegistrar @Inject constructor(
     fun onIdRegistered(installationId: String) {
         scope.launch {
             val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
-            if (user == null || user.isPreview) return@launch
+            if (user == null || user.isPreview || user.id == signingOutUserId) return@launch
             if (inviteNotificationSettingsRepository.isEnabled(user.id)) {
                 tokenWriter.writeToken(user.id, installationId)
             }
         }
+    }
+
+    // Bounded so signing out offline isn't held up for long. An unfinished write stays queued under
+    // this user and is sent if they sign in here again; if another account signs in instead, the
+    // onFcmTokenWritten function moves the token off this one.
+    override suspend fun clearCurrentUserToken() {
+        val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
+        if (user == null || user.isPreview) return
+        signingOutUserId = user.id
+        withTimeoutOrNull(SIGN_OUT_CLEAR_TIMEOUT) { tokenWriter.clearToken(user.id) }
     }
 
     private suspend fun applyTokenState(userId: String, enabled: Boolean) {

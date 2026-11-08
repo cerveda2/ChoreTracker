@@ -76,6 +76,7 @@ class SettingsViewModel @Inject constructor(
     private val householdNameInput = MutableStateFlow("")
     private val memberInput = MutableStateFlow("")
     private val isDeletingHousehold = MutableStateFlow(false)
+    private val isSigningOut = MutableStateFlow(false)
 
     private val currentHousehold = observeCurrentHouseholdUseCase()
         .onEach { household -> currentHouseholdId = household?.id }
@@ -150,12 +151,13 @@ class SettingsViewModel @Inject constructor(
         householdState,
         observeThemeSettingsUseCase(),
         observeReminderSettingsUseCase(),
-        isDeletingHousehold,
-    ) { state, householdUiState, themeSettings, reminderSettings, deletingHousehold ->
+        combine(isDeletingHousehold, isSigningOut, ::Pair),
+    ) { state, householdUiState, themeSettings, reminderSettings, (deletingHousehold, signingOut) ->
         val stateWithSettings = householdUiState.copy(
             themeSettings = themeSettings,
             reminderSettings = reminderSettings,
             isDeletingHousehold = deletingHousehold,
+            isSigningOut = signingOut,
         )
         when (state) {
             is AuthState.Authenticated -> {
@@ -203,7 +205,7 @@ class SettingsViewModel @Inject constructor(
     private fun handleActionIntent(intent: SettingsUiIntent) {
         when (intent) {
             SettingsUiIntent.SaveAccountDisplayName -> saveAccountDisplayName()
-            SettingsUiIntent.SignOut -> viewModelScope.launch { signOutUseCase() }
+            SettingsUiIntent.SignOut -> signOut()
             SettingsUiIntent.SaveHouseholdName -> saveHouseholdName()
             SettingsUiIntent.AddMember -> addMember()
             SettingsUiIntent.RefreshInvite -> refreshInvite()
@@ -316,6 +318,16 @@ class SettingsViewModel @Inject constructor(
             if (result is AppResult.Error) {
                 _events.send(SettingsUiEvent.Error(result.error))
             }
+        }
+    }
+
+    // Clearing the push token first can take a few seconds offline - show it, and ignore repeat taps.
+    private fun signOut() {
+        if (isSigningOut.value) return
+        isSigningOut.value = true
+        viewModelScope.launch {
+            signOutUseCase()
+            isSigningOut.value = false
         }
     }
 
