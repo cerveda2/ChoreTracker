@@ -11,6 +11,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.Source
+import com.google.firebase.functions.FirebaseFunctions
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.chore.Chore
@@ -23,6 +24,7 @@ import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.household.Invite
 import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
+import cz.dcervenka.choretracker.core.remote.firebase.runtime.FIREBASE_FUNCTIONS_REGION
 import cz.dcervenka.choretracker.core.remote.firebase.runtime.FirebaseRuntimeConfigurator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -63,6 +65,13 @@ class FirebaseHouseholdDataSource @Inject constructor(
 
     private val firestore: FirebaseFirestore?
         get() = if (FirebaseApp.getApps(context).isEmpty()) null else FirebaseFirestore.getInstance()
+
+    private val firebaseFunctions: FirebaseFunctions?
+        get() = if (FirebaseApp.getApps(context).isEmpty()) {
+            null
+        } else {
+            FirebaseFunctions.getInstance(FIREBASE_FUNCTIONS_REGION)
+        }
 
     override fun observeMembers(householdId: String, currentUserId: String): Flow<List<HouseholdMember>> = callbackFlow {
         val db = firestore
@@ -518,6 +527,19 @@ class FirebaseHouseholdDataSource @Inject constructor(
             AppResult.Success(Unit)
         }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "leaveHousehold: failed")
+            AppResult.Error(error.toAppError(), error)
+        }
+    }
+
+    override suspend fun deleteHousehold(householdId: String): EmptyResult {
+        Timber.d("deleteHousehold: householdId=$householdId")
+        val functions = firebaseFunctions ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
+        return runCatching {
+            awaitTask(functions.getHttpsCallable("deleteHousehold").call(mapOf("householdId" to householdId)))
+            Timber.d("deleteHousehold: success")
+            AppResult.Success(Unit)
+        }.rethrowCancellation().getOrElse { error ->
+            Timber.e(error, "deleteHousehold: failed")
             AppResult.Error(error.toAppError(), error)
         }
     }

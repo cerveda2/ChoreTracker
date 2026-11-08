@@ -141,8 +141,11 @@ service cloud.firestore {
       allow create, update: if isHouseholdOwner(request.resource.data.householdId);
     }
 
+    // deletedHouseholds/{id} is written by the deleteHousehold/deleteAccount functions only (no
+    // client rule), so a deleted household can't be recreated by a stale device's sync push.
     match /households/{householdId} {
-      allow create: if isSignedIn() && request.resource.data.ownerUserId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerUserId == request.auth.uid &&
+        !exists(/databases/$(database)/documents/deletedHouseholds/$(householdId));
       allow read: if isHouseholdMember(householdId);
       allow update, delete: if isHouseholdOwner(householdId);
 

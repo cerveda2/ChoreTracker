@@ -27,4 +27,7 @@ interface SyncRepository {
 
     /** Soft-removes the caller's own membership remotely, then wipes local data. */
     suspend fun leaveHousehold(householdId: String, selfMemberDocId: String): EmptyResult
+
+    /** Deletes the household remotely for every member, then wipes local data. */
+    suspend fun deleteHousehold(householdId: String): EmptyResult
 }
