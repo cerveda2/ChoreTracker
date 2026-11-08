@@ -53,7 +53,7 @@ private const val INVITE_CODES_COLLECTION = "inviteCodes"
 private const val FIRESTORE_BATCH_LIMIT = 500
 private val FIRESTORE_TASK_TIMEOUT = 20.seconds
 
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "LargeClass")
 @Singleton
 class FirebaseHouseholdDataSource @Inject constructor(
     @param:ApplicationContext private val context: Context,
@@ -155,23 +155,21 @@ class FirebaseHouseholdDataSource @Inject constructor(
     override suspend fun upsertHouseholdSnapshot(snapshot: HouseholdSnapshot, userId: String): EmptyResult {
         Timber.d(
             "upsertHouseholdSnapshot: householdId=${snapshot.household.id} " +
-                "chores=${snapshot.chores.size} completions=${snapshot.completions.size}",
+                "completions=${snapshot.completions.size}",
         )
         val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
         return runCatching {
             val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(snapshot.household.id)
-            awaitTask(
-                householdRef.set(
-                    mapOf(
-                        "id" to snapshot.household.id,
-                        "name" to snapshot.household.name,
-                        "ownerUserId" to snapshot.household.ownerUserId,
-                        "inviteCode" to snapshot.household.inviteCode,
-                        "createdAt" to snapshot.household.createdAt.asTimestamp(),
-                    ),
-                    SetOptions.merge(),
-                ),
-            )
+            if (snapshot.householdWriteFields.isNotEmpty()) {
+                val fields = mapOf(
+                    "id" to snapshot.household.id,
+                    "name" to snapshot.household.name,
+                    "ownerUserId" to snapshot.household.ownerUserId,
+                    "inviteCode" to snapshot.household.inviteCode,
+                    "createdAt" to snapshot.household.createdAt.asTimestamp(),
+                ).filterKeys { it in snapshot.householdWriteFields }
+                awaitTask(householdRef.set(fields, SetOptions.merge()))
+            }
 
             upsertMembershipData(
                 db = db,
@@ -218,7 +216,9 @@ class FirebaseHouseholdDataSource @Inject constructor(
                         val memberDocumentId = member.userId ?: member.id
                         transaction.set(
                             membersRef.document(memberDocumentId),
-                            member.toFirestoreFields(),
+                            member.toFirestoreFields(
+                                writeRole = member.userId == currentUserId || member.removedAt != null,
+                            ),
                             SetOptions.merge(),
                         )
                         if (member.userId != null) {
@@ -249,20 +249,6 @@ class FirebaseHouseholdDataSource @Inject constructor(
         snapshot: HouseholdSnapshot,
     ) {
         val writes = buildList<Pair<DocumentReference, Map<String, Any?>>> {
-            snapshot.chores.forEach { chore ->
-                add(
-                    householdRef.collection(CHORES_COLLECTION).document(chore.id) to mapOf(
-                        "id" to chore.id,
-                        "householdId" to chore.householdId,
-                        "name" to chore.name,
-                        "isActive" to chore.isActive,
-                        "createdAt" to chore.createdAt.asTimestamp(),
-                        "deletedAt" to chore.deletedAt?.asTimestamp(),
-                        "frequencyDays" to chore.frequencyDays,
-                        "category" to chore.category.name,
-                    ),
-                )
-            }
             snapshot.completions.forEach { completion ->
                 add(
                     householdRef.collection(COMPLETIONS_COLLECTION).document(completion.id) to mapOf(
@@ -311,6 +297,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
         member: HouseholdMember,
         completions: List<ChoreCompletion>,
         userId: String,
+        writeRole: Boolean,
     ): EmptyResult {
         Timber.d("upsertMemberSnapshot: householdId=$householdId completions=${completions.size}")
         val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
@@ -320,7 +307,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             val memberBatch = db.batch()
             memberBatch.set(
                 householdRef.collection(MEMBERS_COLLECTION).document(memberDocumentId),
-                member.toFirestoreFields(),
+                member.toFirestoreFields(writeRole = writeRole),
                 SetOptions.merge(),
             )
             memberBatch.set(
@@ -357,6 +344,119 @@ class FirebaseHouseholdDataSource @Inject constructor(
             Timber.e(error, "upsertMemberSnapshot: failed")
             AppResult.Error(error.toAppError(), error)
         }
+    }
+
+    override suspend fun upsertChore(chore: Chore): EmptyResult = remoteWrite("upsertChore") { db ->
+        val fields = buildMap<String, Any?> {
+            put("id", chore.id)
+            put("householdId", chore.householdId)
+            put("name", chore.name)
+            put("isActive", chore.isActive)
+            put("createdAt", chore.createdAt.asTimestamp())
+            put("deletedAt", chore.deletedAt?.asTimestamp())
+            put("frequencyDays", chore.frequencyDays)
+            put("category", chore.category.name)
+            chore.createdByUserId?.let { put("createdByUserId", it) }
+        }
+        awaitTask(
+            db.collection(HOUSEHOLDS_COLLECTION).document(chore.householdId)
+                .collection(CHORES_COLLECTION).document(chore.id).set(fields, SetOptions.merge()),
+        )
+    }
+
+    override suspend fun upsertCompletion(completion: ChoreCompletion): EmptyResult = remoteWrite(
+        "upsertCompletion",
+    ) { db ->
+        awaitTask(
+            db.collection(HOUSEHOLDS_COLLECTION).document(completion.householdId)
+                .collection(COMPLETIONS_COLLECTION).document(completion.id)
+                .set(
+                    mapOf(
+                        "id" to completion.id,
+                        "householdId" to completion.householdId,
+                        "choreId" to completion.choreId,
+                        "createdAt" to completion.createdAt.asTimestamp(),
+                        "createdByUserId" to completion.createdByUserId,
+                        "note" to completion.note,
+                        "participantMemberIds" to completion.participantMemberIds,
+                    ),
+                    SetOptions.merge(),
+                ),
+        )
+    }
+
+    override suspend fun updateHouseholdName(householdId: String, name: String): EmptyResult =
+        remoteWrite("updateHouseholdName") { db ->
+            awaitTask(db.collection(HOUSEHOLDS_COLLECTION).document(householdId).update("name", name))
+        }
+
+    override suspend fun upsertInvite(invite: Invite): EmptyResult = remoteWrite("upsertInvite") { db ->
+        val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(invite.householdId)
+        val batch = db.batch()
+        batch.set(
+            householdRef.collection(INVITES_COLLECTION).document(invite.id),
+            buildMap<String, Any?> {
+                put("id", invite.id)
+                put("householdId", invite.householdId)
+                put("code", invite.code)
+                put("createdAt", invite.createdAt.asTimestamp())
+                invite.targetMemberId?.let { put("targetMemberId", it) }
+            },
+            SetOptions.merge(),
+        )
+        batch.set(
+            db.collection(INVITE_CODES_COLLECTION).document(invite.code),
+            mapOf("householdId" to invite.householdId, "inviteId" to invite.id),
+            SetOptions.merge(),
+        )
+        if (invite.targetMemberId == null) batch.update(householdRef, "inviteCode", invite.code)
+        awaitTask(batch.commit())
+    }
+
+    override suspend fun upsertPlaceholder(member: HouseholdMember): EmptyResult = remoteWrite(
+        "upsertPlaceholder",
+    ) { db ->
+        awaitTask(
+            db.collection(HOUSEHOLDS_COLLECTION).document(member.householdId)
+                .collection(MEMBERS_COLLECTION).document(member.id)
+                .set(member.toFirestoreFields(writeRole = true), SetOptions.merge()),
+        )
+    }
+
+    override suspend fun removeMember(householdId: String, memberDocId: String): EmptyResult =
+        remoteWrite("removeMember") { db ->
+            awaitTask(
+                db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
+                    .collection(MEMBERS_COLLECTION).document(memberDocId)
+                    .set(
+                        mapOf(
+                            "active" to false,
+                            "removedAt" to Timestamp.now(),
+                            "email" to FieldValue.delete(),
+                            "role" to HouseholdRole.MEMBER.name,
+                        ),
+                        SetOptions.merge(),
+                    ),
+            )
+        }
+
+    override suspend fun setMemberRole(householdId: String, memberDocId: String, role: String): EmptyResult =
+        remoteWrite("setMemberRole") { db ->
+            awaitTask(
+                db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
+                    .collection(MEMBERS_COLLECTION).document(memberDocId).update("role", role),
+            )
+        }
+
+    private suspend fun remoteWrite(label: String, action: suspend (FirebaseFirestore) -> Unit): EmptyResult {
+        val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
+        return runCatching { action(db) }.rethrowCancellation().fold(
+            onSuccess = { AppResult.Success(Unit) },
+            onFailure = { error ->
+                Timber.e(error, "$label: failed")
+                AppResult.Error(error.toAppError(), error)
+            },
+        )
     }
 
     override suspend fun fetchInviteByCode(code: String): AppResult<Invite?> {
@@ -478,8 +578,8 @@ class FirebaseHouseholdDataSource @Inject constructor(
             val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
             val members = householdRef.collection(MEMBERS_COLLECTION)
             // One batch: every write is evaluated against the pre-batch state where the caller is
-            // still isHouseholdOwner, so all three pass the current rules atomically. `role` is
-            // advisory (no rule reads it) but the UI's isOwner does - swap it too.
+            // still isHouseholdOwner, so all three pass the rules atomically. Rules and UI both
+            // read role for the new owner's and previous owner's subsequent actions.
             val batch = db.batch()
             batch.update(householdRef, "ownerUserId", newOwnerUserId)
             batch.set(
@@ -489,7 +589,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             )
             batch.set(
                 members.document(previousOwnerMemberDocId),
-                mapOf("role" to HouseholdRole.MEMBER.name),
+                mapOf("role" to HouseholdRole.ADMIN.name),
                 SetOptions.merge(),
             )
             awaitTask(batch.commit())
@@ -512,7 +612,12 @@ class FirebaseHouseholdDataSource @Inject constructor(
             // also try to re-push completions after active flips to false and get denied.
             batch.set(
                 householdRef.collection(MEMBERS_COLLECTION).document(selfMemberDocId),
-                mapOf("active" to false, "removedAt" to Timestamp.now(), "email" to FieldValue.delete()),
+                mapOf(
+                    "active" to false,
+                    "removedAt" to Timestamp.now(),
+                    "email" to FieldValue.delete(),
+                    "role" to HouseholdRole.MEMBER.name,
+                ),
                 SetOptions.merge(),
             )
             // Drop the household pointer so a later restoreHouseholdForUser resolves to no
@@ -685,6 +790,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
         category = getString("category")
             ?.let { runCatching { ChoreCategory.valueOf(it) }.getOrNull() }
             ?: ChoreCategory.OTHER,
+        createdByUserId = getString("createdByUserId"),
     )
 
     private fun DocumentSnapshot.asCompletion(householdId: String): ChoreCompletion = ChoreCompletion(
@@ -744,12 +850,12 @@ internal fun HouseholdMember.isOutdatedBy(remoteActive: Boolean?, remoteJoinedVi
     }
 
 // A departed member's name stays so history keeps resolving, but their email has no further use.
-internal fun HouseholdMember.toFirestoreFields(): Map<String, Any?> = buildMap {
+internal fun HouseholdMember.toFirestoreFields(writeRole: Boolean = false): Map<String, Any?> = buildMap {
     put("id", id)
     put("householdId", householdId)
     put("userId", userId)
     put("displayName", displayName)
-    put("role", role.name)
+    if (writeRole) put("role", role.name)
     put("active", removedAt == null)
     put("removedAt", removedAt?.asTimestamp())
     if (removedAt != null) {

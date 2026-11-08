@@ -48,7 +48,8 @@ private val PRESET_FREQUENCY_DAYS = listOf(1, 2, 3, 7)
 @Composable
 internal fun ChoreEditorSheet(
     chore: Chore?,
-    isOwner: Boolean,
+    canEdit: Boolean,
+    canDelete: Boolean = false,
     onDismiss: () -> Unit,
     onSave: (name: String, category: ChoreCategory, frequencyDays: Int?, isActive: Boolean) -> Unit,
     onDelete: (() -> Unit)? = null,
@@ -112,7 +113,7 @@ internal fun ChoreEditorSheet(
                     capitalization = KeyboardCapitalization.Words,
                     autoCorrectEnabled = true,
                 ),
-                enabled = isOwner,
+                enabled = canEdit,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -128,7 +129,7 @@ internal fun ChoreEditorSheet(
                         selected = category == entry,
                         onClick = { category = entry },
                         label = stringResource(entry.toStringRes()),
-                        enabled = isOwner,
+                        enabled = canEdit,
                         leadingIcon = { Icon(imageVector = entry.toIcon(), contentDescription = null) },
                     )
                 }
@@ -143,7 +144,7 @@ internal fun ChoreEditorSheet(
                                 selected = false,
                                 onClick = { name = suggestion },
                                 label = suggestion,
-                                enabled = isOwner,
+                                enabled = canEdit,
                             )
                         }
                     }
@@ -164,37 +165,37 @@ internal fun ChoreEditorSheet(
                     selected = !customSelected && presetFrequencyDays == null,
                     onClick = { selectPreset(null) },
                     label = stringResource(R.string.chores_editor_frequency_none),
-                    enabled = isOwner,
+                    enabled = canEdit,
                 )
                 ChoreChip(
                     selected = !customSelected && presetFrequencyDays == 1,
                     onClick = { selectPreset(1) },
                     label = stringResource(R.string.chores_editor_frequency_daily),
-                    enabled = isOwner,
+                    enabled = canEdit,
                 )
                 ChoreChip(
                     selected = !customSelected && presetFrequencyDays == 2,
                     onClick = { selectPreset(2) },
                     label = pluralStringResource(R.plurals.log_sheet_meta_frequency, 2, 2),
-                    enabled = isOwner,
+                    enabled = canEdit,
                 )
                 ChoreChip(
                     selected = !customSelected && presetFrequencyDays == 3,
                     onClick = { selectPreset(3) },
                     label = pluralStringResource(R.plurals.log_sheet_meta_frequency, 3, 3),
-                    enabled = isOwner,
+                    enabled = canEdit,
                 )
                 ChoreChip(
                     selected = !customSelected && presetFrequencyDays == 7,
                     onClick = { selectPreset(7) },
                     label = stringResource(R.string.chores_editor_frequency_weekly),
-                    enabled = isOwner,
+                    enabled = canEdit,
                 )
                 ChoreChip(
                     selected = customSelected,
                     onClick = { customSelected = true },
                     label = stringResource(R.string.chores_editor_frequency_custom),
-                    enabled = isOwner,
+                    enabled = canEdit,
                 )
             }
             if (customSelected) {
@@ -203,7 +204,7 @@ internal fun ChoreEditorSheet(
                     onValueChange = { customFrequencyInput = it.filter(Char::isDigit) },
                     label = { Text(stringResource(R.string.chores_editor_frequency_custom_hint)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    enabled = isOwner,
+                    enabled = canEdit,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -219,7 +220,7 @@ internal fun ChoreEditorSheet(
                         text = stringResource(R.string.chores_filter_paused),
                         style = MaterialTheme.typography.bodyLarge,
                     )
-                    Switch(checked = !isActive, onCheckedChange = { isActive = !it }, enabled = isOwner)
+                    Switch(checked = !isActive, onCheckedChange = { isActive = !it }, enabled = canEdit)
                 }
             }
 
@@ -246,7 +247,7 @@ internal fun ChoreEditorSheet(
                 }
             }
 
-            if (isOwner) {
+            if (canEdit) {
                 Column(verticalArrangement = Arrangement.spacedBy(spacing.xSmall)) {
                     PrimaryButton(
                         text = if (chore == null) {
@@ -257,7 +258,7 @@ internal fun ChoreEditorSheet(
                         onClick = { onSave(name.trim(), category, frequencyDays, isActive) },
                         enabled = name.isNotBlank() && (!customSelected || frequencyDays != null),
                     )
-                    if (chore != null && onDelete != null) {
+                    if (chore != null && canDelete && onDelete != null) {
                         TextButton(
                             onClick = { showDeleteConfirm = true },
                             modifier = Modifier.fillMaxWidth(),

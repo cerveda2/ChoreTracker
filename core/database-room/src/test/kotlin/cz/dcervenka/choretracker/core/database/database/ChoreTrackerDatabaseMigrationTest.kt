@@ -59,12 +59,18 @@ class ChoreTrackerDatabaseMigrationTest {
                     "(id, entityType, entityId, operationType, payload, createdAt) " +
                     "VALUES ('op-1', 'chore', 'chore-1', 'upsert', '{}', 0)",
             )
+            db.execSQL(
+                "INSERT INTO chores (id, householdId, name, isActive, createdAt, deletedAt, frequencyDays, category) " +
+                    "VALUES ('chore-1', 'household-1', 'Dishes', 1, 0, NULL, NULL, 'OTHER')",
+            )
         }
 
         val database = DatabaseModule.provideDatabase(ApplicationProvider.getApplicationContext())
         val pending = database.pendingSyncOperationDao().getAll()
+        val legacyChore = database.choreDao().getChore("chore-1")
         database.close()
 
         assertThat(pending.map { it.id }).containsExactly("op-1")
+        assertThat(legacyChore?.createdByUserId).isNull()
     }
 }

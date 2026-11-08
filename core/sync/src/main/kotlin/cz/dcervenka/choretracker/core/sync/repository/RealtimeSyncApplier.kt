@@ -93,7 +93,11 @@ internal class RealtimeSyncApplier(
         }
 
     suspend fun applyCompletions(householdId: String, completions: List<ChoreCompletion>) = mutex.withLock {
-        completions.forEach { completion ->
+        val pendingCompletionIds = pendingSyncOperationDao.getAll()
+            .filter { it.entityType == "completion" }
+            .map { it.entityId }
+            .toSet()
+        completions.filterNot { it.id in pendingCompletionIds }.forEach { completion ->
             completionDao.upsert(
                 CompletionEntity(
                     id = completion.id,
@@ -117,10 +121,6 @@ internal class RealtimeSyncApplier(
         // Completions are enqueued with their own id as entityId (see
         // OfflineFirstChoreCompletionRepository), so a not-yet-synced completion is excluded
         // individually rather than skipping reconciliation for the whole household.
-        val pendingCompletionIds = pendingSyncOperationDao.getAll()
-            .filter { it.entityType == "completion" }
-            .map { it.entityId }
-            .toSet()
         val completionIds = completions.map { it.id }.toSet()
         completionDao.getCompletions(householdId)
             .filter { it.id !in completionIds && it.id !in pendingCompletionIds }
@@ -158,7 +158,11 @@ internal class RealtimeSyncApplier(
     // removed from Firestore - same as the existing pull-based sync (pruneStaleLocalRows doesn't
     // touch chores either), so there's nothing stale to reconcile here.
     suspend fun applyChores(chores: List<Chore>) = mutex.withLock {
-        chores.forEach { chore ->
+        val pendingChoreIds = pendingSyncOperationDao.getAll()
+            .filter { it.entityType == "chore" }
+            .map { it.entityId }
+            .toSet()
+        chores.filterNot { it.id in pendingChoreIds }.forEach { chore ->
             choreDao.upsert(
                 ChoreEntity(
                     id = chore.id,
@@ -169,6 +173,7 @@ internal class RealtimeSyncApplier(
                     deletedAt = chore.deletedAt,
                     frequencyDays = chore.frequencyDays,
                     category = chore.category.name,
+                    createdByUserId = chore.createdByUserId,
                 ),
             )
         }

@@ -223,6 +223,20 @@ describe("deleteAccount", () => {
     assert.ok(!(await exists("deletedHouseholds/household-1")));
   });
 
+  it("prefers an active admin when the owner deletes their account", async () => {
+    const owner = await signUp("owner");
+    const plain = await signUp("plain");
+    const admin = await signUp("admin");
+    await seedHousehold("household-1", owner, [plain, admin]);
+    await db.doc(`households/household-1/members/${admin.uid}`).update({ role: "ADMIN" });
+
+    const result = await call("deleteAccount", owner, {});
+
+    assert.ok(!result.error);
+    assert.equal((await db.doc("households/household-1").get()).get("ownerUserId"), admin.uid);
+    assert.equal((await db.doc(`households/household-1/members/${admin.uid}`).get()).get("role"), "OWNER");
+  });
+
   it("soft-removes a plain member and leaves the household to its owner", async () => {
     const owner = await signUp("owner");
     const member = await signUp("member");

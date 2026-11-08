@@ -25,6 +25,8 @@ interface SyncRepository {
         previousOwnerMemberDocId: String,
     ): EmptyResult
 
+    suspend fun setMemberRole(householdId: String, memberDocId: String, role: String): EmptyResult
+
     /** Soft-removes the caller's own membership remotely, then wipes local data. */
     suspend fun leaveHousehold(householdId: String, selfMemberDocId: String): EmptyResult
 

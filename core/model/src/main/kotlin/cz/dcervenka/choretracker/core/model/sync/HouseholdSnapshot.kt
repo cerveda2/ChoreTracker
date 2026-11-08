@@ -12,4 +12,6 @@ data class HouseholdSnapshot(
     val chores: List<Chore>,
     val completions: List<ChoreCompletion>,
     val invites: List<Invite>,
+    /** Household fields this upload intends to change; empty for member/content-only syncs. */
+    val householdWriteFields: Set<String> = setOf("id", "name", "ownerUserId", "inviteCode", "createdAt"),
 )

@@ -89,7 +89,13 @@ fun SettingsScreen(
     }
     val currentRole = uiState.members.getOrNull(currentMemberIndex)?.role
     val roleLabel = currentRole?.let {
-        stringResource(if (it == HouseholdRole.OWNER) R.string.household_role_owner else R.string.household_role_member)
+        stringResource(
+            when (it) {
+                HouseholdRole.OWNER -> R.string.household_role_owner
+                HouseholdRole.ADMIN -> R.string.household_role_admin
+                HouseholdRole.MEMBER -> R.string.household_role_member
+            },
+        )
     }
     val profileSubtitle = when {
         uiState.userEmail != null && roleLabel != null ->

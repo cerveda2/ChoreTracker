@@ -42,7 +42,7 @@ import kotlin.time.Clock
 
 private const val INVITE_CODE_LENGTH = 8
 
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "ReturnCount")
 @Singleton
 class OfflineFirstHouseholdRepository @Inject constructor(
     private val householdDao: HouseholdDao,
@@ -266,15 +266,17 @@ class OfflineFirstHouseholdRepository @Inject constructor(
 
     override suspend fun addMember(householdId: String, displayName: String): EmptyResult {
         Timber.d("addMember: householdId=$householdId displayName=$displayName")
+        managerError(householdId)?.let { return it }
         val user = currentUser()
         if (user?.isPreview == true) {
             return AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED).also {
                 Timber.w("addMember failed: preview user attempted write operation")
             }
         }
+        val memberId = UUID.randomUUID().toString()
         memberDao.upsert(
             MemberEntity(
-                id = UUID.randomUUID().toString(),
+                id = memberId,
                 householdId = householdId,
                 userId = null,
                 displayName = displayName,
@@ -282,12 +284,13 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                 isCurrentUser = false,
             ),
         )
-        enqueueOperation("member", householdId, "upsert", displayName)
+        enqueueOperation("member", householdId, "upsert", memberId)
         scope.launch { syncRepository.syncPendingOperations() }
         return AppResult.Success(Unit)
     }
 
     override suspend fun createInvite(householdId: String): AppResult<Invite> {
+        managerError(householdId)?.let { return it }
         val user = currentUser()
         if (user?.isPreview == true) {
             return AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED).also {
@@ -306,6 +309,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     }
 
     override suspend fun createMemberInvite(householdId: String, memberId: String): AppResult<Invite> {
+        managerError(householdId)?.let { return it }
         val user = currentUser()
         if (user?.isPreview == true) {
             Timber.w("createMemberInvite failed: preview user attempted write operation")
@@ -325,6 +329,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
 
     override suspend fun updateHouseholdName(householdId: String, name: String): EmptyResult {
         Timber.d("updateHouseholdName: householdId=$householdId name=$name")
+        managerError(householdId)?.let { return it }
         val user = currentUser()
         if (user?.isPreview == true) {
             return AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED).also {
@@ -360,24 +365,60 @@ class OfflineFirstHouseholdRepository @Inject constructor(
 
     override suspend fun removeMember(householdId: String, memberId: String): EmptyResult {
         Timber.d("removeMember: householdId=$householdId memberId=$memberId")
+        val own = when (val membership = ownMembership(householdId)) {
+            is AppResult.Error -> return membership
+            is AppResult.Success -> membership.value
+        }
+        if (own.role != HouseholdRole.OWNER.name && own.role != HouseholdRole.ADMIN.name) {
+            return AppResult.Error(AppError.NOT_HOUSEHOLD_MANAGER)
+        }
         val user = currentUser()
         if (user?.isPreview == true) {
             Timber.w("removeMember failed: preview user attempted write operation")
             return AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED)
         }
         val member = memberDao.getMembers(householdId).find { it.id == memberId }
+        val targetIsOwner = member?.role == HouseholdRole.OWNER.name
+        val adminCannotRemoveTarget = own.role == HouseholdRole.ADMIN.name &&
+            member?.role != HouseholdRole.MEMBER.name
+        val cannotRemove = member?.id == own.id || targetIsOwner || adminCannotRemoveTarget
         return if (member == null) {
             AppResult.Error(AppError.MEMBER_NOT_FOUND)
+        } else if (cannotRemove) {
+            AppResult.Error(AppError.NOT_HOUSEHOLD_MANAGER)
         } else {
             // Soft removal (mirrors OfflineFirstChoreRepository.deleteChore): the row stays so
             // chore history keeps resolving this member's name. The "delete" operationType is
-            // kept for the pending-op bookkeeping - the removedAt/active fields ride the normal
-            // full-snapshot push to Firestore, there's no dedicated remote delete anymore.
+            // kept for pending-op bookkeeping. The owner syncs it in the full snapshot; an admin
+            // uses a targeted remote removal.
             memberDao.markRemoved(memberId, Clock.System.now())
+            memberDao.updateRole(memberId, HouseholdRole.MEMBER.name)
             enqueueOperation("member", householdId, "delete", member.userId ?: member.id)
             scope.launch { syncRepository.syncPendingOperations() }
             AppResult.Success(Unit)
         }
+    }
+
+    override suspend fun setMemberRole(householdId: String, memberId: String, role: HouseholdRole): EmptyResult {
+        val own = when (val membership = ownMembership(householdId)) {
+            is AppResult.Error -> return membership
+            is AppResult.Success -> membership.value
+        }
+        val target = memberDao.getMembers(householdId).find { it.id == memberId }
+            ?: return AppResult.Error(AppError.MEMBER_NOT_FOUND)
+        if (role == HouseholdRole.OWNER || target.userId == null || target.removedAt != null) {
+            return AppResult.Error(AppError.NOT_HOUSEHOLD_OWNER)
+        }
+        val mayChange = if (own.role == HouseholdRole.OWNER.name) {
+            target.id != own.id
+        } else {
+            own.role == HouseholdRole.ADMIN.name && own.id == target.id && role == HouseholdRole.MEMBER
+        }
+        if (!mayChange) return AppResult.Error(AppError.NOT_HOUSEHOLD_OWNER)
+        val targetUserId = target.userId ?: return AppResult.Error(AppError.MEMBER_NOT_JOINED)
+        val result = syncRepository.setMemberRole(householdId, targetUserId, role.name)
+        if (result is AppResult.Success) memberDao.updateRole(target.id, role.name)
+        return result
     }
 
     override suspend fun transferOwnership(householdId: String, newOwnerMemberId: String): EmptyResult {
@@ -416,7 +457,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                 is AppResult.Success -> {
                     householdDao.updateOwner(householdId, newOwnerUserId)
                     memberDao.updateRole(newOwner.id, HouseholdRole.OWNER.name)
-                    memberDao.updateRole(previousOwner.id, HouseholdRole.MEMBER.name)
+                    memberDao.updateRole(previousOwner.id, HouseholdRole.ADMIN.name)
                     AppResult.Success(Unit)
                 }
             }
@@ -464,6 +505,19 @@ class OfflineFirstHouseholdRepository @Inject constructor(
                 ?: AppResult.Error(AppError.OWN_MEMBERSHIP_NOT_FOUND)
         }
     }
+
+    private suspend fun managerError(householdId: String): AppResult.Error? =
+        when (val membership = ownMembership(householdId)) {
+            is AppResult.Error -> membership
+            is AppResult.Success -> if (
+                membership.value.role == HouseholdRole.OWNER.name ||
+                membership.value.role == HouseholdRole.ADMIN.name
+            ) {
+                null
+            } else {
+                AppResult.Error(AppError.NOT_HOUSEHOLD_MANAGER)
+            }
+        }
 
     private suspend fun stampCurrentUserEmail(user: AppUser) {
         val email = user.email ?: return

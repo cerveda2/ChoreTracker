@@ -19,6 +19,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseC
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveThemeSettingsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RemoveMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetDynamicColorUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SetMemberRoleUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetThemeModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignOutUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.TransferOwnershipUseCase
@@ -87,6 +88,9 @@ class SettingsViewModelTest {
 
     @MockK
     lateinit var removeMemberUseCase: RemoveMemberUseCase
+
+    @MockK
+    lateinit var setMemberRoleUseCase: SetMemberRoleUseCase
 
     @MockK
     lateinit var transferOwnershipUseCase: TransferOwnershipUseCase
@@ -391,6 +395,7 @@ private fun SettingsViewModelTest.createViewModel() = SettingsViewModel(
     createInviteUseCase,
     createMemberInviteUseCase,
     removeMemberUseCase,
+    setMemberRoleUseCase,
     transferOwnershipUseCase,
     leaveHouseholdUseCase,
     deleteHouseholdUseCase,

@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveCompletedChoreIdsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMutedReminderChoresUseCase
@@ -57,6 +58,9 @@ class ChoresViewModelTest {
     lateinit var observeChoresUseCase: ObserveChoresUseCase
 
     @MockK
+    lateinit var observeCompletedChoreIdsUseCase: ObserveCompletedChoreIdsUseCase
+
+    @MockK
     lateinit var observeMembersUseCase: ObserveMembersUseCase
 
     @MockK
@@ -97,6 +101,7 @@ class ChoresViewModelTest {
 
     private val householdFlow = MutableStateFlow<Household?>(null)
     private val choresFlow = MutableStateFlow(emptyList<Chore>())
+    private val completedChoreIdsFlow = MutableStateFlow(emptySet<String>())
     private val membersFlow = MutableStateFlow(emptyList<HouseholdMember>())
     private val staleChoresFlow = MutableStateFlow(emptyList<ChoreStaleness>())
     private val reminderSettingsFlow = MutableStateFlow(ReminderSettings())
@@ -107,12 +112,14 @@ class ChoresViewModelTest {
         MockKAnnotations.init(this)
         householdFlow.value = null
         choresFlow.value = emptyList()
+        completedChoreIdsFlow.value = emptySet()
         membersFlow.value = emptyList()
         staleChoresFlow.value = emptyList()
         reminderSettingsFlow.value = ReminderSettings()
         mutedReminderChoreIdsFlow.value = emptySet()
         every { observeCurrentHouseholdUseCase() } returns householdFlow
         every { observeChoresUseCase(any()) } answers { choresFlow }
+        every { observeCompletedChoreIdsUseCase(any()) } answers { completedChoreIdsFlow }
         every { observeMembersUseCase(any()) } answers { membersFlow }
         every { observeStaleChoresUseCase() } returns staleChoresFlow
         every { observeReminderSettingsUseCase() } returns reminderSettingsFlow
@@ -148,7 +155,7 @@ class ChoresViewModelTest {
                 assertThat(state.chores).hasSize(1)
                 assertThat(state.chores.first().id).isEqualTo("chore-1")
                 assertThat(state.members).hasSize(2)
-                assertThat(state.isOwner).isTrue()
+                assertThat(state.isManager).isTrue()
             }
         }
 
@@ -358,6 +365,7 @@ class ChoresViewModelTest {
 private fun ChoresViewModelTest.createViewModel() = ChoresViewModel(
     observeCurrentHouseholdUseCase,
     observeChoresUseCase,
+    observeCompletedChoreIdsUseCase,
     observeMembersUseCase,
     observeStaleChoresUseCase,
     observeReminderSettingsUseCase,

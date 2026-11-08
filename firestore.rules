@@ -37,6 +37,15 @@ service cloud.firestore {
         householdDoc(householdId).data.ownerUserId == request.auth.uid;
     }
 
+    function isHouseholdAdmin(householdId) {
+      return isHouseholdMember(householdId) &&
+        memberDoc(householdId, request.auth.uid).data.get('role', 'MEMBER') == 'ADMIN';
+    }
+
+    function isHouseholdManager(householdId) {
+      return isHouseholdOwner(householdId) || isHouseholdAdmin(householdId);
+    }
+
     function isSelfMemberWrite(householdId, memberId) {
       return isSignedIn() &&
         memberId == request.auth.uid &&
@@ -71,6 +80,7 @@ service cloud.firestore {
 
     function isSelfJoinWithValidInvite(householdId, memberId) {
       return isSelfMemberWrite(householdId, memberId) &&
+        request.resource.data.get('role', 'MEMBER') == 'MEMBER' &&
         isValidJoinInvite(
           householdId,
           request.resource.data.get('joinedViaInviteId', ''),
@@ -79,15 +89,16 @@ service cloud.firestore {
     }
 
     // Leaving or removal keeps the member doc (keyed by uid), so coming back is an update, not the
-    // create above. Same invite check as a first join. id and role can't change: history keeps
-    // resolving, and nobody returns as owner.
+    // create above. Same invite check as a first join. id stays fixed for history, and role
+    // must end as MEMBER so a former admin cannot regain privileges by rejoining.
     function isSelfRejoinWithValidInvite(householdId, memberId) {
       return isSelfMemberWrite(householdId, memberId) &&
         resource.data.get('active', true) == false &&
         request.resource.data.active == true &&
         request.resource.data.get('removedAt', null) == null &&
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['active', 'removedAt', 'joinedViaInviteId', 'displayName', 'email']) &&
+          .hasOnly(['active', 'removedAt', 'joinedViaInviteId', 'displayName', 'email', 'role']) &&
+        request.resource.data.get('role', 'MEMBER') == 'MEMBER' &&
         isValidJoinInvite(
           householdId,
           request.resource.data.get('joinedViaInviteId', ''),
@@ -138,7 +149,7 @@ service cloud.firestore {
     // itself is never listable, so codes can't be enumerated.
     match /inviteCodes/{code} {
       allow get: if isSignedIn();
-      allow create, update: if isHouseholdOwner(request.resource.data.householdId);
+      allow create, update: if isHouseholdManager(request.resource.data.householdId);
     }
 
     // deletedHouseholds/{id} is written by the deleteHousehold/deleteAccount functions only (no
@@ -147,36 +158,71 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.ownerUserId == request.auth.uid &&
         !exists(/databases/$(database)/documents/deletedHouseholds/$(householdId));
       allow read: if isHouseholdMember(householdId);
-      allow update, delete: if isHouseholdOwner(householdId);
+      allow update: if isHouseholdOwner(householdId) ||
+        (isHouseholdAdmin(householdId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'inviteCode']));
+      allow delete: if isHouseholdOwner(householdId);
 
       match /members/{memberId} {
         allow read: if isHouseholdMember(householdId) || isOwnMembershipRecord();
         allow create: if isHouseholdOwner(householdId) ||
+          (isHouseholdAdmin(householdId) &&
+            request.resource.data.get('userId', null) == null &&
+            request.resource.data.get('role', 'MEMBER') == 'MEMBER' &&
+            request.resource.data.householdId == householdId &&
+            request.resource.data.id == memberId) ||
           isSelfJoinWithValidInvite(householdId, memberId);
         // isSelfMemberWrite alone only pins userId/householdId - without the diff check below, a
-        // member could self-update their own role to OWNER (undeletable, full write access) or
+        // member could self-update their own role to ADMIN (manager write access) or
         // rewrite their logical id (colliding with another member's). displayName/email are the
         // only fields a member's own sync push legitimately changes after the initial join.
         //
-        // The third branch is a member leaving the household on their own: they may set only
-        // active/removedAt on their own doc, and only to the leaving state, and drop their email.
-        // The active == false clause stops a removed member from reactivating themselves; coming
-        // back takes a valid invite, the fourth branch.
+        // The leaving branch lets a member set only active/removedAt on their own doc, and only to
+        // the leaving state, and drop their email. role may stay or drop to MEMBER: 0.1.4 leaves
+        // without touching it, and rejoining forces MEMBER anyway. The active == false clause
+        // stops a removed member from reactivating themselves; coming back takes a valid invite.
         allow update: if isHouseholdOwner(householdId) ||
+          (isHouseholdAdmin(householdId) &&
+            resource.data.get('role', 'MEMBER') == 'MEMBER' &&
+            resource.data.get('userId', null) != householdDoc(householdId).data.ownerUserId &&
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['active', 'removedAt', 'email']) &&
+            request.resource.data.active == false &&
+            request.resource.data.get('removedAt', null) != null) ||
+          // A placeholder upload that timed out can still land, and its retry resends it unchanged.
+          (isHouseholdAdmin(householdId) &&
+            resource.data.get('userId', null) == null &&
+            request.resource.data.diff(resource.data).affectedKeys().size() == 0) ||
           (isSelfMemberWrite(householdId, memberId) &&
             request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['displayName', 'email'])) ||
+          (isHouseholdAdmin(householdId) &&
+            isSelfMemberWrite(householdId, memberId) &&
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['role', 'displayName', 'email']) &&
+            request.resource.data.get('role', 'MEMBER') == 'MEMBER') ||
           (isSelfMemberWrite(householdId, memberId) &&
             request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['active', 'removedAt', 'email']) &&
-            request.resource.data.active == false) ||
+              .hasOnly(['active', 'removedAt', 'email', 'role']) &&
+            request.resource.data.active == false &&
+            request.resource.data.get('role', 'MEMBER') in ['MEMBER', resource.data.get('role', 'MEMBER')]) ||
           isSelfRejoinWithValidInvite(householdId, memberId);
         allow delete: if isHouseholdOwner(householdId);
       }
 
       match /chores/{choreId} {
         allow read: if isHouseholdMember(householdId);
-        allow create, update, delete: if isHouseholdOwner(householdId);
+        allow create: if isHouseholdManager(householdId) ||
+          (isHouseholdMember(householdId) &&
+            request.resource.data.createdByUserId == request.auth.uid &&
+            request.resource.data.householdId == householdId &&
+            request.resource.data.id == choreId);
+        allow update: if (isHouseholdManager(householdId) ||
+          (isHouseholdMember(householdId) &&
+            resource.data.get('createdByUserId', null) == request.auth.uid)) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['name', 'category', 'frequencyDays', 'isActive', 'deletedAt']);
+        allow delete: if isHouseholdManager(householdId);
       }
 
       match /completions/{completionId} {
@@ -188,7 +234,7 @@ service cloud.firestore {
           (isHouseholdMember(householdId) && request.resource.data.createdByUserId == request.auth.uid);
         // Owner can update/delete any completion.
         // Members can update/delete completions they authored.
-        allow update, delete: if isHouseholdOwner(householdId) ||
+        allow update, delete: if isHouseholdManager(householdId) ||
           (isHouseholdMember(householdId) && resource.data.createdByUserId == request.auth.uid);
       }
 
@@ -199,8 +245,8 @@ service cloud.firestore {
         // than "list" - see the removed collectionGroup rule this used to need instead.
         allow get: if isSignedIn();
         allow list: if isHouseholdMember(householdId);
-        allow create, delete: if isHouseholdOwner(householdId);
-        allow update: if isHouseholdOwner(householdId) ||
+        allow create, delete: if isHouseholdManager(householdId);
+        allow update: if isHouseholdManager(householdId) ||
           (isHouseholdMember(householdId) &&
             request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['consumedAt', 'consumedByMemberId']));

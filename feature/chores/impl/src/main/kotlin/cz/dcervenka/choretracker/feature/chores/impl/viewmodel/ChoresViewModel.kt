@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveCompletedChoreIdsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMutedReminderChoresUseCase
@@ -49,6 +50,7 @@ import javax.inject.Inject
 class ChoresViewModel @Inject constructor(
     observeCurrentHouseholdUseCase: ObserveCurrentHouseholdUseCase,
     observeChoresUseCase: ObserveChoresUseCase,
+    observeCompletedChoreIdsUseCase: ObserveCompletedChoreIdsUseCase,
     observeMembersUseCase: ObserveMembersUseCase,
     observeStaleChoresUseCase: ObserveStaleChoresUseCase,
     observeReminderSettingsUseCase: ObserveReminderSettingsUseCase,
@@ -80,18 +82,26 @@ class ChoresViewModel @Inject constructor(
         .filterNotNull()
         .flatMapLatest { household ->
             combine(
-                observeChoresUseCase(household.id),
+                combine(
+                    observeChoresUseCase(household.id),
+                    observeCompletedChoreIdsUseCase(household.id),
+                    ::Pair,
+                ),
                 observeMembersUseCase(household.id),
                 observeStaleChoresUseCase(),
                 observeReminderSettingsUseCase().map { it.enabled }.distinctUntilChanged(),
                 observeMutedReminderChoresUseCase().distinctUntilChanged(),
-            ) { chores, members, staleChores, remindersEnabled, mutedReminderChoreIds ->
+            ) { (chores, completedChoreIds), members, staleChores, remindersEnabled, mutedReminderChoreIds ->
                 ChoresBaseData(
                     householdId = household.id,
                     chores = chores.filter { it.deletedAt == null },
                     staleness = staleChores.associateBy { it.choreId },
                     members = members,
-                    isOwner = members.any { it.isCurrentUser && it.role == HouseholdRole.OWNER },
+                    isManager = members.any {
+                        it.isCurrentUser && (it.role == HouseholdRole.OWNER || it.role == HouseholdRole.ADMIN)
+                    },
+                    currentUserId = members.find { it.isCurrentUser }?.userId,
+                    completedChoreIds = completedChoreIds,
                     remindersEnabled = remindersEnabled,
                     mutedReminderChoreIds = mutedReminderChoreIds,
                 )
@@ -104,7 +114,9 @@ class ChoresViewModel @Inject constructor(
                 chores = base.chores,
                 staleness = base.staleness,
                 members = base.members,
-                isOwner = base.isOwner,
+                isManager = base.isManager,
+                currentUserId = base.currentUserId,
+                completedChoreIds = base.completedChoreIds,
                 remindersEnabled = base.remindersEnabled,
                 mutedReminderChoreIds = base.mutedReminderChoreIds,
                 filter = currentFilter,
@@ -228,7 +240,9 @@ class ChoresViewModel @Inject constructor(
         val chores: List<Chore>,
         val staleness: Map<String, ChoreStaleness>,
         val members: List<HouseholdMember>,
-        val isOwner: Boolean,
+        val isManager: Boolean,
+        val currentUserId: String?,
+        val completedChoreIds: Set<String>,
         val remindersEnabled: Boolean,
         val mutedReminderChoreIds: Set<String>,
     )

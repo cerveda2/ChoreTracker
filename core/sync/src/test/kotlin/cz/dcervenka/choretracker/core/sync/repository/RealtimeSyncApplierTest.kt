@@ -98,6 +98,48 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
+    fun `applyChores keeps a locally edited chore while its upload is pending`() = runTest {
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(
+            PendingSyncOperationEntity(
+                id = "op-1", entityType = "chore", entityId = "chore-1",
+                operationType = "rename", payload = "Local name",
+                createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+            ),
+        )
+
+        applier.applyChores(listOf(sampleChore()))
+
+        coVerify(exactly = 0) { choreDao.upsert(match { it.id == "chore-1" }) }
+    }
+
+    @Test
+    fun `applyCompletions keeps a locally edited completion while its upload is pending`() = runTest {
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(
+            PendingSyncOperationEntity(
+                id = "op-1",
+                entityType = "completion",
+                entityId = "completion-1",
+                operationType = "upsert",
+                payload = "Local note",
+                createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+            ),
+        )
+        val remoteCompletion = ChoreCompletion(
+            id = "completion-1",
+            householdId = "household-1",
+            choreId = "chore-1",
+            createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+            createdByUserId = "user-2",
+            note = "Remote note",
+            participantMemberIds = emptyList(),
+        )
+
+        applier.applyCompletions("household-1", listOf(remoteCompletion))
+
+        coVerify(exactly = 0) { completionDao.upsert(match { it.id == "completion-1" }) }
+    }
+
+    @Test
     fun `applyMembers prunes members no longer present in the remote listener`() = runTest {
         val staleMember = MemberEntity(
             id = "stale-member",
