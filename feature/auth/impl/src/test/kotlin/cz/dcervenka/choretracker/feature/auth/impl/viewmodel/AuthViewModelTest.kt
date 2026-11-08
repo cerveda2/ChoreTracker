@@ -13,7 +13,9 @@ import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.test.mock.sampleAuthenticatedState
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
+import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthMode
 import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiIntent
+import cz.dcervenka.choretracker.feature.auth.impl.contract.AuthUiState
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -159,6 +161,29 @@ class AuthViewModelTest {
         advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.requiresConfiguration).isTrue()
+    }
+
+    @Test
+    fun `signing out after a sign up resets the form`() = runTest(coroutineRule.dispatcher) {
+        authStateFlow.value = AuthState.SignedOut
+        val viewModel = createViewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+        viewModel.dispatch(AuthUiIntent.AuthModeChanged(AuthMode.SIGN_UP))
+        viewModel.dispatch(AuthUiIntent.DisplayNameChanged("Dana"))
+        viewModel.dispatch(AuthUiIntent.EmailChanged("dana@example.com"))
+        viewModel.dispatch(AuthUiIntent.PasswordChanged("password123"))
+        advanceUntilIdle()
+
+        authStateFlow.value = sampleAuthenticatedState()
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.email).isEqualTo("dana@example.com")
+
+        authStateFlow.value = AuthState.SignedOut
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value).isEqualTo(AuthUiState())
     }
 }
 
