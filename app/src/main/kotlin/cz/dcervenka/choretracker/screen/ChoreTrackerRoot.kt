@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -41,6 +40,7 @@ import cz.dcervenka.choretracker.core.notifications.ui.NotificationPermissionReq
 import cz.dcervenka.choretracker.feature.auth.impl.navigation.authScreen
 import cz.dcervenka.choretracker.feature.chores.impl.navigation.ChoresDestination
 import cz.dcervenka.choretracker.feature.chores.impl.navigation.choresScreen
+import cz.dcervenka.choretracker.feature.dashboard.impl.navigation.DashboardDestination
 import cz.dcervenka.choretracker.feature.dashboard.impl.navigation.dashboardScreen
 import cz.dcervenka.choretracker.feature.onboarding.impl.navigation.onboardingScreen
 import cz.dcervenka.choretracker.feature.settings.impl.navigation.SettingsDestination
@@ -74,9 +74,10 @@ fun ChoreTrackerRoot(
     val showBottomBar = topLevelDestinations.any { destination -> currentRoute == destination.route }
     // Shared by the bottom nav bar's own tab switches and Home's avatar-to-Settings shortcut, so
     // both go through the same save/restore-state semantics rather than a plain navigate(route).
+    // Dashboard rather than the graph's start destination, which a section change below pops off.
     val navigateToTab: (String) -> Unit = { route ->
         navController.navigate(route) {
-            popUpTo(navController.graph.findStartDestination().id) {
+            popUpTo(DashboardDestination.route) {
                 saveState = true
             }
             launchSingleTop = true
@@ -97,9 +98,11 @@ fun ChoreTrackerRoot(
         if (rootDestination == RootDestination.Loading) return@LaunchedEffect
         if (rootDestination == lastHandledRootDestination) return@LaunchedEffect
         lastHandledRootDestination = rootDestination
+        // Clears the whole back stack: popping only up to the start destination left the section
+        // the app launched in (e.g. Auth) under the new one, so back returned to it.
         navController.navigate(rootDestination.route) {
-            popUpTo(navController.graph.findStartDestination().id) {
-                saveState = false
+            popUpTo(navController.graph.id) {
+                inclusive = true
             }
             launchSingleTop = true
             restoreState = false
