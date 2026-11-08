@@ -175,9 +175,10 @@ export const deleteAccount = onCall({ region: "europe-west1" }, async (request) 
   logger.info("deleteAccount: account removed", { uid, hadHousehold: householdId != null });
 });
 
-// Owner-only, and deletes the household for every member. Members' users/{uid}.householdId is
-// left pointing here on purpose: their next household read is refused, which wipes their local
-// data the same way a removed member's is. Only the caller's own pointer is dropped.
+// Owner-only, and deletes the household for every member. Every users/{uid}.householdId, the
+// owner's included, is left pointing here on purpose: the next household read is refused, which
+// wipes that device's local data the same way a removed member's is - the owner's other devices
+// too, which a dropped pointer would leave holding the household.
 export const deleteHousehold = onCall({ region: "europe-west1" }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) {
@@ -199,26 +200,27 @@ export const deleteHousehold = onCall({ region: "europe-west1" }, async (request
     await deleteHouseholdTree(db, householdId, householdRef);
     logger.info("deleteHousehold: household deleted", { uid, householdId });
   }
-
-  const userRef = db.doc(`users/${uid}`);
-  if ((await userRef.get()).get("householdId") === householdId) {
-    await userRef.update({ householdId: FieldValue.delete() });
-  }
 });
 
-// recursiveDelete removes the household doc after its subcollections, so a partial failure keeps
-// ownerUserId in place and the caller can retry.
+// The tombstone goes first: the households create rule refuses a deleted id, so no client - the
+// owner's other device, or a push already in flight - can recreate the household afterwards.
+// Members go before the rest of the tree: once their docs are gone the rules refuse their writes,
+// so nothing they send mid-delete lands after recursiveDelete has listed what to remove. The
+// household doc goes last, so a partial failure keeps ownerUserId in place and the caller can
+// retry.
 async function deleteHouseholdTree(
   db: Firestore,
   householdId: string,
   householdRef: DocumentReference,
 ): Promise<void> {
+  await db.doc(`deletedHouseholds/${householdId}`).set({ deletedAt: FieldValue.serverTimestamp() });
   const codes = await db.collection("inviteCodes").where("householdId", "==", householdId).get();
   if (!codes.empty) {
     const batch = db.batch();
     codes.docs.forEach((doc) => batch.delete(doc.ref));
     await batch.commit();
   }
+  await db.recursiveDelete(householdRef.collection("members"));
   await db.recursiveDelete(householdRef);
 }
 

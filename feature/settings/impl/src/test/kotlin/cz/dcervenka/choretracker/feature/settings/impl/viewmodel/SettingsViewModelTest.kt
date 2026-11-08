@@ -3,6 +3,7 @@ package cz.dcervenka.choretracker.feature.settings.impl.viewmodel
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
+import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.domain.usecase.AddMemberUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateInviteUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.CreateMemberInviteUseCase
@@ -43,7 +44,9 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.just
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
@@ -314,6 +317,29 @@ class SettingsViewModelTest {
                 }
                 cancelAndIgnoreRemainingEvents()
             }
+        }
+
+    @Test
+    fun `DeleteHousehold shows progress and ignores a repeat while the first is running`() =
+        runTest(coroutineRule.dispatcher) {
+            val deletion = CompletableDeferred<EmptyResult>()
+            coEvery { deleteHouseholdUseCase(any()) } coAnswers { deletion.await() }
+            val viewModel = createViewModel()
+            authStateFlow.value = sampleAuthenticatedState()
+            householdFlow.value = sampleHousehold()
+            backgroundScope.launch { viewModel.uiState.collect {} }
+            advanceUntilIdle()
+
+            viewModel.dispatch(SettingsUiIntent.DeleteHousehold)
+            viewModel.dispatch(SettingsUiIntent.DeleteHousehold)
+            advanceUntilIdle()
+
+            assertThat(viewModel.uiState.value.isDeletingHousehold).isTrue()
+            coVerify(exactly = 1) { deleteHouseholdUseCase("household-1") }
+
+            deletion.complete(AppResult.Success(Unit))
+            advanceUntilIdle()
+            assertThat(viewModel.uiState.value.isDeletingHousehold).isFalse()
         }
 
     @Test

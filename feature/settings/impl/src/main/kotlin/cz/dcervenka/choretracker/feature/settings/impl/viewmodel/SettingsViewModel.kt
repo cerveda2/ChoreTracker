@@ -75,6 +75,7 @@ class SettingsViewModel @Inject constructor(
     private val accountDisplayNameInput = MutableStateFlow("")
     private val householdNameInput = MutableStateFlow("")
     private val memberInput = MutableStateFlow("")
+    private val isDeletingHousehold = MutableStateFlow(false)
 
     private val currentHousehold = observeCurrentHouseholdUseCase()
         .onEach { household -> currentHouseholdId = household?.id }
@@ -149,10 +150,12 @@ class SettingsViewModel @Inject constructor(
         householdState,
         observeThemeSettingsUseCase(),
         observeReminderSettingsUseCase(),
-    ) { state, householdUiState, themeSettings, reminderSettings ->
+        isDeletingHousehold,
+    ) { state, householdUiState, themeSettings, reminderSettings, deletingHousehold ->
         val stateWithSettings = householdUiState.copy(
             themeSettings = themeSettings,
             reminderSettings = reminderSettings,
+            isDeletingHousehold = deletingHousehold,
         )
         when (state) {
             is AuthState.Authenticated -> {
@@ -317,10 +320,13 @@ class SettingsViewModel @Inject constructor(
     }
 
     private fun deleteHousehold() {
-        val household = uiState.value.household ?: return
+        val household = uiState.value.household
+        if (household == null || isDeletingHousehold.value) return
+        isDeletingHousehold.value = true
         viewModelScope.launch {
             // Same reactive ONBOARDING redirect as leaveHousehold on success.
             val result = deleteHouseholdUseCase(household.id)
+            isDeletingHousehold.value = false
             if (result is AppResult.Error) {
                 _events.send(SettingsUiEvent.Error(result.error))
             }

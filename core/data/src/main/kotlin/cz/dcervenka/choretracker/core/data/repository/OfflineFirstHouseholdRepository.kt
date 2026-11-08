@@ -421,14 +421,11 @@ class OfflineFirstHouseholdRepository @Inject constructor(
 
     override suspend fun leaveHousehold(householdId: String): EmptyResult {
         Timber.d("leaveHousehold: householdId=$householdId")
-        val user = currentUser()
-        val household = householdDao.getHousehold(householdId)
-        val member = user?.let { memberDao.findByUserId(householdId, it.id) }
+        val member = when (val own = ownMembership(householdId)) {
+            is AppResult.Error -> return own
+            is AppResult.Success -> own.value
+        }
         return when {
-            user == null -> AppResult.Error(AppError.NOT_SIGNED_IN)
-            user.isPreview -> AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED)
-            household == null -> AppResult.Error(AppError.HOUSEHOLD_NOT_FOUND)
-            member == null -> AppResult.Error(AppError.OWN_MEMBERSHIP_NOT_FOUND)
             // Checked against the caller's own (real-time-synced) role, not household.ownerUserId -
             // see the matching comment on transferOwnership above.
             member.role == HouseholdRole.OWNER.name -> AppResult.Error(AppError.OWNER_CANNOT_LEAVE)
@@ -440,17 +437,27 @@ class OfflineFirstHouseholdRepository @Inject constructor(
 
     override suspend fun deleteHousehold(householdId: String): EmptyResult {
         Timber.d("deleteHousehold: householdId=$householdId")
+        val member = when (val own = ownMembership(householdId)) {
+            is AppResult.Error -> return own
+            is AppResult.Success -> own.value
+        }
+        // Own role, not household.ownerUserId - see the matching comment on transferOwnership.
+        return if (member.role != HouseholdRole.OWNER.name) {
+            AppResult.Error(AppError.NOT_HOUSEHOLD_OWNER)
+        } else {
+            syncRepository.deleteHousehold(householdId)
+        }
+    }
+
+    // The caller's own member row in householdId, or the error leave/delete report without one.
+    private suspend fun ownMembership(householdId: String): AppResult<MemberEntity> {
         val user = currentUser()
-        val household = householdDao.getHousehold(householdId)
-        val member = user?.let { memberDao.findByUserId(householdId, it.id) }
         return when {
             user == null -> AppResult.Error(AppError.NOT_SIGNED_IN)
             user.isPreview -> AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED)
-            household == null -> AppResult.Error(AppError.HOUSEHOLD_NOT_FOUND)
-            member == null -> AppResult.Error(AppError.OWN_MEMBERSHIP_NOT_FOUND)
-            // Own role, not household.ownerUserId - see the matching comment on transferOwnership.
-            member.role != HouseholdRole.OWNER.name -> AppResult.Error(AppError.NOT_HOUSEHOLD_OWNER)
-            else -> syncRepository.deleteHousehold(householdId)
+            householdDao.getHousehold(householdId) == null -> AppResult.Error(AppError.HOUSEHOLD_NOT_FOUND)
+            else -> memberDao.findByUserId(householdId, user.id)?.let { AppResult.Success(it) }
+                ?: AppResult.Error(AppError.OWN_MEMBERSHIP_NOT_FOUND)
         }
     }
 
