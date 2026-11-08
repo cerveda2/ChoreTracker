@@ -276,6 +276,9 @@
     <string name="chores_editor_frequency_custom">Custom</string>
     <string name="chores_editor_frequency_custom_hint">Days between completions</string>
     <string name="chores_editor_add_action">Add chore</string>
+    <string name="chores_editor_reminder_label">Remind me when it\'s due</string>
+    <string name="chores_editor_reminder_description">Only for you</string>
+    <string name="chores_reminder_off">Reminder off</string>
     <string name="chores_delete_title">Delete this chore?</string>
     <string name="chores_delete_message">This removes the chore from active planning while keeping existing completion history readable.</string>
     <string name="chores_feedback_added">Chore added</string>

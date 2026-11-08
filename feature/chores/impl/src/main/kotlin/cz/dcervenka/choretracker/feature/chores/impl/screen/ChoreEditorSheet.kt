@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -28,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import cz.dcervenka.choretracker.core.design.LocalSpacing
@@ -50,6 +52,8 @@ internal fun ChoreEditorSheet(
     onDismiss: () -> Unit,
     onSave: (name: String, category: ChoreCategory, frequencyDays: Int?, isActive: Boolean) -> Unit,
     onDelete: (() -> Unit)? = null,
+    reminderEnabled: Boolean? = null,
+    onReminderChange: (Boolean) -> Unit = {},
 ) {
     val spacing = LocalSpacing.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -216,6 +220,29 @@ internal fun ChoreEditorSheet(
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Switch(checked = !isActive, onCheckedChange = { isActive = !it }, enabled = isOwner)
+                }
+            }
+
+            if (reminderEnabled != null && isActive) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .toggleable(value = reminderEnabled, role = Role.Switch, onValueChange = onReminderChange),
+                    horizontalArrangement = Arrangement.spacedBy(spacing.medium),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.chores_editor_reminder_label),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = stringResource(R.string.chores_editor_reminder_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = reminderEnabled, onCheckedChange = null)
                 }
             }
 

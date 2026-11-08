@@ -4,6 +4,7 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
+import cz.dcervenka.choretracker.core.data.contract.ReminderSettingsRepository
 import cz.dcervenka.choretracker.core.data.contract.SyncRepository
 import cz.dcervenka.choretracker.core.data.di.ApplicationScope
 import cz.dcervenka.choretracker.core.data.mapper.asModel
@@ -51,6 +52,7 @@ class OfflineFirstHouseholdRepository @Inject constructor(
     private val authRepository: AuthRepository,
     private val syncRepository: SyncRepository,
     private val database: ChoreTrackerDatabase,
+    private val reminderSettingsRepository: ReminderSettingsRepository,
     @ApplicationScope private val scope: CoroutineScope,
 ) : HouseholdRepository {
 
@@ -63,6 +65,8 @@ class OfflineFirstHouseholdRepository @Inject constructor(
             when {
                 user == null -> {
                     database.clearAll()
+                    // Muted reminders are personal - the next account on this device must not inherit them.
+                    reminderSettingsRepository.clearMutedChoreIds()
                     hasRefreshedFromRemoteThisSession = false
                     restoreStatus.value = HouseholdRestoreStatus()
                     emit(null)

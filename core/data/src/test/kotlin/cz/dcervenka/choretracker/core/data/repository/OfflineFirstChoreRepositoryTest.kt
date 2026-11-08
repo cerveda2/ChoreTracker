@@ -101,11 +101,14 @@ class OfflineFirstChoreRepositoryTest {
     }
 
     @Test
-    fun `addChore triggers sync and returns Success`() = runTest {
+    fun `addChore triggers sync and returns the new chore's id`() = runTest {
+        val slot = slot<ChoreEntity>()
+        coEvery { choreDao.upsert(capture(slot)) } just Runs
+
         val result = repository.addChore("household-1", "Kitchen", ChoreCategory.OTHER)
 
         coVerify(exactly = 1) { syncRepository.syncPendingOperations() }
-        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        assertThat(result).isEqualTo(AppResult.Success(slot.captured.id))
     }
 
     // observeChores

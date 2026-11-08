@@ -294,6 +294,9 @@
     <string name="chores_editor_frequency_custom">Vlastní</string>
     <string name="chores_editor_frequency_custom_hint">Dny mezi splněními</string>
     <string name="chores_editor_add_action">Přidat úkol</string>
+    <string name="chores_editor_reminder_label">Připomenout, až bude na řadě</string>
+    <string name="chores_editor_reminder_description">Jen pro vás</string>
+    <string name="chores_reminder_off">Připomenutí vypnuto</string>
     <string name="chores_delete_title">Smazat tento úkol?</string>
     <string name="chores_delete_message">Tím se úkol odstraní z aktivního plánování, ale stávající historie splnění zůstane čitelná.</string>
     <string name="chores_feedback_added">Úkol přidán</string>

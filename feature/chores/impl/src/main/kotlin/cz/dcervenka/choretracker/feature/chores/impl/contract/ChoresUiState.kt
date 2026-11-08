@@ -11,6 +11,8 @@ data class ChoresUiState(
     val staleness: Map<String, ChoreStaleness> = emptyMap(),
     val members: List<HouseholdMember> = emptyList(),
     val isOwner: Boolean = false,
+    val remindersEnabled: Boolean = false,
+    val mutedReminderChoreIds: Set<String> = emptySet(),
     val filter: ChoreFilter = ChoreFilter.ALL,
     val query: String = "",
 ) : UiState

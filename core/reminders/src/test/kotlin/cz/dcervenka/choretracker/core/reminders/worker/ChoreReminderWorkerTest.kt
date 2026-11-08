@@ -1,5 +1,8 @@
 package cz.dcervenka.choretracker.core.reminders.worker
 
+import android.Manifest
+import android.app.Application
+import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
@@ -13,6 +16,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.CheckStaleChoresUseCase
 import cz.dcervenka.choretracker.core.model.settings.ReminderSettings
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
+import cz.dcervenka.choretracker.core.reminders.R
 import cz.dcervenka.choretracker.core.reminders.scheduler.ChoreReminderScheduler
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -42,6 +46,7 @@ class ChoreReminderWorkerTest {
         checkStaleChoresUseCase = mockk()
         reminderSettingsRepository = mockk()
         scheduler = mockk(relaxed = true)
+        coEvery { reminderSettingsRepository.getMutedChoreIds() } returns emptySet()
     }
 
     private fun buildWorker(): ChoreReminderWorker =
@@ -117,6 +122,7 @@ class ChoreReminderWorkerTest {
 
     @Test
     fun `does not post a notification once reminders are disabled after the staleness check completes`() = runTest {
+        shadowOf(context as Application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         coEvery { reminderSettingsRepository.getSettings() } returnsMany listOf(
             ReminderSettings(enabled = true),
             ReminderSettings(enabled = false),
@@ -139,4 +145,66 @@ class ChoreReminderWorkerTest {
         assertThat(shadowOf(notificationManager).allNotifications).isEmpty()
         coVerify(exactly = 1) { scheduler.rescheduleNow() }
     }
+
+    @Test
+    fun `does not post a notification when every stale chore is muted`() = runTest {
+        shadowOf(context as Application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        coEvery { reminderSettingsRepository.getSettings() } returns ReminderSettings(enabled = true)
+        coEvery { reminderSettingsRepository.getMutedChoreIds() } returns setOf("chore-1")
+        coEvery { checkStaleChoresUseCase() } returns listOf(staleChore("chore-1", "Kitchen"))
+
+        val result = buildWorker().doWork()
+
+        assertThat(result).isEqualTo(ListenableWorker.Result.success())
+        val notificationManager = context.getSystemService(NotificationManager::class.java)
+        assertThat(shadowOf(notificationManager).allNotifications).isEmpty()
+        coVerify(exactly = 1) { scheduler.rescheduleNow() }
+    }
+
+    @Test
+    fun `does not post a notification for a chore muted during the staleness check`() = runTest {
+        shadowOf(context as Application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        var mutedChoreIds = emptySet<String>()
+        coEvery { reminderSettingsRepository.getSettings() } returns ReminderSettings(enabled = true)
+        coEvery { reminderSettingsRepository.getMutedChoreIds() } answers { mutedChoreIds }
+        coEvery { checkStaleChoresUseCase() } answers {
+            mutedChoreIds = setOf("chore-1")
+            listOf(staleChore("chore-1", "Kitchen"))
+        }
+
+        buildWorker().doWork()
+
+        val notificationManager = context.getSystemService(NotificationManager::class.java)
+        assertThat(shadowOf(notificationManager).allNotifications).isEmpty()
+    }
+
+    @Test
+    fun `lists only the stale chores that are not muted`() = runTest {
+        shadowOf(context as Application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        coEvery { reminderSettingsRepository.getSettings() } returns ReminderSettings(enabled = true)
+        coEvery { reminderSettingsRepository.getMutedChoreIds() } returns setOf("chore-1")
+        coEvery { checkStaleChoresUseCase() } returns listOf(
+            staleChore("chore-1", "Kitchen"),
+            staleChore("chore-2", "Bathroom"),
+        )
+
+        buildWorker().doWork()
+
+        val notificationManager = context.getSystemService(NotificationManager::class.java)
+        val notification = shadowOf(notificationManager).allNotifications.single()
+        assertThat(notification.extras.getCharSequence(Notification.EXTRA_TITLE).toString()).isEqualTo(
+            context.resources.getQuantityString(R.plurals.reminder_notification_title, 1, 1),
+        )
+        assertThat(notification.extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)?.map { it.toString() })
+            .containsExactly("Bathroom")
+    }
 }
+
+private fun staleChore(choreId: String, choreName: String) = ChoreStaleness(
+    choreId = choreId,
+    choreName = choreName,
+    lastCompletedDate = null,
+    daysSinceLastCompletion = 10,
+    frequencyDays = 7,
+    status = ChoreStatus.NEEDS_ATTENTION,
+)

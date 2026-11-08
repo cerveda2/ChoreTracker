@@ -12,6 +12,7 @@ sealed interface ChoresUiIntent : UiIntent {
         val name: String,
         val category: ChoreCategory,
         val frequencyDays: Int?,
+        val reminderEnabled: Boolean,
     ) : ChoresUiIntent
     data class UpdateChore(
         val choreId: String,
@@ -29,4 +30,5 @@ sealed interface ChoresUiIntent : UiIntent {
         val completedAt: Instant?,
     ) : ChoresUiIntent
     data class DeleteCompletion(val completionId: String) : ChoresUiIntent
+    data class SetChoreReminder(val choreId: String, val enabled: Boolean) : ChoresUiIntent
 }

@@ -40,7 +40,7 @@ class OfflineFirstChoreRepository @Inject constructor(
         name: String,
         category: ChoreCategory,
         frequencyDays: Int?,
-    ): EmptyResult {
+    ): AppResult<String> {
         Timber.d("addChore: householdId=$householdId name=$name category=$category frequencyDays=$frequencyDays")
         val choreId = UUID.randomUUID().toString()
         choreDao.upsert(
@@ -66,7 +66,7 @@ class OfflineFirstChoreRepository @Inject constructor(
             ),
         )
         scope.launch { syncRepository.syncPendingOperations() }
-        return AppResult.Success(Unit)
+        return AppResult.Success(choreId)
     }
 
     override suspend fun deleteChore(choreId: String): EmptyResult {
