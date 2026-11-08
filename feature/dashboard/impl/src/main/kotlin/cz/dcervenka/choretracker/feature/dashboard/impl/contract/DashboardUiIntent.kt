@@ -21,4 +21,5 @@ sealed interface DashboardUiIntent : UiIntent {
     data object Refresh : DashboardUiIntent
     data object DismissNotificationsBanner : DashboardUiIntent
     data class SystemNotificationsChanged(val enabled: Boolean) : DashboardUiIntent
+    data class NetworkAvailabilityChanged(val available: Boolean) : DashboardUiIntent
 }

@@ -13,4 +13,6 @@ data class DashboardUiState(
     val syncState: SyncState? = null,
     val isRefreshing: Boolean = false,
     val showNotificationsBanner: Boolean = false,
+    // Null hides the indicator: nothing syncs in preview mode.
+    val syncStatus: SyncStatus? = null,
 ) : UiState

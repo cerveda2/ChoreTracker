@@ -11,13 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CloudDone
-import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -63,6 +57,7 @@ import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
+import cz.dcervenka.choretracker.feature.dashboard.impl.contract.SyncStatus
 import cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel.UndoEvent
 import kotlinx.coroutines.flow.Flow
 import kotlin.time.Clock
@@ -100,6 +95,9 @@ fun DashboardScreen(
             onIntent(DashboardUiIntent.SystemNotificationsChanged(enabled))
         }
     }
+    if (!LocalInspectionMode.current) {
+        ReportNetworkAvailability { available -> onIntent(DashboardUiIntent.NetworkAvailabilityChanged(available)) }
+    }
 
     LaunchedEffect(undoEvents) {
         undoEvents.collect { event ->
@@ -121,6 +119,7 @@ fun DashboardScreen(
     }
 
     var selectedChoreId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showSyncStatus by rememberSaveable { mutableStateOf(false) }
     var selectedNote by rememberSaveable { mutableStateOf("") }
     val selectedMembers = rememberSaveableStringList()
     val currentMemberIndex = uiState.members.indexOfFirst { it.isCurrentUser }
@@ -160,8 +159,6 @@ fun DashboardScreen(
         val highlightedCompletions = uiState.allCompletions.take(3)
         val memberIndexById = uiState.members.withIndex().associate { (index, member) -> member.id to index }
         val syncState = uiState.syncState
-        val hasSyncIssue = syncState != null &&
-            (syncState.pendingOperations > 0 || syncState.lastError != null)
         // Today's date, not a live clock - fixing it at first composition avoids reformatting
         // (a fresh SimpleDateFormat per formatInstantForLocale call) on every unrelated
         // recomposition of this screen.
@@ -174,18 +171,8 @@ fun DashboardScreen(
                     title = snapshot.household.name,
                     subtitle = todayLabel,
                     actions = {
-                        IconButton(onClick = { onIntent(DashboardUiIntent.RetrySync) }) {
-                            Icon(
-                                imageVector = if (hasSyncIssue) Icons.Outlined.CloudOff else Icons.Outlined.CloudDone,
-                                contentDescription = stringResource(
-                                    if (hasSyncIssue) R.string.dashboard_sync_issue else R.string.dashboard_sync_ok,
-                                ),
-                                tint = if (hasSyncIssue) {
-                                    MaterialTheme.colorScheme.error
-                                } else {
-                                    MaterialTheme.colorScheme.primary
-                                },
-                            )
+                        uiState.syncStatus?.let { status ->
+                            SyncStatusChip(status = status, onClick = { showSyncStatus = true })
                         }
                         if (currentMemberIndex >= 0) {
                             val currentMember = uiState.members[currentMemberIndex]
@@ -227,16 +214,14 @@ fun DashboardScreen(
                     ),
                     verticalArrangement = Arrangement.spacedBy(spacing.large),
                 ) {
-                    syncState
-                        ?.takeIf { it.pendingOperations > 0 || it.lastError != null }
-                        ?.let { state ->
-                            item {
-                                RemoteSyncBanner(
-                                    syncState = state,
-                                    onRetrySync = { onIntent(DashboardUiIntent.RetrySync) },
-                                )
-                            }
+                    if (uiState.syncStatus == SyncStatus.NOT_SYNCED && syncState != null) {
+                        item {
+                            RemoteSyncBanner(
+                                syncState = syncState,
+                                onRetrySync = { onIntent(DashboardUiIntent.RetrySync) },
+                            )
                         }
+                    }
                     if (uiState.showNotificationsBanner) {
                         item {
                             NotificationsOffBanner(
@@ -341,6 +326,19 @@ fun DashboardScreen(
                 },
             )
         }
+
+        val syncStatus = uiState.syncStatus
+        if (showSyncStatus && syncStatus != null) {
+            SyncStatusSheet(
+                status = syncStatus,
+                syncState = uiState.syncState,
+                onRetry = {
+                    onIntent(DashboardUiIntent.RetrySync)
+                    showSyncStatus = false
+                },
+                onDismiss = { showSyncStatus = false },
+            )
+        }
     }
 }
 
@@ -353,6 +351,7 @@ private fun DashboardScreenPreview() {
                 snapshot = PreviewData.dashboardSnapshot,
                 members = PreviewData.members,
                 allCompletions = PreviewData.dashboardSnapshot.recentCompletions,
+                syncStatus = SyncStatus.SYNCED,
             ),
             onIntent = {},
             undoEvents = kotlinx.coroutines.flow.emptyFlow(),
