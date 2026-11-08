@@ -44,4 +44,6 @@ interface HouseholdRepository {
     suspend fun transferOwnership(householdId: String, newOwnerMemberId: String): EmptyResult
 
     suspend fun leaveHousehold(householdId: String): EmptyResult
+
+    suspend fun deleteHousehold(householdId: String): EmptyResult
 }
