@@ -95,8 +95,6 @@
     <string name="dashboard_add_first_chore">Add a chore</string>
     <string name="dashboard_home_empty_title">No chores yet</string>
     <string name="dashboard_home_empty_message">Add your first chore to start tracking who does what.</string>
-    <string name="dashboard_sync_ok">Synced</string>
-    <string name="dashboard_sync_issue">Sync needs attention</string>
     <string name="dashboard_open_settings">Open settings</string>
     <string name="log_sheet_who">WHO DID IT</string>
     <string name="log_sheet_everyone">Everyone</string>

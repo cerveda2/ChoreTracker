@@ -103,8 +103,6 @@
     <string name="dashboard_add_first_chore">Přidat úkol</string>
     <string name="dashboard_home_empty_title">Zatím žádné úkoly</string>
     <string name="dashboard_home_empty_message">Přidejte první úkol a začněte sledovat, kdo co dělá.</string>
-    <string name="dashboard_sync_ok">Synchronizováno</string>
-    <string name="dashboard_sync_issue">Synchronizace vyžaduje pozornost</string>
     <string name="dashboard_open_settings">Otevřít nastavení</string>
     <string name="log_sheet_who">ÚČASTNÍCI</string>
     <string name="log_sheet_everyone">Všichni</string>
