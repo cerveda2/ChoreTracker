@@ -206,6 +206,42 @@ jobs:
         working-directory: functions
         run: npm run build
 
+  functions-emulator-tests:
+    name: Cloud Functions emulator tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      # The Firestore emulator runs on the JVM and needs Java 21.
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install functions dependencies
+        working-directory: functions
+        run: npm ci
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Run emulator tests
+        # Callables and firestore.rules against the Auth/Firestore/Functions emulators, under a
+        # demo- project so nothing can reach a real one.
+        working-directory: functions
+        run: npm run test:emulators
+
   # Every PR and every push to main deploys to dev; production only ships with a release
   # (release.yml).
   deploy-dev:

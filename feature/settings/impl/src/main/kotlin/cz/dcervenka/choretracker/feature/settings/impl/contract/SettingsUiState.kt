@@ -23,6 +23,7 @@ data class SettingsUiState(
     val isSignedOut: Boolean = false,
     val themeSettings: ThemeSettings = ThemeSettings(),
     val reminderSettings: ReminderSettings = ReminderSettings(),
+    val isDeletingHousehold: Boolean = false,
 ) : UiState {
     val isOwner: Boolean
         get() = members.any { it.isCurrentUser && it.role == HouseholdRole.OWNER }

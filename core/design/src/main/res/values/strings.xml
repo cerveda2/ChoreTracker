@@ -191,7 +191,7 @@
     <string name="settings_leave_household_title">Leave this household?</string>
     <string name="settings_leave_household_message">You lose access to this household. Your past completions stay visible to the others.</string>
     <string name="settings_leave_household_owner_hint">Transfer ownership before you can leave.</string>
-    <string name="settings_leave_household_sole_owner_hint">You’re the only member. Delete your account to remove this household.</string>
+    <string name="settings_leave_household_sole_owner_hint">You’re the only member. To remove this household, delete it in Manage household.</string>
     <string name="settings_transfer_ownership">Transfer ownership</string>
     <string name="settings_transfer_ownership_picker_title">Choose the new owner</string>
     <string name="settings_transfer_ownership_title">Make %1$s the owner?</string>
@@ -204,6 +204,10 @@
     <string name="settings_delete_account_title">Delete your account?</string>
     <string name="settings_delete_account_message">Your account and its data are permanently removed. If you\'re the only member, the household is deleted too. Completions you shared stay visible to other members.</string>
     <string name="settings_delete_account_confirm">Delete account</string>
+    <string name="settings_delete_household">Delete household</string>
+    <string name="settings_delete_household_title">Delete this household?</string>
+    <string name="settings_delete_household_message">All chores and completion history are permanently deleted. You can then create a new household or join another one.</string>
+    <string name="settings_delete_household_message_members">All chores and completion history are permanently deleted for everyone, and %1$s will lose access.</string>
     <plurals name="settings_members_description">
         <item quantity="one">%1$d active household member</item>
         <item quantity="other">%1$d active household members</item>

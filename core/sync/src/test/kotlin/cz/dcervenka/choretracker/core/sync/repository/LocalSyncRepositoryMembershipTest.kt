@@ -29,10 +29,12 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.just
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
@@ -139,6 +141,63 @@ class LocalSyncRepositoryMembershipTest {
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
         coVerify(exactly = 0) { database.clearAll() }
     }
+
+    @Test
+    fun `deleteHousehold wipes local data after the remote call succeeds`() = runTest(coroutineRule.dispatcher) {
+        coEvery { remoteHouseholdDataSource.deleteHousehold("household-1") } returns AppResult.Success(Unit)
+
+        val result = repository.deleteHousehold("household-1")
+
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
+        coVerify { database.clearAll() }
+    }
+
+    @Test
+    fun `deleteHousehold keeps local data when the remote call fails`() = runTest(coroutineRule.dispatcher) {
+        coEvery { remoteHouseholdDataSource.deleteHousehold("household-1") } returns AppResult.Error(AppError.NETWORK)
+
+        val result = repository.deleteHousehold("household-1")
+
+        assertThat(result).isInstanceOf(AppResult.Error::class.java)
+        coVerify(exactly = 0) { database.clearAll() }
+    }
+
+    @Test
+    fun `deleteHousehold waits for a sync push already running before deleting`() =
+        runTest(coroutineRule.dispatcher) {
+            val pushInFlight = CompletableDeferred<Unit>()
+            coEvery { pendingSyncOperationDao.getAll() } coAnswers {
+                pushInFlight.await()
+                emptyList()
+            }
+            coEvery { remoteHouseholdDataSource.deleteHousehold("household-1") } returns AppResult.Success(Unit)
+
+            val sync = async { repository.syncPendingOperations() }
+            advanceUntilIdle()
+            val delete = async { repository.deleteHousehold("household-1") }
+            advanceUntilIdle()
+            coVerify(exactly = 0) { remoteHouseholdDataSource.deleteHousehold(any()) }
+
+            pushInFlight.complete(Unit)
+            sync.await()
+            assertThat(delete.await()).isInstanceOf(AppResult.Success::class.java)
+            coVerify { remoteHouseholdDataSource.deleteHousehold("household-1") }
+        }
+
+    @Test
+    fun `deleteHousehold still wipes local data when the caller is cancelled mid-call`() =
+        runTest(coroutineRule.dispatcher) {
+            val remoteDelete = CompletableDeferred<AppResult<Unit>>()
+            coEvery { remoteHouseholdDataSource.deleteHousehold("household-1") } coAnswers { remoteDelete.await() }
+
+            val caller = launch { repository.deleteHousehold("household-1") }
+            advanceUntilIdle()
+            caller.cancel()
+            remoteDelete.complete(AppResult.Success(Unit))
+            advanceUntilIdle()
+
+            coVerify { database.clearAll() }
+        }
 
     @Test
     fun `transferOwnership delegates to the remote data source`() = runTest(coroutineRule.dispatcher) {
