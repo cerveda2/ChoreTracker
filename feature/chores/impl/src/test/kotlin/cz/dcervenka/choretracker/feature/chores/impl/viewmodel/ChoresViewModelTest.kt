@@ -259,15 +259,31 @@ class ChoresViewModelTest {
     }
 
     @Test
-    fun `deleteChore delegates to use case and emits ChoreDeleted`() = runTest(coroutineRule.dispatcher) {
+    fun `deleteChore delegates to use case, unmutes the chore and emits ChoreDeleted`() =
+        runTest(coroutineRule.dispatcher) {
+            val viewModel = createViewModel()
+
+            viewModel.events.test {
+                viewModel.dispatch(ChoresUiIntent.DeleteChore("chore-1"))
+                advanceUntilIdle()
+
+                coVerify { deleteChoreUseCase("chore-1") }
+                coVerify { setChoreReminderMutedUseCase("chore-1", muted = false) }
+                assertThat(awaitItem()).isEqualTo(ChoresUiEvent.ChoreDeleted)
+            }
+        }
+
+    @Test
+    fun `deleteChore keeps the reminder state when the delete fails`() = runTest(coroutineRule.dispatcher) {
+        coEvery { deleteChoreUseCase(any()) } returns AppResult.Error(AppError.UNKNOWN)
         val viewModel = createViewModel()
 
         viewModel.events.test {
             viewModel.dispatch(ChoresUiIntent.DeleteChore("chore-1"))
             advanceUntilIdle()
 
-            coVerify { deleteChoreUseCase("chore-1") }
-            assertThat(awaitItem()).isEqualTo(ChoresUiEvent.ChoreDeleted)
+            assertThat(awaitItem()).isEqualTo(ChoresUiEvent.Error(AppError.UNKNOWN))
+            coVerify(exactly = 0) { setChoreReminderMutedUseCase(any(), any()) }
         }
     }
 

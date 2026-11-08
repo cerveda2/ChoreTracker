@@ -3,6 +3,7 @@ package cz.dcervenka.choretracker.core.data.repository
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
+import cz.dcervenka.choretracker.core.data.contract.ReminderSettingsRepository
 import cz.dcervenka.choretracker.core.data.contract.SyncRepository
 import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
@@ -55,6 +56,9 @@ class OfflineFirstHouseholdRepositoryTest {
     @MockK
     lateinit var database: ChoreTrackerDatabase
 
+    @MockK
+    lateinit var reminderSettingsRepository: ReminderSettingsRepository
+
     private val authState = MutableStateFlow<AuthState>(
         AuthState.Authenticated(
             user = AppUser(
@@ -96,8 +100,20 @@ class OfflineFirstHouseholdRepositoryTest {
             authRepository = authRepository,
             syncRepository = syncRepository,
             database = database,
+            reminderSettingsRepository = reminderSettingsRepository,
             scope = CoroutineScope(Dispatchers.Unconfined),
         )
+    }
+
+    @Test
+    fun `observeCurrentHousehold clears local data and muted reminders once signed out`() = runTest {
+        authState.value = AuthState.SignedOut
+        coEvery { database.clearAll() } just Runs
+        coEvery { reminderSettingsRepository.clearMutedChoreIds() } just Runs
+
+        assertThat(repository.observeCurrentHousehold().first()).isNull()
+        coVerify(exactly = 1) { database.clearAll() }
+        coVerify(exactly = 1) { reminderSettingsRepository.clearMutedChoreIds() }
     }
 
     @Test

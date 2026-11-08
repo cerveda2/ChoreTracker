@@ -27,17 +27,21 @@ import cz.dcervenka.choretracker.feature.chores.impl.contract.ChoresUiEvent
 import cz.dcervenka.choretracker.feature.chores.impl.contract.ChoresUiIntent
 import cz.dcervenka.choretracker.feature.chores.impl.contract.ChoresUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @Suppress("TooManyFunctions")
@@ -79,16 +83,16 @@ class ChoresViewModel @Inject constructor(
                 observeChoresUseCase(household.id),
                 observeMembersUseCase(household.id),
                 observeStaleChoresUseCase(),
-                observeReminderSettingsUseCase(),
-                observeMutedReminderChoresUseCase(),
-            ) { chores, members, staleChores, reminderSettings, mutedReminderChoreIds ->
+                observeReminderSettingsUseCase().map { it.enabled }.distinctUntilChanged(),
+                observeMutedReminderChoresUseCase().distinctUntilChanged(),
+            ) { chores, members, staleChores, remindersEnabled, mutedReminderChoreIds ->
                 ChoresBaseData(
                     householdId = household.id,
                     chores = chores.filter { it.deletedAt == null },
                     staleness = staleChores.associateBy { it.choreId },
                     members = members,
                     isOwner = members.any { it.isCurrentUser && it.role == HouseholdRole.OWNER },
-                    remindersEnabled = reminderSettings.enabled,
+                    remindersEnabled = remindersEnabled,
                     mutedReminderChoreIds = mutedReminderChoreIds,
                 )
             }
@@ -139,7 +143,10 @@ class ChoresViewModel @Inject constructor(
                 frequencyDays = intent.frequencyDays,
             )
             if (result is AppResult.Success) {
-                if (!intent.reminderEnabled) setChoreReminderMutedUseCase(result.value, muted = true)
+                // The chore is already saved - don't let leaving the screen skip its mute.
+                if (!intent.reminderEnabled) {
+                    withContext(NonCancellable) { setChoreReminderMutedUseCase(result.value, muted = true) }
+                }
                 _events.send(ChoresUiEvent.ChoreAdded)
             } else if (result is AppResult.Error) {
                 _events.send(ChoresUiEvent.Error(result.error))
@@ -180,6 +187,7 @@ class ChoresViewModel @Inject constructor(
         viewModelScope.launch {
             val result = deleteChoreUseCase(choreId)
             if (result is AppResult.Success) {
+                setChoreReminderMutedUseCase(choreId, muted = false)
                 _events.send(ChoresUiEvent.ChoreDeleted)
             } else if (result is AppResult.Error) {
                 _events.send(ChoresUiEvent.Error(result.error))

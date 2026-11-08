@@ -122,6 +122,7 @@ class ChoreReminderWorkerTest {
 
     @Test
     fun `does not post a notification once reminders are disabled after the staleness check completes`() = runTest {
+        shadowOf(context as Application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
         coEvery { reminderSettingsRepository.getSettings() } returnsMany listOf(
             ReminderSettings(enabled = true),
             ReminderSettings(enabled = false),
@@ -158,6 +159,23 @@ class ChoreReminderWorkerTest {
         val notificationManager = context.getSystemService(NotificationManager::class.java)
         assertThat(shadowOf(notificationManager).allNotifications).isEmpty()
         coVerify(exactly = 1) { scheduler.rescheduleNow() }
+    }
+
+    @Test
+    fun `does not post a notification for a chore muted during the staleness check`() = runTest {
+        shadowOf(context as Application).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        var mutedChoreIds = emptySet<String>()
+        coEvery { reminderSettingsRepository.getSettings() } returns ReminderSettings(enabled = true)
+        coEvery { reminderSettingsRepository.getMutedChoreIds() } answers { mutedChoreIds }
+        coEvery { checkStaleChoresUseCase() } answers {
+            mutedChoreIds = setOf("chore-1")
+            listOf(staleChore("chore-1", "Kitchen"))
+        }
+
+        buildWorker().doWork()
+
+        val notificationManager = context.getSystemService(NotificationManager::class.java)
+        assertThat(shadowOf(notificationManager).allNotifications).isEmpty()
     }
 
     @Test

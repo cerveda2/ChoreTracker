@@ -87,6 +87,16 @@ class DataStoreReminderSettingsRepositoryTest {
     }
 
     @Test
+    fun `clearMutedChoreIds unmutes every chore`() = runTest {
+        repository.setChoreMuted("chore-1", muted = true)
+        repository.setChoreMuted("chore-2", muted = true)
+
+        repository.clearMutedChoreIds()
+
+        assertThat(repository.getMutedChoreIds()).isEmpty()
+    }
+
+    @Test
     fun `muting a chore leaves the reminder settings unchanged`() = runTest {
         repository.setEnabled(true)
         repository.setReminderTime(hour = 20, minute = 30)

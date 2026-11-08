@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -53,10 +54,21 @@ class DataStoreReminderSettingsRepository @Inject constructor(
 
     override suspend fun getMutedChoreIds(): Set<String> = toMutedChoreIds(safeData.first())
 
-    override suspend fun setChoreMuted(choreId: String, muted: Boolean) {
-        dataStore.edit { preferences ->
-            val current = preferences[MUTED_CHORE_IDS_KEY].orEmpty()
-            preferences[MUTED_CHORE_IDS_KEY] = if (muted) current + choreId else current - choreId
+    override suspend fun setChoreMuted(choreId: String, muted: Boolean) = editMutedChoreIds { current ->
+        if (muted) current + choreId else current - choreId
+    }
+
+    override suspend fun clearMutedChoreIds() = editMutedChoreIds { emptySet() }
+
+    // A failed write keeps the previous set rather than crashing the caller - e.g. a new chore's
+    // mute runs only after the chore itself is already saved.
+    private suspend fun editMutedChoreIds(transform: (Set<String>) -> Set<String>) {
+        try {
+            dataStore.edit { preferences ->
+                preferences[MUTED_CHORE_IDS_KEY] = transform(preferences[MUTED_CHORE_IDS_KEY].orEmpty())
+            }
+        } catch (error: IOException) {
+            Timber.e(error, "editMutedChoreIds: write failed")
         }
     }
 

@@ -302,7 +302,7 @@ fun ChoresScreen(
                 )
                 showNewChoreSheet = false
             },
-            reminderEnabled = newChoreReminderEnabled.takeIf { uiState.remindersEnabled },
+            reminderEnabled = newChoreReminderEnabled.takeIf { uiState.remindersEnabled && uiState.isOwner },
             onReminderChange = { newChoreReminderEnabled = it },
         )
     }

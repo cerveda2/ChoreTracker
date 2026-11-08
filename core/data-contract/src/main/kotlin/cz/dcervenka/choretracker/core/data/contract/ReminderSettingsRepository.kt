@@ -19,4 +19,6 @@ interface ReminderSettingsRepository {
     suspend fun getMutedChoreIds(): Set<String>
 
     suspend fun setChoreMuted(choreId: String, muted: Boolean)
+
+    suspend fun clearMutedChoreIds()
 }
