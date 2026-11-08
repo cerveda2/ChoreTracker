@@ -24,6 +24,7 @@ import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
+import cz.dcervenka.choretracker.feature.dashboard.impl.contract.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -33,6 +34,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -87,6 +89,13 @@ class DashboardViewModel @Inject constructor(
         )
     }.onStart { emit(NotificationsBannerInputs()) }
 
+    // Assumed online until the screen reports otherwise, so the indicator doesn't open on "Offline".
+    private val networkAvailable = MutableStateFlow(true)
+
+    private val syncsRemotely: Flow<Boolean> = observeAuthStateUseCase()
+        .map { (it as? AuthState.Authenticated)?.user?.isPreview == false }
+        .onStart { emit(false) }
+
     val uiState: StateFlow<DashboardUiState> = observeCurrentHouseholdUseCase()
         .filterNotNull()
         .flatMapLatest { household ->
@@ -112,6 +121,19 @@ class DashboardViewModel @Inject constructor(
             state.copy(
                 showNotificationsBanner = banner.blocked &&
                     (banner.remindersEnabled || (banner.inviteNotificationsEnabled && isOwner)),
+            )
+        }
+        .combine(combine(networkAvailable, syncsRemotely, ::Pair)) { state, (online, syncsRemotely) ->
+            val syncState = state.syncState
+            state.copy(
+                syncStatus = when {
+                    !syncsRemotely -> null
+                    // Offline uploads fail too; that's expected, so it isn't reported as a sync problem.
+                    !online -> SyncStatus.OFFLINE
+                    syncState != null && (syncState.pendingOperations > 0 || syncState.lastError != null) ->
+                        SyncStatus.NOT_SYNCED
+                    else -> SyncStatus.SYNCED
+                },
             )
         }
         .stateIn(
@@ -153,6 +175,7 @@ class DashboardViewModel @Inject constructor(
             DashboardUiIntent.Refresh -> refresh()
             DashboardUiIntent.DismissNotificationsBanner -> viewModelScope.launch { dismissNotificationsBannerUseCase() }
             is DashboardUiIntent.SystemNotificationsChanged -> systemNotificationsEnabled.value = intent.enabled
+            is DashboardUiIntent.NetworkAvailabilityChanged -> networkAvailable.value = intent.available
         }
     }
 

@@ -68,7 +68,7 @@ internal fun RemoteSyncBanner(
 }
 
 @Composable
-private fun syncBannerMessage(syncState: SyncState): String {
+internal fun syncBannerMessage(syncState: SyncState): String {
     return when (syncState.lastError) {
         AppError.PERMISSION_DENIED -> stringResource(R.string.dashboard_sync_failed_permissions)
         null -> pluralStringResource(

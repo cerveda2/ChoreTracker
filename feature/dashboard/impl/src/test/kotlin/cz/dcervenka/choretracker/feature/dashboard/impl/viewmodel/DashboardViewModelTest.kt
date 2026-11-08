@@ -31,6 +31,7 @@ import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
+import cz.dcervenka.choretracker.feature.dashboard.impl.contract.SyncStatus
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -171,6 +172,46 @@ class DashboardViewModelTest {
             assertThat(state.syncState?.pendingOperations).isEqualTo(2)
             assertThat(state.syncState?.lastError).isEqualTo(AppError.PERMISSION_DENIED)
         }
+    }
+
+    @Test
+    fun `sync status reports offline before any sync problem`() = runTest(coroutineRule.dispatcher) {
+        householdFlow.value = sampleHousehold()
+        dashboardFlow.value = sampleDashboardSnapshot()
+        val viewModel = createViewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.syncStatus).isEqualTo(SyncStatus.SYNCED)
+
+        syncStateFlow.value = SyncState(
+            householdId = "household-1",
+            lastSyncedAt = null,
+            lastSyncAttemptAt = Instant.parse("2026-04-10T05:24:20Z"),
+            pendingOperations = 1,
+            lastError = AppError.UNKNOWN,
+        )
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.syncStatus).isEqualTo(SyncStatus.NOT_SYNCED)
+
+        viewModel.dispatch(DashboardUiIntent.NetworkAvailabilityChanged(available = false))
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.syncStatus).isEqualTo(SyncStatus.OFFLINE)
+
+        viewModel.dispatch(DashboardUiIntent.NetworkAvailabilityChanged(available = true))
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.syncStatus).isEqualTo(SyncStatus.NOT_SYNCED)
+    }
+
+    @Test
+    fun `sync status is hidden in preview mode`() = runTest(coroutineRule.dispatcher) {
+        householdFlow.value = sampleHousehold()
+        dashboardFlow.value = sampleDashboardSnapshot()
+        authStateFlow.value = AuthState.Authenticated(sampleUser().copy(isPreview = true))
+        val viewModel = createViewModel()
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.syncStatus).isNull()
     }
 
     @Test
