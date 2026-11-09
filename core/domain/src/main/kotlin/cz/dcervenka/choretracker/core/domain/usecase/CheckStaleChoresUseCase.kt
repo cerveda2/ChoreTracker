@@ -40,7 +40,7 @@ class CheckStaleChoresUseCase @Inject constructor(
                 members = input.members,
                 timeZone = TimeZone.currentSystemDefault(),
                 today = clock.todayIn(TimeZone.currentSystemDefault()),
-            ).filter { it.status == ChoreStatus.NEEDS_ATTENTION }
+            ).filter { it.status == ChoreStatus.NEEDS_ATTENTION && it.turn?.isCurrentUser != false }
         }
     }
 }

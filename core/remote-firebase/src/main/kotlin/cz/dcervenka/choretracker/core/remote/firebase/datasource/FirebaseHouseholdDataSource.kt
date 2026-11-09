@@ -357,6 +357,8 @@ class FirebaseHouseholdDataSource @Inject constructor(
             put("frequencyDays", chore.frequencyDays)
             put("category", chore.category.name)
             chore.createdByUserId?.let { put("createdByUserId", it) }
+            put("rotationMemberIds", chore.rotationMemberIds)
+            put("rotationStartedAt", chore.rotationStartedAt?.asTimestamp())
         }
         awaitTask(
             db.collection(HOUSEHOLDS_COLLECTION).document(chore.householdId)
@@ -794,6 +796,10 @@ class FirebaseHouseholdDataSource @Inject constructor(
             ?.let { runCatching { ChoreCategory.valueOf(it) }.getOrNull() }
             ?: ChoreCategory.OTHER,
         createdByUserId = getString("createdByUserId"),
+        rotationMemberIds = get("rotationMemberIds")
+            .let { value -> (value as? List<*>)?.mapNotNull { it as? String } }
+            .orEmpty(),
+        rotationStartedAt = getTimestamp("rotationStartedAt")?.asInstant(),
     )
 
     private fun DocumentSnapshot.asCompletion(householdId: String): ChoreCompletion = ChoreCompletion(

@@ -16,6 +16,7 @@ interface ChoreRepository {
         name: String,
         category: ChoreCategory,
         frequencyDays: Int? = null,
+        rotationMemberIds: List<String> = emptyList(),
     ): AppResult<String>
 
     suspend fun deleteChore(choreId: String): EmptyResult
@@ -27,4 +28,7 @@ interface ChoreRepository {
     suspend fun updateChoreFrequencyDays(choreId: String, frequencyDays: Int?): EmptyResult
 
     suspend fun updateChoreCategory(choreId: String, category: ChoreCategory): EmptyResult
+
+    // Restarts whose-turn counting from now, so a member added later doesn't owe every past turn.
+    suspend fun updateChoreRotation(choreId: String, memberIds: List<String>): EmptyResult
 }

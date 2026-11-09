@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import kotlinx.coroutines.flow.Flow
 import kotlin.time.Instant
@@ -56,4 +57,10 @@ interface ChoreDao {
             "WHERE id = :choreId",
     )
     suspend fun updateCategory(choreId: String, category: String)
+
+    // Read-modify-write instead of an UPDATE query, which would expand a List parameter into IN (...).
+    @Transaction
+    suspend fun updateRotation(choreId: String, memberIds: List<String>, startedAt: Instant?) {
+        getChore(choreId)?.let { upsert(it.copy(rotationMemberIds = memberIds, rotationStartedAt = startedAt)) }
+    }
 }

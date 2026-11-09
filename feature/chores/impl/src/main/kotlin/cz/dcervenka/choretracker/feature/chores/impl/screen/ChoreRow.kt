@@ -15,6 +15,7 @@ import cz.dcervenka.choretracker.core.design.components.DoneButton
 import cz.dcervenka.choretracker.core.design.components.FreshnessBar
 import cz.dcervenka.choretracker.core.design.components.IconCircle
 import cz.dcervenka.choretracker.core.design.components.ReminderOffLabel
+import cz.dcervenka.choretracker.core.design.components.choreTurnLabel
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
@@ -98,6 +99,7 @@ private fun choreRowSubtitle(chore: Chore, staleness: ChoreStaleness?): String {
         frequencyDays != null -> stringResource(R.string.dashboard_not_done_yet)
         else -> null
     }
-    return listOfNotNull(frequency, sinceLast).joinToString(" · ")
+    val turn = staleness?.turn?.let { choreTurnLabel(it) }
+    return listOfNotNull(frequency, sinceLast, turn).joinToString(" · ")
         .ifBlank { stringResource(R.string.chores_no_schedule) }
 }

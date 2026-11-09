@@ -56,6 +56,7 @@ class OfflineFirstChoreRepository @Inject constructor(
         name: String,
         category: ChoreCategory,
         frequencyDays: Int?,
+        rotationMemberIds: List<String>,
     ): AppResult<String> {
         Timber.d("addChore: householdId=$householdId name=$name category=$category frequencyDays=$frequencyDays")
         val userId = currentUserId() ?: return AppResult.Error(AppError.NOT_SIGNED_IN)
@@ -63,17 +64,20 @@ class OfflineFirstChoreRepository @Inject constructor(
             ?: return AppResult.Error(AppError.OWN_MEMBERSHIP_NOT_FOUND)
         if (membership.removedAt != null) return AppResult.Error(AppError.OWN_MEMBERSHIP_NOT_FOUND)
         val choreId = UUID.randomUUID().toString()
+        val now = Clock.System.now()
         choreDao.upsert(
             ChoreEntity(
                 id = choreId,
                 householdId = householdId,
                 name = name,
                 isActive = true,
-                createdAt = Clock.System.now(),
+                createdAt = now,
                 deletedAt = null,
                 frequencyDays = frequencyDays,
                 category = category.name,
                 createdByUserId = userId,
+                rotationMemberIds = rotationMemberIds,
+                rotationStartedAt = now.takeIf { rotationMemberIds.isNotEmpty() },
             ),
         )
         pendingSyncOperationDao.upsert(
@@ -174,6 +178,24 @@ class OfflineFirstChoreRepository @Inject constructor(
                 entityId = choreId,
                 operationType = "update_category",
                 payload = category.name,
+                createdAt = Clock.System.now(),
+            ),
+        )
+        scope.launch { syncRepository.syncPendingOperations() }
+        return AppResult.Success(Unit)
+    }
+
+    override suspend fun updateChoreRotation(choreId: String, memberIds: List<String>): EmptyResult {
+        Timber.d("updateChoreRotation: choreId=$choreId memberIds=$memberIds")
+        editError(choreId)?.let { return AppResult.Error(it) }
+        choreDao.updateRotation(choreId, memberIds, Clock.System.now().takeIf { memberIds.isNotEmpty() })
+        pendingSyncOperationDao.upsert(
+            PendingSyncOperationEntity(
+                id = UUID.randomUUID().toString(),
+                entityType = "chore",
+                entityId = choreId,
+                operationType = "update_rotation",
+                payload = memberIds.joinToString(","),
                 createdAt = Clock.System.now(),
             ),
         )

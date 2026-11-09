@@ -41,6 +41,7 @@ import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 
 private val PRESET_FREQUENCY_DAYS = listOf(1, 2, 3, 7)
 
@@ -51,7 +52,14 @@ internal fun ChoreEditorSheet(
     canEdit: Boolean,
     canDelete: Boolean = false,
     onDismiss: () -> Unit,
-    onSave: (name: String, category: ChoreCategory, frequencyDays: Int?, isActive: Boolean) -> Unit,
+    members: List<HouseholdMember>,
+    onSave: (
+        name: String,
+        category: ChoreCategory,
+        frequencyDays: Int?,
+        isActive: Boolean,
+        rotationMemberIds: List<String>,
+    ) -> Unit,
     onDelete: (() -> Unit)? = null,
     reminderEnabled: Boolean? = null,
     onReminderChange: (Boolean) -> Unit = {},
@@ -70,6 +78,11 @@ internal fun ChoreEditorSheet(
         mutableStateOf(chore?.frequencyDays?.takeIf { it !in PRESET_FREQUENCY_DAYS }?.toString().orEmpty())
     }
     var isActive by rememberSaveable(chore?.id) { mutableStateOf(chore?.isActive ?: true) }
+    // Existing members first in their stored order, newly picked ones after them in tap order. Removed
+    // members stay in the list unseen, so saving an unrelated change doesn't restart the count.
+    var rotation by rememberSaveable(chore?.id) {
+        mutableStateOf(ArrayList(chore?.rotationMemberIds.orEmpty()))
+    }
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     val frequencyDays = if (customSelected) customFrequencyInput.toIntOrNull()?.takeIf { it > 0 } else presetFrequencyDays
 
@@ -217,6 +230,38 @@ internal fun ChoreEditorSheet(
                 )
             }
 
+            if (members.size > 1) {
+                Text(
+                    text = stringResource(R.string.chores_editor_turns_label),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.small)) {
+                    members.forEach { member ->
+                        ChoreChip(
+                            selected = member.id in rotation,
+                            onClick = {
+                                val picked = if (member.id in rotation) rotation - member.id else rotation + member.id
+                                rotation = ArrayList(picked)
+                            },
+                            label = member.displayName,
+                            enabled = canEdit,
+                        )
+                    }
+                }
+                Text(
+                    text = if (chore != null && chore.rotationMemberIds.toSet() != rotation.toSet() &&
+                        chore.rotationMemberIds.isNotEmpty()
+                    ) {
+                        stringResource(R.string.chores_editor_turns_restart)
+                    } else {
+                        stringResource(R.string.chores_editor_turns_description)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
             if (chore != null) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -262,7 +307,13 @@ internal fun ChoreEditorSheet(
                         } else {
                             stringResource(R.string.common_save)
                         },
-                        onClick = { onSave(name.trim(), category, frequencyDays, isActive) },
+                        onClick = {
+                            // Only removed members left means nobody rotates any more.
+                            val rotationMemberIds = rotation.toList()
+                                .takeIf { ids -> members.any { it.id in ids } }
+                                .orEmpty()
+                            onSave(name.trim(), category, frequencyDays, isActive, rotationMemberIds)
+                        },
                         enabled = name.isNotBlank() && (!customSelected || frequencyDays != null),
                     )
                     if (chore != null && canDelete && onDelete != null) {

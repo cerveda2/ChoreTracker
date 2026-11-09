@@ -48,6 +48,7 @@ import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.LogCompletionSheet
 import cz.dcervenka.choretracker.core.design.components.MemberAvatar
 import cz.dcervenka.choretracker.core.design.components.NotificationsOffBanner
+import cz.dcervenka.choretracker.core.design.components.OutOfTurnDialog
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.TopLevelBottomBarSpacer
 import cz.dcervenka.choretracker.core.design.rememberSaveableStringList
@@ -130,7 +131,8 @@ fun DashboardScreen(
         if (currentUserId != null) selectedMembers.add(currentUserId)
         selectedNote = ""
     }
-    val quickLog: (String) -> Unit = { choreId ->
+    var outOfTurnChoreId by rememberSaveable { mutableStateOf<String?>(null) }
+    val logNow: (String) -> Unit = { choreId ->
         val household = uiState.snapshot?.household
         if (currentUserId != null && household != null) {
             onIntent(
@@ -145,6 +147,10 @@ fun DashboardScreen(
         } else {
             openLogSheet(choreId)
         }
+    }
+    val quickLog: (String) -> Unit = { choreId ->
+        val turn = uiState.snapshot?.staleChores?.find { it.choreId == choreId }?.turn
+        if (turn != null && !turn.isCurrentUser) outOfTurnChoreId = choreId else logNow(choreId)
     }
     val snapshot = uiState.snapshot
 
@@ -295,6 +301,19 @@ fun DashboardScreen(
                 }
             }
         }
+    }
+
+    val outOfTurnId = outOfTurnChoreId
+    val outOfTurn = outOfTurnId?.let { id -> snapshot?.staleChores?.find { it.choreId == id }?.turn }
+    if (outOfTurnId != null && outOfTurn != null) {
+        OutOfTurnDialog(
+            turn = outOfTurn,
+            onConfirm = {
+                logNow(outOfTurnId)
+                outOfTurnChoreId = null
+            },
+            onDismiss = { outOfTurnChoreId = null },
+        )
     }
 
     val choreId = selectedChoreId

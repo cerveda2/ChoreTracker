@@ -221,7 +221,9 @@ service cloud.firestore {
           (isHouseholdMember(householdId) &&
             resource.data.get('createdByUserId', null) == request.auth.uid)) &&
           request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['name', 'category', 'frequencyDays', 'isActive', 'deletedAt']);
+            .hasOnly([
+              'name', 'category', 'frequencyDays', 'isActive', 'deletedAt', 'rotationMemberIds', 'rotationStartedAt'
+            ]);
         allow delete: if isHouseholdManager(householdId);
       }
 

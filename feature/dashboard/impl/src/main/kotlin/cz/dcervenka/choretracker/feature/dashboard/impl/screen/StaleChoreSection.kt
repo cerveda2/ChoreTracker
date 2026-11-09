@@ -17,6 +17,7 @@ import cz.dcervenka.choretracker.core.design.components.DoneButton
 import cz.dcervenka.choretracker.core.design.components.IconCircle
 import cz.dcervenka.choretracker.core.design.components.ListGroup
 import cz.dcervenka.choretracker.core.design.components.SectionHeader
+import cz.dcervenka.choretracker.core.design.components.choreTurnLabel
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
@@ -69,7 +70,8 @@ private fun overdueSubtitle(stale: ChoreStaleness): String {
     val frequency = stale.frequencyDays?.let { days ->
         pluralStringResource(R.plurals.log_sheet_meta_frequency, days, days)
     }
-    return listOfNotNull(sinceLast, frequency).joinToString(" · ")
+    val turn = stale.turn?.let { choreTurnLabel(it) }
+    return listOfNotNull(turn, sinceLast, frequency).joinToString(" · ")
 }
 
 @Composable
@@ -111,10 +113,12 @@ internal fun DueSoonSection(
 
 @Composable
 private fun dueSoonSubtitle(stale: ChoreStaleness): String {
+    val turn = stale.turn?.let { choreTurnLabel(it) }
     val dueLabel = stale.dueInDays?.let { days ->
         pluralStringResource(R.plurals.dashboard_due_in_days, days.coerceAtLeast(0), days.coerceAtLeast(0))
-    } ?: return stringResource(R.string.dashboard_not_done_yet)
-    val lastByLabel = stale.lastCompletedByNames.firstOrNull()?.let { name ->
+    } ?: return listOfNotNull(stringResource(R.string.dashboard_not_done_yet), turn).joinToString(" · ")
+    // Whose turn it is matters more than who did it last when the chore rotates.
+    val lastByLabel = turn ?: stale.lastCompletedByNames.firstOrNull()?.let { name ->
         stringResource(R.string.dashboard_did_it_last, name)
     }
     return listOfNotNull(dueLabel, lastByLabel).joinToString(" · ")

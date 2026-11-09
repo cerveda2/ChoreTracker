@@ -298,6 +298,14 @@
     <string name="chores_editor_reminder_label">Remind me when it\'s due</string>
     <string name="chores_editor_reminder_description">Only for you</string>
     <string name="chores_editor_read_only">Only the owner, an admin or whoever added this chore can change it.</string>
+    <string name="chores_editor_turns_label">Take turns</string>
+    <string name="chores_editor_turns_description">Whoever has done it least is up next.</string>
+    <string name="chores_editor_turns_restart">Changing who takes turns starts the count over.</string>
+    <string name="chore_turn_yours">Your turn</string>
+    <string name="chore_turn_member">%1$s\'s turn</string>
+    <string name="chore_out_of_turn_title">It\'s %1$s\'s turn</string>
+    <string name="chore_out_of_turn_message">Log it as done by you anyway? %1$s stays up next until it evens out.</string>
+    <string name="chore_out_of_turn_confirm">Log it</string>
     <string name="chores_reminder_off">Reminder off</string>
     <string name="chores_delete_title">Delete this chore?</string>
     <string name="chores_delete_message">This removes the chore from active planning while keeping existing completion history readable.</string>

@@ -64,6 +64,7 @@ class OfflineFirstChoreRepositoryTest {
         coEvery { choreDao.updateName(any(), any()) } just Runs
         coEvery { choreDao.updateFrequencyDays(any(), any()) } just Runs
         coEvery { choreDao.updateCategory(any(), any()) } just Runs
+        coEvery { choreDao.updateRotation(any(), any(), any()) } just Runs
         coEvery { choreDao.getChore(any()) } returns ChoreEntity(
             id = "chore-1",
             householdId = "household-1",
@@ -321,5 +322,37 @@ class OfflineFirstChoreRepositoryTest {
 
         assertThat(slot.captured.operationType).isEqualTo("update_category")
         assertThat(slot.captured.payload).isEqualTo(ChoreCategory.CLEANING.name)
+    }
+
+    // rotation
+
+    @Test
+    fun `addChore starts counting turns when the chore rotates`() = runTest {
+        val slot = slot<ChoreEntity>()
+        coEvery { choreDao.upsert(capture(slot)) } just Runs
+
+        repository.addChore("household-1", "Dishes", ChoreCategory.COOKING, rotationMemberIds = listOf("a", "b"))
+
+        assertThat(slot.captured.rotationMemberIds).containsExactly("a", "b").inOrder()
+        assertThat(slot.captured.rotationStartedAt).isEqualTo(slot.captured.createdAt)
+    }
+
+    @Test
+    fun `updateChoreRotation restarts the count and queues the chore for upload`() = runTest {
+        val op = slot<PendingSyncOperationEntity>()
+        coEvery { pendingSyncOperationDao.upsert(capture(op)) } just Runs
+
+        repository.updateChoreRotation("chore-1", listOf("a", "b"))
+
+        coVerify { choreDao.updateRotation("chore-1", listOf("a", "b"), isNull(inverse = true)) }
+        assertThat(op.captured.entityId).isEqualTo("chore-1")
+        assertThat(op.captured.operationType).isEqualTo("update_rotation")
+    }
+
+    @Test
+    fun `clearing the rotation clears its start`() = runTest {
+        repository.updateChoreRotation("chore-1", emptyList())
+
+        coVerify { choreDao.updateRotation("chore-1", emptyList(), null) }
     }
 }

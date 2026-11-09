@@ -19,6 +19,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreCategoryUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreRotationUseCase
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.error.AppError
@@ -88,6 +89,9 @@ class ChoresViewModelTest {
     lateinit var updateChoreActiveUseCase: UpdateChoreActiveUseCase
 
     @MockK
+    lateinit var updateChoreRotationUseCase: UpdateChoreRotationUseCase
+
+    @MockK
     lateinit var deleteChoreUseCase: DeleteChoreUseCase
 
     @MockK
@@ -129,6 +133,7 @@ class ChoresViewModelTest {
         coEvery { updateChoreCategoryUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreFrequencyUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreActiveUseCase(any(), any()) } returns AppResult.Success(Unit)
+        coEvery { updateChoreRotationUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { deleteChoreUseCase(any()) } returns AppResult.Success(Unit)
         coEvery { logCompletionUseCase(any(), any(), any(), any(), any()) } returns AppResult.Success("completion-1")
         coEvery { deleteCompletionUseCase(any()) } returns AppResult.Success(Unit)
@@ -262,6 +267,35 @@ class ChoresViewModelTest {
         coVerify(exactly = 0) { updateChoreCategoryUseCase(any(), any()) }
         coVerify(exactly = 0) { updateChoreFrequencyUseCase(any(), any()) }
         coVerify(exactly = 0) { updateChoreActiveUseCase(any(), any()) }
+        coVerify(exactly = 0) { updateChoreRotationUseCase(any(), any()) }
+        stateJob.cancel()
+    }
+
+    @Test
+    fun `updateChore restarts the rotation only when its members change`() = runTest(coroutineRule.dispatcher) {
+        householdFlow.value = sampleHousehold()
+        choresFlow.value = listOf(sampleChore().copy(rotationMemberIds = listOf("member-1", "member-2")))
+        val viewModel = createViewModel()
+        val stateJob = launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+        fun update(rotation: List<String>) = viewModel.dispatch(
+            ChoresUiIntent.UpdateChore(
+                choreId = "chore-1",
+                name = sampleChore().name,
+                category = sampleChore().category,
+                frequencyDays = sampleChore().frequencyDays,
+                isActive = sampleChore().isActive,
+                rotationMemberIds = rotation,
+            ),
+        )
+
+        update(listOf("member-2", "member-1"))
+        advanceUntilIdle()
+        coVerify(exactly = 0) { updateChoreRotationUseCase(any(), any()) }
+
+        update(listOf("member-1", "member-2", "member-3"))
+        advanceUntilIdle()
+        coVerify { updateChoreRotationUseCase("chore-1", listOf("member-1", "member-2", "member-3")) }
         stateJob.cancel()
     }
 
@@ -375,6 +409,7 @@ private fun ChoresViewModelTest.createViewModel() = ChoresViewModel(
     updateChoreCategoryUseCase,
     updateChoreFrequencyUseCase,
     updateChoreActiveUseCase,
+    updateChoreRotationUseCase,
     deleteChoreUseCase,
     logCompletionUseCase,
     deleteCompletionUseCase,

@@ -316,6 +316,14 @@
     <string name="chores_editor_reminder_label">Připomenout, až bude na řadě</string>
     <string name="chores_editor_reminder_description">Jen pro vás</string>
     <string name="chores_editor_read_only">Tento úkol může upravit jen vlastník, správce nebo ten, kdo ho přidal.</string>
+    <string name="chores_editor_turns_label">Střídat se</string>
+    <string name="chores_editor_turns_description">Na řadě je vždy ten, kdo to dělal nejméně.</string>
+    <string name="chores_editor_turns_restart">Když změníte, kdo se střídá, začne se počítat znovu.</string>
+    <string name="chore_turn_yours">Jste na řadě</string>
+    <string name="chore_turn_member">Na řadě: %1$s</string>
+    <string name="chore_out_of_turn_title">Na řadě je %1$s</string>
+    <string name="chore_out_of_turn_message">Přesto to zapsat jako hotové vámi? %1$s pak zůstane na řadě, dokud se to nevyrovná.</string>
+    <string name="chore_out_of_turn_confirm">Zapsat</string>
     <string name="chores_reminder_off">Připomenutí vypnuto</string>
     <string name="chores_delete_title">Smazat tento úkol?</string>
     <string name="chores_delete_message">Tím se úkol odstraní z aktivního plánování, ale stávající historie splnění zůstane čitelná.</string>
