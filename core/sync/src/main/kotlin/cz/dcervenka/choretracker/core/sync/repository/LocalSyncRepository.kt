@@ -371,7 +371,13 @@ class LocalSyncRepository @Inject constructor(
             is AppResult.Success -> {
                 Timber.d("syncPendingOperations: synced ${operationIds.size} operations for household=$householdId")
                 val operationIdSet = operationIds.toSet()
-                val uploadErrors = uploadQueuedChanges(householdId, operations, operationIdSet, isAdmin)
+                val uploadErrors = uploadQueuedChanges(
+                    householdId = householdId,
+                    operations = operations,
+                    operationIds = operationIdSet,
+                    isAdmin = isAdmin,
+                    userId = authenticatedUser.id,
+                )
                 // Rules rejected these (e.g. a role changed while they were queued), so a retry can't
                 // succeed, and while queued they'd keep the listener from correcting the local copy.
                 val rejectedOperationIds = uploadErrors.filterValues { it == AppError.PERMISSION_DENIED }.keys
@@ -482,6 +488,7 @@ class LocalSyncRepository @Inject constructor(
         operations: List<PendingSyncOperationEntity>,
         operationIds: Set<String>,
         isAdmin: Boolean,
+        userId: String,
     ): Map<String, AppError> {
         val errors = mutableMapOf<String, AppError>()
         for (op in operations.filter { it.id in operationIds }) {
@@ -522,7 +529,8 @@ class LocalSyncRepository @Inject constructor(
                     if (invite == null) {
                         AppResult.Error(AppError.INVITE_NOT_FOUND)
                     } else {
-                        remoteHouseholdDataSource.upsertInvite(invite.asInviteModel())
+                        // Only this device's own queue reaches here, so whoever uploads it created it.
+                        remoteHouseholdDataSource.upsertInvite(invite.asInviteModel(), createdByUserId = userId)
                     }
                 }
                 isAdmin && op.entityType == "member" && op.operationType == "upsert" -> {

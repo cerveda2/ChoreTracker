@@ -3,13 +3,16 @@ package cz.dcervenka.choretracker.feature.settings.impl.screen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.GroupAdd
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -99,8 +102,17 @@ fun NotificationSettingsScreen(
                                     onCheckedChange = {
                                         onIntent(NotificationSettingsUiIntent.SetInviteNotificationsEnabled(it))
                                     },
+                                    enabled = uiState.canInvite,
                                 )
                             },
+                        )
+                    }
+                    if (!uiState.canInvite) {
+                        Text(
+                            text = stringResource(R.string.settings_notifications_invite_manager_only),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = spacing.small),
                         )
                     }
                 }
