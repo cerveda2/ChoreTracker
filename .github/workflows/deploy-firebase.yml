@@ -1,8 +1,9 @@
 name: Deploy Firebase
 
 # Deploys Firestore rules + indexes and Cloud Functions to one Firebase project. Called by
-# android.yml (dev, on every PR and push to main) and release.yml (prod, on a version tag), and
-# runnable by hand from the Actions tab for a backend-only fix.
+# android.yml (dev, on each PR and push to main that changes the backend) and release.yml (prod, on a
+# version tag). Runnable by hand from the Actions tab for a backend-only fix, or on a branch to put its
+# backend back on dev before testing it.
 on:
   workflow_call:
     inputs:
@@ -64,7 +65,11 @@ jobs:
       - name: Deploy rules, indexes and functions
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
-        run: firebase deploy --project ${{ inputs.project }} --only firestore,functions
+        # Dev mirrors whichever branch deployed last, so --force removes functions another branch
+        # added instead of aborting. Production never deletes a function without a person confirming.
+        run: >-
+          firebase deploy --project ${{ inputs.project }} --only firestore,functions
+          ${{ inputs.project == 'dev' && '--force' || '' }}
 
       - name: Remove service account key
         if: always()
