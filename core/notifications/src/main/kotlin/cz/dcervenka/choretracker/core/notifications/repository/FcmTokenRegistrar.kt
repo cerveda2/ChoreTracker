@@ -23,15 +23,19 @@ import kotlin.time.Duration.Companion.seconds
 
 private val SIGN_OUT_CLEAR_TIMEOUT = 3.seconds
 
+// Push types in users/{uid}.pushTypes, as the Cloud Functions check them.
+private const val PUSH_TYPE_INVITE = "invite"
+
 /**
  * Keeps this device's FCM installation ID written onto the signed-in user's
  * `users/{uid}.fcmToken` field, so the "invite accepted" Cloud Function can push a notification to
  * whoever created the invite. Mirrors LocalSyncRepository's authState.flatMapLatest {...}.launchIn(scope)
  * pattern - see core/sync/.../repository/LocalSyncRepository.kt.
  *
- * Also reacts to [InviteNotificationSettingsRepository]'s on/off toggle: when disabled, the token
- * is actively cleared (not just left unregistered) so the Cloud Function's existing "missing
- * fcmToken -> skip silently" behavior takes effect immediately - no server-side changes needed.
+ * Next to the token it writes `pushTypes`: the pushes this build can show and the user wants. The
+ * invite toggle only removes "invite" from it and leaves the token in place, so other push types
+ * keep arriving. Builds before this one cleared the token instead and wrote no `pushTypes`, which
+ * the functions treat as "invite" only.
  */
 @Singleton
 class FcmTokenRegistrar @Inject constructor(
@@ -80,9 +84,11 @@ class FcmTokenRegistrar @Inject constructor(
         scope.launch {
             val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
             if (user == null || user.isPreview || user.id == signingOutUserId) return@launch
-            if (inviteNotificationSettingsRepository.isEnabled(user.id)) {
-                tokenWriter.writeToken(user.id, installationId)
-            }
+            tokenWriter.writeToken(
+                user.id,
+                installationId,
+                pushTypes(inviteEnabled = inviteNotificationSettingsRepository.isEnabled(user.id)),
+            )
         }
     }
 
@@ -96,11 +102,12 @@ class FcmTokenRegistrar @Inject constructor(
         withTimeoutOrNull(SIGN_OUT_CLEAR_TIMEOUT) { tokenWriter.clearToken(user.id) }
     }
 
-    private suspend fun applyTokenState(userId: String, enabled: Boolean) {
-        if (enabled) {
-            tokenWriter.requestRegistration()
-        } else {
-            tokenWriter.clearToken(userId)
-        }
+    // pushTypes first, so a token registered for the first time never lands without it.
+    private suspend fun applyTokenState(userId: String, inviteEnabled: Boolean) {
+        tokenWriter.writePushTypes(userId, pushTypes(inviteEnabled))
+        tokenWriter.requestRegistration()
     }
+
+    private fun pushTypes(inviteEnabled: Boolean): List<String> =
+        if (inviteEnabled) listOf(PUSH_TYPE_INVITE) else emptyList()
 }

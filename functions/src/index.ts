@@ -12,6 +12,7 @@ import {
 } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import { getMessaging } from "firebase-admin/messaging";
+import { acceptsPush } from "./pushTypes";
 import { inviteRecipient } from "./inviteRecipient";
 
 initializeApp();
@@ -100,8 +101,8 @@ export const onInviteAccepted = onDocumentUpdated(
 
     const recipientUserSnap = await db.doc(`users/${recipientUserId}`).get();
     const fcmToken: string | undefined = recipientUserSnap.get("fcmToken");
-    if (!fcmToken) {
-      logger.info("onInviteAccepted: recipient has no fcmToken registered - skipping", {
+    if (!fcmToken || !acceptsPush(recipientUserSnap.get("pushTypes"), "invite")) {
+      logger.info("onInviteAccepted: recipient has no fcmToken or turned invite pushes off - skipping", {
         householdId,
         recipientUserId,
       });
@@ -209,10 +210,9 @@ export const onRequestCreated = onDocumentCreated(
     const toUserId: string = created.toUserId;
     const recipientSnap = await db.doc(`users/${toUserId}`).get();
     const fcmToken: string | undefined = recipientSnap.get("fcmToken");
-    const pushTypes: unknown = recipientSnap.get("pushTypes");
     // A build lists "request" only once it can show this push, so older ones get nothing rather
     // than an empty notification (see #106).
-    if (!fcmToken || !Array.isArray(pushTypes) || !pushTypes.includes("request")) {
+    if (!fcmToken || !acceptsPush(recipientSnap.get("pushTypes"), "request")) {
       logger.info("onRequestCreated: recipient can't receive request pushes - skipping", {
         householdId,
         toUserId,

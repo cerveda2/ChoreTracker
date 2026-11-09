@@ -46,7 +46,8 @@ class FcmTokenRegistrarTest {
         every { inviteNotificationSettingsRepository.observeEnabled(any()) } returns inviteNotificationsEnabled
         coEvery { inviteNotificationSettingsRepository.isEnabled(any()) } answers { inviteNotificationsEnabled.value }
         coEvery { tokenWriter.requestRegistration() } returns Unit
-        coEvery { tokenWriter.writeToken(any(), any()) } returns Unit
+        coEvery { tokenWriter.writeToken(any(), any(), any()) } returns Unit
+        coEvery { tokenWriter.writePushTypes(any(), any()) } returns Unit
         coEvery { tokenWriter.clearToken(any()) } returns Unit
     }
 
@@ -155,7 +156,7 @@ class FcmTokenRegistrarTest {
         }
 
     @Test
-    fun `clears the token instead of requesting registration when notifications are disabled at sign-in`() =
+    fun `keeps the token and drops invite from pushTypes when invite pushes are off at sign-in`() =
         runTest(coroutineRule.dispatcher) {
             inviteNotificationsEnabled.value = false
             authState.value = AuthState.Authenticated(
@@ -164,39 +165,28 @@ class FcmTokenRegistrarTest {
             createRegistrar()
             advanceUntilIdle()
 
-            coVerify(exactly = 1) { tokenWriter.clearToken("user-1") }
-            coVerify(exactly = 0) { tokenWriter.requestRegistration() }
+            coVerify(exactly = 1) { tokenWriter.writePushTypes("user-1", emptyList()) }
+            coVerify(exactly = 1) { tokenWriter.requestRegistration() }
+            coVerify(exactly = 0) { tokenWriter.clearToken(any()) }
         }
 
     @Test
-    fun `clears the token when the setting is turned off while signed in`() = runTest(coroutineRule.dispatcher) {
+    fun `updates pushTypes, not the token, when the setting is switched`() = runTest(coroutineRule.dispatcher) {
         authState.value = AuthState.Authenticated(
             AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
         )
         createRegistrar()
         advanceUntilIdle()
-        coVerify(exactly = 1) { tokenWriter.requestRegistration() }
+        coVerify(exactly = 1) { tokenWriter.writePushTypes("user-1", listOf("invite")) }
 
         inviteNotificationsEnabled.value = false
         advanceUntilIdle()
-
-        coVerify(exactly = 1) { tokenWriter.clearToken("user-1") }
-    }
-
-    @Test
-    fun `requests registration again when the setting is turned back on`() = runTest(coroutineRule.dispatcher) {
-        inviteNotificationsEnabled.value = false
-        authState.value = AuthState.Authenticated(
-            AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
-        )
-        createRegistrar()
-        advanceUntilIdle()
-        coVerify(exactly = 1) { tokenWriter.clearToken("user-1") }
+        coVerify(exactly = 1) { tokenWriter.writePushTypes("user-1", emptyList()) }
 
         inviteNotificationsEnabled.value = true
         advanceUntilIdle()
-
-        coVerify(exactly = 1) { tokenWriter.requestRegistration() }
+        coVerify(exactly = 2) { tokenWriter.writePushTypes("user-1", listOf("invite")) }
+        coVerify(exactly = 0) { tokenWriter.clearToken(any()) }
     }
 
     @Test
@@ -211,7 +201,7 @@ class FcmTokenRegistrarTest {
             registrar.onIdRegistered("id-rotated")
             advanceUntilIdle()
 
-            coVerify { tokenWriter.writeToken("user-1", "id-rotated") }
+            coVerify { tokenWriter.writeToken("user-1", "id-rotated", listOf("invite")) }
         }
 
     @Test
@@ -222,7 +212,7 @@ class FcmTokenRegistrarTest {
         registrar.onIdRegistered("id-rotated")
         advanceUntilIdle()
 
-        coVerify(exactly = 0) { tokenWriter.writeToken(any(), "id-rotated") }
+        coVerify(exactly = 0) { tokenWriter.writeToken(any(), "id-rotated", any()) }
     }
 
     @Test
@@ -237,7 +227,7 @@ class FcmTokenRegistrarTest {
         registrar.onIdRegistered("id-late")
         advanceUntilIdle()
 
-        coVerify(exactly = 0) { tokenWriter.writeToken(any(), "id-late") }
+        coVerify(exactly = 0) { tokenWriter.writeToken(any(), "id-late", any()) }
     }
 
     @Test
@@ -255,21 +245,22 @@ class FcmTokenRegistrarTest {
         registrar.onIdRegistered("id-new")
         advanceUntilIdle()
 
-        coVerify { tokenWriter.writeToken("user-1", "id-new") }
+        coVerify { tokenWriter.writeToken("user-1", "id-new", listOf("invite")) }
     }
 
     @Test
-    fun `onIdRegistered does not write while notifications are disabled`() = runTest(coroutineRule.dispatcher) {
-        inviteNotificationsEnabled.value = false
-        authState.value = AuthState.Authenticated(
-            AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
-        )
-        createRegistrar()
-        advanceUntilIdle()
+    fun `onIdRegistered still writes the token, without invite, while invite pushes are off`() =
+        runTest(coroutineRule.dispatcher) {
+            inviteNotificationsEnabled.value = false
+            authState.value = AuthState.Authenticated(
+                AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
+            )
+            createRegistrar()
+            advanceUntilIdle()
 
-        registrar.onIdRegistered("id-rotated")
-        advanceUntilIdle()
+            registrar.onIdRegistered("id-rotated")
+            advanceUntilIdle()
 
-        coVerify(exactly = 0) { tokenWriter.writeToken(any(), "id-rotated") }
-    }
+            coVerify { tokenWriter.writeToken("user-1", "id-rotated", emptyList()) }
+        }
 }
