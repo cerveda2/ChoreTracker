@@ -6,9 +6,11 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseC
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInviteNotificationsEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveRequestNotificationsEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetInviteNotificationsEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetReminderEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetReminderTimeUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SetRequestNotificationsEnabledUseCase
 import cz.dcervenka.choretracker.feature.settings.impl.contract.NotificationSettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.NotificationSettingsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,11 +30,13 @@ import javax.inject.Inject
 class NotificationSettingsViewModel @Inject constructor(
     observeReminderSettingsUseCase: ObserveReminderSettingsUseCase,
     observeInviteNotificationsEnabledUseCase: ObserveInviteNotificationsEnabledUseCase,
+    observeRequestNotificationsEnabledUseCase: ObserveRequestNotificationsEnabledUseCase,
     observeCurrentHouseholdUseCase: ObserveCurrentHouseholdUseCase,
     observeMembersUseCase: ObserveMembersUseCase,
     private val setReminderEnabledUseCase: SetReminderEnabledUseCase,
     private val setReminderTimeUseCase: SetReminderTimeUseCase,
     private val setInviteNotificationsEnabledUseCase: SetInviteNotificationsEnabledUseCase,
+    private val setRequestNotificationsEnabledUseCase: SetRequestNotificationsEnabledUseCase,
 ) : ViewModel() {
 
     // Starts as allowed, so the owner never sees the switch flash disabled while members load.
@@ -46,13 +50,15 @@ class NotificationSettingsViewModel @Inject constructor(
         observeReminderSettingsUseCase(),
         observeInviteNotificationsEnabledUseCase(),
         canInvite,
-    ) { reminderSettings, inviteNotificationsEnabled, canInvite ->
+        observeRequestNotificationsEnabledUseCase(),
+    ) { reminderSettings, inviteNotificationsEnabled, canInvite, requestNotificationsEnabled ->
         NotificationSettingsUiState(
             remindersEnabled = reminderSettings.enabled,
             hour = reminderSettings.hour,
             minute = reminderSettings.minute,
             inviteNotificationsEnabled = inviteNotificationsEnabled,
             canInvite = canInvite,
+            requestNotificationsEnabled = requestNotificationsEnabled,
             isLoading = false,
         )
     }.stateIn(
@@ -67,6 +73,8 @@ class NotificationSettingsViewModel @Inject constructor(
             is NotificationSettingsUiIntent.SetTime -> setTime(intent.hour, intent.minute)
             is NotificationSettingsUiIntent.SetInviteNotificationsEnabled ->
                 setInviteNotificationsEnabled(intent.enabled)
+            is NotificationSettingsUiIntent.SetRequestNotificationsEnabled ->
+                viewModelScope.launch { setRequestNotificationsEnabledUseCase(intent.enabled) }
         }
     }
 

@@ -255,6 +255,9 @@
     <string name="settings_notifications_invite_section">Household invites</string>
     <string name="settings_notifications_invite_enabled_label">Invite accepted</string>
     <string name="settings_notifications_invite_enabled_description">Get a push notification when someone accepts your invite</string>
+    <string name="settings_notifications_request_section">Requests</string>
+    <string name="settings_notifications_request_enabled_label">Asked to do chores</string>
+    <string name="settings_notifications_request_enabled_description">Get a push notification when someone in your household asks you to do chores</string>
     <string name="settings_notifications_invite_manager_only">Only the owner and admins can invite people, so only they get this.</string>
     <string name="settings_household_empty_title">No household selected</string>
     <string name="settings_household_empty_message">Create or join a household during onboarding to manage its name and invite code here.</string>

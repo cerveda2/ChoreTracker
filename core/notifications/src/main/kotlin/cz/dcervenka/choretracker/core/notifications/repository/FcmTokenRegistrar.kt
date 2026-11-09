@@ -3,15 +3,16 @@ package cz.dcervenka.choretracker.core.notifications.repository
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.InviteNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.data.contract.PushTokenRepository
+import cz.dcervenka.choretracker.core.data.contract.RequestNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.notifications.di.NotificationScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.launch
@@ -23,9 +24,6 @@ import kotlin.time.Duration.Companion.seconds
 
 private val SIGN_OUT_CLEAR_TIMEOUT = 3.seconds
 
-// Push types in users/{uid}.pushTypes, as the Cloud Functions check them.
-private const val PUSH_TYPE_INVITE = "invite"
-
 /**
  * Keeps this device's FCM installation ID written onto the signed-in user's
  * `users/{uid}.fcmToken` field, so the "invite accepted" Cloud Function can push a notification to
@@ -33,8 +31,8 @@ private const val PUSH_TYPE_INVITE = "invite"
  * pattern - see core/sync/.../repository/LocalSyncRepository.kt.
  *
  * Next to the token it writes `pushTypes`: the pushes this build can show and the user wants. The
- * invite toggle only removes "invite" from it and leaves the token in place, so other push types
- * keep arriving. Builds before this one cleared the token instead and wrote no `pushTypes`, which
+ * invite and request toggles each only remove their own type and leave the token in place, so the
+ * other type keeps arriving. Builds before this one cleared the token instead and wrote no `pushTypes`, which
  * the functions treat as "invite" only.
  */
 @Singleton
@@ -42,6 +40,7 @@ class FcmTokenRegistrar @Inject constructor(
     private val authRepository: AuthRepository,
     private val tokenWriter: FcmTokenWriter,
     private val inviteNotificationSettingsRepository: InviteNotificationSettingsRepository,
+    private val requestNotificationSettingsRepository: RequestNotificationSettingsRepository,
     @NotificationScope private val scope: CoroutineScope,
 ) : PushTokenRepository {
 
@@ -60,10 +59,13 @@ class FcmTokenRegistrar @Inject constructor(
                     signingOutUserId = null
                     emptyFlow()
                 } else {
-                    inviteNotificationSettingsRepository.observeEnabled(user.id).map { enabled -> user.id to enabled }
+                    combine(
+                        inviteNotificationSettingsRepository.observeEnabled(user.id),
+                        requestNotificationSettingsRepository.observeEnabled(user.id),
+                    ) { inviteEnabled, requestEnabled -> user.id to pushTypes(inviteEnabled, requestEnabled) }
                 }
             }
-            .onEach { (userId, enabled) -> applyTokenState(userId, enabled) }
+            .onEach { (userId, pushTypes) -> applyTokenState(userId, pushTypes) }
             // retry, not catch: catch would let an unexpected exception permanently end this
             // subscription with only a debug-only log line - retry logs and re-subscribes instead,
             // so a transient failure doesn't silently and permanently stop FCM token registration.
@@ -87,7 +89,10 @@ class FcmTokenRegistrar @Inject constructor(
             tokenWriter.writeToken(
                 user.id,
                 installationId,
-                pushTypes(inviteEnabled = inviteNotificationSettingsRepository.isEnabled(user.id)),
+                pushTypes(
+                    inviteEnabled = inviteNotificationSettingsRepository.isEnabled(user.id),
+                    requestEnabled = requestNotificationSettingsRepository.isEnabled(user.id),
+                ),
             )
         }
     }
@@ -103,11 +108,14 @@ class FcmTokenRegistrar @Inject constructor(
     }
 
     // pushTypes first, so a token registered for the first time never lands without it.
-    private suspend fun applyTokenState(userId: String, inviteEnabled: Boolean) {
-        tokenWriter.writePushTypes(userId, pushTypes(inviteEnabled))
+    private suspend fun applyTokenState(userId: String, pushTypes: List<String>) {
+        tokenWriter.writePushTypes(userId, pushTypes)
         tokenWriter.requestRegistration()
     }
 
-    private fun pushTypes(inviteEnabled: Boolean): List<String> =
-        if (inviteEnabled) listOf(PUSH_TYPE_INVITE) else emptyList()
+    // A type belongs here only once this build can show its push (see "Push types" in CLAUDE.md).
+    private fun pushTypes(inviteEnabled: Boolean, requestEnabled: Boolean): List<String> = buildList {
+        if (inviteEnabled) add(PUSH_TYPE_INVITE)
+        if (requestEnabled) add(PUSH_TYPE_REQUEST)
+    }
 }
