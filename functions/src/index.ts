@@ -12,6 +12,7 @@ import {
 } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import { getMessaging } from "firebase-admin/messaging";
+import { inviteRecipient } from "./inviteRecipient";
 
 initializeApp();
 
@@ -82,22 +83,24 @@ export const onInviteAccepted = onDocumentUpdated(
       }
     }
 
-    // Self-join edge case: the owner consuming their own invite (e.g. reclaiming a placeholder
+    const recipientUserId = await inviteRecipient(db, householdId, after.createdByUserId, ownerUserId);
+
+    // Self-join edge case: someone consuming their own invite (e.g. reclaiming a placeholder
     // member). Don't notify yourself.
-    if (joiningMemberUserId && joiningMemberUserId === ownerUserId) {
-      logger.info("onInviteAccepted: owner consumed their own invite - skipping", {
+    if (joiningMemberUserId && joiningMemberUserId === recipientUserId) {
+      logger.info("onInviteAccepted: creator consumed their own invite - skipping", {
         householdId,
-        ownerUserId,
+        recipientUserId,
       });
       return;
     }
 
-    const ownerUserSnap = await db.doc(`users/${ownerUserId}`).get();
-    const fcmToken: string | undefined = ownerUserSnap.get("fcmToken");
+    const recipientUserSnap = await db.doc(`users/${recipientUserId}`).get();
+    const fcmToken: string | undefined = recipientUserSnap.get("fcmToken");
     if (!fcmToken) {
-      logger.info("onInviteAccepted: owner has no fcmToken registered - skipping", {
+      logger.info("onInviteAccepted: recipient has no fcmToken registered - skipping", {
         householdId,
-        ownerUserId,
+        recipientUserId,
       });
       return;
     }
@@ -118,9 +121,9 @@ export const onInviteAccepted = onDocumentUpdated(
           notification: { titleLocKey: "invite_accepted_notification_title", ...body },
         },
       });
-      logger.info("onInviteAccepted: notified household owner", {
+      logger.info("onInviteAccepted: notified invite creator", {
         householdId,
-        ownerUserId,
+        recipientUserId,
         consumedByMemberId,
         joiningDisplayName,
       });
@@ -130,12 +133,12 @@ export const onInviteAccepted = onDocumentUpdated(
         code === "messaging/invalid-registration-token" ||
         code === "messaging/registration-token-not-registered";
       if (isStaleToken) {
-        logger.warn("onInviteAccepted: stale fcmToken - clearing", { ownerUserId });
-        await db.doc(`users/${ownerUserId}`).update({
+        logger.warn("onInviteAccepted: stale fcmToken - clearing", { recipientUserId });
+        await db.doc(`users/${recipientUserId}`).update({
           fcmToken: FieldValue.delete(),
         });
       } else {
-        logger.error("onInviteAccepted: messaging().send failed", { ownerUserId, error });
+        logger.error("onInviteAccepted: messaging().send failed", { recipientUserId, error });
       }
     }
   },

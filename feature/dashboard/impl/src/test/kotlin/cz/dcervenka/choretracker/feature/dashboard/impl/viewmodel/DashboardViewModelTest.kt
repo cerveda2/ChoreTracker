@@ -457,6 +457,21 @@ class DashboardViewModelTest {
         }
 
     @Test
+    fun `notifications banner counts invite pushes for an admin, who can invite too`() =
+        runTest(coroutineRule.dispatcher) {
+            householdFlow.value = sampleHousehold()
+            membersFlow.value = sampleMembers().map {
+                it.copy(isCurrentUser = it.id == "member-2", role = HouseholdRole.ADMIN)
+            }
+            val viewModel = createViewModel()
+            backgroundScope.launch { viewModel.uiState.collect {} }
+            viewModel.dispatch(DashboardUiIntent.SystemNotificationsChanged(enabled = false))
+            advanceUntilIdle()
+
+            assertThat(viewModel.uiState.value.showNotificationsBanner).isTrue()
+        }
+
+    @Test
     fun `notifications banner never shows in preview mode`() = runTest(coroutineRule.dispatcher) {
         householdFlow.value = sampleHousehold()
         membersFlow.value = sampleMembers()

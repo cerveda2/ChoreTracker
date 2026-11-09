@@ -289,8 +289,13 @@ service cloud.firestore {
         // than "list" - see the removed collectionGroup rule this used to need instead.
         allow get: if isSignedIn();
         allow list: if isHouseholdMember(householdId);
-        allow create, delete: if isHouseholdManager(householdId);
-        allow update: if isHouseholdManager(householdId) ||
+        // createdByUserId is who onInviteAccepted notifies, so it may only name the writer and
+        // never change afterwards. Optional: the owner's snapshot uploads and older versions omit it.
+        allow create: if isHouseholdManager(householdId) &&
+          request.resource.data.get('createdByUserId', request.auth.uid) == request.auth.uid;
+        allow delete: if isHouseholdManager(householdId);
+        allow update: if (isHouseholdManager(householdId) &&
+            request.resource.data.get('createdByUserId', null) == resource.data.get('createdByUserId', null)) ||
           (isHouseholdMember(householdId) &&
             request.resource.data.diff(resource.data).affectedKeys()
               .hasOnly(['consumedAt', 'consumedByMemberId']));

@@ -20,7 +20,6 @@ import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCompletionUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.error.AppError
-import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
@@ -110,7 +109,7 @@ class DashboardViewModel @Inject constructor(
                 DashboardUiState(
                     snapshot = snapshot,
                     members = members,
-                    isManager = currentMember?.role == HouseholdRole.OWNER || currentMember?.role == HouseholdRole.ADMIN,
+                    isManager = currentMember?.role?.isManager == true,
                     currentUserId = currentMember?.userId,
                     allCompletions = completions,
                     syncState = syncState,
@@ -119,11 +118,11 @@ class DashboardViewModel @Inject constructor(
             }
         }
         .combine(notificationsBanner) { state, banner ->
-            // Only for notifications this user would actually get: invite-accepted pushes go to the owner alone.
-            val isOwner = state.members.any { it.isCurrentUser && it.role == HouseholdRole.OWNER }
+            // Only for notifications this user would actually get: invite-accepted pushes go to whoever
+            // sent the invite, and only the owner and admins can.
             state.copy(
                 showNotificationsBanner = banner.blocked &&
-                    (banner.remindersEnabled || (banner.inviteNotificationsEnabled && isOwner)),
+                    (banner.remindersEnabled || (banner.inviteNotificationsEnabled && state.isManager)),
             )
         }
         .combine(combine(networkAvailable, syncsRemotely, ::Pair)) { state, (online, syncsRemotely) ->

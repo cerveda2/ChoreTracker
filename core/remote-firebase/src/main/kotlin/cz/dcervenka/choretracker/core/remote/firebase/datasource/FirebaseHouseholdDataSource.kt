@@ -441,7 +441,9 @@ class FirebaseHouseholdDataSource @Inject constructor(
             awaitTask(db.collection(HOUSEHOLDS_COLLECTION).document(householdId).update("name", name))
         }
 
-    override suspend fun upsertInvite(invite: Invite): EmptyResult = remoteWrite("upsertInvite") { db ->
+    override suspend fun upsertInvite(invite: Invite, createdByUserId: String): EmptyResult = remoteWrite(
+        "upsertInvite",
+    ) { db ->
         val householdRef = db.collection(HOUSEHOLDS_COLLECTION).document(invite.householdId)
         val batch = db.batch()
         batch.set(
@@ -452,6 +454,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
                 put("code", invite.code)
                 put("createdAt", invite.createdAt.asTimestamp())
                 invite.targetMemberId?.let { put("targetMemberId", it) }
+                put("createdByUserId", createdByUserId)
             },
             SetOptions.merge(),
         )

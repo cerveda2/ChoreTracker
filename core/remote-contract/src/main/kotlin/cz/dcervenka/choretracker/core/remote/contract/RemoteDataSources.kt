@@ -58,7 +58,8 @@ interface RemoteHouseholdDataSource {
 
     suspend fun updateHouseholdName(householdId: String, name: String): EmptyResult
 
-    suspend fun upsertInvite(invite: Invite): EmptyResult
+    // createdByUserId tells onInviteAccepted whom to notify; only ever the uploading user, as rules require.
+    suspend fun upsertInvite(invite: Invite, createdByUserId: String): EmptyResult
 
     suspend fun upsertPlaceholder(member: HouseholdMember): EmptyResult
 
