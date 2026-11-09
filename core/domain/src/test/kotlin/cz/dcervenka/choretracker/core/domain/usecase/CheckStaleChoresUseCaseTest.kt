@@ -11,6 +11,7 @@ import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
+import cz.dcervenka.choretracker.core.model.stats.ChoreTurn
 import cz.dcervenka.choretracker.core.model.stats.HouseholdStatsInput
 import cz.dcervenka.choretracker.core.test.clock.FixedClock
 import cz.dcervenka.choretracker.core.test.mock.sampleAuthenticatedState
@@ -151,5 +152,18 @@ class CheckStaleChoresUseCaseTest {
         val result = useCase()
 
         assertThat(result.map(ChoreStaleness::choreId)).containsExactly("chore-1")
+    }
+
+    @Test
+    fun `reminds only the member whose turn it is`() = runTest {
+        every { statisticsCalculator.buildStaleness(any(), any(), any(), any(), expectedToday) } returns listOf(
+            staleness("mine", ChoreStatus.NEEDS_ATTENTION).copy(turn = ChoreTurn("me", "Me", isCurrentUser = true)),
+            staleness("theirs", ChoreStatus.NEEDS_ATTENTION).copy(turn = ChoreTurn("sam", "Sam", isCurrentUser = false)),
+            staleness("shared", ChoreStatus.NEEDS_ATTENTION),
+        )
+
+        val result = useCase()
+
+        assertThat(result.map(ChoreStaleness::choreId)).containsExactly("mine", "shared")
     }
 }

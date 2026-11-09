@@ -42,6 +42,7 @@ import cz.dcervenka.choretracker.core.design.components.ExtendedLogFab
 import cz.dcervenka.choretracker.core.design.components.ListGroup
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.LogCompletionSheet
+import cz.dcervenka.choretracker.core.design.components.OutOfTurnDialog
 import cz.dcervenka.choretracker.core.design.components.SectionHeader
 import cz.dcervenka.choretracker.core.design.components.TopLevelBottomBarSpacer
 import cz.dcervenka.choretracker.core.design.rememberSaveableStringList
@@ -116,7 +117,8 @@ fun ChoresScreen(
         logNote = ""
     }
 
-    val quickLog: (Chore) -> Unit = { chore ->
+    var outOfTurnChoreId by rememberSaveable { mutableStateOf<String?>(null) }
+    val logNow: (Chore) -> Unit = { chore ->
         val householdId = uiState.householdId
         if (householdId != null && currentUserId != null) {
             onIntent(
@@ -135,6 +137,10 @@ fun ChoresScreen(
             // prompt.
             openLogSheet(chore.id)
         }
+    }
+    val quickLog: (Chore) -> Unit = { chore ->
+        val turn = uiState.staleness[chore.id]?.turn
+        if (turn != null && !turn.isCurrentUser) outOfTurnChoreId = chore.id else logNow(chore)
     }
 
     ChoreScaffold(
@@ -256,6 +262,7 @@ fun ChoresScreen(
         }
     }
 
+    val activeMembers = uiState.members.filter { it.removedAt == null }
     val editingChore = uiState.chores.find { it.id == editingChoreId }
     if (editingChore != null) {
         ChoreEditorSheet(
@@ -267,8 +274,9 @@ fun ChoresScreen(
                     uiState.currentUserId != null && editingChore.createdByUserId == uiState.currentUserId &&
                         editingChore.id !in uiState.completedChoreIds
                     ),
+            members = activeMembers,
             onDismiss = { editingChoreId = null },
-            onSave = { name, category, frequencyDays, isActive ->
+            onSave = { name, category, frequencyDays, isActive, rotationMemberIds ->
                 onIntent(
                     ChoresUiIntent.UpdateChore(
                         choreId = editingChore.id,
@@ -276,6 +284,7 @@ fun ChoresScreen(
                         category = category,
                         frequencyDays = frequencyDays,
                         isActive = isActive,
+                        rotationMemberIds = rotationMemberIds,
                     ),
                 )
                 editingChoreId = null
@@ -295,8 +304,9 @@ fun ChoresScreen(
         ChoreEditorSheet(
             chore = null,
             canEdit = true,
+            members = activeMembers,
             onDismiss = { showNewChoreSheet = false },
-            onSave = { name, category, frequencyDays, _ ->
+            onSave = { name, category, frequencyDays, _, rotationMemberIds ->
                 onIntent(
                     ChoresUiIntent.AddChore(
                         householdId = householdId,
@@ -304,12 +314,26 @@ fun ChoresScreen(
                         category = category,
                         frequencyDays = frequencyDays,
                         reminderEnabled = newChoreReminderEnabled,
+                        rotationMemberIds = rotationMemberIds,
                     ),
                 )
                 showNewChoreSheet = false
             },
             reminderEnabled = newChoreReminderEnabled.takeIf { uiState.remindersEnabled },
             onReminderChange = { newChoreReminderEnabled = it },
+        )
+    }
+
+    val outOfTurnChore = uiState.chores.find { it.id == outOfTurnChoreId }
+    val outOfTurn = outOfTurnChore?.let { uiState.staleness[it.id]?.turn }
+    if (outOfTurnChore != null && outOfTurn != null) {
+        OutOfTurnDialog(
+            turn = outOfTurn,
+            onConfirm = {
+                logNow(outOfTurnChore)
+                outOfTurnChoreId = null
+            },
+            onDismiss = { outOfTurnChoreId = null },
         )
     }
 

@@ -44,6 +44,8 @@ internal fun ChoreEntity.asModel(): Chore = Chore(
     frequencyDays = frequencyDays,
     category = runCatching { ChoreCategory.valueOf(category) }.getOrDefault(ChoreCategory.OTHER),
     createdByUserId = createdByUserId,
+    rotationMemberIds = rotationMemberIds,
+    rotationStartedAt = rotationStartedAt,
 )
 
 internal fun InviteEntity.asModel(): Invite = Invite(

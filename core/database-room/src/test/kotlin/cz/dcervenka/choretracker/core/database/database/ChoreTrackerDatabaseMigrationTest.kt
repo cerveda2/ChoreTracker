@@ -78,5 +78,7 @@ class ChoreTrackerDatabaseMigrationTest {
 
         assertThat(pending.map { it.id }).containsExactly("op-1")
         assertThat(legacyChore?.createdByUserId).isNull()
+        assertThat(legacyChore?.rotationMemberIds).isEmpty()
+        assertThat(legacyChore?.rotationStartedAt).isNull()
     }
 }

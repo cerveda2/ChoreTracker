@@ -34,7 +34,7 @@ import kotlinx.coroutines.withContext
         PendingSyncOperationEntity::class,
         SyncStateEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 @TypeConverters(InstantConverters::class)

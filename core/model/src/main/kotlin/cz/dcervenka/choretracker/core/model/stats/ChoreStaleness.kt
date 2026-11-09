@@ -15,4 +15,6 @@ data class ChoreStaleness(
     // frequencyDays - daysSinceLastCompletion; null without a frequency or a last completion to
     // count from (a never-done chore has no anchor to count "due in" from).
     val dueInDays: Int? = null,
+    // Null unless the chore rotates and at least one of its members is still in the household.
+    val turn: ChoreTurn? = null,
 )

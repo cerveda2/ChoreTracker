@@ -268,6 +268,8 @@ class LocalSyncRepository @Inject constructor(
                     frequencyDays = chore.frequencyDays,
                     category = chore.category.name,
                     createdByUserId = chore.createdByUserId,
+                    rotationMemberIds = chore.rotationMemberIds,
+                    rotationStartedAt = chore.rotationStartedAt,
                 ),
             )
         }
@@ -552,6 +554,8 @@ class LocalSyncRepository @Inject constructor(
         frequencyDays = frequencyDays,
         category = runCatching { ChoreCategory.valueOf(category) }.getOrDefault(ChoreCategory.OTHER),
         createdByUserId = createdByUserId,
+        rotationMemberIds = rotationMemberIds,
+        rotationStartedAt = rotationStartedAt,
     )
 
     private fun InviteEntity.asInviteModel(): Invite = Invite(
@@ -809,6 +813,8 @@ class LocalSyncRepository @Inject constructor(
                     frequencyDays = chore.frequencyDays,
                     category = runCatching { ChoreCategory.valueOf(chore.category) }.getOrDefault(ChoreCategory.OTHER),
                     createdByUserId = chore.createdByUserId,
+                    rotationMemberIds = chore.rotationMemberIds,
+                    rotationStartedAt = chore.rotationStartedAt,
                 )
             },
             completions = completions,

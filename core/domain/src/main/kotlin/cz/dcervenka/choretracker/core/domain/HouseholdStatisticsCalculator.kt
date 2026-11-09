@@ -10,6 +10,7 @@ import cz.dcervenka.choretracker.core.model.stats.ChoreComparison
 import cz.dcervenka.choretracker.core.model.stats.ChoreLeaderResult
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
+import cz.dcervenka.choretracker.core.model.stats.ChoreTurn
 import cz.dcervenka.choretracker.core.model.stats.DashboardSnapshot
 import cz.dcervenka.choretracker.core.model.stats.HouseholdSummary
 import cz.dcervenka.choretracker.core.model.stats.MemberContribution
@@ -344,6 +345,7 @@ class HouseholdStatisticsCalculator @Inject constructor() {
                     } else {
                         null
                     },
+                    turn = computeTurn(chore, completions, memberMap),
                 )
             }
     }
@@ -383,6 +385,30 @@ class HouseholdStatisticsCalculator @Inject constructor() {
 // of the class avoids tripping TooManyFunctions there.
 private fun activeMembersOf(members: List<HouseholdMember>): List<HouseholdMember> =
     members.filter { it.removedAt == null }
+
+// The rotation member with the fewest completions since the rotation was set up, then whoever did it
+// least recently, then rotation order. Covering someone's turn puts you ahead, so they stay up until it
+// evens out. Removed members drop out of the rotation.
+private fun computeTurn(
+    chore: Chore,
+    completions: List<ChoreCompletion>,
+    memberMap: Map<String, HouseholdMember>,
+): ChoreTurn? {
+    val rotation = chore.rotationMemberIds.distinct().filter { memberMap[it]?.removedAt == null && it in memberMap }
+    if (rotation.isEmpty()) return null
+    val counted = completions.filter { completion ->
+        completion.choreId == chore.id && chore.rotationStartedAt?.let { completion.createdAt >= it } != false
+    }
+    val turnMemberId = rotation.minWith(
+        compareBy<String> { memberId -> counted.count { memberId in it.participantMemberIds } }
+            .thenBy { memberId ->
+                counted.filter { memberId in it.participantMemberIds }.maxOfOrNull(ChoreCompletion::createdAt)
+            }
+            .thenBy(rotation::indexOf),
+    )
+    val member = memberMap.getValue(turnMemberId)
+    return ChoreTurn(memberId = member.id, memberName = member.displayName, isCurrentUser = member.isCurrentUser)
+}
 
 // Top-level, not a method: it only reads its parameter (no instance state), and keeping it out
 // of the class avoids tripping TooManyFunctions there. Null with fewer than two members, or when

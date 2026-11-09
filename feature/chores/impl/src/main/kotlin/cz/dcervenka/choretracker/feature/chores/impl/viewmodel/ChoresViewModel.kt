@@ -19,6 +19,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreCategoryUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreRotationUseCase
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
@@ -60,6 +61,7 @@ class ChoresViewModel @Inject constructor(
     private val updateChoreCategoryUseCase: UpdateChoreCategoryUseCase,
     private val updateChoreFrequencyUseCase: UpdateChoreFrequencyUseCase,
     private val updateChoreActiveUseCase: UpdateChoreActiveUseCase,
+    private val updateChoreRotationUseCase: UpdateChoreRotationUseCase,
     private val deleteChoreUseCase: DeleteChoreUseCase,
     private val logCompletionUseCase: LogCompletionUseCase,
     private val deleteCompletionUseCase: DeleteCompletionUseCase,
@@ -153,6 +155,7 @@ class ChoresViewModel @Inject constructor(
                 name = intent.name,
                 category = intent.category,
                 frequencyDays = intent.frequencyDays,
+                rotationMemberIds = intent.rotationMemberIds,
             )
             if (result is AppResult.Success) {
                 // The chore is already saved - don't let leaving the screen skip its mute.
@@ -166,8 +169,8 @@ class ChoresViewModel @Inject constructor(
         }
     }
 
-    // The four chore fields have independent use cases (each maps to its own Firestore/Room
-    // write), so a single editor save fans out into up to four calls - only for the fields that
+    // The chore fields have independent use cases (each maps to its own Firestore/Room
+    // write), so a single editor save fans out into one call per field - only for the fields that
     // actually changed - and reports one failure if any of them fails.
     private fun updateChore(intent: ChoresUiIntent.UpdateChore) {
         val current = uiState.value.chores.find { it.id == intent.choreId } ?: return
@@ -184,6 +187,10 @@ class ChoresViewModel @Inject constructor(
                 }
                 if (current.isActive != intent.isActive) {
                     add(updateChoreActiveUseCase(intent.choreId, intent.isActive))
+                }
+                // Compared as sets: reordering alone shouldn't restart whose-turn counting.
+                if (current.rotationMemberIds.toSet() != intent.rotationMemberIds.toSet()) {
+                    add(updateChoreRotationUseCase(intent.choreId, intent.rotationMemberIds))
                 }
             }
             val failure = results.filterIsInstance<AppResult.Error>().firstOrNull()

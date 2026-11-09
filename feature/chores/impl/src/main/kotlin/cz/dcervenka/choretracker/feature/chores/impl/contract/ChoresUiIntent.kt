@@ -13,6 +13,7 @@ sealed interface ChoresUiIntent : UiIntent {
         val category: ChoreCategory,
         val frequencyDays: Int?,
         val reminderEnabled: Boolean,
+        val rotationMemberIds: List<String> = emptyList(),
     ) : ChoresUiIntent
     data class UpdateChore(
         val choreId: String,
@@ -20,6 +21,7 @@ sealed interface ChoresUiIntent : UiIntent {
         val category: ChoreCategory,
         val frequencyDays: Int?,
         val isActive: Boolean,
+        val rotationMemberIds: List<String> = emptyList(),
     ) : ChoresUiIntent
     data class DeleteChore(val choreId: String) : ChoresUiIntent
     data class LogCompletion(

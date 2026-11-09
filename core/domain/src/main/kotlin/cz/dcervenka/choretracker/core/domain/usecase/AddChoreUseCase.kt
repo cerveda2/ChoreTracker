@@ -14,6 +14,7 @@ class AddChoreUseCase @Inject constructor(
         name: String,
         category: ChoreCategory,
         frequencyDays: Int? = null,
+        rotationMemberIds: List<String> = emptyList(),
     ): AppResult<String> {
         if (frequencyDays != null && frequencyDays <= 0) {
             return AppResult.Error(AppError.INVALID_FREQUENCY)
@@ -23,6 +24,7 @@ class AddChoreUseCase @Inject constructor(
             name = name,
             category = category,
             frequencyDays = frequencyDays,
+            rotationMemberIds = rotationMemberIds,
         )
     }
 }

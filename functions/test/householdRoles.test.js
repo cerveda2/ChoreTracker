@@ -28,6 +28,7 @@ async function signUp(name) {
 function value(input) {
   if (input === null) return { nullValue: null };
   if (typeof input === "boolean") return { booleanValue: input };
+  if (Array.isArray(input)) return { arrayValue: { values: input.map(value) } };
   return { stringValue: String(input) };
 }
 
@@ -84,6 +85,24 @@ describe("household roles", () => {
     assert.equal(await writeAs(member, chore, { deletedAt: "2026-01-01" }, ["deletedAt"]), 200);
     assert.equal(await writeAs(admin, chore, { name: "Admin edit" }, ["name"]), 200);
     assert.equal(await deleteAs(member, chore), 403);
+  });
+
+  it("lets whoever can edit a chore set who takes turns", async () => {
+    const { admin, member, outsider } = await seed();
+    const own = "households/home/chores/chore-1";
+    const others = "households/home/chores/chore-2";
+    assert.equal(await writeAs(member, own, {
+      id: "chore-1", householdId: "home", name: "Dishes", createdByUserId: member.uid,
+    }), 200);
+    assert.equal(await writeAs(admin, others, {
+      id: "chore-2", householdId: "home", name: "Bins", createdByUserId: admin.uid,
+    }), 200);
+    const rotation = { rotationMemberIds: [member.uid, admin.uid], rotationStartedAt: "2026-01-01" };
+    const mask = Object.keys(rotation);
+    assert.equal(await writeAs(member, own, rotation, mask), 200);
+    assert.equal(await writeAs(admin, own, { ...rotation, rotationMemberIds: [] }, mask), 200);
+    assert.equal(await writeAs(member, others, rotation, mask), 403);
+    assert.equal(await writeAs(outsider, own, rotation, mask), 403);
   });
 
   it("grants admin management without ownership or role changes", async () => {
