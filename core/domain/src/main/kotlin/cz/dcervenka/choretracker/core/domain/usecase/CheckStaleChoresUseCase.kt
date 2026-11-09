@@ -19,6 +19,7 @@ class CheckStaleChoresUseCase @Inject constructor(
     private val householdRepository: HouseholdRepository,
     private val statsRepository: StatsRepository,
     private val statisticsCalculator: HouseholdStatisticsCalculator,
+    private val observeChoreRequestsUseCase: ObserveChoreRequestsUseCase,
     private val clock: Clock,
 ) {
     suspend operator fun invoke(): List<ChoreStaleness> {
@@ -34,13 +35,25 @@ class CheckStaleChoresUseCase @Inject constructor(
             emptyList()
         } else {
             val input = statsRepository.getHouseholdStatsInput(household.id)
+            // A chore someone asked you to do is included even before it's overdue, and one you've asked
+            // someone else to do is left to them.
+            val requests = observeChoreRequestsUseCase(household.id).first()
+            val askedOfMe = requests.askedOfMe.map { it.choreId }.toSet()
+            val askedOfOthers = requests.waitingOn.filterNot { it.declined }.map { it.choreId }.toSet()
             statisticsCalculator.buildStaleness(
                 chores = input.chores,
                 completions = input.completions,
                 members = input.members,
                 timeZone = TimeZone.currentSystemDefault(),
                 today = clock.todayIn(TimeZone.currentSystemDefault()),
-            ).filter { it.status == ChoreStatus.NEEDS_ATTENTION && it.turn?.isCurrentUser != false }
+            ).filter { stale ->
+                stale.choreId in askedOfMe ||
+                    (
+                        stale.status == ChoreStatus.NEEDS_ATTENTION &&
+                            stale.turn?.isCurrentUser != false &&
+                            stale.choreId !in askedOfOthers
+                        )
+            }
         }
     }
 }

@@ -20,15 +20,21 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseC
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RefreshHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SendChoreRequestsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCompletionUseCase
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.chore.ChoreRequestItem
 import cz.dcervenka.choretracker.core.model.chore.ChoreRequests
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.settings.ReminderSettings
+import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
+import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
+import cz.dcervenka.choretracker.core.model.stats.ChoreTurn
 import cz.dcervenka.choretracker.core.model.sync.SyncState
 import cz.dcervenka.choretracker.core.test.mock.sampleChore
 import cz.dcervenka.choretracker.core.test.mock.sampleDashboardSnapshot
@@ -36,6 +42,7 @@ import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
+import cz.dcervenka.choretracker.feature.dashboard.impl.contract.Nudge
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.SyncStatus
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
@@ -44,7 +51,6 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -112,6 +118,11 @@ class DashboardViewModelTest {
     @MockK
     lateinit var cancelChoreRequestUseCase: CancelChoreRequestUseCase
 
+    @MockK
+    lateinit var sendChoreRequestsUseCase: SendChoreRequestsUseCase
+
+    private val requestsFlow = MutableStateFlow(ChoreRequests())
+
     private val dashboardFlow = MutableStateFlow(sampleDashboardSnapshot())
     private val householdFlow = MutableStateFlow<Household?>(null)
     private val membersFlow = MutableStateFlow(emptyList<HouseholdMember>())
@@ -147,7 +158,9 @@ class DashboardViewModelTest {
         coEvery { retryPendingSyncUseCase() } returns AppResult.Success(Unit)
         coEvery { refreshHouseholdUseCase() } returns AppResult.Success(Unit)
         coEvery { dismissNotificationsBannerUseCase() } coAnswers { bannerDismissedFlow.value = true }
-        every { observeChoreRequestsUseCase(any()) } returns flowOf(ChoreRequests())
+        requestsFlow.value = ChoreRequests()
+        every { observeChoreRequestsUseCase(any()) } returns requestsFlow
+        coEvery { sendChoreRequestsUseCase(any(), any(), any(), any()) } returns AppResult.Success(Unit)
         coEvery { declineChoreRequestUseCase(any()) } returns AppResult.Success(Unit)
         coEvery { cancelChoreRequestUseCase(any()) } returns AppResult.Success(Unit)
     }
@@ -516,6 +529,52 @@ class DashboardViewModelTest {
         assertThat(errors).containsExactly(AppError.PERMISSION_DENIED)
         errorsJob.cancel()
     }
+
+    @Test
+    fun `a due chore on someone else's turn can be reminded about, once`() = runTest(coroutineRule.dispatcher) {
+        householdFlow.value = sampleHousehold()
+        membersFlow.value = sampleMembers()
+        dashboardFlow.value = sampleDashboardSnapshot().copy(
+            staleChores = listOf(
+                ChoreStaleness(
+                    choreId = "chore-1",
+                    choreName = "Kitchen",
+                    lastCompletedDate = null,
+                    daysSinceLastCompletion = null,
+                    frequencyDays = null,
+                    status = ChoreStatus.NEVER,
+                    turn = ChoreTurn(memberId = "member-2", memberName = "Alex", isCurrentUser = false),
+                ),
+            ),
+        )
+        val viewModel = createViewModel()
+        val stateJob = launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.nudges["chore-1"])
+            .isEqualTo(Nudge(memberId = "member-2", memberName = "Alex", alreadyAsked = false))
+        viewModel.dispatch(DashboardUiIntent.Remind("chore-1"))
+        advanceUntilIdle()
+        coVerify { sendChoreRequestsUseCase("household-1", "member-2", listOf("chore-1"), null) }
+
+        requestsFlow.value = ChoreRequests(
+            waitingOn = listOf(
+                ChoreRequestItem(
+                    id = "request-1",
+                    choreId = "chore-1",
+                    choreName = "Kitchen",
+                    category = ChoreCategory.OTHER,
+                    otherMemberId = "member-2",
+                    otherMemberName = "Alex",
+                    note = null,
+                    createdAt = Instant.parse("2026-01-05T10:00:00Z"),
+                ),
+            ),
+        )
+        advanceUntilIdle()
+        assertThat(viewModel.uiState.value.nudges["chore-1"]?.alreadyAsked).isTrue()
+        stateJob.cancel()
+    }
 }
 
 private fun DashboardViewModelTest.createViewModel() = DashboardViewModel(
@@ -537,6 +596,7 @@ private fun DashboardViewModelTest.createViewModel() = DashboardViewModel(
     dismissNotificationsBannerUseCase = dismissNotificationsBannerUseCase,
     declineChoreRequestUseCase = declineChoreRequestUseCase,
     cancelChoreRequestUseCase = cancelChoreRequestUseCase,
+    sendChoreRequestsUseCase = sendChoreRequestsUseCase,
 )
 
 private fun sampleUser() = AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana")

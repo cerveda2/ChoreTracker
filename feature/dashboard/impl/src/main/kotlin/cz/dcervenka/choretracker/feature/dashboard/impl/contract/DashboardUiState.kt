@@ -19,4 +19,6 @@ data class DashboardUiState(
     // Null hides the indicator: nothing syncs in preview mode.
     val syncStatus: SyncStatus? = null,
     val requests: ChoreRequests = ChoreRequests(),
+    // By chore id.
+    val nudges: Map<String, Nudge> = emptyMap(),
 ) : UiState

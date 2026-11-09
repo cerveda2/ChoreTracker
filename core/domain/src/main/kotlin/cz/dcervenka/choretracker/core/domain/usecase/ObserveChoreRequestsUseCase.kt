@@ -42,6 +42,7 @@ class ObserveChoreRequestsUseCase @Inject constructor(
                 choreId = choreId,
                 choreName = chore.name,
                 category = chore.category,
+                otherMemberId = otherMemberId,
                 otherMemberName = names[otherMemberId].orEmpty(),
                 note = note,
                 createdAt = createdAt,

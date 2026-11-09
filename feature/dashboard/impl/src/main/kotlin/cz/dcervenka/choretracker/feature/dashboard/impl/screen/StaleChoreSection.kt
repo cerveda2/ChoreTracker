@@ -2,13 +2,17 @@ package cz.dcervenka.choretracker.feature.dashboard.impl.screen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreListRow
@@ -21,6 +25,7 @@ import cz.dcervenka.choretracker.core.design.components.choreTurnLabel
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
+import cz.dcervenka.choretracker.feature.dashboard.impl.contract.Nudge
 
 @Composable
 internal fun OverdueSection(
@@ -28,6 +33,8 @@ internal fun OverdueSection(
     categoryByChoreId: Map<String, ChoreCategory>,
     onQuickLog: (String) -> Unit,
     onOpenSheet: (String) -> Unit,
+    nudges: Map<String, Nudge>,
+    onRemind: (String) -> Unit,
 ) {
     if (items.isEmpty()) return
     val spacing = LocalSpacing.current
@@ -56,6 +63,11 @@ internal fun OverdueSection(
                     },
                     onClick = { onQuickLog(stale.choreId) },
                     onLongClick = { onOpenSheet(stale.choreId) },
+                    belowSubtitle = nudges[stale.choreId]?.let { nudge ->
+                        {
+                            NudgeAction(nudge = nudge, onRemind = { onRemind(stale.choreId) })
+                        }
+                    },
                 )
             }
         }
@@ -80,6 +92,8 @@ internal fun DueSoonSection(
     categoryByChoreId: Map<String, ChoreCategory>,
     onQuickLog: (String) -> Unit,
     onOpenSheet: (String) -> Unit,
+    nudges: Map<String, Nudge>,
+    onRemind: (String) -> Unit,
 ) {
     if (items.isEmpty()) return
     val spacing = LocalSpacing.current
@@ -105,6 +119,11 @@ internal fun DueSoonSection(
                     },
                     onClick = { onQuickLog(stale.choreId) },
                     onLongClick = { onOpenSheet(stale.choreId) },
+                    belowSubtitle = nudges[stale.choreId]?.let { nudge ->
+                        {
+                            NudgeAction(nudge = nudge, onRemind = { onRemind(stale.choreId) })
+                        }
+                    },
                 )
             }
         }
@@ -122,4 +141,19 @@ private fun dueSoonSubtitle(stale: ChoreStaleness): String {
         stringResource(R.string.dashboard_did_it_last, name)
     }
     return listOfNotNull(dueLabel, lastByLabel).joinToString(" · ")
+}
+
+@Composable
+private fun NudgeAction(nudge: Nudge, onRemind: () -> Unit) {
+    if (nudge.alreadyAsked) {
+        Text(
+            text = stringResource(R.string.dashboard_reminded, nudge.memberName),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    } else {
+        TextButton(onClick = onRemind, contentPadding = PaddingValues(0.dp)) {
+            Text(stringResource(R.string.dashboard_remind, nudge.memberName))
+        }
+    }
 }

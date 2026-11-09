@@ -313,6 +313,8 @@
     <string name="dashboard_waiting_on">Waiting on others</string>
     <string name="dashboard_request_to">Asked %1$s</string>
     <string name="dashboard_request_declined">%1$s can\'t today</string>
+    <string name="dashboard_remind">Remind %1$s</string>
+    <string name="dashboard_reminded">Reminded %1$s</string>
     <string name="dashboard_request_cancel">Cancel the request for %1$s</string>
     <string name="chores_editor_turns_description">Whoever has done it least is up next.</string>
     <string name="chores_editor_turns_restart">Changing who takes turns starts the count over.</string>

@@ -24,4 +24,5 @@ sealed interface DashboardUiIntent : UiIntent {
     data class NetworkAvailabilityChanged(val available: Boolean) : DashboardUiIntent
     data class DeclineRequest(val requestId: String) : DashboardUiIntent
     data class CancelRequest(val requestId: String) : DashboardUiIntent
+    data class Remind(val choreId: String) : DashboardUiIntent
 }

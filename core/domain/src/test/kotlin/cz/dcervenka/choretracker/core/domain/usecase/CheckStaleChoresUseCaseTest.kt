@@ -8,6 +8,9 @@ import cz.dcervenka.choretracker.core.data.contract.StatsRepository
 import cz.dcervenka.choretracker.core.domain.HouseholdStatisticsCalculator
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.chore.ChoreRequestItem
+import cz.dcervenka.choretracker.core.model.chore.ChoreRequests
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
@@ -22,6 +25,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -62,6 +66,9 @@ class CheckStaleChoresUseCaseTest {
     @MockK
     lateinit var statisticsCalculator: HouseholdStatisticsCalculator
 
+    @MockK
+    lateinit var observeChoreRequestsUseCase: ObserveChoreRequestsUseCase
+
     private val authStateFlow = MutableStateFlow<AuthState>(sampleAuthenticatedState())
 
     // A FixedClock lets the injected `today` be asserted exactly, derived the same way
@@ -81,12 +88,14 @@ class CheckStaleChoresUseCaseTest {
         coEvery { householdRepository.getCurrentHousehold() } returns sampleHousehold()
         coEvery { statsRepository.getHouseholdStatsInput(any()) } returns emptyStatsInput
         every { statisticsCalculator.buildStaleness(any(), any(), any(), any(), expectedToday) } returns emptyList()
+        every { observeChoreRequestsUseCase(any()) } returns flowOf(ChoreRequests())
         useCase = CheckStaleChoresUseCase(
             authRepository,
             refreshHouseholdUseCase,
             householdRepository,
             statsRepository,
             statisticsCalculator,
+            observeChoreRequestsUseCase,
             clock,
         )
     }
@@ -165,5 +174,36 @@ class CheckStaleChoresUseCaseTest {
         val result = useCase()
 
         assertThat(result.map(ChoreStaleness::choreId)).containsExactly("mine", "shared")
+    }
+
+    @Test
+    fun `includes chores asked of you and leaves chores you asked for to the other member`() = runTest {
+        fun item(choreId: String, declined: Boolean = false) = ChoreRequestItem(
+            id = "request-$choreId",
+            choreId = choreId,
+            choreName = choreId,
+            category = ChoreCategory.OTHER,
+            otherMemberId = "member-2",
+            otherMemberName = "Alex",
+            note = null,
+            createdAt = fixedInstant,
+            declined = declined,
+        )
+        every { statisticsCalculator.buildStaleness(any(), any(), any(), any(), expectedToday) } returns listOf(
+            staleness("asked-of-me", ChoreStatus.OK),
+            staleness("asked-of-alex", ChoreStatus.NEEDS_ATTENTION),
+            staleness("alex-declined", ChoreStatus.NEEDS_ATTENTION),
+            staleness("overdue", ChoreStatus.NEEDS_ATTENTION),
+        )
+        every { observeChoreRequestsUseCase("household-1") } returns flowOf(
+            ChoreRequests(
+                askedOfMe = listOf(item("asked-of-me")),
+                waitingOn = listOf(item("asked-of-alex"), item("alex-declined", declined = true)),
+            ),
+        )
+
+        val result = useCase()
+
+        assertThat(result.map(ChoreStaleness::choreId)).containsExactly("asked-of-me", "alex-declined", "overdue")
     }
 }
