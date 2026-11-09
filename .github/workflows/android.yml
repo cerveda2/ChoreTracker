@@ -40,11 +40,12 @@ jobs:
 
       - name: Lint workflow changes
         if: steps.changes.outputs.workflows == 'true'
-        uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 # 1.7.12
-        with:
-          # GitHub supports queue; actionlint 1.7.12 still lacks this key (upstream issue #657).
-          args: >-
-            -color -ignore 'unexpected key "queue" for "concurrency" section'
+        # GitHub supports queue; actionlint 1.7.12 still lacks this key (upstream issue #657). Run through
+        # the shell: docker:// args are split on spaces, which breaks the quoted pattern.
+        run: >-
+          docker run --rm -v "$PWD:/repo" -w /repo
+          rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+          -color -ignore 'unexpected key "queue" for "concurrency" section'
 
       - name: Validate Gradle wrapper
         if: steps.changes.outputs.android == 'true'
