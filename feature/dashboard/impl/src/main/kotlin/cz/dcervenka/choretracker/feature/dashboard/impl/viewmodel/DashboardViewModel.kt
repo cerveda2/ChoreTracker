@@ -21,12 +21,15 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseC
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RefreshHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SendChoreRequestsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCompletionUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.chore.ChoreRequests
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
+import cz.dcervenka.choretracker.feature.dashboard.impl.contract.Nudge
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -65,6 +68,7 @@ class DashboardViewModel @Inject constructor(
     private val dismissNotificationsBannerUseCase: DismissNotificationsBannerUseCase,
     private val declineChoreRequestUseCase: DeclineChoreRequestUseCase,
     private val cancelChoreRequestUseCase: CancelChoreRequestUseCase,
+    private val sendChoreRequestsUseCase: SendChoreRequestsUseCase,
 ) : ViewModel() {
 
     private val _undoChannel = Channel<UndoEvent>(Channel.BUFFERED)
@@ -123,7 +127,7 @@ class DashboardViewModel @Inject constructor(
                     isRefreshing = refreshing,
                 )
             }.combine(observeChoreRequestsUseCase(household.id)) { state, requests ->
-                state.copy(requests = requests)
+                state.copy(requests = requests, nudges = nudges(state, requests))
             }
         }
         .combine(notificationsBanner) { state, banner ->
@@ -189,7 +193,15 @@ class DashboardViewModel @Inject constructor(
             is DashboardUiIntent.NetworkAvailabilityChanged -> networkAvailable.value = intent.available
             is DashboardUiIntent.DeclineRequest -> resolveRequest { declineChoreRequestUseCase(intent.requestId) }
             is DashboardUiIntent.CancelRequest -> resolveRequest { cancelChoreRequestUseCase(intent.requestId) }
+            is DashboardUiIntent.Remind -> remind(intent.choreId)
         }
+    }
+
+    private fun remind(choreId: String) {
+        val state = uiState.value
+        val household = state.snapshot?.household ?: return
+        val nudge = state.nudges[choreId]?.takeUnless { it.alreadyAsked } ?: return
+        resolveRequest { sendChoreRequestsUseCase(household.id, nudge.memberId, listOf(choreId), null) }
     }
 
     private fun resolveRequest(action: suspend () -> EmptyResult) {
@@ -266,3 +278,21 @@ class DashboardViewModel @Inject constructor(
         val inviteNotificationsEnabled: Boolean = false,
     )
 }
+
+// Only for a due chore whose turn belongs to another member who can be asked (still in the household,
+// with an account). Asked already means an open request for that chore to that member.
+private fun nudges(state: DashboardUiState, requests: ChoreRequests): Map<String, Nudge> =
+    state.snapshot?.staleChores.orEmpty().mapNotNull { stale ->
+        val turn = stale.turn?.takeUnless { it.isCurrentUser }
+        val member = turn?.let { state.members.find { it.id == turn.memberId } }
+            ?.takeIf { it.userId != null && it.removedAt == null }
+        member?.let {
+            stale.choreId to Nudge(
+                memberId = member.id,
+                memberName = member.displayName,
+                alreadyAsked = requests.waitingOn.any {
+                    it.choreId == stale.choreId && it.otherMemberId == member.id && !it.declined
+                },
+            )
+        }
+    }.toMap()

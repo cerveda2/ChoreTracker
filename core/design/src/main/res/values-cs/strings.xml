@@ -331,6 +331,8 @@
     <string name="dashboard_waiting_on">Čeká se na ostatní</string>
     <string name="dashboard_request_to">Požádáno: %1$s</string>
     <string name="dashboard_request_declined">%1$s dnes nemůže</string>
+    <string name="dashboard_remind">Připomenout: %1$s</string>
+    <string name="dashboard_reminded">Připomenuto: %1$s</string>
     <string name="dashboard_request_cancel">Zrušit žádost: %1$s</string>
     <string name="chores_editor_turns_description">Na řadě je vždy ten, kdo to dělal nejméně.</string>
     <string name="chores_editor_turns_restart">Když změníte, kdo se střídá, začne se počítat znovu.</string>

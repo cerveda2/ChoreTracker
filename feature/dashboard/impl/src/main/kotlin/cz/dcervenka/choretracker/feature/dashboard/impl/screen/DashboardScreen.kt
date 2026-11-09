@@ -287,6 +287,8 @@ fun DashboardScreen(
                                 categoryByChoreId = categoryByChoreId,
                                 onQuickLog = quickLog,
                                 onOpenSheet = openLogSheet,
+                                nudges = uiState.nudges,
+                                onRemind = { onIntent(DashboardUiIntent.Remind(it)) },
                             )
                         }
                         item {
@@ -295,6 +297,8 @@ fun DashboardScreen(
                                 categoryByChoreId = categoryByChoreId,
                                 onQuickLog = quickLog,
                                 onOpenSheet = openLogSheet,
+                                nudges = uiState.nudges,
+                                onRemind = { onIntent(DashboardUiIntent.Remind(it)) },
                             )
                         }
                     }
