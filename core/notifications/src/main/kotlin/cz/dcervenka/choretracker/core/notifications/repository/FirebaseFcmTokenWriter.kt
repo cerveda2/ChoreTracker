@@ -15,6 +15,7 @@ import kotlin.coroutines.resumeWithException
 
 private const val USERS_COLLECTION = "users"
 private const val FCM_TOKEN_FIELD = "fcmToken"
+private const val PUSH_TYPES_FIELD = "pushTypes"
 
 /**
  * Talks to Firestore/FCM directly rather than going through RemoteHouseholdDataSource /
@@ -32,7 +33,7 @@ class FirebaseFcmTokenWriter @Inject constructor() : FcmTokenWriter {
         }
     }
 
-    override suspend fun writeToken(userId: String, token: String) {
+    override suspend fun writeToken(userId: String, token: String, pushTypes: List<String>) {
         runCatching {
             awaitTask(
                 FirebaseFirestore.getInstance()
@@ -42,6 +43,7 @@ class FirebaseFcmTokenWriter @Inject constructor() : FcmTokenWriter {
                         mapOf(
                             "userId" to userId,
                             FCM_TOKEN_FIELD to token,
+                            PUSH_TYPES_FIELD to pushTypes,
                             "updatedAt" to Timestamp.now(),
                             // Lets onFcmTokenWritten tell which account registered this token last.
                             "fcmTokenUpdatedAt" to FieldValue.serverTimestamp(),
@@ -54,6 +56,20 @@ class FirebaseFcmTokenWriter @Inject constructor() : FcmTokenWriter {
             Timber.d("FirebaseFcmTokenWriter: registered fcmToken=$token for userId=$userId")
         }.rethrowCancellation().onFailure { error ->
             Timber.w(error, "FirebaseFcmTokenWriter: failed to write fcmToken")
+        }
+    }
+
+    override suspend fun writePushTypes(userId: String, pushTypes: List<String>) {
+        runCatching {
+            awaitTask(
+                FirebaseFirestore.getInstance()
+                    .collection(USERS_COLLECTION)
+                    .document(userId)
+                    .set(mapOf(PUSH_TYPES_FIELD to pushTypes, "updatedAt" to Timestamp.now()), SetOptions.merge()),
+            )
+            Timber.d("FirebaseFcmTokenWriter: wrote pushTypes=$pushTypes for userId=$userId")
+        }.rethrowCancellation().onFailure { error ->
+            Timber.w(error, "FirebaseFcmTokenWriter: failed to write pushTypes")
         }
     }
 
