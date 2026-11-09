@@ -6,5 +6,6 @@ sealed interface ChoresUiEvent {
     data object ChoreAdded : ChoresUiEvent
     data object ChoreSaved : ChoresUiEvent
     data object ChoreDeleted : ChoresUiEvent
+    data class RequestsSent(val memberName: String) : ChoresUiEvent
     data class Error(val error: AppError) : ChoresUiEvent
 }

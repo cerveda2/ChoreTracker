@@ -2,6 +2,7 @@ package cz.dcervenka.choretracker.feature.chores.impl.contract
 
 import cz.dcervenka.choretracker.core.common.UiIntent
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import kotlin.time.Instant
 
 sealed interface ChoresUiIntent : UiIntent {
@@ -33,4 +34,10 @@ sealed interface ChoresUiIntent : UiIntent {
     ) : ChoresUiIntent
     data class DeleteCompletion(val completionId: String) : ChoresUiIntent
     data class SetChoreReminder(val choreId: String, val enabled: Boolean) : ChoresUiIntent
+    data class SendRequests(
+        val householdId: String,
+        val toMember: HouseholdMember,
+        val choreIds: List<String>,
+        val note: String,
+    ) : ChoresUiIntent
 }

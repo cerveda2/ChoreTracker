@@ -250,6 +250,15 @@ fun DashboardScreen(
                             )
                         }
                     }
+                    if (uiState.requests.askedOfMe.isNotEmpty()) {
+                        item {
+                            AskedOfYouSection(
+                                items = uiState.requests.askedOfMe,
+                                onDone = quickLog,
+                                onDecline = { onIntent(DashboardUiIntent.DeclineRequest(it)) },
+                            )
+                        }
+                    }
                     item {
                         BalanceCard(balance = snapshot.balance, members = uiState.members)
                     }
@@ -286,6 +295,14 @@ fun DashboardScreen(
                                 categoryByChoreId = categoryByChoreId,
                                 onQuickLog = quickLog,
                                 onOpenSheet = openLogSheet,
+                            )
+                        }
+                    }
+                    if (uiState.requests.waitingOn.isNotEmpty()) {
+                        item {
+                            WaitingOnSection(
+                                items = uiState.requests.waitingOn,
+                                onCancel = { onIntent(DashboardUiIntent.CancelRequest(it)) },
                             )
                         }
                     }

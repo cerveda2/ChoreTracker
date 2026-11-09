@@ -14,6 +14,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMutedReminderChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveStaleChoresUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SendChoreRequestsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetChoreReminderMutedUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreCategoryUseCase
@@ -103,6 +104,9 @@ class ChoresViewModelTest {
     @MockK
     lateinit var setChoreReminderMutedUseCase: SetChoreReminderMutedUseCase
 
+    @MockK
+    lateinit var sendChoreRequestsUseCase: SendChoreRequestsUseCase
+
     private val householdFlow = MutableStateFlow<Household?>(null)
     private val choresFlow = MutableStateFlow(emptyList<Chore>())
     private val completedChoreIdsFlow = MutableStateFlow(emptySet<String>())
@@ -138,6 +142,7 @@ class ChoresViewModelTest {
         coEvery { logCompletionUseCase(any(), any(), any(), any(), any()) } returns AppResult.Success("completion-1")
         coEvery { deleteCompletionUseCase(any()) } returns AppResult.Success(Unit)
         coEvery { setChoreReminderMutedUseCase(any(), any()) } returns Unit
+        coEvery { sendChoreRequestsUseCase(any(), any(), any(), any()) } returns AppResult.Success(Unit)
     }
 
     @Test
@@ -382,6 +387,20 @@ class ChoresViewModelTest {
     }
 
     @Test
+    fun `sendRequests asks the chosen member and confirms with their name`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+        val events = mutableListOf<ChoresUiEvent>()
+        val eventsJob = launch { viewModel.events.collect { events += it } }
+
+        viewModel.dispatch(ChoresUiIntent.SendRequests("household-1", sampleMembers()[1], listOf("chore-1"), "Tonight"))
+        advanceUntilIdle()
+
+        coVerify { sendChoreRequestsUseCase("household-1", "member-2", listOf("chore-1"), "Tonight") }
+        assertThat(events).containsExactly(ChoresUiEvent.RequestsSent("Alex"))
+        eventsJob.cancel()
+    }
+
+    @Test
     fun `setChoreReminder mutes a chore when turned off and unmutes it when turned on`() =
         runTest(coroutineRule.dispatcher) {
             val viewModel = createViewModel()
@@ -414,4 +433,5 @@ private fun ChoresViewModelTest.createViewModel() = ChoresViewModel(
     logCompletionUseCase,
     deleteCompletionUseCase,
     setChoreReminderMutedUseCase,
+    sendChoreRequestsUseCase,
 )

@@ -3,10 +3,13 @@ package cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
+import cz.dcervenka.choretracker.core.domain.usecase.CancelChoreRequestUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.DeclineChoreRequestUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DismissNotificationsBannerUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoreRequestsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentDashboardUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInviteNotificationsEnabledUseCase
@@ -20,6 +23,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCompletionUseCase
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.chore.ChoreRequests
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
@@ -40,6 +44,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -98,6 +103,15 @@ class DashboardViewModelTest {
     @MockK
     lateinit var dismissNotificationsBannerUseCase: DismissNotificationsBannerUseCase
 
+    @MockK
+    lateinit var observeChoreRequestsUseCase: ObserveChoreRequestsUseCase
+
+    @MockK
+    lateinit var declineChoreRequestUseCase: DeclineChoreRequestUseCase
+
+    @MockK
+    lateinit var cancelChoreRequestUseCase: CancelChoreRequestUseCase
+
     private val dashboardFlow = MutableStateFlow(sampleDashboardSnapshot())
     private val householdFlow = MutableStateFlow<Household?>(null)
     private val membersFlow = MutableStateFlow(emptyList<HouseholdMember>())
@@ -133,6 +147,9 @@ class DashboardViewModelTest {
         coEvery { retryPendingSyncUseCase() } returns AppResult.Success(Unit)
         coEvery { refreshHouseholdUseCase() } returns AppResult.Success(Unit)
         coEvery { dismissNotificationsBannerUseCase() } coAnswers { bannerDismissedFlow.value = true }
+        every { observeChoreRequestsUseCase(any()) } returns flowOf(ChoreRequests())
+        coEvery { declineChoreRequestUseCase(any()) } returns AppResult.Success(Unit)
+        coEvery { cancelChoreRequestUseCase(any()) } returns AppResult.Success(Unit)
     }
 
     @Test
@@ -483,6 +500,22 @@ class DashboardViewModelTest {
 
         assertThat(viewModel.uiState.value.showNotificationsBanner).isFalse()
     }
+
+    @Test
+    fun `declining and cancelling go to their use cases and report a failure`() = runTest(coroutineRule.dispatcher) {
+        coEvery { cancelChoreRequestUseCase("request-1") } returns AppResult.Error(AppError.PERMISSION_DENIED)
+        val viewModel = createViewModel()
+        val errors = mutableListOf<AppError>()
+        val errorsJob = launch { viewModel.errorEvents.collect { errors += it } }
+
+        viewModel.dispatch(DashboardUiIntent.DeclineRequest("request-2"))
+        viewModel.dispatch(DashboardUiIntent.CancelRequest("request-1"))
+        advanceUntilIdle()
+
+        coVerify { declineChoreRequestUseCase("request-2") }
+        assertThat(errors).containsExactly(AppError.PERMISSION_DENIED)
+        errorsJob.cancel()
+    }
 }
 
 private fun DashboardViewModelTest.createViewModel() = DashboardViewModel(
@@ -495,12 +528,15 @@ private fun DashboardViewModelTest.createViewModel() = DashboardViewModel(
     observeReminderSettingsUseCase = observeReminderSettingsUseCase,
     observeInviteNotificationsEnabledUseCase = observeInviteNotificationsEnabledUseCase,
     observeAuthStateUseCase = observeAuthStateUseCase,
+    observeChoreRequestsUseCase = observeChoreRequestsUseCase,
     logCompletionUseCase = logCompletionUseCase,
     updateCompletionUseCase = updateCompletionUseCase,
     deleteCompletionUseCase = deleteCompletionUseCase,
     retryPendingSyncUseCase = retryPendingSyncUseCase,
     refreshHouseholdUseCase = refreshHouseholdUseCase,
     dismissNotificationsBannerUseCase = dismissNotificationsBannerUseCase,
+    declineChoreRequestUseCase = declineChoreRequestUseCase,
+    cancelChoreRequestUseCase = cancelChoreRequestUseCase,
 )
 
 private fun sampleUser() = AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana")

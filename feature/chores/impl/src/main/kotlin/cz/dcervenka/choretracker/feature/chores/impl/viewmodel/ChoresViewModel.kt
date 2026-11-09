@@ -14,6 +14,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMutedReminderChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveStaleChoresUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SendChoreRequestsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetChoreReminderMutedUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreCategoryUseCase
@@ -66,6 +67,7 @@ class ChoresViewModel @Inject constructor(
     private val logCompletionUseCase: LogCompletionUseCase,
     private val deleteCompletionUseCase: DeleteCompletionUseCase,
     private val setChoreReminderMutedUseCase: SetChoreReminderMutedUseCase,
+    private val sendChoreRequestsUseCase: SendChoreRequestsUseCase,
 ) : ViewModel() {
 
     private val _events = Channel<ChoresUiEvent>(Channel.BUFFERED)
@@ -141,6 +143,19 @@ class ChoresViewModel @Inject constructor(
             is ChoresUiIntent.LogCompletion -> logCompletion(intent)
             is ChoresUiIntent.DeleteCompletion -> deleteCompletion(intent.completionId)
             is ChoresUiIntent.SetChoreReminder -> setChoreReminder(intent.choreId, intent.enabled)
+            is ChoresUiIntent.SendRequests -> sendRequests(intent)
+        }
+    }
+
+    private fun sendRequests(intent: ChoresUiIntent.SendRequests) {
+        viewModelScope.launch {
+            val result = sendChoreRequestsUseCase(intent.householdId, intent.toMember.id, intent.choreIds, intent.note)
+            _events.send(
+                when (result) {
+                    is AppResult.Success -> ChoresUiEvent.RequestsSent(intent.toMember.displayName)
+                    is AppResult.Error -> ChoresUiEvent.Error(result.error)
+                },
+            )
         }
     }
 
