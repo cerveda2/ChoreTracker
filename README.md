@@ -91,10 +91,7 @@ Full setup: [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
 
 Debug builds (`cz.dcervenka.choretracker.debug`) use the dev project `choretracker-dev-1faf5`; release builds use production, `choretracker-fb576`. `.firebaserc` defines the aliases `dev` and `prod`, and `default` points at dev.
 
-CI deploys `firestore.rules`, `firestore.indexes.json`, and `functions/`:
-
-- **Dev** — on every pull request and every push to `main`, so a debug build can test a backend change before it merges.
-- **Production** — only with a [release](#releasing), or by running the "Deploy Firebase" workflow from the Actions tab on `main` with `prod` for a backend-only fix. Merging a PR alone never touches production.
+Automatic deployments, manual branch previews, and release deployment rules are described in the [CI and release policy](docs/CI.md#deployments-and-releases).
 
 Production gets backend changes together with an app release, and old and new app versions run side by side until everyone updates, so rules and functions must keep working with the previous release too.
 
@@ -116,8 +113,8 @@ Prefer the [Firestore Emulator Suite](docs/FIREBASE_SETUP.md#6-emulator-first-de
 
 ## CI
 
-GitHub Actions ([`android.yml`](.github/workflows/android.yml)) runs Gradle wrapper validation, Detekt, Android lint, the full test suite (`./gradlew test`), `assembleDebug`, an unsigned `assembleRelease` (to catch R8 and resource-shrinking breakage before merge), and a Cloud Functions typecheck (`npm run build` in `functions/`) on every push to `main` and every pull request. It also deploys the Firebase backend to the dev project — see [Deploying rules, indexes, and Cloud Functions](#deploying-rules-indexes-and-cloud-functions) above.
+GitHub Actions checks affected Android/backend code on PRs and main. See the [run matrix and required-check setup](docs/CI.md#what-runs-now).
 
 ## Releasing
 
-Bump `version.major`/`minor`/`patch` in `version.properties` in a PR. Merging it to `main` runs [`release.yml`](.github/workflows/release.yml): it builds the signed AAB/APK, tags the commit `v{major}.{minor}.{patch}`, creates a draft GitHub Release, then deploys the production backend. Distribute the build once the run is green. A version that's already tagged is skipped; the workflow's header comment covers retrying a failed run.
+Bump `version.major`/`minor`/`patch` in `version.properties` in a PR. The [release policy](docs/CI.md#deployments-and-releases) covers signing, Play internal testing, backend deployment, manual runs, and retries.

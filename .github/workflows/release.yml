@@ -1,180 +1,40 @@
 name: Release
 
-# Merging a version bump in version.properties into main releases that version: builds the
-# upload-key-signed AAB/APK, tags the commit v{major}.{minor}.{patch}, creates a draft GitHub
-# Release, deploys the production backend, then uploads the AAB to Play's internal testing track.
-# "Run workflow" (on main) retries a release whose build failed; a failed backend deploy or Play
-# upload is retried with "Re-run failed jobs" instead.
+# One locked call covers the complete release for both automatic and manual entry points.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - version.properties
+  workflow_call:
+    secrets:
+      RELEASE_KEYSTORE_BASE64:
+        required: true
+      RELEASE_STORE_PASSWORD:
+        required: true
+      RELEASE_KEY_PASSWORD:
+        required: true
+      FIREBASE_SERVICE_ACCOUNT:
+        required: true
+      PLAY_SERVICE_ACCOUNT_JSON:
+        description: "Provided by the prod environment"
+        required: true
   workflow_dispatch:
 
-concurrency:
-  group: release
-  cancel-in-progress: false
+permissions:
+  contents: read
+  checks: read
 
 jobs:
-  version:
-    name: Read version
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      tag: ${{ steps.version.outputs.tag }}
-      release: ${{ steps.version.outputs.release }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Read version.properties
-        id: version
-        run: |
-          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
-            echo "::error::Releases only run from main"
-            exit 1
-          fi
-          prop() { grep "^version.$1=" version.properties | cut -d= -f2; }
-          tag="v$(prop major).$(prop minor).$(prop patch)"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          # A change to version.properties that doesn't bump the version (e.g. a comment) mustn't
-          # release the same version twice.
-          if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
-            echo "::notice::$tag is already released - skipping"
-            echo "release=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "release=true" >> "$GITHUB_OUTPUT"
-          fi
-
-  build:
-    name: Build signed release
-    needs: version
-    if: needs.version.outputs.release == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+  pipeline:
+    name: Release pipeline
     permissions:
       contents: write
-    env:
-      TAG: ${{ needs.version.outputs.tag }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Make Gradle executable
-        run: chmod +x gradlew
-
-      - name: Decode upload keystore
-        env:
-          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-        run: echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
-
-      # The Crashlytics plugin uploads the R8 mapping file as part of these tasks. No configuration
-      # cache, so the signing passwords never end up in a cache entry.
-      - name: Build signed AAB and APK
-        env:
-          STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: >
-          ./gradlew bundleRelease assembleRelease --no-configuration-cache
-          -Pchoretracker.release.storeFile="$RUNNER_TEMP/upload.jks"
-          -Pchoretracker.release.storePassword="$STORE_PASSWORD"
-          -Pchoretracker.release.keyAlias=upload
-          -Pchoretracker.release.keyPassword="$KEY_PASSWORD"
-
-      - name: Verify APK signature
-        run: |
-          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
-          "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk
-
-      # A draft release doesn't create its tag until it's published, so tag explicitly - the tag is
-      # the record of what shipped.
-      - name: Tag the release
-        run: |
-          git tag "$TAG" "$GITHUB_SHA"
-          git push origin "refs/tags/$TAG"
-
-      # Created here rather than in a later job: on a public repo, passing the signed builds between
-      # jobs as workflow artifacts would make them downloadable by anyone. A draft is only visible to
-      # collaborators.
-      - name: Create draft GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: >
-          gh release create "$TAG" --draft --verify-tag --generate-notes --title "$TAG"
-          app/build/outputs/bundle/release/app-release.aab
-          app/build/outputs/apk/release/app-release.apk
-          app/build/outputs/mapping/release/mapping.txt
-
-  deploy-backend:
-    name: Deploy Firebase (prod)
-    needs: build
-    uses: ./.github/workflows/deploy-firebase.yml
-    with:
-      project: prod
+      checks: read
+    concurrency:
+      group: release
+      queue: max
+      cancel-in-progress: false
+    uses: ./.github/workflows/_release.yml
     secrets:
+      RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+      RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+      RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-
-  # After the backend deploy, so testers never get an app whose backend changes aren't live yet.
-  publish-play:
-    name: Publish to Play internal testing
-    needs: [version, deploy-backend]
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment: prod
-    permissions:
-      # Reading a draft release's assets needs write access.
-      contents: write
-    env:
-      TAG: ${{ needs.version.outputs.tag }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # The Feat:/Bug: commit subjects since the previous release, in English only; Play caps
-      # release notes at 500 characters.
-      - name: Write release notes
-        run: |
-          previous=$(git describe --tags --abbrev=0 --match 'v*' "$TAG^")
-          notes=$(git log --format=%s "$previous..$TAG" \
-            | sed -nE 's/ \(#[0-9]+\)$//; s/^Feat: /- New: /p; s/^Bug: /- Fixed: /p' \
-            | awk '{ n += length($0) + 1; if (n > 500) exit; print }')
-          mkdir -p "$RUNNER_TEMP/whatsnew"
-          echo "${notes:-Small fixes and improvements.}" > "$RUNNER_TEMP/whatsnew/whatsnew-en-US"
-          cat "$RUNNER_TEMP/whatsnew/whatsnew-en-US"
-
-      # From the draft release rather than a workflow artifact, which anyone could download on this
-      # public repo.
-      - name: Download the release build
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: >
-          gh release download "$TAG" --dir "$RUNNER_TEMP/release"
-          --pattern app-release.aab --pattern mapping.txt
-
-      # Pinned to a commit: the action handles the Play service account key.
-      - name: Upload to Play
-        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: cz.dcervenka.choretracker
-          releaseFiles: ${{ runner.temp }}/release/app-release.aab
-          mappingFile: ${{ runner.temp }}/release/mapping.txt
-          whatsNewDirectory: ${{ runner.temp }}/whatsnew
-          track: internal
-          status: completed
+      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
