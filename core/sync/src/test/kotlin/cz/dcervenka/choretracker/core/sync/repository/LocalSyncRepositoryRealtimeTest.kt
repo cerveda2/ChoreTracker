@@ -2,6 +2,7 @@ package cz.dcervenka.choretracker.core.sync.repository
 
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
+import cz.dcervenka.choretracker.core.database.dao.ChoreRequestDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
 import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
@@ -64,6 +65,9 @@ class LocalSyncRepositoryRealtimeTest {
     @MockK
     lateinit var inviteDao: InviteDao
 
+    @MockK(relaxed = true)
+    lateinit var choreRequestDao: ChoreRequestDao
+
     @MockK
     lateinit var pendingSyncOperationDao: PendingSyncOperationDao
 
@@ -99,6 +103,7 @@ class LocalSyncRepositoryRealtimeTest {
         every { remoteHouseholdDataSource.observeCompletions(any()) } returns MutableStateFlow(emptyList())
         every { remoteHouseholdDataSource.observeInvites(any()) } returns MutableStateFlow(emptyList())
         every { remoteHouseholdDataSource.observeChores(any()) } returns MutableStateFlow(emptyList())
+        every { remoteHouseholdDataSource.observeRequests(any()) } returns MutableStateFlow(emptyList())
         coEvery { householdDao.getCurrentHouseholdForUser(any()) } returns null
         every { householdDao.observeHouseholdForUser(any()) } returns MutableStateFlow(null)
         coEvery { database.clearAll() } just Runs
@@ -110,6 +115,7 @@ class LocalSyncRepositoryRealtimeTest {
             completionDao = completionDao,
             completionParticipantDao = completionParticipantDao,
             inviteDao = inviteDao,
+            choreRequestDao = choreRequestDao,
             pendingSyncOperationDao = pendingSyncOperationDao,
             syncStateDao = syncStateDao,
             remoteHouseholdDataSource = remoteHouseholdDataSource,

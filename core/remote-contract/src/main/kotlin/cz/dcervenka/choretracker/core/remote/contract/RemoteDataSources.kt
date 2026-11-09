@@ -5,6 +5,7 @@ import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
+import cz.dcervenka.choretracker.core.model.chore.ChoreRequest
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.Invite
 import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
@@ -36,6 +37,8 @@ interface RemoteHouseholdDataSource {
 
     fun observeChores(householdId: String): Flow<List<Chore>>
 
+    fun observeRequests(householdId: String): Flow<List<ChoreRequest>>
+
     suspend fun upsertHouseholdSnapshot(snapshot: HouseholdSnapshot, userId: String): EmptyResult
 
     suspend fun upsertMemberSnapshot(
@@ -47,6 +50,9 @@ interface RemoteHouseholdDataSource {
     ): EmptyResult
 
     suspend fun upsertChore(chore: Chore): EmptyResult
+
+    // In one batch write, so every request in a send exists by the time onRequestCreated reads them.
+    suspend fun upsertRequests(requests: List<ChoreRequest>): EmptyResult
 
     suspend fun upsertCompletion(completion: ChoreCompletion): EmptyResult
 

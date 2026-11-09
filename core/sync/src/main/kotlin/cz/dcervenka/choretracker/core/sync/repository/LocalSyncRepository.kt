@@ -5,6 +5,7 @@ import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.SyncRepository
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
+import cz.dcervenka.choretracker.core.database.dao.ChoreRequestDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
 import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
@@ -14,6 +15,7 @@ import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
+import cz.dcervenka.choretracker.core.database.entity.ChoreRequestEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntity
 import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
@@ -66,6 +68,7 @@ class LocalSyncRepository @Inject constructor(
     private val completionDao: CompletionDao,
     private val completionParticipantDao: CompletionParticipantDao,
     private val inviteDao: InviteDao,
+    private val choreRequestDao: ChoreRequestDao,
     private val pendingSyncOperationDao: PendingSyncOperationDao,
     private val syncStateDao: SyncStateDao,
     private val remoteHouseholdDataSource: RemoteHouseholdDataSource,
@@ -83,6 +86,7 @@ class LocalSyncRepository @Inject constructor(
         completionDao = completionDao,
         completionParticipantDao = completionParticipantDao,
         inviteDao = inviteDao,
+        choreRequestDao = choreRequestDao,
         pendingSyncOperationDao = pendingSyncOperationDao,
         database = database,
     )
@@ -124,6 +128,8 @@ class LocalSyncRepository @Inject constructor(
             .onEach { realtimeSyncApplier.applyInvites(householdId, it) },
         remoteHouseholdDataSource.observeChores(householdId)
             .onEach { realtimeSyncApplier.applyChores(it) },
+        remoteHouseholdDataSource.observeRequests(householdId)
+            .onEach { realtimeSyncApplier.applyRequests(householdId, it) },
     ).map { }
 
     override fun observeSyncState(householdId: String): Flow<SyncState?> =
@@ -495,6 +501,18 @@ class LocalSyncRepository @Inject constructor(
         val errors = mutableMapOf<String, AppError>()
         for (op in operations.filter { it.id in operationIds }) {
             val result = when {
+                op.entityType == "request" -> {
+                    val requests = if (op.operationType == "send") {
+                        choreRequestDao.getBatch(op.entityId)
+                    } else {
+                        listOfNotNull(choreRequestDao.getRequest(op.entityId))
+                    }
+                    if (requests.isEmpty()) {
+                        AppResult.Success(Unit)
+                    } else {
+                        remoteHouseholdDataSource.upsertRequests(requests.map(ChoreRequestEntity::asRequestModel))
+                    }
+                }
                 op.entityType == "chore" -> {
                     val chore = choreDao.getChore(op.entityId)
                     if (chore == null) {
@@ -756,6 +774,7 @@ class LocalSyncRepository @Inject constructor(
         operation: PendingSyncOperationEntity,
     ): String? = when (operation.entityType) {
         "household", "member", "invite" -> operation.entityId
+        "request" -> operation.payload
         "chore" -> choreDao.getChore(operation.entityId)?.householdId
         "completion" -> if (operation.operationType == "delete") {
             operation.payload.takeIf { it.isNotBlank() }

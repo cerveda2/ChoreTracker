@@ -1,6 +1,7 @@
 package cz.dcervenka.choretracker.core.data.mapper
 
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
+import cz.dcervenka.choretracker.core.database.entity.ChoreRequestEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntity
 import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
@@ -9,6 +10,8 @@ import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
+import cz.dcervenka.choretracker.core.model.chore.ChoreRequest
+import cz.dcervenka.choretracker.core.model.chore.ChoreRequestState
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
@@ -77,3 +80,18 @@ internal fun List<CompletionEntity>.asModels(
         )
     }
 }
+
+internal fun ChoreRequestEntity.asModel(): ChoreRequest = ChoreRequest(
+    id = id,
+    householdId = householdId,
+    batchId = batchId,
+    choreId = choreId,
+    fromMemberId = fromMemberId,
+    toMemberId = toMemberId,
+    toUserId = toUserId,
+    createdByUserId = createdByUserId,
+    note = note,
+    createdAt = createdAt,
+    state = ChoreRequestState.parse(state),
+    resolvedAt = resolvedAt,
+)

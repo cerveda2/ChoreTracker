@@ -356,6 +356,7 @@
     <string name="error_preview_mode_restricted">This isn\'t available in preview mode. Sign in to use it.</string>
     <string name="error_invalid_frequency">Frequency must be a positive number.</string>
     <string name="error_participant_required">At least one participant is required.</string>
+    <string name="error_chore_required">Pick at least one chore.</string>
     <string name="error_invite_not_found">No invite with that code was found.</string>
     <string name="error_invite_household_unavailable">The household for that invite is no longer available.</string>
     <string name="error_household_not_found">Household not found.</string>

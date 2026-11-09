@@ -4,6 +4,7 @@ import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
+import cz.dcervenka.choretracker.core.database.dao.ChoreRequestDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
 import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
@@ -73,6 +74,9 @@ class LocalSyncRepositoryMembershipTest {
     @MockK
     lateinit var inviteDao: InviteDao
 
+    @MockK(relaxed = true)
+    lateinit var choreRequestDao: ChoreRequestDao
+
     @MockK
     lateinit var pendingSyncOperationDao: PendingSyncOperationDao
 
@@ -102,6 +106,7 @@ class LocalSyncRepositoryMembershipTest {
         every { remoteHouseholdDataSource.observeCompletions(any()) } returns MutableStateFlow(emptyList())
         every { remoteHouseholdDataSource.observeInvites(any()) } returns MutableStateFlow(emptyList())
         every { remoteHouseholdDataSource.observeChores(any()) } returns MutableStateFlow(emptyList())
+        every { remoteHouseholdDataSource.observeRequests(any()) } returns MutableStateFlow(emptyList())
         coEvery { remoteHouseholdDataSource.fetchMembers(any(), any()) } returns AppResult.Success(sampleMembers())
         coEvery { householdDao.getCurrentHouseholdForUser(any()) } returns null
         every { householdDao.observeHouseholdForUser(any()) } returns MutableStateFlow(null)
@@ -114,6 +119,7 @@ class LocalSyncRepositoryMembershipTest {
             completionDao = completionDao,
             completionParticipantDao = completionParticipantDao,
             inviteDao = inviteDao,
+            choreRequestDao = choreRequestDao,
             pendingSyncOperationDao = pendingSyncOperationDao,
             syncStateDao = syncStateDao,
             remoteHouseholdDataSource = remoteHouseholdDataSource,

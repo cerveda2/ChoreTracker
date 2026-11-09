@@ -8,6 +8,7 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.ChoreCompletionRepository
 import cz.dcervenka.choretracker.core.data.contract.ChoreRepository
+import cz.dcervenka.choretracker.core.data.contract.ChoreRequestRepository
 import cz.dcervenka.choretracker.core.data.contract.HouseholdRepository
 import cz.dcervenka.choretracker.core.data.contract.InviteNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.data.contract.NotificationsBannerRepository
@@ -21,6 +22,7 @@ import cz.dcervenka.choretracker.core.data.repository.DataStoreReminderSettingsR
 import cz.dcervenka.choretracker.core.data.repository.DataStoreThemeSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstChoreCompletionRepository
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstChoreRepository
+import cz.dcervenka.choretracker.core.data.repository.OfflineFirstChoreRequestRepository
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstHouseholdRepository
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstStatsRepository
 import cz.dcervenka.choretracker.core.data.repository.PreviewAwareAuthRepository
@@ -61,6 +63,9 @@ abstract class DataRepositoryModule {
 
     @Binds
     abstract fun bindChoreRepository(impl: OfflineFirstChoreRepository): ChoreRepository
+
+    @Binds
+    abstract fun bindChoreRequestRepository(impl: OfflineFirstChoreRequestRepository): ChoreRequestRepository
 
     @Binds
     abstract fun bindChoreCompletionRepository(

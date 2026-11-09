@@ -374,6 +374,7 @@
     <string name="error_preview_mode_restricted">V ukázkovém režimu to není k dispozici. Pro použití se přihlaste.</string>
     <string name="error_invalid_frequency">Frekvence musí být kladné číslo.</string>
     <string name="error_participant_required">Je potřeba alespoň jeden účastník.</string>
+    <string name="error_chore_required">Vyberte alespoň jeden úkol.</string>
     <string name="error_invite_not_found">Pozvánka s tímto kódem nebyla nalezena.</string>
     <string name="error_invite_household_unavailable">Domácnost z této pozvánky už není dostupná.</string>
     <string name="error_household_not_found">Domácnost nebyla nalezena.</string>

@@ -17,6 +17,8 @@ import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
+import cz.dcervenka.choretracker.core.model.chore.ChoreRequest
+import cz.dcervenka.choretracker.core.model.chore.ChoreRequestState
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
@@ -40,6 +42,7 @@ import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
@@ -49,6 +52,10 @@ private const val MEMBERS_COLLECTION = "members"
 private const val CHORES_COLLECTION = "chores"
 private const val COMPLETIONS_COLLECTION = "completions"
 private const val INVITES_COLLECTION = "invites"
+private const val REQUESTS_COLLECTION = "requests"
+
+// Requests are never deleted, so the listener only follows recent ones; older ones are stale anyway.
+private val REQUEST_HISTORY = 30.days
 private const val INVITE_CODES_COLLECTION = "inviteCodes"
 private const val FIRESTORE_BATCH_LIMIT = 500
 private val FIRESTORE_TASK_TIMEOUT = 20.seconds
@@ -148,6 +155,25 @@ class FirebaseHouseholdDataSource @Inject constructor(
                     return@addSnapshotListener
                 }
                 trySend(snapshot?.documents?.map { it.asChore(householdId) }.orEmpty())
+            }
+        awaitClose { registration.remove() }
+    }
+
+    override fun observeRequests(householdId: String): Flow<List<ChoreRequest>> = callbackFlow {
+        val db = firestore
+        if (db == null) {
+            close()
+            return@callbackFlow
+        }
+        val registration = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
+            .collection(REQUESTS_COLLECTION)
+            .whereGreaterThanOrEqualTo("createdAt", (Clock.System.now() - REQUEST_HISTORY).asTimestamp())
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Timber.e(error, "observeRequests: listen failed householdId=$householdId")
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.documents?.map { it.asRequest(householdId) }.orEmpty())
             }
         awaitClose { registration.remove() }
     }
@@ -364,6 +390,34 @@ class FirebaseHouseholdDataSource @Inject constructor(
             db.collection(HOUSEHOLDS_COLLECTION).document(chore.householdId)
                 .collection(CHORES_COLLECTION).document(chore.id).set(fields, SetOptions.merge()),
         )
+    }
+
+    override suspend fun upsertRequests(requests: List<ChoreRequest>): EmptyResult = remoteWrite(
+        "upsertRequests",
+    ) { db ->
+        val batch = db.batch()
+        requests.forEach { request ->
+            batch.set(
+                db.collection(HOUSEHOLDS_COLLECTION).document(request.householdId)
+                    .collection(REQUESTS_COLLECTION).document(request.id),
+                mapOf(
+                    "id" to request.id,
+                    "householdId" to request.householdId,
+                    "batchId" to request.batchId,
+                    "choreId" to request.choreId,
+                    "fromMemberId" to request.fromMemberId,
+                    "toMemberId" to request.toMemberId,
+                    "toUserId" to request.toUserId,
+                    "createdByUserId" to request.createdByUserId,
+                    "note" to request.note,
+                    "createdAt" to request.createdAt.asTimestamp(),
+                    "state" to request.state.name,
+                    "resolvedAt" to request.resolvedAt?.asTimestamp(),
+                ),
+                SetOptions.merge(),
+            )
+        }
+        awaitTask(batch.commit())
     }
 
     override suspend fun upsertCompletion(completion: ChoreCompletion): EmptyResult = remoteWrite(
@@ -812,6 +866,21 @@ class FirebaseHouseholdDataSource @Inject constructor(
         participantMemberIds = get("participantMemberIds")
             .let { value -> (value as? List<*>)?.mapNotNull { it as? String } }
             .orEmpty(),
+    )
+
+    private fun DocumentSnapshot.asRequest(householdId: String): ChoreRequest = ChoreRequest(
+        id = getString("id") ?: id,
+        householdId = getString("householdId") ?: householdId,
+        batchId = getString("batchId").orEmpty(),
+        choreId = getString("choreId").orEmpty(),
+        fromMemberId = getString("fromMemberId").orEmpty(),
+        toMemberId = getString("toMemberId").orEmpty(),
+        toUserId = getString("toUserId").orEmpty(),
+        createdByUserId = getString("createdByUserId").orEmpty(),
+        note = getString("note"),
+        createdAt = getTimestamp("createdAt").asInstant(),
+        state = ChoreRequestState.parse(getString("state")),
+        resolvedAt = getTimestamp("resolvedAt")?.asInstant(),
     )
 
     private fun DocumentSnapshot.asInvite(householdId: String): Invite = Invite(

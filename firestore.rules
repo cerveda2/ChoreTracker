@@ -46,6 +46,15 @@ service cloud.firestore {
       return isHouseholdOwner(householdId) || isHouseholdAdmin(householdId);
     }
 
+    // A linked member's doc is keyed by their uid; a placeholder's by its own id, with no userId.
+    function isActiveLinkedMember(householdId, uid, memberId) {
+      return uid is string &&
+        memberDocExists(householdId, uid) &&
+        memberDoc(householdId, uid).data.active == true &&
+        memberDoc(householdId, uid).data.get('userId', null) == uid &&
+        memberDoc(householdId, uid).data.id == memberId;
+    }
+
     function isSelfMemberWrite(householdId, memberId) {
       return isSignedIn() &&
         memberId == request.auth.uid &&
@@ -238,6 +247,43 @@ service cloud.firestore {
         // Members can update/delete completions they authored.
         allow update, delete: if isHouseholdManager(householdId) ||
           (isHouseholdMember(householdId) && resource.data.createdByUserId == request.auth.uid);
+      }
+
+      // One member asking another linked member to do a chore; onRequestCreated pushes it. Sender
+      // and recipient are named by uid as well as member id, so these rules can check both. The
+      // sender can only cancel and the recipient can only decline, once. A request cancelled
+      // before it was uploaded arrives already cancelled. Each create reads both member docs and
+      // its chore, and a batched write gets 20 reads in all, so the app sends at most 10 per batch.
+      match /requests/{requestId} {
+        allow read: if isHouseholdMember(householdId);
+        allow create: if isHouseholdMember(householdId) &&
+          request.resource.data.id == requestId &&
+          request.resource.data.householdId == householdId &&
+          request.resource.data.createdByUserId == request.auth.uid &&
+          request.resource.data.fromMemberId == memberDoc(householdId, request.auth.uid).data.id &&
+          request.resource.data.toUserId != request.auth.uid &&
+          isActiveLinkedMember(householdId, request.resource.data.toUserId, request.resource.data.toMemberId) &&
+          exists(/databases/$(database)/documents/households/$(householdId)/chores/$(request.resource.data.choreId)) &&
+          // Goes into the push body, which FCM caps at 4 KB; matches the app's MAX_NOTE_LENGTH.
+          (request.resource.data.get('note', null) == null ||
+            (request.resource.data.note is string && request.resource.data.note.size() <= 500)) &&
+          (
+            (request.resource.data.state == 'OPEN' && request.resource.data.get('resolvedAt', null) == null) ||
+            (request.resource.data.state == 'CANCELLED' && request.resource.data.get('resolvedAt', null) != null)
+          );
+        // An unchanged resend (a retried upload that had already landed) is allowed as well.
+        allow update: if isHouseholdMember(householdId) && (
+          request.resource.data.diff(resource.data).affectedKeys().size() == 0 ||
+          (
+            resource.data.state == 'OPEN' &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state', 'resolvedAt']) &&
+            request.resource.data.get('resolvedAt', null) != null &&
+            (
+              (request.auth.uid == resource.data.createdByUserId && request.resource.data.state == 'CANCELLED') ||
+              (request.auth.uid == resource.data.toUserId && request.resource.data.state == 'DECLINED')
+            )
+          )
+        );
       }
 
       match /invites/{inviteId} {

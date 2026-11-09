@@ -1,6 +1,7 @@
 package cz.dcervenka.choretracker.core.sync.repository
 
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
+import cz.dcervenka.choretracker.core.database.dao.ChoreRequestDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
@@ -14,6 +15,7 @@ import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
+import cz.dcervenka.choretracker.core.model.chore.ChoreRequest
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.Invite
 import kotlinx.coroutines.sync.Mutex
@@ -32,6 +34,7 @@ internal class RealtimeSyncApplier(
     private val completionDao: CompletionDao,
     private val completionParticipantDao: CompletionParticipantDao,
     private val inviteDao: InviteDao,
+    private val choreRequestDao: ChoreRequestDao,
     private val pendingSyncOperationDao: PendingSyncOperationDao,
     private val database: ChoreTrackerDatabase,
 ) {
@@ -152,6 +155,21 @@ internal class RealtimeSyncApplier(
                 .filter { it.id !in inviteIds }
                 .forEach { inviteDao.deleteById(it.id) }
         }
+    }
+
+    // A pending send is keyed by its batchId and a pending cancel or decline by the request's id, so
+    // both are left alone until they've uploaded.
+    suspend fun applyRequests(householdId: String, requests: List<ChoreRequest>) = mutex.withLock {
+        val pendingIds = pendingSyncOperationDao.getAll()
+            .filter { it.entityType == "request" }
+            .map { it.entityId }
+            .toSet()
+        val isPending = { id: String, batchId: String -> id in pendingIds || batchId in pendingIds }
+        choreRequestDao.upsertAll(requests.filterNot { isPending(it.id, it.batchId) }.map(ChoreRequest::asEntity))
+        val remoteIds = requests.map { it.id }.toSet()
+        choreRequestDao.getRequests(householdId)
+            .filter { it.id !in remoteIds && !isPending(it.id, it.batchId) }
+            .forEach { choreRequestDao.deleteById(it.id) }
     }
 
     // No prune step: chores are soft-deleted (isActive/deletedAt fields, see ChoreEntity), never

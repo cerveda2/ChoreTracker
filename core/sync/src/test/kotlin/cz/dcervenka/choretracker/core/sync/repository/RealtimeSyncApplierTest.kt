@@ -1,6 +1,7 @@
 package cz.dcervenka.choretracker.core.sync.repository
 
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
+import cz.dcervenka.choretracker.core.database.dao.ChoreRequestDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
@@ -12,6 +13,7 @@ import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
+import cz.dcervenka.choretracker.core.model.chore.ChoreRequest
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.test.mock.sampleChore
 import cz.dcervenka.choretracker.core.test.mock.sampleInvite
@@ -43,6 +45,9 @@ class RealtimeSyncApplierTest {
 
     @MockK
     lateinit var inviteDao: InviteDao
+
+    @MockK(relaxed = true)
+    lateinit var choreRequestDao: ChoreRequestDao
 
     @MockK
     lateinit var pendingSyncOperationDao: PendingSyncOperationDao
@@ -84,6 +89,7 @@ class RealtimeSyncApplierTest {
             completionDao = completionDao,
             completionParticipantDao = completionParticipantDao,
             inviteDao = inviteDao,
+            choreRequestDao = choreRequestDao,
             pendingSyncOperationDao = pendingSyncOperationDao,
             database = database,
         )
@@ -335,5 +341,42 @@ class RealtimeSyncApplierTest {
         applier.applyChores(listOf(chore))
 
         coVerify { choreDao.upsert(match { it.id == chore.id && it.name == chore.name }) }
+    }
+
+    @Test
+    fun `applyRequests leaves unsent and unresolved requests alone and prunes the rest`() = runTest {
+        fun request(id: String, batchId: String) = ChoreRequest(
+            id = id,
+            householdId = "household-1",
+            batchId = batchId,
+            choreId = "chore-1",
+            fromMemberId = "member-1",
+            toMemberId = "member-2",
+            toUserId = "user-2",
+            createdByUserId = "user-1",
+            note = null,
+            createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+        )
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(
+            PendingSyncOperationEntity(
+                id = "op-send", entityType = "request", entityId = "batch-unsent",
+                operationType = "send", payload = "household-1", createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+            ),
+            PendingSyncOperationEntity(
+                id = "op-decline", entityType = "request", entityId = "declined",
+                operationType = "resolve", payload = "household-1", createdAt = Instant.parse("2026-03-30T10:00:00Z"),
+            ),
+        )
+        coEvery { choreRequestDao.getRequests("household-1") } returns listOf(
+            request("unsent", "batch-unsent").asEntity(),
+            request("declined", "batch-2").asEntity(),
+            request("gone", "batch-3").asEntity(),
+        )
+
+        applier.applyRequests("household-1", listOf(request("declined", "batch-2"), request("remote", "batch-4")))
+
+        coVerify { choreRequestDao.upsertAll(match { requests -> requests.map { it.id } == listOf("remote") }) }
+        coVerify(exactly = 1) { choreRequestDao.deleteById(any()) }
+        coVerify { choreRequestDao.deleteById("gone") }
     }
 }
