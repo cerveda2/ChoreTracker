@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.GroupAdd
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material3.HorizontalDivider
@@ -113,6 +114,26 @@ fun NotificationSettingsScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = spacing.small),
+                        )
+                    }
+                }
+            }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
+                    SectionHeader(title = stringResource(R.string.settings_notifications_request_section))
+                    ListGroup {
+                        ChoreListRow(
+                            leading = { IconCircle(icon = Icons.Outlined.Checklist) },
+                            title = stringResource(R.string.settings_notifications_request_enabled_label),
+                            subtitle = stringResource(R.string.settings_notifications_request_enabled_description),
+                            trailing = {
+                                Switch(
+                                    checked = uiState.requestNotificationsEnabled,
+                                    onCheckedChange = {
+                                        onIntent(NotificationSettingsUiIntent.SetRequestNotificationsEnabled(it))
+                                    },
+                                )
+                            },
                         )
                     }
                 }

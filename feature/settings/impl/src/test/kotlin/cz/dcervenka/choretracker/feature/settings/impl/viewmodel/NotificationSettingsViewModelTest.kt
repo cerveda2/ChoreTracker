@@ -6,9 +6,11 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseC
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInviteNotificationsEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveRequestNotificationsEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetInviteNotificationsEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetReminderEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetReminderTimeUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SetRequestNotificationsEnabledUseCase
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
@@ -23,6 +25,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -56,6 +59,12 @@ class NotificationSettingsViewModelTest {
     @MockK
     lateinit var setInviteNotificationsEnabledUseCase: SetInviteNotificationsEnabledUseCase
 
+    @MockK
+    lateinit var observeRequestNotificationsEnabledUseCase: ObserveRequestNotificationsEnabledUseCase
+
+    @MockK
+    lateinit var setRequestNotificationsEnabledUseCase: SetRequestNotificationsEnabledUseCase
+
     private val reminderSettingsFlow = MutableStateFlow(ReminderSettings())
     private val inviteNotificationsEnabledFlow = MutableStateFlow(true)
     private val householdFlow = MutableStateFlow<Household?>(null)
@@ -71,16 +80,20 @@ class NotificationSettingsViewModelTest {
         coEvery { setReminderEnabledUseCase(any()) } returns Unit
         coEvery { setReminderTimeUseCase(any(), any()) } returns Unit
         coEvery { setInviteNotificationsEnabledUseCase(any()) } returns Unit
+        every { observeRequestNotificationsEnabledUseCase() } returns flowOf(true)
+        coEvery { setRequestNotificationsEnabledUseCase(any()) } returns Unit
     }
 
     private fun createViewModel() = NotificationSettingsViewModel(
         observeReminderSettingsUseCase,
         observeInviteNotificationsEnabledUseCase,
+        observeRequestNotificationsEnabledUseCase,
         observeCurrentHouseholdUseCase,
         observeMembersUseCase,
         setReminderEnabledUseCase,
         setReminderTimeUseCase,
         setInviteNotificationsEnabledUseCase,
+        setRequestNotificationsEnabledUseCase,
     )
 
     @Test

@@ -5,4 +5,9 @@
     <string name="invite_accepted_notification_title">Nový člen domácnosti</string>
     <string name="invite_accepted_notification_body">%1$s se připojil(a) k vaší domácnosti</string>
     <string name="invite_accepted_notification_body_anonymous">Někdo se připojil k vaší domácnosti</string>
+    <string name="request_notification_channel_name">Žádosti z domácnosti</string>
+    <string name="request_notification_channel_description">Upozorní vás, když vás někdo požádá o úkoly</string>
+    <string name="chore_request_notification_title">Žádost od: %1$s</string>
+    <string name="chore_request_notification_body">%1$s</string>
+    <string name="chore_request_notification_body_note">%1$s · %2$s</string>
 </resources>

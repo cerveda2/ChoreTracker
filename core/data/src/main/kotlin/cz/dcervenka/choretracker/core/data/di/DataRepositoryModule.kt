@@ -14,11 +14,13 @@ import cz.dcervenka.choretracker.core.data.contract.InviteNotificationSettingsRe
 import cz.dcervenka.choretracker.core.data.contract.NotificationsBannerRepository
 import cz.dcervenka.choretracker.core.data.contract.PushTokenRepository
 import cz.dcervenka.choretracker.core.data.contract.ReminderSettingsRepository
+import cz.dcervenka.choretracker.core.data.contract.RequestNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.data.contract.StatsRepository
 import cz.dcervenka.choretracker.core.data.contract.ThemeSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.DataStoreInviteNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.DataStoreNotificationsBannerRepository
 import cz.dcervenka.choretracker.core.data.repository.DataStoreReminderSettingsRepository
+import cz.dcervenka.choretracker.core.data.repository.DataStoreRequestNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.DataStoreThemeSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstChoreCompletionRepository
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstChoreRepository
@@ -43,6 +45,10 @@ annotation class ReminderSettingsDataStore
 @Qualifier
 @Retention(AnnotationRetention.RUNTIME)
 annotation class InviteNotificationSettingsDataStore
+
+@Qualifier
+@Retention(AnnotationRetention.RUNTIME)
+annotation class RequestNotificationSettingsDataStore
 
 @Qualifier
 @Retention(AnnotationRetention.RUNTIME)
@@ -86,6 +92,11 @@ abstract class DataRepositoryModule {
     ): InviteNotificationSettingsRepository
 
     @Binds
+    abstract fun bindRequestNotificationSettingsRepository(
+        impl: DataStoreRequestNotificationSettingsRepository,
+    ): RequestNotificationSettingsRepository
+
+    @Binds
     abstract fun bindThemeSettingsRepository(impl: DataStoreThemeSettingsRepository): ThemeSettingsRepository
 
     @Binds
@@ -113,6 +124,16 @@ abstract class DataRepositoryModule {
             @ApplicationContext context: Context,
         ): DataStore<Preferences> = PreferenceDataStoreFactory.create(
             produceFile = { context.preferencesDataStoreFile("invite_notification_settings") },
+        )
+
+        // Its own file, like the invite toggle, so either one can be removed alone.
+        @Provides
+        @Singleton
+        @RequestNotificationSettingsDataStore
+        fun provideRequestNotificationSettingsDataStore(
+            @ApplicationContext context: Context,
+        ): DataStore<Preferences> = PreferenceDataStoreFactory.create(
+            produceFile = { context.preferencesDataStoreFile("request_notification_settings") },
         )
 
         @Provides

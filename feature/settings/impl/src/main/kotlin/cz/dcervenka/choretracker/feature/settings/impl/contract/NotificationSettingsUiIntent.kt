@@ -6,4 +6,5 @@ sealed interface NotificationSettingsUiIntent : UiIntent {
     data class SetRemindersEnabled(val enabled: Boolean) : NotificationSettingsUiIntent
     data class SetTime(val hour: Int, val minute: Int) : NotificationSettingsUiIntent
     data class SetInviteNotificationsEnabled(val enabled: Boolean) : NotificationSettingsUiIntent
+    data class SetRequestNotificationsEnabled(val enabled: Boolean) : NotificationSettingsUiIntent
 }

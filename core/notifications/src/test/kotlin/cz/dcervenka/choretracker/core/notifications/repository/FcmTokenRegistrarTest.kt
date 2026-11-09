@@ -2,6 +2,7 @@ package cz.dcervenka.choretracker.core.notifications.repository
 
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.InviteNotificationSettingsRepository
+import cz.dcervenka.choretracker.core.data.contract.RequestNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
@@ -34,8 +35,12 @@ class FcmTokenRegistrarTest {
     @MockK
     lateinit var inviteNotificationSettingsRepository: InviteNotificationSettingsRepository
 
+    @MockK
+    lateinit var requestNotificationSettingsRepository: RequestNotificationSettingsRepository
+
     private val authState = MutableStateFlow<AuthState>(AuthState.SignedOut)
     private val inviteNotificationsEnabled = MutableStateFlow(true)
+    private val requestNotificationsEnabled = MutableStateFlow(true)
 
     private lateinit var registrar: FcmTokenRegistrar
 
@@ -45,6 +50,8 @@ class FcmTokenRegistrarTest {
         every { authRepository.authState } returns authState
         every { inviteNotificationSettingsRepository.observeEnabled(any()) } returns inviteNotificationsEnabled
         coEvery { inviteNotificationSettingsRepository.isEnabled(any()) } answers { inviteNotificationsEnabled.value }
+        every { requestNotificationSettingsRepository.observeEnabled(any()) } returns requestNotificationsEnabled
+        coEvery { requestNotificationSettingsRepository.isEnabled(any()) } answers { requestNotificationsEnabled.value }
         coEvery { tokenWriter.requestRegistration() } returns Unit
         coEvery { tokenWriter.writeToken(any(), any(), any()) } returns Unit
         coEvery { tokenWriter.writePushTypes(any(), any()) } returns Unit
@@ -56,6 +63,7 @@ class FcmTokenRegistrarTest {
             authRepository = authRepository,
             tokenWriter = tokenWriter,
             inviteNotificationSettingsRepository = inviteNotificationSettingsRepository,
+            requestNotificationSettingsRepository = requestNotificationSettingsRepository,
             scope = CoroutineScope(SupervisorJob() + coroutineRule.dispatcher),
         )
     }
@@ -165,7 +173,7 @@ class FcmTokenRegistrarTest {
             createRegistrar()
             advanceUntilIdle()
 
-            coVerify(exactly = 1) { tokenWriter.writePushTypes("user-1", emptyList()) }
+            coVerify(exactly = 1) { tokenWriter.writePushTypes("user-1", listOf("request")) }
             coVerify(exactly = 1) { tokenWriter.requestRegistration() }
             coVerify(exactly = 0) { tokenWriter.clearToken(any()) }
         }
@@ -177,15 +185,15 @@ class FcmTokenRegistrarTest {
         )
         createRegistrar()
         advanceUntilIdle()
-        coVerify(exactly = 1) { tokenWriter.writePushTypes("user-1", listOf("invite")) }
+        coVerify(exactly = 1) { tokenWriter.writePushTypes("user-1", listOf("invite", "request")) }
 
         inviteNotificationsEnabled.value = false
         advanceUntilIdle()
-        coVerify(exactly = 1) { tokenWriter.writePushTypes("user-1", emptyList()) }
+        coVerify(exactly = 1) { tokenWriter.writePushTypes("user-1", listOf("request")) }
 
         inviteNotificationsEnabled.value = true
         advanceUntilIdle()
-        coVerify(exactly = 2) { tokenWriter.writePushTypes("user-1", listOf("invite")) }
+        coVerify(exactly = 2) { tokenWriter.writePushTypes("user-1", listOf("invite", "request")) }
         coVerify(exactly = 0) { tokenWriter.clearToken(any()) }
     }
 
@@ -201,7 +209,7 @@ class FcmTokenRegistrarTest {
             registrar.onIdRegistered("id-rotated")
             advanceUntilIdle()
 
-            coVerify { tokenWriter.writeToken("user-1", "id-rotated", listOf("invite")) }
+            coVerify { tokenWriter.writeToken("user-1", "id-rotated", listOf("invite", "request")) }
         }
 
     @Test
@@ -245,7 +253,7 @@ class FcmTokenRegistrarTest {
         registrar.onIdRegistered("id-new")
         advanceUntilIdle()
 
-        coVerify { tokenWriter.writeToken("user-1", "id-new", listOf("invite")) }
+        coVerify { tokenWriter.writeToken("user-1", "id-new", listOf("invite", "request")) }
     }
 
     @Test
@@ -261,6 +269,24 @@ class FcmTokenRegistrarTest {
             registrar.onIdRegistered("id-rotated")
             advanceUntilIdle()
 
-            coVerify { tokenWriter.writeToken("user-1", "id-rotated", emptyList()) }
+            coVerify { tokenWriter.writeToken("user-1", "id-rotated", listOf("request")) }
         }
+
+    @Test
+    fun `the request toggle only takes request out of pushTypes`() = runTest(coroutineRule.dispatcher) {
+        authState.value = AuthState.Authenticated(
+            AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"),
+        )
+        createRegistrar()
+        advanceUntilIdle()
+
+        requestNotificationsEnabled.value = false
+        advanceUntilIdle()
+        registrar.onIdRegistered("id-rotated")
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { tokenWriter.writePushTypes("user-1", listOf("invite")) }
+        coVerify { tokenWriter.writeToken("user-1", "id-rotated", listOf("invite")) }
+        coVerify(exactly = 0) { tokenWriter.clearToken(any()) }
+    }
 }
