@@ -23,4 +23,13 @@ enum class ChoreRequestState {
     OPEN,
     DECLINED,
     CANCELLED,
+
+    // A state from a newer app version: shown as resolved, never acted on or written back.
+    UNKNOWN,
+    ;
+
+    companion object {
+        fun parse(value: String?): ChoreRequestState =
+            entries.firstOrNull { it.name == value && it != UNKNOWN } ?: UNKNOWN
+    }
 }

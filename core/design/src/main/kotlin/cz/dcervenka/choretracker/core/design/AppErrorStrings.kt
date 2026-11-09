@@ -11,6 +11,7 @@ fun AppError.toStringRes(): Int = when (this) {
     AppError.DISPLAY_NAME_REQUIRED -> R.string.auth_validation_display_name_required
     AppError.INVALID_FREQUENCY -> R.string.error_invalid_frequency
     AppError.PARTICIPANT_REQUIRED -> R.string.error_participant_required
+    AppError.CHORE_REQUIRED -> R.string.error_chore_required
     AppError.FIREBASE_NOT_CONFIGURED -> R.string.error_firebase_not_configured
     AppError.NOT_SIGNED_IN -> R.string.error_not_signed_in
     AppError.PREVIEW_MODE_RESTRICTED -> R.string.error_preview_mode_restricted

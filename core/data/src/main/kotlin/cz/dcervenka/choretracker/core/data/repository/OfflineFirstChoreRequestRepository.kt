@@ -12,6 +12,7 @@ import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.entity.ChoreRequestEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
+import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.ChoreRequest
 import cz.dcervenka.choretracker.core.model.chore.ChoreRequestState
@@ -26,6 +27,12 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Clock
+
+// Matches firestore.rules' note limit, which keeps the push under FCM's 4 KB.
+private const val MAX_NOTE_LENGTH = 500
+
+// firestore.rules turns down a batched write of 18 requests (20 reads per batch); 10 leaves room.
+private const val MAX_REQUESTS_PER_BATCH = 10
 
 @Singleton
 @Suppress("ReturnCount")
@@ -48,18 +55,24 @@ class OfflineFirstChoreRequestRepository @Inject constructor(
         note: String?,
     ): EmptyResult {
         Timber.d("sendRequests: householdId=$householdId toMemberId=$toMemberId choreIds=$choreIds")
-        val userId = currentUserId() ?: return AppResult.Error(AppError.NOT_SIGNED_IN)
-        val sender = memberDao.findByUserId(householdId, userId)?.takeIf { it.removedAt == null }
+        val user = currentUser() ?: return AppResult.Error(AppError.NOT_SIGNED_IN)
+        if (user.isPreview) return AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED)
+        val distinctChoreIds = choreIds.distinct()
+        if (distinctChoreIds.isEmpty()) return AppResult.Error(AppError.CHORE_REQUIRED)
+        val sender = memberDao.findByUserId(householdId, user.id)?.takeIf { it.removedAt == null }
             ?: return AppResult.Error(AppError.OWN_MEMBERSHIP_NOT_FOUND)
         val recipient = memberDao.findById(householdId, toMemberId)
             ?.takeIf { it.removedAt == null && it.id != sender.id }
             ?: return AppResult.Error(AppError.MEMBER_NOT_FOUND)
         // A placeholder has no account to notify or to decline with.
         val recipientUserId = recipient.userId ?: return AppResult.Error(AppError.MEMBER_NOT_JOINED)
-        val batchId = UUID.randomUUID().toString()
         val now = Clock.System.now()
-        choreRequestDao.insertBatch(
-            requests = choreIds.distinct().map { choreId ->
+        val trimmedNote = note?.trim()?.take(MAX_NOTE_LENGTH)?.takeIf { it.isNotEmpty() }
+        // Each request's create rule reads both member docs and its chore, and a batched write gets 20
+        // reads in all, so a bigger ask goes out as several batches - one push each.
+        val batches = distinctChoreIds.chunked(MAX_REQUESTS_PER_BATCH).map { chunk ->
+            val batchId = UUID.randomUUID().toString()
+            val requests = chunk.map { choreId ->
                 ChoreRequestEntity(
                     id = UUID.randomUUID().toString(),
                     householdId = householdId,
@@ -68,21 +81,26 @@ class OfflineFirstChoreRequestRepository @Inject constructor(
                     fromMemberId = sender.id,
                     toMemberId = recipient.id,
                     toUserId = recipientUserId,
-                    createdByUserId = userId,
-                    note = note?.trim()?.takeIf { it.isNotEmpty() },
+                    createdByUserId = user.id,
+                    note = trimmedNote,
                     createdAt = now,
                     state = ChoreRequestState.OPEN.name,
                     resolvedAt = null,
                 )
-            },
-            operation = PendingSyncOperationEntity(
+            }
+            val operation = PendingSyncOperationEntity(
                 id = UUID.randomUUID().toString(),
                 entityType = "request",
                 entityId = batchId,
                 operationType = "send",
                 payload = householdId,
                 createdAt = now,
-            ),
+            )
+            requests to operation
+        }
+        choreRequestDao.insertBatches(
+            requests = batches.flatMap { (requests, _) -> requests },
+            operations = batches.map { (_, operation) -> operation },
         )
         scope.launch { syncRepository.syncPendingOperations() }
         return AppResult.Success(Unit)
@@ -100,11 +118,12 @@ class OfflineFirstChoreRequestRepository @Inject constructor(
         allowedUserId: (ChoreRequestEntity) -> String,
     ): EmptyResult {
         Timber.d("resolveRequest: requestId=$requestId state=$state")
-        val userId = currentUserId() ?: return AppResult.Error(AppError.NOT_SIGNED_IN)
+        val user = currentUser() ?: return AppResult.Error(AppError.NOT_SIGNED_IN)
+        if (user.isPreview) return AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED)
         val request = choreRequestDao.getRequest(requestId)
         return when {
             request == null || request.state != ChoreRequestState.OPEN.name -> AppResult.Success(Unit)
-            allowedUserId(request) != userId -> AppResult.Error(AppError.PERMISSION_DENIED)
+            allowedUserId(request) != user.id -> AppResult.Error(AppError.PERMISSION_DENIED)
             else -> {
                 val now = Clock.System.now()
                 choreRequestDao.updateState(requestId, state.name, now)
@@ -124,6 +143,5 @@ class OfflineFirstChoreRequestRepository @Inject constructor(
         }
     }
 
-    private suspend fun currentUserId(): String? =
-        (authRepository.authState.first() as? AuthState.Authenticated)?.user?.id
+    private suspend fun currentUser(): AppUser? = (authRepository.authState.first() as? AuthState.Authenticated)?.user
 }

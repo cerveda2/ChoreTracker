@@ -42,6 +42,7 @@ import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
@@ -52,6 +53,9 @@ private const val CHORES_COLLECTION = "chores"
 private const val COMPLETIONS_COLLECTION = "completions"
 private const val INVITES_COLLECTION = "invites"
 private const val REQUESTS_COLLECTION = "requests"
+
+// Requests are never deleted, so the listener only follows recent ones; older ones are stale anyway.
+private val REQUEST_HISTORY = 30.days
 private const val INVITE_CODES_COLLECTION = "inviteCodes"
 private const val FIRESTORE_BATCH_LIMIT = 500
 private val FIRESTORE_TASK_TIMEOUT = 20.seconds
@@ -163,6 +167,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
         }
         val registration = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
             .collection(REQUESTS_COLLECTION)
+            .whereGreaterThanOrEqualTo("createdAt", (Clock.System.now() - REQUEST_HISTORY).asTimestamp())
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeRequests: listen failed householdId=$householdId")
@@ -871,9 +876,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
         createdByUserId = getString("createdByUserId").orEmpty(),
         note = getString("note"),
         createdAt = getTimestamp("createdAt").asInstant(),
-        state = getString("state")
-            ?.let { runCatching { ChoreRequestState.valueOf(it) }.getOrNull() }
-            ?: ChoreRequestState.OPEN,
+        state = ChoreRequestState.parse(getString("state")),
         resolvedAt = getTimestamp("resolvedAt")?.asInstant(),
     )
 

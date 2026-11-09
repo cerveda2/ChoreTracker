@@ -30,6 +30,6 @@ internal fun ChoreRequestEntity.asRequestModel(): ChoreRequest = ChoreRequest(
     createdByUserId = createdByUserId,
     note = note,
     createdAt = createdAt,
-    state = runCatching { ChoreRequestState.valueOf(state) }.getOrDefault(ChoreRequestState.OPEN),
+    state = ChoreRequestState.parse(state),
     resolvedAt = resolvedAt,
 )

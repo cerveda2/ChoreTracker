@@ -70,6 +70,33 @@ function ask(from, fromMemberId, to, toMemberId, overrides = {}) {
 
 const path = "households/home/requests/request-1";
 
+// One batched write of several request creates, as upsertRequests sends them.
+async function commitAs(user, requests) {
+  const base = `projects/${project}/databases/(default)/documents`;
+  const writes = requests.map((request) => ({
+    update: {
+      name: `${base}/households/home/requests/${request.id}`,
+      fields: Object.fromEntries(Object.entries(request).map(([key, field]) => [key, value(field)])),
+    },
+    currentDocument: { exists: false },
+  }));
+  const response = await fetch(`${firestore}/v1/${base}:commit`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${user.token}` },
+    body: JSON.stringify({ writes }),
+  });
+  return response.status;
+}
+
+// onRequestCreated runs asynchronously after the write, so wait for its effect.
+async function eventually(check, timeoutMs = 15000) {
+  const deadline = Date.now() + timeoutMs;
+  while (!(await check())) {
+    if (Date.now() > deadline) throw new Error("condition not met in time");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
 beforeEach(async () => {
   await fetch(`${firestore}/emulator/v1/projects/${project}/databases/(default)/documents`, { method: "DELETE" });
   await fetch(`${auth}/emulator/v1/projects/${project}/accounts`, { method: "DELETE" });
@@ -100,6 +127,35 @@ describe("chore requests", () => {
     assert.equal(await writeAs(sam, path, { choreId: "dishes", note: "No" }, ["note"]), 403);
     assert.equal(await writeAs(sam, path, { state: "DECLINED", resolvedAt: "2026-01-02" }, mask), 200);
     assert.equal(await writeAs(owner, path, { state: "CANCELLED", resolvedAt: "2026-01-03" }, mask), 403);
+  });
+
+  it("caps the note at 500 characters", async () => {
+    const { owner, sam } = await seed();
+    assert.equal(await writeAs(owner, path, ask(owner, owner.uid, sam.uid, "member-sam", { note: "x".repeat(501) })), 403);
+    assert.equal(await writeAs(owner, path, ask(owner, owner.uid, sam.uid, "member-sam", { note: "x".repeat(500) })), 200);
+  });
+
+  it("accepts a batch of ten, the most the app sends at once", async () => {
+    const { owner, sam } = await seed();
+    const chores = Array.from({ length: 10 }, (_, i) => `chore-${i}`);
+    for (const chore of chores) {
+      await db.doc(`households/home/chores/${chore}`).set({ id: chore, householdId: "home", name: chore });
+    }
+    const batch = chores.map((choreId, i) => ask(owner, owner.uid, sam.uid, "member-sam", { id: `request-${i}`, choreId }));
+    assert.equal(await commitAs(owner, batch), 200);
+  });
+
+  it("notifies each sender's batch once, even when someone else's request joins it", async () => {
+    const { owner, sam } = await seed();
+    await db.doc(`users/${sam.uid}`).set({ userId: sam.uid, fcmToken: "token-sam", pushTypes: ["request"] });
+    const requests = db.collection("households/home/requests");
+    // A lower id under the same batchId, but created by someone else.
+    await requests.doc("a-intruder").set(ask({ uid: "intruder" }, "intruder", sam.uid, "member-sam", { id: "a-intruder" }));
+    await requests.doc("b-owner").set(ask(owner, owner.uid, sam.uid, "member-sam", { id: "b-owner" }));
+    await requests.doc("c-owner").set(ask(owner, owner.uid, sam.uid, "member-sam", { id: "c-owner" }));
+
+    const marker = (creator) => db.doc(`households/home/requestPushes/${creator}_batch-1`);
+    await eventually(async () => (await marker(owner.uid).get()).exists && (await marker("intruder").get()).exists);
   });
 
   it("accepts a request the sender cancelled before it was uploaded", async () => {
