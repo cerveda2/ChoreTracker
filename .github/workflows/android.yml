@@ -6,10 +6,12 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+
 concurrency:
-  group: android-ci-${{ github.workflow }}-${{ github.ref }}
-  # Superseded PR runs are cancelled; runs on main are queued instead, so a deploy is never killed
-  # mid-flight by the next merge.
+  group: android-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  # Cancel superseded PR checks. Main commits validate independently; deployments serialize below.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -17,16 +19,41 @@ jobs:
     name: Wrapper validation
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      android: ${{ steps.changes.outputs.android }}
+      backend: ${{ steps.changes.outputs.backend }}
+      backend_deploy: ${{ steps.changes.outputs.backend_deploy }}
+      version: ${{ steps.changes.outputs.version }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Test CI routing
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+
+      - name: Select checks for changed files
+        id: changes
+        run: python3 .github/scripts/ci_changes.py checks
+
+      - name: Lint workflow changes
+        if: steps.changes.outputs.workflows == 'true'
+        uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 # 1.7.12
+        with:
+          # GitHub supports queue; actionlint 1.7.12 still lacks this key (upstream issue #657).
+          args: >-
+            -color -ignore 'unexpected key "queue" for "concurrency" section'
 
       - name: Validate Gradle wrapper
+        if: steps.changes.outputs.android == 'true'
         uses: gradle/actions/wrapper-validation@v4
 
   static-analysis:
     name: Static analysis
+    needs: wrapper-validation
+    if: needs.wrapper-validation.outputs.android == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -44,19 +71,15 @@ jobs:
       # would duplicate that with a separate, less precise cache of the same paths.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: false
 
-      - name: Make Gradle executable
-        run: chmod +x gradlew
-
-      - name: Run Detekt
+      - name: Run Detekt and Android lint
         # detektMain/detektTest add type-resolution-aware analysis (a stricter rule set) for the
         # plain-Kotlin/JVM modules (core:domain, core:model, ...) - detekt's Gradle plugin only
         # auto-generates those type-resolution tasks for Kotlin JVM source sets, not for Android
         # modules, so the Android modules are still covered by the classic `detekt` task only.
-        run: ./gradlew detekt detektMain detektTest
-
-      - name: Run Android lint
-        run: ./gradlew lintDebug
+        run: ./gradlew detekt detektMain detektTest lintDebug --continue
 
       - name: Upload static analysis reports
         if: always()
@@ -68,9 +91,12 @@ jobs:
             **/build/reports/lint-results-*.html
             **/build/reports/lint-results-*.xml
           if-no-files-found: ignore
+          retention-days: 7
 
   unit-tests:
     name: Unit tests
+    needs: wrapper-validation
+    if: needs.wrapper-validation.outputs.android == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -88,9 +114,8 @@ jobs:
       # would duplicate that with a separate, less precise cache of the same paths.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-
-      - name: Make Gradle executable
-        run: chmod +x gradlew
+        with:
+          validate-wrappers: false
 
       # Robolectric downloads its ~200 MB Android runtime jar into ~/.m2 at test time, outside
       # setup-gradle's cache. restore-keys reuses it after an unrelated dependency bump.
@@ -116,9 +141,12 @@ jobs:
             **/build/reports/tests/**
             **/build/test-results/**
           if-no-files-found: ignore
+          retention-days: 7
 
   assemble:
     name: Assemble debug
+    needs: wrapper-validation
+    if: needs.wrapper-validation.outputs.android == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -136,9 +164,8 @@ jobs:
       # would duplicate that with a separate, less precise cache of the same paths.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-
-      - name: Make Gradle executable
-        run: chmod +x gradlew
+        with:
+          validate-wrappers: false
 
       - name: Assemble debug
         run: ./gradlew assembleDebug
@@ -150,9 +177,15 @@ jobs:
           name: choretracker-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 7
 
   assemble-release:
     name: Assemble release
+    needs: wrapper-validation
+    # A version merge gets its R8 build from the signed release job after validation.
+    if: >-
+      needs.wrapper-validation.outputs.android == 'true' &&
+      (github.event_name == 'pull_request' || needs.wrapper-validation.outputs.version != 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -170,9 +203,8 @@ jobs:
       # would duplicate that with a separate, less precise cache of the same paths.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-
-      - name: Make Gradle executable
-        run: chmod +x gradlew
+        with:
+          validate-wrappers: false
 
       - name: Assemble release
         # Unsigned (CI has no choretracker.release.* signing properties) - this job exists to catch
@@ -180,34 +212,10 @@ jobs:
         # mapping upload is skipped since these builds are never distributed.
         run: ./gradlew assembleRelease -x uploadCrashlyticsMappingFileRelease
 
-  functions-typecheck:
-    name: Cloud Functions typecheck
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: functions/package-lock.json
-
-      - name: Install functions dependencies
-        working-directory: functions
-        run: npm ci
-
-      - name: Build (typecheck)
-        # Same command firebase deploy's predeploy hook runs (deploy-firebase.yml) - surfaces a broken
-        # TypeScript change as its own failing check instead of only as a failed deploy.
-        working-directory: functions
-        run: npm run build
-
   functions-emulator-tests:
     name: Cloud Functions emulator tests
+    needs: wrapper-validation
+    if: needs.wrapper-validation.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -238,53 +246,52 @@ jobs:
 
       - name: Run emulator tests
         # Callables and firestore.rules against the Auth/Firestore/Functions emulators, under a
-        # demo- project so nothing can reach a real one.
+        # demo- project so nothing can reach a real one. This also builds/typechecks the functions.
         working-directory: functions
         run: npm run test:emulators
 
-  # Only a change that touches the backend deploys to dev, so an app-only PR never fails on (or
-  # overwrites) another branch's rules and functions there.
-  backend-changes:
-    name: Backend changes
+  validation:
+    name: CI validation
+    needs: [wrapper-validation, static-analysis, unit-tests, assemble, assemble-release, functions-emulator-tests]
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    outputs:
-      changed: ${{ steps.diff.outputs.changed }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Check for backend changes
-        id: diff
+      - name: Require all applicable checks to pass
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BEFORE_SHA: ${{ github.event.before }}
-          AFTER_SHA: ${{ github.sha }}
-        run: |
-          if [ "$EVENT_NAME" = "pull_request" ]; then
-            files=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
-          else
-            files=$(git diff --name-only "$BEFORE_SHA" "$AFTER_SHA")
-          fi
-          pattern='^(functions/|firestore\.rules$|firestore\.indexes\.json$|firebase\.json$|\.firebaserc$|\.github/workflows/deploy-firebase\.yml$)'
-          if grep -qE "$pattern" <<< "$files"; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python3 .github/scripts/ci_changes.py validate
 
   # Production only ships with a release (release.yml).
   deploy-dev:
     name: Deploy Firebase (dev)
-    needs: backend-changes
-    if: needs.backend-changes.outputs.changed == 'true'
+    needs: [wrapper-validation, validation]
+    if: >-
+      always() && github.event_name == 'push' && needs.validation.result == 'success' &&
+      needs.wrapper-validation.outputs.backend_deploy == 'true'
     uses: ./.github/workflows/deploy-firebase.yml
     with:
       project: dev
     secrets:
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+  release:
+    name: Release
+    needs: [wrapper-validation, validation]
+    if: >-
+      always() && github.event_name == 'push' && needs.validation.result == 'success' &&
+      needs.wrapper-validation.outputs.version == 'true'
+    permissions:
+      contents: write
+      checks: read
+    uses: ./.github/workflows/release.yml
+    secrets:
+      RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+      RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+      RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}

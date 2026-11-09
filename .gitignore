@@ -18,3 +18,4 @@ ui-debug.log
 *.jks
 *.keystore
 .kotlin/
+__pycache__/
