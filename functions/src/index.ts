@@ -12,6 +12,7 @@ import {
 } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import { getMessaging } from "firebase-admin/messaging";
+import { inviteRecipient } from "./inviteRecipient";
 
 initializeApp();
 
@@ -82,15 +83,7 @@ export const onInviteAccepted = onDocumentUpdated(
       }
     }
 
-    // Whoever created the invite: admins stamp createdByUserId when they upload one. The owner
-    // otherwise - the owner's own uploads and older app versions don't send it - or when the
-    // creator has since left or been removed.
-    const creatorUserId: string | undefined = after.createdByUserId;
-    const creatorSnap = creatorUserId
-      ? await db.doc(`households/${householdId}/members/${creatorUserId}`).get()
-      : undefined;
-    const recipientUserId =
-      creatorUserId && creatorSnap?.exists && creatorSnap.get("active") !== false ? creatorUserId : ownerUserId;
+    const recipientUserId = await inviteRecipient(db, householdId, after.createdByUserId, ownerUserId);
 
     // Self-join edge case: someone consuming their own invite (e.g. reclaiming a placeholder
     // member). Don't notify yourself.

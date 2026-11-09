@@ -20,7 +20,6 @@ import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateCompletionUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.error.AppError
-import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiIntent
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.DashboardUiState
@@ -110,7 +109,7 @@ class DashboardViewModel @Inject constructor(
                 DashboardUiState(
                     snapshot = snapshot,
                     members = members,
-                    isManager = currentMember?.role == HouseholdRole.OWNER || currentMember?.role == HouseholdRole.ADMIN,
+                    isManager = currentMember?.role?.isManager == true,
                     currentUserId = currentMember?.userId,
                     allCompletions = completions,
                     syncState = syncState,

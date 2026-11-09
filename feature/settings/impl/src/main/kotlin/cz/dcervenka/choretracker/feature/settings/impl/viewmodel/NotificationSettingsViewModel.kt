@@ -9,7 +9,6 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseC
 import cz.dcervenka.choretracker.core.domain.usecase.SetInviteNotificationsEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetReminderEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetReminderTimeUseCase
-import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.feature.settings.impl.contract.NotificationSettingsUiIntent
 import cz.dcervenka.choretracker.feature.settings.impl.contract.NotificationSettingsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -40,7 +39,7 @@ class NotificationSettingsViewModel @Inject constructor(
     private val canInvite: Flow<Boolean> = observeCurrentHouseholdUseCase()
         .filterNotNull()
         .flatMapLatest { household -> observeMembersUseCase(household.id) }
-        .map { members -> members.any { it.isCurrentUser && it.role != HouseholdRole.MEMBER } }
+        .map { members -> members.any { it.isCurrentUser && it.role.isManager } }
         .onStart { emit(true) }
 
     val uiState: StateFlow<NotificationSettingsUiState> = combine(
