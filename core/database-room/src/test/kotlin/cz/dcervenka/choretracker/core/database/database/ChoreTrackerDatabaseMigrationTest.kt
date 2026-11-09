@@ -22,6 +22,8 @@ private const val BASELINE_VERSION = 10
 private val SHIPPED_IDENTITY_HASHES = mapOf(
     BASELINE_VERSION to "906948c5bcf252996be9593c76217b79",
     11 to "d69d27eee21dc91313d5d6526d0e4645",
+    12 to "56a074e85563215b2848185f8b1221fc",
+    13 to "d725145128270e6144b967447320779e",
 )
 
 // Robolectric 4.16.1's newest supported SDK is 36; targetSdk is 37, ahead of what
