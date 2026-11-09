@@ -3,10 +3,14 @@ package cz.dcervenka.choretracker.feature.dashboard.impl.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cz.dcervenka.choretracker.core.common.AppResult
+import cz.dcervenka.choretracker.core.common.EmptyResult
+import cz.dcervenka.choretracker.core.domain.usecase.CancelChoreRequestUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.DeclineChoreRequestUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DismissNotificationsBannerUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoreRequestsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentDashboardUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveInviteNotificationsEnabledUseCase
@@ -52,12 +56,15 @@ class DashboardViewModel @Inject constructor(
     observeReminderSettingsUseCase: ObserveReminderSettingsUseCase,
     observeInviteNotificationsEnabledUseCase: ObserveInviteNotificationsEnabledUseCase,
     observeAuthStateUseCase: ObserveAuthStateUseCase,
+    observeChoreRequestsUseCase: ObserveChoreRequestsUseCase,
     private val logCompletionUseCase: LogCompletionUseCase,
     private val updateCompletionUseCase: UpdateCompletionUseCase,
     private val deleteCompletionUseCase: DeleteCompletionUseCase,
     private val retryPendingSyncUseCase: RetryPendingSyncUseCase,
     private val refreshHouseholdUseCase: RefreshHouseholdUseCase,
     private val dismissNotificationsBannerUseCase: DismissNotificationsBannerUseCase,
+    private val declineChoreRequestUseCase: DeclineChoreRequestUseCase,
+    private val cancelChoreRequestUseCase: CancelChoreRequestUseCase,
 ) : ViewModel() {
 
     private val _undoChannel = Channel<UndoEvent>(Channel.BUFFERED)
@@ -115,6 +122,8 @@ class DashboardViewModel @Inject constructor(
                     syncState = syncState,
                     isRefreshing = refreshing,
                 )
+            }.combine(observeChoreRequestsUseCase(household.id)) { state, requests ->
+                state.copy(requests = requests)
             }
         }
         .combine(notificationsBanner) { state, banner ->
@@ -178,6 +187,15 @@ class DashboardViewModel @Inject constructor(
             DashboardUiIntent.DismissNotificationsBanner -> viewModelScope.launch { dismissNotificationsBannerUseCase() }
             is DashboardUiIntent.SystemNotificationsChanged -> systemNotificationsEnabled.value = intent.enabled
             is DashboardUiIntent.NetworkAvailabilityChanged -> networkAvailable.value = intent.available
+            is DashboardUiIntent.DeclineRequest -> resolveRequest { declineChoreRequestUseCase(intent.requestId) }
+            is DashboardUiIntent.CancelRequest -> resolveRequest { cancelChoreRequestUseCase(intent.requestId) }
+        }
+    }
+
+    private fun resolveRequest(action: suspend () -> EmptyResult) {
+        viewModelScope.launch {
+            val result = action()
+            if (result is AppResult.Error) _errorChannel.send(result.error)
         }
     }
 

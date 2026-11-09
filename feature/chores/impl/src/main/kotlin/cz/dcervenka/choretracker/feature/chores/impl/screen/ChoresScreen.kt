@@ -21,6 +21,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,6 +72,7 @@ fun ChoresScreen(
     val addedMessage = stringResource(R.string.chores_feedback_added)
     val savedMessage = stringResource(R.string.chores_feedback_saved)
     val deletedMessage = stringResource(R.string.chores_feedback_deleted)
+    val askedMessage = stringResource(R.string.chores_ask_sent)
     val resources = LocalResources.current
 
     LaunchedEffect(undoEvents) {
@@ -92,6 +94,7 @@ fun ChoresScreen(
                 ChoresUiEvent.ChoreAdded -> addedMessage
                 ChoresUiEvent.ChoreSaved -> savedMessage
                 ChoresUiEvent.ChoreDeleted -> deletedMessage
+                is ChoresUiEvent.RequestsSent -> askedMessage.format(event.memberName)
                 is ChoresUiEvent.Error -> resources.getString(event.error.toStringRes())
             }
             snackbarHostState.showSnackbar(message)
@@ -103,6 +106,8 @@ fun ChoresScreen(
     var showNewChoreSheet by rememberSaveable { mutableStateOf(false) }
     var newChoreReminderEnabled by rememberSaveable { mutableStateOf(true) }
     var logChoreId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showAskSheet by rememberSaveable { mutableStateOf(false) }
+    val askableMembers = uiState.members.filter { it.removedAt == null && it.userId != null && !it.isCurrentUser }
     var logNote by rememberSaveable { mutableStateOf("") }
     val logMembers = rememberSaveableStringList()
     val currentUserId = uiState.members.firstOrNull { it.isCurrentUser }?.id
@@ -149,6 +154,11 @@ fun ChoresScreen(
             ChoreTopAppBar(
                 title = stringResource(R.string.chores_title),
                 actions = {
+                    if (askableMembers.isNotEmpty() && uiState.chores.any { it.isActive }) {
+                        TextButton(onClick = { showAskSheet = true }) {
+                            Text(stringResource(R.string.chores_ask_action))
+                        }
+                    }
                     IconButton(
                         onClick = {
                             searchExpanded = !searchExpanded
@@ -334,6 +344,20 @@ fun ChoresScreen(
                 outOfTurnChoreId = null
             },
             onDismiss = { outOfTurnChoreId = null },
+        )
+    }
+
+    if (showAskSheet && householdId != null) {
+        AskSheet(
+            members = askableMembers,
+            chores = uiState.chores.filter { it.isActive },
+            onDismiss = { showAskSheet = false },
+            onSend = { toMemberId, choreIds, note ->
+                askableMembers.find { it.id == toMemberId }?.let { member ->
+                    onIntent(ChoresUiIntent.SendRequests(householdId, member, choreIds, note))
+                }
+                showAskSheet = false
+            },
         )
     }
 
