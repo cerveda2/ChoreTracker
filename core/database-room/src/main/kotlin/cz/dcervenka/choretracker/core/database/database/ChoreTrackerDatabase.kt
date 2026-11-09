@@ -5,6 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import cz.dcervenka.choretracker.core.database.converter.InstantConverters
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
+import cz.dcervenka.choretracker.core.database.dao.ChoreRequestDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
 import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
@@ -13,6 +14,7 @@ import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
+import cz.dcervenka.choretracker.core.database.entity.ChoreRequestEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntity
 import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
@@ -33,8 +35,9 @@ import kotlinx.coroutines.withContext
         InviteEntity::class,
         PendingSyncOperationEntity::class,
         SyncStateEntity::class,
+        ChoreRequestEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = true,
 )
 @TypeConverters(InstantConverters::class)
@@ -47,6 +50,7 @@ abstract class ChoreTrackerDatabase : RoomDatabase() {
     abstract fun inviteDao(): InviteDao
     abstract fun pendingSyncOperationDao(): PendingSyncOperationDao
     abstract fun syncStateDao(): SyncStateDao
+    abstract fun choreRequestDao(): ChoreRequestDao
 
     suspend fun clearAll() = withContext(Dispatchers.IO) { clearAllTables() }
 }

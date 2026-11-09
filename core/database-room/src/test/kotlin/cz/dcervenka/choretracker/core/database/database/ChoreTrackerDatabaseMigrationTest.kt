@@ -74,11 +74,13 @@ class ChoreTrackerDatabaseMigrationTest {
         val database = DatabaseModule.provideDatabase(ApplicationProvider.getApplicationContext())
         val pending = database.pendingSyncOperationDao().getAll()
         val legacyChore = database.choreDao().getChore("chore-1")
+        val requests = database.choreRequestDao().getRequests("household-1")
         database.close()
 
         assertThat(pending.map { it.id }).containsExactly("op-1")
         assertThat(legacyChore?.createdByUserId).isNull()
         assertThat(legacyChore?.rotationMemberIds).isEmpty()
         assertThat(legacyChore?.rotationStartedAt).isNull()
+        assertThat(requests).isEmpty()
     }
 }

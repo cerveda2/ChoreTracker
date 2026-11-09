@@ -3,6 +3,7 @@ package cz.dcervenka.choretracker.core.sync.repository
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
+import cz.dcervenka.choretracker.core.database.dao.ChoreRequestDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
 import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
@@ -62,6 +63,9 @@ class LocalSyncRepositorySyncStateTest {
     @MockK
     lateinit var inviteDao: InviteDao
 
+    @MockK(relaxed = true)
+    lateinit var choreRequestDao: ChoreRequestDao
+
     @MockK
     lateinit var pendingSyncOperationDao: PendingSyncOperationDao
 
@@ -96,6 +100,7 @@ class LocalSyncRepositorySyncStateTest {
             completionDao = completionDao,
             completionParticipantDao = completionParticipantDao,
             inviteDao = inviteDao,
+            choreRequestDao = choreRequestDao,
             pendingSyncOperationDao = pendingSyncOperationDao,
             syncStateDao = syncStateDao,
             remoteHouseholdDataSource = remoteHouseholdDataSource,

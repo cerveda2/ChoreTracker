@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
+import cz.dcervenka.choretracker.core.database.dao.ChoreRequestDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
 import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
@@ -58,6 +59,18 @@ private val MIGRATION_11_12 = object : Migration(11, 12) {
     }
 }
 
+private val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `chore_requests` (`id` TEXT NOT NULL, `householdId` TEXT NOT NULL, " +
+                "`batchId` TEXT NOT NULL, `choreId` TEXT NOT NULL, `fromMemberId` TEXT NOT NULL, " +
+                "`toMemberId` TEXT NOT NULL, `toUserId` TEXT NOT NULL, `createdByUserId` TEXT NOT NULL, " +
+                "`note` TEXT, `createdAt` INTEGER NOT NULL, `state` TEXT NOT NULL, `resolvedAt` INTEGER, " +
+                "PRIMARY KEY(`id`))",
+        )
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -69,7 +82,15 @@ object DatabaseModule {
         context,
         ChoreTrackerDatabase::class.java,
         "chore-tracker.db",
-    ).addMigrations(MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+    ).addMigrations(
+        MIGRATION_6_7,
+        MIGRATION_7_8,
+        MIGRATION_8_9,
+        MIGRATION_9_10,
+        MIGRATION_10_11,
+        MIGRATION_11_12,
+        MIGRATION_12_13,
+    )
         .build()
 
     @Provides
@@ -80,6 +101,9 @@ object DatabaseModule {
 
     @Provides
     fun provideChoreDao(database: ChoreTrackerDatabase): ChoreDao = database.choreDao()
+
+    @Provides
+    fun provideChoreRequestDao(database: ChoreTrackerDatabase): ChoreRequestDao = database.choreRequestDao()
 
     @Provides
     fun provideCompletionDao(database: ChoreTrackerDatabase): CompletionDao = database.completionDao()
