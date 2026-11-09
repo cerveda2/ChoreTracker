@@ -1,6 +1,7 @@
 package cz.dcervenka.choretracker.feature.dashboard.impl.contract
 
 import cz.dcervenka.choretracker.core.common.UiState
+import cz.dcervenka.choretracker.core.model.chore.ChoreRequests
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.stats.DashboardSnapshot
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
@@ -17,4 +18,5 @@ data class DashboardUiState(
     val showNotificationsBanner: Boolean = false,
     // Null hides the indicator: nothing syncs in preview mode.
     val syncStatus: SyncStatus? = null,
+    val requests: ChoreRequests = ChoreRequests(),
 ) : UiState
