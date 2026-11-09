@@ -242,10 +242,47 @@ jobs:
         working-directory: functions
         run: npm run test:emulators
 
-  # Every PR and every push to main deploys to dev; production only ships with a release
-  # (release.yml).
+  # Only a change that touches the backend deploys to dev, so an app-only PR never fails on (or
+  # overwrites) another branch's rules and functions there.
+  backend-changes:
+    name: Backend changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for backend changes
+        id: diff
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            files=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          else
+            files=$(git diff --name-only "$BEFORE_SHA" "$AFTER_SHA")
+          fi
+          pattern='^(functions/|firestore\.rules$|firestore\.indexes\.json$|firebase\.json$|\.firebaserc$|\.github/workflows/deploy-firebase\.yml$)'
+          if grep -qE "$pattern" <<< "$files"; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Production only ships with a release (release.yml).
   deploy-dev:
     name: Deploy Firebase (dev)
+    needs: backend-changes
+    if: needs.backend-changes.outputs.changed == 'true'
     uses: ./.github/workflows/deploy-firebase.yml
     with:
       project: dev
