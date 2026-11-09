@@ -16,6 +16,9 @@ import { inviteRecipient } from "./inviteRecipient";
 
 initializeApp();
 
+// gRPC status a Firestore create() fails with when the document is already there.
+const ALREADY_EXISTS = 6;
+
 export const onInviteAccepted = onDocumentUpdated(
   "households/{householdId}/invites/{inviteId}",
   async (event) => {
@@ -178,7 +181,9 @@ export const onFcmTokenWritten = onDocumentWritten("users/{userId}", async (even
 
 // One member asked another to do one or more chores. A send writes all of its requests in one
 // batch and each of them fires this, so only the batch's lowest id sends, naming every chore that's
-// still open (the sender may have cancelled some before the upload).
+// still open (the sender may have cancelled some before the upload). The batch is matched on its
+// creator as well: rules pin createdByUserId to the writer but not batchId, so someone else's
+// request can't join a batch and take over its push.
 export const onRequestCreated = onDocumentCreated(
   "households/{householdId}/requests/{requestId}",
   async (event) => {
@@ -191,6 +196,7 @@ export const onRequestCreated = onDocumentCreated(
     const batch = await db
       .collection(`households/${householdId}/requests`)
       .where("batchId", "==", created.batchId)
+      .where("createdByUserId", "==", created.createdByUserId)
       .get();
     if (batch.docs.map((doc) => doc.id).sort()[0] !== requestId) {
       return;
@@ -212,6 +218,19 @@ export const onRequestCreated = onDocumentCreated(
         toUserId,
       });
       return;
+    }
+
+    // Triggers are delivered at least once; only the first delivery for a batch gets to send.
+    try {
+      await db
+        .doc(`households/${householdId}/requestPushes/${created.createdByUserId}_${created.batchId}`)
+        .create({ sentAt: FieldValue.serverTimestamp() });
+    } catch (error) {
+      if ((error as { code?: number }).code === ALREADY_EXISTS) {
+        logger.info("onRequestCreated: batch already notified - skipping", { householdId, requestId });
+        return;
+      }
+      throw error;
     }
 
     const [senderSnap, ...choreSnaps] = await db.getAll(

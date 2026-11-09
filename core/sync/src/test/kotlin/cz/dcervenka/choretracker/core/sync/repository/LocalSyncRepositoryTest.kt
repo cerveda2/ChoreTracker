@@ -14,6 +14,7 @@ import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
+import cz.dcervenka.choretracker.core.database.entity.ChoreRequestEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
 import cz.dcervenka.choretracker.core.database.entity.InviteEntity
@@ -383,6 +384,95 @@ class LocalSyncRepositoryTest {
                 match { it.id == "completion-1" && it.createdByUserId == "user-2" && it.note == "Edited" },
             )
         }
+    }
+
+    @Test
+    fun `a request send uploads its whole batch in one write`() = runTest(coroutineRule.dispatcher) {
+        stubMemberSyncWithQueued(requestOperation("op-1", "batch-1", "send"))
+        coEvery { choreRequestDao.getBatch("batch-1") } returns
+            listOf(requestEntity("request-1", "batch-1"), requestEntity("request-2", "batch-1"))
+        coEvery { remoteHouseholdDataSource.upsertRequests(any()) } returns AppResult.Success(Unit)
+        coEvery { pendingSyncOperationDao.delete("op-1") } just Runs
+
+        val resultDeferred = async { repository.syncPendingOperations() }
+        advanceUntilIdle()
+
+        assertThat(resultDeferred.await()).isInstanceOf(AppResult.Success::class.java)
+        coVerify(exactly = 1) {
+            remoteHouseholdDataSource.upsertRequests(
+                match { requests -> requests.map { it.id } == listOf("request-1", "request-2") },
+            )
+        }
+        coVerify { pendingSyncOperationDao.delete("op-1") }
+    }
+
+    @Test
+    fun `a request cancel or decline uploads only that request`() = runTest(coroutineRule.dispatcher) {
+        stubMemberSyncWithQueued(requestOperation("op-1", "request-2", "resolve"))
+        coEvery { choreRequestDao.getRequest("request-2") } returns
+            requestEntity("request-2", "batch-1").copy(state = "DECLINED", resolvedAt = Instant.parse("2026-01-05T10:00:00Z"))
+        coEvery { remoteHouseholdDataSource.upsertRequests(any()) } returns AppResult.Success(Unit)
+        coEvery { pendingSyncOperationDao.delete("op-1") } just Runs
+
+        val resultDeferred = async { repository.syncPendingOperations() }
+        advanceUntilIdle()
+
+        assertThat(resultDeferred.await()).isInstanceOf(AppResult.Success::class.java)
+        coVerify(exactly = 1) {
+            remoteHouseholdDataSource.upsertRequests(
+                match { requests -> requests.single().let { it.id == "request-2" && it.state.name == "DECLINED" } },
+            )
+        }
+        coVerify(exactly = 0) { choreRequestDao.getBatch(any()) }
+    }
+
+    @Test
+    fun `a request send whose batch is gone counts as uploaded`() = runTest(coroutineRule.dispatcher) {
+        stubMemberSyncWithQueued(requestOperation("op-1", "batch-gone", "send"))
+        coEvery { choreRequestDao.getBatch("batch-gone") } returns emptyList()
+        coEvery { pendingSyncOperationDao.delete("op-1") } just Runs
+
+        val resultDeferred = async { repository.syncPendingOperations() }
+        advanceUntilIdle()
+
+        assertThat(resultDeferred.await()).isInstanceOf(AppResult.Success::class.java)
+        coVerify(exactly = 0) { remoteHouseholdDataSource.upsertRequests(any()) }
+        coVerify { pendingSyncOperationDao.delete("op-1") }
+    }
+
+    private fun requestOperation(id: String, entityId: String, operationType: String) = PendingSyncOperationEntity(
+        id = id,
+        entityType = "request",
+        entityId = entityId,
+        operationType = operationType,
+        payload = "household-1",
+        createdAt = Instant.parse("2026-01-04T10:00:00Z"),
+    )
+
+    private fun requestEntity(id: String, batchId: String) = ChoreRequestEntity(
+        id = id,
+        householdId = "household-1",
+        batchId = batchId,
+        choreId = "chore-1",
+        fromMemberId = "member-1",
+        toMemberId = "member-2",
+        toUserId = "user-2",
+        createdByUserId = "user-1",
+        note = null,
+        createdAt = Instant.parse("2026-01-04T10:00:00Z"),
+        state = "OPEN",
+        resolvedAt = null,
+    )
+
+    private fun stubMemberSyncWithQueued(op: PendingSyncOperationEntity) {
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(op)
+        coEvery { householdDao.getHousehold("household-1") } returns householdEntity
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns
+            memberEntity.copy(role = HouseholdRole.MEMBER.name)
+        coEvery { completionParticipantDao.getParticipants("household-1") } returns emptyList()
+        coEvery { completionDao.getCompletions("household-1") } returns emptyList()
+        coEvery { remoteHouseholdDataSource.upsertMemberSnapshot(any(), any(), any(), any()) } returns
+            AppResult.Success(Unit)
     }
 
     @Test

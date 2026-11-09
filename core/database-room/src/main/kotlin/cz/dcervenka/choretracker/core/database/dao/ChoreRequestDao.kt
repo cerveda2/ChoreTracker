@@ -28,13 +28,13 @@ interface ChoreRequestDao {
     suspend fun upsertAll(entities: List<ChoreRequestEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertOperation(operation: PendingSyncOperationEntity)
+    suspend fun insertOperations(operations: List<PendingSyncOperationEntity>)
 
-    // One transaction, so a sync running meanwhile sees the whole batch and its operation or neither.
+    // One transaction, so a sync running meanwhile sees every batch and its operation or none of them.
     @Transaction
-    suspend fun insertBatch(requests: List<ChoreRequestEntity>, operation: PendingSyncOperationEntity) {
+    suspend fun insertBatches(requests: List<ChoreRequestEntity>, operations: List<PendingSyncOperationEntity>) {
         upsertAll(requests)
-        insertOperation(operation)
+        insertOperations(operations)
     }
 
     @Query("UPDATE chore_requests SET state = :state, resolvedAt = :resolvedAt WHERE id = :id")
