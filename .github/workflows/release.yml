@@ -4,6 +4,8 @@ name: Release
 on:
   workflow_call:
     secrets:
+      FIREBASE_ANDROID_PROD_JSON:
+        required: true
       RELEASE_KEYSTORE_BASE64:
         required: true
       RELEASE_STORE_PASSWORD:
@@ -33,6 +35,7 @@ jobs:
       cancel-in-progress: false
     uses: ./.github/workflows/_release.yml
     secrets:
+      FIREBASE_ANDROID_PROD_JSON: ${{ secrets.FIREBASE_ANDROID_PROD_JSON }}
       RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
       RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
       RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}

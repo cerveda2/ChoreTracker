@@ -19,3 +19,4 @@ ui-debug.log
 *.keystore
 .kotlin/
 __pycache__/
+google-services.json

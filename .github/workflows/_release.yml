@@ -9,6 +9,8 @@ name: Release pipeline
 on:
   workflow_call:
     secrets:
+      FIREBASE_ANDROID_PROD_JSON:
+        required: true
       RELEASE_KEYSTORE_BASE64:
         required: true
       RELEASE_STORE_PASSWORD:
@@ -96,6 +98,11 @@ jobs:
           # A manual release validates its own wrapper; CI already did so for reusable calls.
           validate-wrappers: ${{ github.event_name == 'workflow_dispatch' }}
           cache-read-only: true
+
+      - name: Configure production Firebase Android
+        env:
+          FIREBASE_ANDROID_PROD_JSON: ${{ secrets.FIREBASE_ANDROID_PROD_JSON }}
+        run: python3 .github/scripts/firebase_config.py --variant release
 
       - name: Decode upload keystore
         env:

@@ -1,23 +1,60 @@
 # Firebase Setup
 
-The project already contains the Firebase-facing abstraction layer. To enable real Firebase auth and later Firestore sync, complete the steps below.
+The app uses Firebase Authentication, Firestore sync, Cloud Functions, Cloud Messaging and
+Crashlytics. Android client configuration stays local or is supplied by CI.
 
 ## 1. Create a Firebase project
 
-1. Open the Firebase console.
-2. Create a new project.
-3. Add an Android app with package name `cz.dcervenka.choretracker`.
+ChoreTracker has separate development and production projects:
+
+| Build | Firebase project | Android package | Local file |
+| --- | --- | --- | --- |
+| Debug | `choretracker-dev-1faf5` | `cz.dcervenka.choretracker.debug` | `app/src/debug/google-services.json` |
+| Release | `choretracker-fb576` | `cz.dcervenka.choretracker` | `app/src/release/google-services.json` |
+
+For a fork, create your own Firebase projects and register the matching Android packages.
 
 ## 2. Add `google-services.json`
 
-1. Download `google-services.json` from the Firebase console.
-2. Place it at:
+Download each app's `google-services.json` from its Firebase project settings and put it in the
+matching variant path above. Both paths are gitignored. The Google Services Gradle plugin selects
+the matching build-type file; the app module's root `app/google-services.json` is no longer used.
 
-```text
-app/google-services.json
+When migrating an existing checkout, save copies of both tracked files outside the checkout before
+pulling the change that removes them. Restore the debug copy to its original path and the old
+`app/google-services.json` production copy to `app/src/release/google-services.json` afterward.
+
+The Gradle plugin requires configuration for every variant being built, even when you intend to
+use the app's preview mode. For a fresh checkout without real configuration, generate synthetic
+demo clients for both variants:
+
+```bash
+python3 .github/scripts/firebase_config.py --allow-demo
+./gradlew assembleDebug
 ```
 
-The app currently builds without this file because preview mode is supported. Adding this file enables real Firebase configuration at runtime.
+This uses `demo-choretracker-ci` when the configuration environment variables are unset. It builds
+without accessing a real project's data; use the app's preview flow or the Auth/Firestore emulators
+for runtime checks. The script refuses to overwrite existing local files. Preserve or remove those
+copies deliberately before regenerating them.
+
+Firebase client identifiers are public and remain in the APK. Moving the JSON out of source control
+keeps project configuration separate from source code; access control comes from Authentication,
+Firestore rules and Firebase/Google Cloud permissions. Service-account credentials are separate
+from these Android client files.
+
+### CI provisioning
+
+The repository's `FIREBASE_ANDROID_DEV_JSON` and `FIREBASE_ANDROID_PROD_JSON` Actions secrets contain
+the respective complete client JSON files. The Android validation jobs provision both variant files
+before Gradle runs. Fork and Dependabot PRs without secrets use the synthetic demo configuration.
+A supplied configuration must match the expected project and package; malformed inputs fail instead
+of falling back to demo.
+
+Signed releases forward `FIREBASE_ANDROID_PROD_JSON` through `android.yml` → `release.yml` →
+`_release.yml` (and from the manual Release entry point). The build writes only the release file
+and fails before signing when the secret is missing or targets a different project/package. It
+never enables the demo fallback. See [CI and releases](CI.md).
 
 ## 3. Enable authentication
 
@@ -46,11 +83,13 @@ households/{householdId}/completions/{completionId}
 households/{householdId}/invites/{inviteId}
 ```
 
-The current app computes dashboard and statistics locally from Room. Firestore should store raw operational data, not precomputed aggregates.
+The app also stores chore requests in `households/{householdId}/requests`. Dashboard and statistics
+are computed locally from Room; Firestore stores the underlying household data.
 
 ## 5. Security rules
 
-The repo includes a starter [`firestore.rules`](../firestore.rules). Publish those rules from the Firebase console or with the Firebase CLI.
+The repo includes [`firestore.rules`](../firestore.rules). Use the documented CI deployment flow
+to publish rules and functions together.
 
 Start with strict rules:
 
@@ -61,7 +100,7 @@ Start with strict rules:
 
 ## 6. Emulator-first development
 
-Use the Firebase Emulator Suite for local development once the real sync implementation is added:
+Use the Firebase Emulator Suite for local development:
 
 - Authentication emulator
 - Firestore emulator
@@ -111,7 +150,8 @@ If you decide to add Google sign-in later, add both debug and release fingerprin
 
 ## Official references
 
-- https://firebase.google.com/docs/android/setup
-- https://firebase.google.com/docs/auth/android/start
-- https://firebase.google.com/docs/firestore/quickstart
-- https://firebase.google.com/docs/firestore/manage-data/enable-offline
+- [Android setup](https://firebase.google.com/docs/android/setup)
+- [Build-type configuration files](https://firebase.google.com/docs/android/google-services-plugin-and-file)
+- [Firebase client configuration and API keys](https://firebase.google.com/support/guides/security-checklist)
+- [Authentication](https://firebase.google.com/docs/auth/android/start)
+- [Firestore](https://firebase.google.com/docs/firestore/quickstart)
