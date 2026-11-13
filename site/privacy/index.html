@@ -21,19 +21,24 @@
     </header>
 
     <h1>Privacy policy</h1>
-    <p class="meta">Effective 2 November 2026</p>
+    <p class="meta">Effective 13 November 2026</p>
 
     <p>This policy explains what the Chore Tracker Android app ("the app") collects, why, and who can see it. Chore Tracker is a personal project by David Cervenka, Prague, Czech Republic, who is responsible for the data described here. Questions or requests: <a href="mailto:dadacervenka@gmail.com">dadacervenka@gmail.com</a>.</p>
 
     <h2>What the app collects and why</h2>
     <ul>
       <li><strong>Your account.</strong> Your email address, display name and password, to let you sign in and to show your household who you are. Passwords are handled by Firebase Authentication and are never visible to us.</li>
-      <li><strong>Your household's data.</strong> What you and the other members create: the household name, members (display name, email address, role), chores (name, category, how often), completions (who did what and when, plus an optional note) and invite codes. This is what the app syncs between the devices of your household.</li>
-      <li><strong>A push notification token</strong> for your device, so the household owner can be notified when someone joins. You can turn this notification off in the app's settings, which also removes the token.</li>
+      <li><strong>Your household's data.</strong> What you and the other members create: the household name, members (display name, email address, role), chores (name, category, how often), completions (who did what and when, plus an optional note), invite codes and chore requests (sender, recipient, requested chores, optional note and status). This is what the app syncs between the devices of your household.</li>
+      <li><strong>A push notification token and notification preferences</strong> for your device, to notify an invite's creator when someone joins and to notify a household member when someone asks them to do chores. The owner receives invite notifications if the creator is no longer eligible or an older invite has no creator recorded.</li>
       <li><strong>Crash reports</strong> (Firebase Crashlytics): device model, Android version, app version, technical details of the crash and an installation identifier, so bugs can be found and fixed.</li>
       <li><strong>The camera</strong>, only while you scan an invite QR code. The image is processed on your device and is never stored or uploaded.</li>
       <li><strong>On your device</strong>, the app keeps an offline copy of your household's data and your settings (theme, language, reminder time). Uninstalling the app removes them.</li>
     </ul>
+
+    <h2>Notifications</h2>
+    <p>Push notifications are delivered through Firebase Cloud Messaging. An invite notification may include the joining member's display name. A chore-request notification includes the sender's display name, the requested chore names, any optional note and a household identifier. Google processes this content to deliver the notification. Depending on your Android settings, notification text may appear on your lock screen.</p>
+    <p>You can turn invite and chore-request notifications on or off separately in the app's notification settings. These choices are stored on your device and alongside your push token in your user record. Turning a notification type off stops new pushes of that type once the preference has synced; it does not delete the token, so other enabled types can still arrive. The token is retained even if both types are off. The app attempts to remove it from your user record before signing out; this may be delayed if you are offline. Deleting your account removes the user record and its token.</p>
+    <p>Daily chore reminders are scheduled and displayed on your device, separately from push notifications. Their time and per-chore mute settings stay on your device. The app refreshes your household data before deciding which chores to remind you about, but it does not send reminder notification text through Cloud Messaging.</p>
 
     <h2>Who can see your data</h2>
     <p>The members of your household can see the household's data, including your display name, email address and the completions you log. Nobody outside your household can read it; this is enforced by the database's security rules. If you leave a household or are removed from it, your email address is removed from that household; your display name stays so its history still shows who did what.</p>
@@ -46,7 +51,7 @@
     </ul>
 
     <h2>How long data is kept</h2>
-    <p>Account and household data is kept for as long as your account exists. When you delete your account, it is removed as described on the <a href="../delete-account/">account deletion page</a>. Crash reports are kept by Crashlytics for 90 days.</p>
+    <p>Your account and user record are kept until you delete your account. If other members remain in your household, its shared history stays available to them, including chore requests and their notes. If you are its only linked member, deleting your account also deletes the household and its data. See the <a href="../delete-account/">account deletion page</a> for details. Crash reports are kept by Crashlytics for 90 days.</p>
 
     <h2>Your rights</h2>
     <p>You can access, correct, export or delete your personal data, and object to its processing. You can change your display name and delete your account directly in the app; for anything else, email <a href="mailto:dadacervenka@gmail.com">dadacervenka@gmail.com</a>. You also have the right to lodge a complaint with a data protection authority, in the Czech Republic the <a href="https://uoou.gov.cz">Úřad pro ochranu osobních údajů</a>.</p>

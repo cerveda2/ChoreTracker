@@ -1,6 +1,6 @@
 # Play Console: App content answers
 
-Answers for Play Console → **Policy and programs → App content**, matching the app as of v0.1.3.
+Answers for Play Console → **Policy and programs → App content**, matching the app as of v0.3.0.
 Keep this in sync with the privacy policy (`site/privacy/`) whenever data collection changes.
 
 ## Privacy policy
@@ -57,7 +57,8 @@ All **No** / **None**.
 
 ### Data types
 
-Every type below is **Collected**, **not Shared**, **not processed ephemerally**, and **Required**.
+Every type below is **Collected**, **not Shared**, **not processed ephemerally**, and **Required**,
+except **Other in-app messages**, which is **Optional**: users can use the app without sending chore requests.
 Data that only goes to Google as a service provider (Firebase) doesn't count as "shared" under
 Play's definition.
 
@@ -66,14 +67,31 @@ Play's definition.
 | Personal info → **Name** | App functionality, Account management | The display name, shown to household members. |
 | Personal info → **Email address** | App functionality, Account management | The sign-in email, also stored on the member record so household members can see it. |
 | Personal info → **User IDs** | App functionality, Account management | The Firebase Authentication user ID and household member IDs. |
-| App activity → **Other user-generated content** | App functionality | Household name, chores, completions (who, when), optional notes, invite codes. |
+| App activity → **Other user-generated content** | App functionality | Household name, chores, completions (who, when and optional completion notes), invite codes. |
+| Messages → **Other in-app messages** | App functionality | Chore requests addressed to another household member, including the requested chores and optional request notes. Collection is optional. |
 | App info and performance → **Crash logs** | Analytics | Crashlytics stack traces. |
 | App info and performance → **Diagnostics** | Analytics | The device model, Android version and app state sent with a crash report. |
 | Device or other IDs → **Device or other IDs** | App functionality, Analytics | Firebase installation ID, Crashlytics installation UUID, and the push notification (FCM) token. |
 
+### Notification data flow
+
+Invite pushes can include the joining member's display name and go to the eligible invite creator
+(otherwise the owner). Request pushes carry the sender's display name, chore names, optional note,
+household ID and request type through Firebase Cloud Messaging. Both are app functionality, not
+developer communications or marketing. Android may show this content on the lock screen.
+
+The invite/request toggles update `users/{uid}.pushTypes`; they retain `fcmToken`, even when both
+types are off. Changes take effect for new pushes after the preference syncs. Sign-out attempts to
+clear the token before authentication ends; account deletion removes the user record. Daily
+reminders and their time/mute preferences stay on the device, although the worker refreshes the
+shared household data before choosing reminders.
+
+The Messages classification follows Play's broad definition of [other in-app messages](https://support.google.com/googleplay/android-developer/answer/10787469).
+Update the live Data safety form to include this optional category when this documentation is adopted.
+
 ### Not collected
 
-Location, financial info, health and fitness, messages, photos and videos, audio, files and docs,
+Location, financial info, health and fitness, email/SMS/MMS messages, photos and videos, audio, files and docs,
 calendar, contacts, app interactions, in-app search history, installed apps, other actions, web
 browsing.
 
