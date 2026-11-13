@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   wrapper-validation:
-    name: Wrapper validation
+    name: CI setup
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
