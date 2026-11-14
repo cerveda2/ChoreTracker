@@ -14,11 +14,9 @@ import { getAuth } from "firebase-admin/auth";
 import { getMessaging } from "firebase-admin/messaging";
 import { acceptsPush } from "./pushTypes";
 import { inviteRecipient } from "./inviteRecipient";
+import { notifyRequestCreated } from "./requestNotification";
 
 initializeApp();
-
-// gRPC status a Firestore create() fails with when the document is already there.
-const ALREADY_EXISTS = 6;
 
 export const onInviteAccepted = onDocumentUpdated(
   "households/{householdId}/invites/{inviteId}",
@@ -193,84 +191,7 @@ export const onRequestCreated = onDocumentCreated(
       return;
     }
     const { householdId, requestId } = event.params;
-    const db = getFirestore();
-    const batch = await db
-      .collection(`households/${householdId}/requests`)
-      .where("batchId", "==", created.batchId)
-      .where("createdByUserId", "==", created.createdByUserId)
-      .get();
-    if (batch.docs.map((doc) => doc.id).sort()[0] !== requestId) {
-      return;
-    }
-    const open = batch.docs.filter((doc) => doc.get("state") === "OPEN");
-    if (open.length === 0) {
-      return;
-    }
-
-    const toUserId: string = created.toUserId;
-    const recipientSnap = await db.doc(`users/${toUserId}`).get();
-    const fcmToken: string | undefined = recipientSnap.get("fcmToken");
-    // A build lists "request" only once it can show this push, so older ones get nothing rather
-    // than an empty notification (see #106).
-    if (!fcmToken || !acceptsPush(recipientSnap.get("pushTypes"), "request")) {
-      logger.info("onRequestCreated: recipient can't receive request pushes - skipping", {
-        householdId,
-        toUserId,
-      });
-      return;
-    }
-
-    // Triggers are delivered at least once; only the first delivery for a batch gets to send.
-    try {
-      await db
-        .doc(`households/${householdId}/requestPushes/${created.createdByUserId}_${created.batchId}`)
-        .create({ sentAt: FieldValue.serverTimestamp() });
-    } catch (error) {
-      if ((error as { code?: number }).code === ALREADY_EXISTS) {
-        logger.info("onRequestCreated: batch already notified - skipping", { householdId, requestId });
-        return;
-      }
-      throw error;
-    }
-
-    const [senderSnap, ...choreSnaps] = await db.getAll(
-      db.doc(`households/${householdId}/members/${created.createdByUserId}`),
-      ...open.map((doc) => db.doc(`households/${householdId}/chores/${doc.get("choreId")}`)),
-    );
-    const senderName: string = senderSnap.get("displayName") || "";
-    const choreNames = choreSnaps
-      .map((snap) => snap.get("name"))
-      .filter((name): name is string => typeof name === "string" && name.length > 0)
-      .join(", ");
-    const note: string | undefined = created.note || undefined;
-
-    try {
-      // Localization keys only, as in onInviteAccepted.
-      const body = note
-        ? { bodyLocKey: "chore_request_notification_body_note", bodyLocArgs: [choreNames, note] }
-        : { bodyLocKey: "chore_request_notification_body", bodyLocArgs: [choreNames] };
-      await getMessaging().send({
-        token: fcmToken,
-        data: { type: "request", householdId },
-        android: {
-          notification: {
-            channelId: "chore_requests",
-            titleLocKey: "chore_request_notification_title",
-            titleLocArgs: [senderName],
-            ...body,
-          },
-        },
-      });
-      logger.info("onRequestCreated: notified recipient", { householdId, toUserId, requests: open.length });
-    } catch (error) {
-      const code = (error as { code?: string }).code;
-      if (code === "messaging/invalid-registration-token" || code === "messaging/registration-token-not-registered") {
-        logger.warn("onRequestCreated: stale fcmToken - clearing", { toUserId });
-        await db.doc(`users/${toUserId}`).update({ fcmToken: FieldValue.delete() });
-      } else {
-        logger.error("onRequestCreated: messaging().send failed", { toUserId, error });
-      }
-    }
+    await notifyRequestCreated(getFirestore(), getMessaging(), householdId, requestId, created);
   },
 );
 
