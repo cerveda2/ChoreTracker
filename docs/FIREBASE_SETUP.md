@@ -19,6 +19,7 @@ For a fork, create your own Firebase projects and register the matching Android 
 Download each app's `google-services.json` from its Firebase project settings and put it in the
 matching variant path above. Both paths are gitignored. The Google Services Gradle plugin selects
 the matching build-type file; the app module's root `app/google-services.json` is no longer used.
+Claude Code copies both files into the worktrees it creates, through `.worktreeinclude`.
 
 When migrating an existing checkout, save copies of both tracked files outside the checkout before
 pulling the change that removes them. Restore the debug copy to its original path and the old
