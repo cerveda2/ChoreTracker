@@ -15,7 +15,7 @@
 
 CI/deployment logic changes validate both stacks. Backend test-only changes run emulator tests without deploying. Routing tests run on every event. `test` includes plain JVM modules as well as Android variants. Debug APKs and reports are retained for seven days.
 
-`CI validation` accepts intentional skips and fails for failed/cancelled dependencies. Automatic deployments and releases depend on it. Main validation remains because PRs can currently merge without being up to date with main. After merging these workflows, replace the four individual required checks with **CI validation**, then rename **Wrapper validation** to **CI setup**. Until that migration, its existing name is retained.
+`CI validation` accepts intentional skips and fails for failed/cancelled dependencies. The `main-protection` ruleset requires this check from GitHub Actions before merging; it covers all applicable Android and backend jobs, including the R8 build and emulator tests. Automatic deployments and releases also depend on it. Main validation remains because PRs can currently merge without being up to date with main. **CI setup** selects the affected stacks, tests the routing, lints workflow changes and validates the Gradle wrapper when Android checks apply.
 
 PR updates cancel superseded runs. Main commits validate independently. [GitHub's `queue: max`](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency) preserves pending release/deployment runs without cancelling an active one. Actionlint 1.7.12 rejects this documented key, so only that exact diagnostic is ignored.
 
