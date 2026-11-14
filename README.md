@@ -68,7 +68,11 @@ app
 
 ## Build
 
+Provide local Firebase client files as described in [Firebase setup](docs/FIREBASE_SETUP.md).
+For a fresh checkout without real Firebase configuration, generate demo clients first:
+
 ```bash
+python3 .github/scripts/firebase_config.py --allow-demo
 ./gradlew assembleDebug
 ```
 

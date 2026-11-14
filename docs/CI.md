@@ -21,6 +21,22 @@ PR updates cancel superseded runs. Main commits validate independently. [GitHub'
 
 ## Deployments and releases
 
+### Android client configuration
+
+Client `google-services.json` files are gitignored. The four Android validation jobs provision
+debug/dev and release/prod files through `.github/actions/firebase-android` using the repository
+secrets `FIREBASE_ANDROID_DEV_JSON` and `FIREBASE_ANDROID_PROD_JSON`. Missing secrets on fork or
+Dependabot PRs produce synthetic `demo-choretracker-ci` clients so validation needs no production
+configuration. Invalid supplied JSON or an unexpected project/package fails the job.
+
+Signed release builds require `FIREBASE_ANDROID_PROD_JSON`, forwarded explicitly through both
+reusable workflows, and provision only the release variant. They fail before signing when the
+production input is absent or invalid; demo fallback is enabled only for validation/demo builds.
+The provisioning script refuses to overwrite existing local configuration. See
+[Firebase setup](FIREBASE_SETUP.md) for local paths and migration instructions.
+
+### Backend and Play delivery
+
 Dev deploys `firestore,functions --force` after a successful main run that changes backend source/configuration. PRs use demo-project emulators. For a cloud preview, manually run **Deploy Firebase** with `dev` on the branch; manual deployments run emulator tests first. Dev is shared scratch state: queued main runs and manual previews can replace each other's backend.
 
 For production, the version job compares backend files (`functions/`, `firestore.rules`, `firestore.indexes.json`, `firebase.json`, `.firebaserc`) with the previous reachable version tag. Functions tests and Markdown are excluded from deployment eligibility. It trusts that baseline only when the tagged commit has a successful **Publish to Play internal testing** check from GitHub Actions. Otherwise it deploys conservatively, covering first releases, failed tagged releases, and unavailable history. An app-only release after a confirmed successful release skips Firebase entirely.
