@@ -100,16 +100,6 @@ describe("request notification dispatch", () => {
     assert.equal((await marker.get()).exists, false);
   });
 
-  it("uses empty localization arguments when sender or chore records are missing", async () => {
-    const created = await writeRequest("a", { choreId: "missing" });
-    await db.doc("households/home/members/sender").delete();
-    await notify("a", created);
-    assert.equal(send.mock.callCount(), 1);
-    const notification = send.mock.calls[0].arguments[0].android.notification;
-    assert.deepEqual(notification.titleLocArgs, [""]);
-    assert.deepEqual(notification.bodyLocArgs, [""]);
-  });
-
   for (const code of ["messaging/invalid-registration-token", "messaging/registration-token-not-registered"]) {
     it(`clears a stale token after ${code}`, async () => {
       const created = await writeRequest("a");

@@ -3,6 +3,7 @@ import { Message, Messaging } from "firebase-admin/messaging";
 import * as logger from "firebase-functions/logger";
 import { acceptsPush } from "./pushTypes";
 
+// gRPC status a Firestore create() fails with when the document is already there.
 const ALREADY_EXISTS = 6;
 
 export function buildRequestMessage(input: {
@@ -12,6 +13,7 @@ export function buildRequestMessage(input: {
   choreNames: string;
   note?: string;
 }): Message {
+  // Localization keys only, as in onInviteAccepted.
   const body = input.note
     ? { bodyLocKey: "chore_request_notification_body_note", bodyLocArgs: [input.choreNames, input.note] }
     : { bodyLocKey: "chore_request_notification_body", bodyLocArgs: [input.choreNames] };
@@ -52,6 +54,8 @@ export async function notifyRequestCreated(
   const toUserId: string = created.toUserId;
   const recipientSnap = await db.doc(`users/${toUserId}`).get();
   const fcmToken: string | undefined = recipientSnap.get("fcmToken");
+  // A build lists "request" only once it can show this push, so older ones get nothing rather
+  // than an empty notification (see #106).
   if (!fcmToken || !acceptsPush(recipientSnap.get("pushTypes"), "request")) {
     logger.info("onRequestCreated: recipient can't receive request pushes - skipping", {
       householdId,
@@ -60,6 +64,7 @@ export async function notifyRequestCreated(
     return;
   }
 
+  // Triggers are delivered at least once; only the first delivery for a batch gets to send.
   try {
     await db
       .doc(`households/${householdId}/requestPushes/${created.createdByUserId}_${created.batchId}`)
