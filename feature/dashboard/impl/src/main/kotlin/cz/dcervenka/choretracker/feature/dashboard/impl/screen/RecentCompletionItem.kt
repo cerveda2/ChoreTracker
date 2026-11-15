@@ -3,6 +3,7 @@ package cz.dcervenka.choretracker.feature.dashboard.impl.screen
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontStyle
 import cz.dcervenka.choretracker.core.formatters.formatInstantForLocale
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
@@ -17,7 +18,7 @@ internal fun RecentCompletionContent(
         style = MaterialTheme.typography.titleMedium,
     )
     Text(
-        text = formatInstantForLocale(completion.completedAt, dateSkeleton),
+        text = formatInstantForLocale(completion.completedAt, dateSkeleton, LocalConfiguration.current.locales[0]),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

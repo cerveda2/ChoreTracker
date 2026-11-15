@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,8 +46,9 @@ internal fun MonthlyTrendCard(
     val maxCount = displayMonths.maxOfOrNull { it.totalCount }?.coerceAtLeast(1) ?: 1
     // formatMonthAbbreviationForLocale builds a fresh SimpleDateFormat per call - precompute
     // once per `months` change instead of once per recomposition of this whole card.
-    val monthLabels = remember(displayMonths) {
-        displayMonths.associate { it.monthLabel to formatMonthAbbreviationForLocale(it.monthLabel) }
+    val locale = LocalConfiguration.current.locales[0]
+    val monthLabels = remember(displayMonths, locale) {
+        displayMonths.associate { it.monthLabel to formatMonthAbbreviationForLocale(it.monthLabel, locale) }
     }
 
     ListGroup(modifier = modifier) {
