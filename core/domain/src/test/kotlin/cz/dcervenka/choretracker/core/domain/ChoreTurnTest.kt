@@ -3,9 +3,11 @@ package cz.dcervenka.choretracker.core.domain
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
+import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.stats.ChoreTurn
+import cz.dcervenka.choretracker.core.model.stats.StatsPeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import org.junit.Test
@@ -68,6 +70,37 @@ class ChoreTurnTest {
     @Test
     fun `a chore without a rotation has no turn`() {
         assertThat(turn(dishes.copy(rotationMemberIds = emptyList(), rotationStartedAt = null), emptyList())).isNull()
+    }
+
+    @Test
+    fun `insights names the rotation turn next, whatever the period`() {
+        val completions = listOf(
+            completion("c0", "2026-02-10T18:00:00Z", bob),
+            completion("c1", "2026-02-15T18:00:00Z", bob),
+            completion("c2", "2026-02-20T18:00:00Z", bob),
+            completion("c3", "2026-03-10T18:00:00Z", alice),
+        )
+
+        StatsPeriod.entries.forEach { period ->
+            val nextTurn = calculator.statsSnapshot(
+                household = Household(
+                    id = "household-1",
+                    name = "Home",
+                    ownerUserId = "user-member-alice",
+                    inviteCode = "ABCD1234",
+                    createdAt = Instant.parse("2026-01-01T09:00:00Z"),
+                ),
+                members = listOf(alice, bob),
+                chores = listOf(dishes),
+                completions = completions,
+                period = period,
+                timeZone = TimeZone.UTC,
+                today = LocalDate(2026, 3, 29),
+            ).comparisons.single().nextTurnMemberId
+
+            assertThat(nextTurn).isEqualTo(bob.id)
+        }
+        assertThat(turn(dishes, completions)?.memberId).isEqualTo(bob.id)
     }
 
     private fun turn(

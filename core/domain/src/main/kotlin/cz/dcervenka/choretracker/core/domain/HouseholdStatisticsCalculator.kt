@@ -278,7 +278,10 @@ class HouseholdStatisticsCalculator @Inject constructor() {
                 countsByMemberId = counts,
                 leader = computeLeader(counts, choreCompletions.isNotEmpty(), members),
                 totalCount = choreCompletions.size,
-                nextTurnMemberId = computeNextTurn(counts, lastCompleterIds),
+                // A rotating chore's next member is the turn Home and Chores show, not the period's counts.
+                nextTurnMemberId = computeTurn(chore, allCompletions, members.associateBy(HouseholdMember::id))
+                    ?.memberId
+                    ?: computeNextTurn(counts, lastCompleterIds),
             )
         }
 
