@@ -1,14 +1,16 @@
 Chore Tracker helps couples and households keep chores fair, without the nagging.
 
-Log a chore in one tap, see who has been carrying the load, and spot what needs doing before it piles up.
+Log a chore in one tap, see who has been carrying the load, take turns on the chores nobody wants, and ask each other for help when you need it.
 
 • Quick logging: mark a chore done in one tap, for yourself, someone else or everyone together, for today, yesterday or any date, with an optional note.
-• Fairness at a glance: the dashboard shows how evenly the work was shared over the last 30 days.
+• Fairness at a glance: Home shows how evenly the work was shared over the last 30 days.
+• Take turns: let a chore rotate between you. Chore Tracker shows whose turn it is: whoever has done it least is up next, so covering for someone keeps them up until it evens out.
+• Ask for help: ask someone to do a few chores, with an optional note. They get a notification and can mark them done or say they can't today. When a chore is due and it's someone else's turn, remind them in one tap.
 • Chores that keep up: give each chore a category and a frequency, and overdue or due-soon chores are flagged automatically.
-• Insights: see each person's share of the work, the split by chore type, the last six months, and whose turn is next.
-• Made for sharing: invite your partner or housemates with a code or a QR code, and everyone sees the same chores and history.
-• Works offline: log chores without a connection, and changes sync when you're back online.
-• Gentle reminders: an optional daily reminder when chores need attention.
+• Insights: each person's share of the work, the split by chore type, the last six months, and the history of every chore.
+• Made for sharing: invite your partner or housemates with a code or a QR code. Make someone an admin to help run the household, and everyone can add chores and look after their own.
+• Works offline: log chores without a connection, and changes sync to everyone when you're back online.
+• Reminders that fit: an optional daily reminder for chores that need attention or that someone asked you to do. Turn-based chores remind only whoever's turn it is, and you can switch reminders off for single chores.
 • English and Czech, light and dark theme.
 
 Privacy: no ads and no usage analytics. Your household's data is visible only to its members, and you can delete your account and its data at any time in the app.

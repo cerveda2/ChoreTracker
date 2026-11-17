@@ -1,14 +1,16 @@
 Chore Tracker pomáhá párům a domácnostem dělit se o domácí práce spravedlivě, bez připomínání a dohadování.
 
-Zaznamenejte hotovou práci jedním klepnutím, podívejte se, kdo toho poslední dobou udělal víc, a všimněte si, co je potřeba udělat, dřív než se to nahromadí.
+Zaznamenejte hotovou práci jedním klepnutím, podívejte se, kdo toho poslední dobou udělal víc, střídejte se u úkolů, do kterých se nikomu nechce, a požádejte ostatní o pomoc, když ji potřebujete.
 
 • Rychlé zaznamenání: označte úkol jako hotový jedním klepnutím, za sebe, za někoho jiného nebo za všechny společně, na dnešek, včerejšek nebo libovolný den, s volitelnou poznámkou.
-• Spravedlnost na první pohled: přehled ukazuje, jak rovnoměrně jste si práci rozdělili za posledních 30 dní.
+• Spravedlnost na první pohled: domovská obrazovka ukazuje, jak rovnoměrně jste si práci rozdělili za posledních 30 dní.
+• Střídání: nechte úkol kolovat mezi vámi. Chore Tracker ukáže, kdo je na řadě: vždy ten, kdo ho dělal nejméně, takže když někoho zastoupíte, zůstane na řadě, dokud se to nevyrovná.
+• Žádosti o pomoc: požádejte někoho o pár úkolů, klidně s poznámkou. Dostane upozornění a může je označit jako hotové, nebo odpovědět, že dnes nemůže. Když úkol čeká a na řadě je někdo jiný, připomenete mu ho jedním klepnutím.
 • Úkoly, které se hlídají samy: každému úkolu nastavte kategorii a četnost a úkoly po termínu nebo s blížícím se termínem se označí samy.
-• Statistiky: podíl práce každého člena, rozdělení podle typu úkolů, posledních šest měsíců a kdo je na řadě.
-• Pro dva i víc: pozvěte partnera nebo spolubydlící kódem nebo QR kódem a všichni uvidí stejné úkoly a historii.
-• Funguje offline: úkoly zaznamenáte i bez připojení a změny se synchronizují, jakmile budete zase online.
-• Šetrné připomínky: volitelné denní upozornění, když některé úkoly vyžadují pozornost.
+• Postřehy: podíl práce každého člena, rozdělení podle typu úkolů, posledních šest měsíců a historie každého úkolu.
+• Pro dva i víc: pozvěte partnera nebo spolubydlící kódem nebo QR kódem. Jmenujte někoho správcem, aby vám s domácností pomohl, a každý může přidávat úkoly a starat se o ty své.
+• Funguje offline: úkoly zaznamenáte i bez připojení a změny se všem synchronizují, jakmile budete zase online.
+• Připomínky na míru: volitelné denní upozornění na úkoly, které vyžadují pozornost nebo o které vás někdo požádal. U střídaných úkolů dostane připomínku jen ten, kdo je na řadě, a u jednotlivých úkolů ji můžete vypnout.
 • Čeština a angličtina, světlý a tmavý motiv.
 
 Soukromí: žádné reklamy a žádná analytika používání. Data vaší domácnosti vidí jen její členové a svůj účet i jeho data můžete v aplikaci kdykoli smazat.
