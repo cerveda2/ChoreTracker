@@ -8,6 +8,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import cz.dcervenka.choretracker.core.design.LocalMemberPalette
@@ -89,7 +90,7 @@ internal fun RecentActivitySection(
 
 @Composable
 private fun activitySubtitle(completion: RecentCompletion): String {
-    val dateLabel = formatInstantForLocale(completion.completedAt, "EEEMMMd")
+    val dateLabel = formatInstantForLocale(completion.completedAt, "EEEMMMd", LocalConfiguration.current.locales[0])
     val note = completion.note?.takeIf(String::isNotBlank) ?: return dateLabel
     return "$dateLabel · " + stringResource(R.string.dashboard_activity_note_quoted, note)
 }

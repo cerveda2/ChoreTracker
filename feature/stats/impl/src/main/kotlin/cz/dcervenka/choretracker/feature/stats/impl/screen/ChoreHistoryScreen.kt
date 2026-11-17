@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
@@ -45,6 +46,7 @@ fun ChoreHistoryScreen(
     val yesterday = remember { today.minus(1, DateTimeUnit.DAY) }
     val todayLabel = stringResource(R.string.dashboard_completions_today)
     val yesterdayLabel = stringResource(R.string.dashboard_completions_yesterday)
+    val locale = LocalConfiguration.current.locales[0]
     val grouped = remember(completions) {
         completions
             .groupBy { it.completedAt.toLocalDateTime(tz).date }
@@ -82,7 +84,7 @@ fun ChoreHistoryScreen(
                     val label = when (date) {
                         today -> todayLabel
                         yesterday -> yesterdayLabel
-                        else -> formatLocalDateForLocale(date, "EEEMMMd")
+                        else -> formatLocalDateForLocale(date, "EEEMMMd", locale)
                     }
                     item(key = "group-$date") {
                         ChoreHistoryDateSection(
@@ -102,6 +104,7 @@ private fun ChoreHistoryDateSection(
     completions: List<RecentCompletion>,
 ) {
     val spacing = LocalSpacing.current
+    val locale = LocalConfiguration.current.locales[0]
     Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
         SectionHeader(title = label)
         ListGroup {
@@ -114,7 +117,7 @@ private fun ChoreHistoryDateSection(
                     subtitle = completion.note?.takeIf(String::isNotBlank),
                     trailing = {
                         Text(
-                            text = formatInstantForLocale(completion.completedAt, "Hm"),
+                            text = formatInstantForLocale(completion.completedAt, "Hm", locale),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

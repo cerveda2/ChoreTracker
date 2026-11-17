@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import cz.dcervenka.choretracker.core.design.LocalMemberPalette
@@ -64,6 +65,7 @@ fun RecentCompletionsScreen(
     val yesterday = remember { today.minus(1, DateTimeUnit.DAY) }
     val todayLabel = stringResource(R.string.dashboard_completions_today)
     val yesterdayLabel = stringResource(R.string.dashboard_completions_yesterday)
+    val locale = LocalConfiguration.current.locales[0]
 
     var selectedMemberId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedChoreName by rememberSaveable { mutableStateOf<String?>(null) }
@@ -138,7 +140,7 @@ fun RecentCompletionsScreen(
                     val label = when (date) {
                         today -> todayLabel
                         yesterday -> yesterdayLabel
-                        else -> formatLocalDateForLocale(date, "EEEMMMd")
+                        else -> formatLocalDateForLocale(date, "EEEMMMd", locale)
                     }
                     item(key = "group-$date") {
                         CompletionDateSection(
@@ -264,6 +266,7 @@ private fun CompletionDateSection(
 ) {
     val spacing = LocalSpacing.current
     val palette = LocalMemberPalette.current
+    val locale = LocalConfiguration.current.locales[0]
     Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
         SectionHeader(title = label)
         ListGroup {
@@ -287,7 +290,7 @@ private fun CompletionDateSection(
                     subtitle = completion.participantNames.joinToString(),
                     trailing = {
                         Text(
-                            text = formatInstantForLocale(completion.completedAt, "Hm"),
+                            text = formatInstantForLocale(completion.completedAt, "Hm", locale),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

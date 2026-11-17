@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -226,7 +227,7 @@ fun LogCompletionSheet(
                         selected = isCustomDate,
                         onClick = { showDatePicker = true },
                         label = if (isCustomDate) {
-                            formatInstantForLocale(completedAt!!, "yMMMd")
+                            formatInstantForLocale(completedAt!!, "yMMMd", LocalConfiguration.current.locales[0])
                         } else {
                             stringResource(R.string.log_sheet_pick_date)
                         },

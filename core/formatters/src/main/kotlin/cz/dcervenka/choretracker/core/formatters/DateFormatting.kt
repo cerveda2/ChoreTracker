@@ -11,7 +11,7 @@ import kotlin.time.Instant
 fun formatInstantForLocale(
     instant: Instant,
     skeleton: String,
-    locale: Locale = Locale.getDefault(),
+    locale: Locale,
 ): String {
     val pattern = DateFormat.getBestDateTimePattern(locale, skeleton)
     return SimpleDateFormat(pattern, locale).apply {
@@ -22,7 +22,7 @@ fun formatInstantForLocale(
 fun formatLocalDateForLocale(
     date: LocalDate,
     skeleton: String,
-    locale: Locale = Locale.getDefault(),
+    locale: Locale,
 ): String {
     val pattern = DateFormat.getBestDateTimePattern(locale, skeleton)
     return SimpleDateFormat(pattern, locale).format(
@@ -35,7 +35,7 @@ fun formatLocalDateForLocale(
 
 fun formatMonthLabelForLocale(
     rawLabel: String,
-    locale: Locale = Locale.getDefault(),
+    locale: Locale,
 ): String {
     val year = rawLabel.substringBefore('-').toIntOrNull()
     val month = rawLabel.substringAfter('-', "").toIntOrNull()
@@ -55,7 +55,7 @@ fun formatMonthLabelForLocale(
 // formatMonthLabelForLocale, just without the year and with a shorter skeleton.
 fun formatMonthAbbreviationForLocale(
     rawLabel: String,
-    locale: Locale = Locale.getDefault(),
+    locale: Locale,
 ): String {
     val year = rawLabel.substringBefore('-').toIntOrNull()
     val month = rawLabel.substringAfter('-', "").toIntOrNull()

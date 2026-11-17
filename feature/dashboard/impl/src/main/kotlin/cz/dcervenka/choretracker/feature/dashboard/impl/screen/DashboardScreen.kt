@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalResources
@@ -168,7 +169,8 @@ fun DashboardScreen(
         // Today's date, not a live clock - fixing it at first composition avoids reformatting
         // (a fresh SimpleDateFormat per formatInstantForLocale call) on every unrelated
         // recomposition of this screen.
-        val todayLabel = remember { formatInstantForLocale(Clock.System.now(), "EEEEdMMMM") }
+        val locale = LocalConfiguration.current.locales[0]
+        val todayLabel = remember(locale) { formatInstantForLocale(Clock.System.now(), "EEEEdMMMM", locale) }
 
         ChoreScaffold(
             snackbarHostState = snackbarHostState,
