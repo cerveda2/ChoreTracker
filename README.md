@@ -42,6 +42,9 @@ ChoreTracker is an offline-first Android chore tracker for couples and housemate
 - Room is the source of truth: changes queue locally and upload in the background, and Firestore listeners keep members, chores, completions, invites and requests live on every device.
 - A removed member's device drops the household's data on its next sync.
 
+### App updates
+- Play-distributed release builds offer optional updates that download while you keep using the app. Restart when ready to install. See [in-app updates](docs/IN_APP_UPDATES.md) for behavior and testing.
+
 ## Architecture
 
 Clean Architecture with an MVI presentation layer (`UiState`/`UiIntent`/`UiEffect` in `core/common`):
@@ -66,6 +69,7 @@ app                       Navigation root, bottom tabs (Home, Chores, Insights, 
 ├── core/notifications    FCM token registration and push notifications
 ├── core/reminders        Daily chore reminder (WorkManager)
 ├── core/performance      Firebase performance reporting
+├── core/updates          Optional Google Play in-app updates
 ├── core/design           Material 3 theme, Compose components, strings
 ├── core/formatters       Date/time locale formatting
 ├── core/test             Test utilities, sample data generators
