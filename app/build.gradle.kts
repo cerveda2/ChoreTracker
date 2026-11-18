@@ -58,6 +58,7 @@ dependencies {
     implementation(projects.core.sync)
     implementation(projects.core.notifications)
     implementation(projects.core.reminders)
+    implementation(projects.core.updates)
     implementation(projects.feature.auth.impl)
     implementation(projects.feature.onboarding.impl)
     implementation(projects.feature.dashboard.impl)
