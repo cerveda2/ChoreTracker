@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -123,6 +124,9 @@ fun AuthScreen(
                     color = MaterialTheme.colorScheme.error,
                 )
             }
+            uiState.passwordResetSentTo?.let { email ->
+                Text(text = stringResource(R.string.auth_password_reset_sent, email))
+            }
             if (uiState.authMode == AuthMode.SIGN_UP) {
                 OutlinedTextField(
                     value = uiState.displayName,
@@ -180,6 +184,15 @@ fun AuthScreen(
                 },
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (uiState.authMode == AuthMode.SIGN_IN) {
+                TextButton(
+                    onClick = { onIntent(AuthUiIntent.ForgotPasswordClicked) },
+                    modifier = Modifier.align(Alignment.End),
+                    enabled = !uiState.isWorking,
+                ) {
+                    Text(text = stringResource(R.string.auth_forgot_password))
+                }
+            }
             PrimaryButton(
                 text = if (uiState.authMode == AuthMode.SIGN_IN) {
                     stringResource(R.string.auth_sign_in)

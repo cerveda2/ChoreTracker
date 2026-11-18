@@ -19,6 +19,9 @@
     <string name="auth_creating_account">Vytváříme váš účet…</string>
     <string name="auth_opening_preview">Otevírám ukázkový režim…</string>
     <string name="auth_preview_default_name">Ukázkový uživatel</string>
+    <string name="auth_forgot_password">Zapomenuté heslo?</string>
+    <string name="auth_sending_reset_link">Posíláme odkaz pro obnovení hesla…</string>
+    <string name="auth_password_reset_sent">Pokud k adrese %1$s existuje účet, poslali jsme na ni odkaz pro obnovení hesla. Když nedorazí, podívejte se do složky se spamem.</string>
     <string name="auth_validation_email_required">E-mail je povinný.</string>
     <string name="auth_validation_password_required">Heslo je povinné.</string>
     <string name="auth_validation_display_name_required">Zobrazované jméno je povinné.</string>
