@@ -3,6 +3,7 @@ package cz.dcervenka.choretracker.core.domain
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
+import cz.dcervenka.choretracker.core.model.chore.ChoreSchedule
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
@@ -330,9 +331,9 @@ class HouseholdStatisticsCalculatorTest {
 
         val staleness = dashboard.staleChores.associateBy { it.choreName }
         assertThat(staleness["Laundry"]?.status).isEqualTo(ChoreStatus.SOON)
-        assertThat(staleness["Laundry"]?.frequencyDays).isEqualTo(3)
+        assertThat(staleness["Laundry"]?.schedule).isEqualTo(ChoreSchedule.EveryDays(3))
         assertThat(staleness["Oven"]?.status).isEqualTo(ChoreStatus.OK)
-        assertThat(staleness["Oven"]?.frequencyDays).isEqualTo(60)
+        assertThat(staleness["Oven"]?.schedule).isEqualTo(ChoreSchedule.EveryDays(60))
 
         // laundry last done 2 days ago, frequency 3 days → overdue test: 4 days ago
         val overdueCompletions = listOf(

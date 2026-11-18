@@ -6,6 +6,7 @@ import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.DayOfWeek
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -97,14 +98,24 @@ class ChoreDaoTest {
     }
 
     @Test
-    fun `updateFrequencyDays can set a value and clear it back to null`() = runTest {
+    fun `updateSchedule stores weekdays and a month day and can clear them`() = runTest {
         dao.upsert(choreEntity("chore-1", frequencyDays = 7))
 
-        dao.updateFrequencyDays("chore-1", 14)
-        assertThat(dao.getChore("chore-1")?.frequencyDays).isEqualTo(14)
+        dao.updateSchedule("chore-1", 4, setOf(DayOfWeek.TUESDAY, DayOfWeek.SUNDAY), null)
+        val weekly = dao.getChore("chore-1")
+        assertThat(weekly?.frequencyDays).isEqualTo(4)
+        assertThat(weekly?.scheduleWeekdays).containsExactly(DayOfWeek.TUESDAY, DayOfWeek.SUNDAY)
+        assertThat(weekly?.scheduleMonthDay).isNull()
 
-        dao.updateFrequencyDays("chore-1", null)
-        assertThat(dao.getChore("chore-1")?.frequencyDays).isNull()
+        dao.updateSchedule("chore-1", 30, emptySet(), 31)
+        val monthly = dao.getChore("chore-1")
+        assertThat(monthly?.scheduleWeekdays).isEmpty()
+        assertThat(monthly?.scheduleMonthDay).isEqualTo(31)
+
+        dao.updateSchedule("chore-1", null, emptySet(), null)
+        val cleared = dao.getChore("chore-1")
+        assertThat(cleared?.frequencyDays).isNull()
+        assertThat(cleared?.scheduleMonthDay).isNull()
     }
 
     @Test

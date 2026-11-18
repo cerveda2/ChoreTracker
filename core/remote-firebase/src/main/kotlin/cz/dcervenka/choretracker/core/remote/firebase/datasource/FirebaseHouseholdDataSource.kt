@@ -35,6 +35,8 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withTimeout
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.isoDayNumber
 import timber.log.Timber
 import java.io.IOException
 import javax.inject.Inject
@@ -385,6 +387,8 @@ class FirebaseHouseholdDataSource @Inject constructor(
             chore.createdByUserId?.let { put("createdByUserId", it) }
             put("rotationMemberIds", chore.rotationMemberIds)
             put("rotationStartedAt", chore.rotationStartedAt?.asTimestamp())
+            put("scheduleWeekdays", chore.scheduleWeekdays.map { it.isoDayNumber }.sorted())
+            put("scheduleMonthDay", chore.scheduleMonthDay)
         }
         awaitTask(
             db.collection(HOUSEHOLDS_COLLECTION).document(chore.householdId)
@@ -854,6 +858,11 @@ class FirebaseHouseholdDataSource @Inject constructor(
             .let { value -> (value as? List<*>)?.mapNotNull { it as? String } }
             .orEmpty(),
         rotationStartedAt = getTimestamp("rotationStartedAt")?.asInstant(),
+        scheduleWeekdays = get("scheduleWeekdays")
+            .let { value -> (value as? List<*>)?.mapNotNull { (it as? Long)?.toInt()?.takeIf { day -> day in 1..7 } } }
+            .orEmpty()
+            .mapTo(mutableSetOf()) { DayOfWeek(it) },
+        scheduleMonthDay = getLong("scheduleMonthDay")?.toInt(),
     )
 
     private fun DocumentSnapshot.asCompletion(householdId: String): ChoreCompletion = ChoreCompletion(

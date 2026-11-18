@@ -25,6 +25,7 @@ import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
 import io.mockk.just
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.DayOfWeek
 import org.junit.Before
 import org.junit.Test
 import kotlin.time.Instant
@@ -341,6 +342,17 @@ class RealtimeSyncApplierTest {
         applier.applyChores(listOf(chore))
 
         coVerify { choreDao.upsert(match { it.id == chore.id && it.name == chore.name }) }
+    }
+
+    @Test
+    fun `applyChores keeps a chore's calendar schedule`() = runTest {
+        val chore = sampleChore().copy(frequencyDays = 4, scheduleWeekdays = setOf(DayOfWeek.TUESDAY, DayOfWeek.FRIDAY))
+        val monthly = sampleChore().copy(id = "chore-2", frequencyDays = 30, scheduleMonthDay = 31)
+
+        applier.applyChores(listOf(chore, monthly))
+
+        coVerify { choreDao.upsert(match { it.id == chore.id && it.scheduleWeekdays == chore.scheduleWeekdays }) }
+        coVerify { choreDao.upsert(match { it.id == "chore-2" && it.scheduleMonthDay == 31 }) }
     }
 
     @Test

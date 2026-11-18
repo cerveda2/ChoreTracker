@@ -541,7 +541,7 @@ class DashboardViewModelTest {
                     choreName = "Kitchen",
                     lastCompletedDate = null,
                     daysSinceLastCompletion = null,
-                    frequencyDays = null,
+                    schedule = null,
                     status = ChoreStatus.NEVER,
                     turn = ChoreTurn(memberId = "member-2", memberName = "Alex", isCurrentUser = false),
                 ),

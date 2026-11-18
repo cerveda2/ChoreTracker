@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.datetime.DayOfWeek
 import kotlin.time.Instant
 
 @Dao
@@ -46,13 +47,6 @@ interface ChoreDao {
 
     @Query(
         "UPDATE chores " +
-            "SET frequencyDays = :frequencyDays " +
-            "WHERE id = :choreId",
-    )
-    suspend fun updateFrequencyDays(choreId: String, frequencyDays: Int?)
-
-    @Query(
-        "UPDATE chores " +
             "SET category = :category " +
             "WHERE id = :choreId",
     )
@@ -62,5 +56,13 @@ interface ChoreDao {
     @Transaction
     suspend fun updateRotation(choreId: String, memberIds: List<String>, startedAt: Instant?) {
         getChore(choreId)?.let { upsert(it.copy(rotationMemberIds = memberIds, rotationStartedAt = startedAt)) }
+    }
+
+    // Read-modify-write for the same reason, with a Set parameter.
+    @Transaction
+    suspend fun updateSchedule(choreId: String, frequencyDays: Int?, weekdays: Set<DayOfWeek>, monthDay: Int?) {
+        getChore(choreId)?.let {
+            upsert(it.copy(frequencyDays = frequencyDays, scheduleWeekdays = weekdays, scheduleMonthDay = monthDay))
+        }
     }
 }

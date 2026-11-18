@@ -61,6 +61,7 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.functions)
     implementation(libs.timber)
+    implementation(libs.kotlinx.datetime)
 
     testImplementation(libs.junit4)
     testImplementation(libs.google.truth)

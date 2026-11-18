@@ -329,25 +329,24 @@ class HouseholdStatisticsCalculator @Inject constructor() {
                     .maxByOrNull(ChoreCompletion::createdAt)
                 val lastCompletionDate = lastCompletion?.createdAt?.toLocalDateTime(timeZone)?.date
                 val daysSinceLastCompletion = lastCompletionDate?.daysUntil(today)
-                val frequencyDays = chore.frequencyDays
+                val schedule = chore.schedule
+                val period = lastCompletionDate?.let { schedule?.periodFor(it) }
+                val periodDays = period?.let { it.start.daysUntil(it.due) }
                 ChoreStaleness(
                     choreId = chore.id,
                     choreName = chore.name,
                     lastCompletedDate = lastCompletionDate,
                     daysSinceLastCompletion = daysSinceLastCompletion,
-                    frequencyDays = frequencyDays,
+                    schedule = schedule,
                     status = computeStatus(
-                        daysSinceLastCompletion = daysSinceLastCompletion,
-                        frequencyDays = frequencyDays,
+                        daysSinceLastCompletion = period?.start?.daysUntil(today) ?: daysSinceLastCompletion,
+                        frequencyDays = periodDays,
                     ),
                     lastCompletedByNames = lastCompletion?.participantMemberIds
                         ?.mapNotNull { memberId -> memberMap[memberId]?.displayName }
                         .orEmpty(),
-                    dueInDays = if (frequencyDays != null && daysSinceLastCompletion != null) {
-                        frequencyDays - daysSinceLastCompletion
-                    } else {
-                        null
-                    },
+                    dueInDays = period?.let { today.daysUntil(it.due) },
+                    periodDays = periodDays,
                     turn = computeTurn(chore, completions, memberMap),
                 )
             }

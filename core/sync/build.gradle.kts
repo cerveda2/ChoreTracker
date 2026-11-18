@@ -16,6 +16,7 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.room.runtime)
     implementation(libs.timber)
+    implementation(libs.kotlinx.datetime)
 
     testImplementation(projects.core.test)
     testImplementation(libs.junit4)

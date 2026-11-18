@@ -38,7 +38,7 @@ private fun staleness(choreId: String, status: ChoreStatus) = ChoreStaleness(
     choreName = choreId,
     lastCompletedDate = null,
     daysSinceLastCompletion = null,
-    frequencyDays = null,
+    schedule = null,
     status = status,
 )
 
