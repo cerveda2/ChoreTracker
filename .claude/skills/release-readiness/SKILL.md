@@ -32,7 +32,7 @@ Items needed before (and for) Google Play publication. Some are useful well befo
 
 ### Phase 4 — Post-Launch Polish
 
-1. **In-app update (Play Core)** — Prompt users to update when new version available. `com.google.android.play:app-update`.
+1. ~~**In-app update (Play Core)**~~ — Done. `core/updates` offers Google Play flexible updates in release builds, on main tabs after the notification permission prompt settles. One offer per available version per app session (saved across activity recreation); declining or cancelling leaves the app usable. Downloads run in the background, and an EN/CS snackbar offers an optional restart once ready, including after returning to the app. Install failures can be retried. Fourteen Robolectric tests use Google's `FakeAppUpdateManager`. End-to-end Play delivery still needs the [release-time smoke test](../../../docs/IN_APP_UPDATES.md#play-smoke-test).
 2. **Firebase Performance Monitoring** — Track screen load times, network latency, slow frames. Useful once real users exist.
 3. **Remote Config** — Feature flags for gradual rollouts. Useful at scale.
 4. **ANR & vitals monitoring** — Play Console vitals + Crashlytics ANR tracking. Comes mostly free with Crashlytics.
