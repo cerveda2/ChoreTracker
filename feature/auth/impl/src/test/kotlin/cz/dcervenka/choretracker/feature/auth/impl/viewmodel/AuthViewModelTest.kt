@@ -7,6 +7,7 @@ import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.domain.usecase.ClearPreviewModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ContinueInPreviewModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SendPasswordResetEmailUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignInUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignUpUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
@@ -48,6 +49,9 @@ class AuthViewModelTest {
     lateinit var signUpUseCase: SignUpUseCase
 
     @MockK
+    lateinit var sendPasswordResetEmailUseCase: SendPasswordResetEmailUseCase
+
+    @MockK
     lateinit var continueInPreviewModeUseCase: ContinueInPreviewModeUseCase
 
     @MockK
@@ -64,7 +68,9 @@ class AuthViewModelTest {
         every { application.getString(R.string.auth_creating_account) } returns "Creating account"
         every { application.getString(R.string.auth_opening_preview) } returns "Opening preview"
         every { application.getString(R.string.auth_preview_default_name) } returns "Preview User"
+        every { application.getString(R.string.auth_sending_reset_link) } returns "Sending reset link"
         coEvery { signInUseCase(any(), any()) } returns AppResult.Success(Unit)
+        coEvery { sendPasswordResetEmailUseCase(any()) } returns AppResult.Success(Unit)
         coEvery { signUpUseCase(any(), any(), any()) } returns AppResult.Success(Unit)
         coEvery { continueInPreviewModeUseCase(any()) } returns AppResult.Success(Unit)
         every { clearPreviewModeUseCase() } returns Unit
@@ -149,6 +155,58 @@ class AuthViewModelTest {
     }
 
     @Test
+    fun `forgot password sends a reset link to the entered email and says so`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+
+        viewModel.dispatch(AuthUiIntent.EmailChanged("dana@example.com"))
+        viewModel.dispatch(AuthUiIntent.ForgotPasswordClicked)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { sendPasswordResetEmailUseCase("dana@example.com") }
+        assertThat(viewModel.uiState.value.passwordResetSentTo).isEqualTo("dana@example.com")
+        assertThat(viewModel.uiState.value.isWorking).isFalse()
+
+        viewModel.dispatch(AuthUiIntent.EmailChanged("dana@example.cz"))
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.passwordResetSentTo).isNull()
+    }
+
+    @Test
+    fun `forgot password without an email asks for one instead of sending`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+
+        viewModel.dispatch(AuthUiIntent.ForgotPasswordClicked)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.error).isEqualTo(AppError.EMAIL_REQUIRED)
+        assertThat(viewModel.uiState.value.passwordResetSentTo).isNull()
+        coVerify(exactly = 0) { sendPasswordResetEmailUseCase(any()) }
+    }
+
+    @Test
+    fun `forgot password failure shows the error and no confirmation`() = runTest(coroutineRule.dispatcher) {
+        coEvery { sendPasswordResetEmailUseCase(any()) } returns AppResult.Error(AppError.NETWORK)
+        val viewModel = createViewModel()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect {}
+        }
+
+        viewModel.dispatch(AuthUiIntent.EmailChanged("dana@example.com"))
+        viewModel.dispatch(AuthUiIntent.ForgotPasswordClicked)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.error).isEqualTo(AppError.NETWORK)
+        assertThat(viewModel.uiState.value.passwordResetSentTo).isNull()
+    }
+
+    @Test
     fun `requires configuration mirrors auth state`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -192,6 +250,7 @@ private fun AuthViewModelTest.createViewModel() = AuthViewModel(
     observeAuthStateUseCase = observeAuthStateUseCase,
     signInUseCase = signInUseCase,
     signUpUseCase = signUpUseCase,
+    sendPasswordResetEmailUseCase = sendPasswordResetEmailUseCase,
     continueInPreviewModeUseCase = continueInPreviewModeUseCase,
     clearPreviewModeUseCase = clearPreviewModeUseCase,
 )
