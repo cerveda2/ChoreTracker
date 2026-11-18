@@ -13,7 +13,9 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
@@ -68,6 +70,18 @@ class RefreshHouseholdUseCaseTest {
 
         coVerify(exactly = 0) { syncRepository.restoreHouseholdForUser(any()) }
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
+    }
+
+    @Test
+    fun `waits for the session to be restored before deciding whether to pull`() = runTest {
+        authStateFlow.value = AuthState.Initializing
+
+        val result = async { useCase() }
+        runCurrent()
+        authStateFlow.value = sampleAuthenticatedState()
+
+        assertThat(result.await()).isInstanceOf(AppResult.Success::class.java)
+        coVerify(exactly = 1) { syncRepository.restoreHouseholdForUser("user-1") }
     }
 
     @Test

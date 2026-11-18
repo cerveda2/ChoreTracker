@@ -207,6 +207,23 @@ class LocalSyncRepositoryTest {
     }
 
     @Test
+    fun `syncPendingOperations waits for the session to be restored instead of skipping`() =
+        runTest(coroutineRule.dispatcher) {
+            val signedIn = authState.value
+            authState.value = AuthState.Initializing
+
+            val resultDeferred = async { repository.syncPendingOperations() }
+            advanceUntilIdle()
+            assertThat(resultDeferred.isCompleted).isFalse()
+
+            authState.value = signedIn
+            advanceUntilIdle()
+
+            assertThat(resultDeferred.await()).isInstanceOf(AppResult.Success::class.java)
+            coVerify(exactly = 1) { pendingSyncOperationDao.getAll() }
+        }
+
+    @Test
     fun `syncPendingOperations returns Success when no pending operations`() = runTest(coroutineRule.dispatcher) {
         coEvery { pendingSyncOperationDao.getAll() } returns emptyList()
 
