@@ -49,6 +49,7 @@ android {
 }
 
 dependencies {
+    implementation(projects.core.common)
     implementation(projects.core.design)
     implementation(projects.core.data)
     implementation(projects.core.dataContract)
@@ -58,6 +59,7 @@ dependencies {
     implementation(projects.core.sync)
     implementation(projects.core.notifications)
     implementation(projects.core.reminders)
+    implementation(projects.core.performance)
     implementation(projects.feature.auth.impl)
     implementation(projects.feature.onboarding.impl)
     implementation(projects.feature.dashboard.impl)
@@ -75,7 +77,6 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
     implementation(libs.timber)
-    testImplementation(projects.core.common)
     testImplementation(projects.core.test)
     testImplementation(libs.junit4)
     testImplementation(libs.google.truth)

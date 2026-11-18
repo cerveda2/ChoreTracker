@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import cz.dcervenka.choretracker.core.common.performance.PerformanceTraceName
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreChip
@@ -46,6 +47,7 @@ import cz.dcervenka.choretracker.core.design.components.LogCompletionSheet
 import cz.dcervenka.choretracker.core.design.components.OutOfTurnDialog
 import cz.dcervenka.choretracker.core.design.components.SectionHeader
 import cz.dcervenka.choretracker.core.design.components.TopLevelBottomBarSpacer
+import cz.dcervenka.choretracker.core.design.performance.TrackScreenLoad
 import cz.dcervenka.choretracker.core.design.rememberSaveableStringList
 import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.model.chore.Chore
@@ -66,6 +68,7 @@ fun ChoresScreen(
     events: Flow<ChoresUiEvent>,
 ) {
     val spacing = LocalSpacing.current
+    TrackScreenLoad(PerformanceTraceName.CHORES_LOAD, isLoading = uiState.householdId == null)
     val snackbarHostState = remember { SnackbarHostState() }
     val undoLabel = stringResource(R.string.common_undo)
     val loggedMessage = stringResource(R.string.dashboard_logged_snackbar)

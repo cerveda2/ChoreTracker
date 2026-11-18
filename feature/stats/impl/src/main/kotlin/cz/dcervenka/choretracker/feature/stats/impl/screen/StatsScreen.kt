@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import cz.dcervenka.choretracker.core.common.performance.PerformanceTraceName
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.PreviewData
@@ -25,6 +26,7 @@ import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.ChoreTopAppBar
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.components.TopLevelBottomBarSpacer
+import cz.dcervenka.choretracker.core.design.performance.TrackScreenLoad
 import cz.dcervenka.choretracker.core.model.stats.StatsPeriod
 import cz.dcervenka.choretracker.feature.stats.impl.contract.StatsUiIntent
 import cz.dcervenka.choretracker.feature.stats.impl.contract.StatsUiState
@@ -37,6 +39,7 @@ fun StatsScreen(
 ) {
     val spacing = LocalSpacing.current
     val stats = uiState.snapshot
+    TrackScreenLoad(PerformanceTraceName.INSIGHTS_LOAD, isLoading = stats == null)
 
     ChoreScaffold(
         topBar = {
