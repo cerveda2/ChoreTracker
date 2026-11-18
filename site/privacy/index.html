@@ -21,7 +21,7 @@
     </header>
 
     <h1>Privacy policy</h1>
-    <p class="meta">Effective 13 November 2026</p>
+    <p class="meta">Effective 18 November 2026</p>
 
     <p>This policy explains what the Chore Tracker Android app ("the app") collects, why, and who can see it. Chore Tracker is a personal project by David Cervenka, Prague, Czech Republic, who is responsible for the data described here. Questions or requests: <a href="mailto:dadacervenka@gmail.com">dadacervenka@gmail.com</a>.</p>
 
@@ -31,6 +31,7 @@
       <li><strong>Your household's data.</strong> What you and the other members create: the household name, members (display name, email address, role), chores (name, category, how often), completions (who did what and when, plus an optional note), invite codes and chore requests (sender, recipient, requested chores, optional note and status). This is what the app syncs between the devices of your household.</li>
       <li><strong>A push notification token and notification preferences</strong> for your device, to notify an invite's creator when someone joins and to notify a household member when someone asks them to do chores. The owner receives invite notifications if the creator is no longer eligible or an older invite has no creator recorded.</li>
       <li><strong>Crash reports</strong> (Firebase Crashlytics): device model, Android version, app version, technical details of the crash and an installation identifier, so bugs can be found and fixed.</li>
+      <li><strong>Performance diagnostics</strong> (Firebase Performance Monitoring): startup and screen-load timings, rendering and network performance, device and app details, and installation and session identifiers, to find slow parts of the app. Fixed screen and operation names identify the timings; we do not attach household names, email addresses, chore content, invite codes or notes. Google also uses IP addresses to group performance events by country; the app does not request GPS location.</li>
       <li><strong>The camera</strong>, only while you scan an invite QR code. The image is processed on your device and is never stored or uploaded.</li>
       <li><strong>On your device</strong>, the app keeps an offline copy of your household's data and your settings (theme, language, reminder time). Uninstalling the app removes them.</li>
     </ul>
@@ -42,16 +43,17 @@
 
     <h2>Who can see your data</h2>
     <p>The members of your household can see the household's data, including your display name, email address and the completions you log. Nobody outside your household can read it; this is enforced by the database's security rules. If you leave a household or are removed from it, your email address is removed from that household; your display name stays so its history still shows who did what.</p>
-    <p>The app shows no ads, and your data is never sold or shared with anyone else. It is stored and processed by Google as our service provider through Firebase (Authentication, Cloud Firestore, Cloud Functions, Cloud Messaging and Crashlytics). Household data in Cloud Firestore and the app's Cloud Functions run in the European Union. Some Firebase services may process data outside the EU under Google's data protection terms. See <a href="https://firebase.google.com/support/privacy">Privacy and Security in Firebase</a>.</p>
+    <p>The app shows no ads, and your data is never sold or shared with anyone else. It is stored and processed by Google as our service provider through Firebase (Authentication, Cloud Firestore, Cloud Functions, Cloud Messaging, Crashlytics and Performance Monitoring). Household data in Cloud Firestore and the app's Cloud Functions run in the European Union. Some Firebase services may process data outside the EU under Google's data protection terms. See <a href="https://firebase.google.com/support/privacy">Privacy and Security in Firebase</a>.</p>
 
     <h2>Legal basis (GDPR)</h2>
     <ul>
       <li>Your account, your household's data and the push token: needed to provide the app you signed up for (performance of a contract).</li>
-      <li>Crash reports: our legitimate interest in keeping the app working.</li>
+      <li>Crash reports and performance diagnostics: our legitimate interest in keeping the app working and responsive.</li>
     </ul>
 
     <h2>How long data is kept</h2>
     <p>Your account and user record are kept until you delete your account. If other members remain in your household, its shared history stays available to them, including chore requests and their notes. If you are its only linked member, deleting your account also deletes the household and its data. See the <a href="../delete-account/">account deletion page</a> for details. Crash reports are kept by Crashlytics for 90 days.</p>
+    <p>Firebase Performance Monitoring retains IP-associated events for 30 days and installation-associated and de-identified performance data for 60 days before beginning removal from its systems.</p>
 
     <h2>Your rights</h2>
     <p>You can access, correct, export or delete your personal data, and object to its processing. You can change your display name and delete your account directly in the app; for anything else, email <a href="mailto:dadacervenka@gmail.com">dadacervenka@gmail.com</a>. You also have the right to lodge a complaint with a data protection authority, in the Czech Republic the <a href="https://uoou.gov.cz">Úřad pro ochranu osobních údajů</a>.</p>
