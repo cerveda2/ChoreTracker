@@ -83,6 +83,8 @@ class ChoreTrackerDatabaseMigrationTest {
         assertThat(legacyChore?.createdByUserId).isNull()
         assertThat(legacyChore?.rotationMemberIds).isEmpty()
         assertThat(legacyChore?.rotationStartedAt).isNull()
+        assertThat(legacyChore?.scheduleWeekdays).isEmpty()
+        assertThat(legacyChore?.scheduleMonthDay).isNull()
         assertThat(requests).isEmpty()
     }
 }

@@ -2,6 +2,7 @@ package cz.dcervenka.choretracker.core.design
 
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.chore.ChoreSchedule
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
@@ -128,7 +129,7 @@ object PreviewData {
                 choreName = "Laundry",
                 lastCompletedDate = LocalDate.parse("2026-03-22"),
                 daysSinceLastCompletion = 7,
-                frequencyDays = 3,
+                schedule = ChoreSchedule.EveryDays(3),
                 status = ChoreStatus.SOON,
                 lastCompletedByNames = listOf("Alex"),
                 dueInDays = -4,
@@ -138,7 +139,7 @@ object PreviewData {
                 choreName = "Plants",
                 lastCompletedDate = LocalDate.parse("2026-03-10"),
                 daysSinceLastCompletion = 19,
-                frequencyDays = 10,
+                schedule = ChoreSchedule.EveryDays(10),
                 status = ChoreStatus.NEEDS_ATTENTION,
                 lastCompletedByNames = listOf("Dana"),
                 dueInDays = -9,

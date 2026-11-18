@@ -4,6 +4,7 @@ import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.chore.ChoreSchedule
 import kotlinx.coroutines.flow.Flow
 
 interface ChoreRepository {
@@ -15,7 +16,7 @@ interface ChoreRepository {
         householdId: String,
         name: String,
         category: ChoreCategory,
-        frequencyDays: Int? = null,
+        schedule: ChoreSchedule? = null,
         rotationMemberIds: List<String> = emptyList(),
     ): AppResult<String>
 
@@ -25,7 +26,7 @@ interface ChoreRepository {
 
     suspend fun updateChoreName(choreId: String, name: String): EmptyResult
 
-    suspend fun updateChoreFrequencyDays(choreId: String, frequencyDays: Int?): EmptyResult
+    suspend fun updateChoreSchedule(choreId: String, schedule: ChoreSchedule?): EmptyResult
 
     suspend fun updateChoreCategory(choreId: String, category: ChoreCategory): EmptyResult
 

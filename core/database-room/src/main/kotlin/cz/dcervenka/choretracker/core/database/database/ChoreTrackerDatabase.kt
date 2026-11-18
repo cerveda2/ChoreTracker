@@ -37,7 +37,7 @@ import kotlinx.coroutines.withContext
         SyncStateEntity::class,
         ChoreRequestEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = true,
 )
 @TypeConverters(InstantConverters::class)

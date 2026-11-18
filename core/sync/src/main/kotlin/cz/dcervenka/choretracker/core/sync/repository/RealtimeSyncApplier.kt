@@ -194,6 +194,8 @@ internal class RealtimeSyncApplier(
                     createdByUserId = chore.createdByUserId,
                     rotationMemberIds = chore.rotationMemberIds,
                     rotationStartedAt = chore.rotationStartedAt,
+                    scheduleWeekdays = chore.scheduleWeekdays,
+                    scheduleMonthDay = chore.scheduleMonthDay,
                 ),
             )
         }

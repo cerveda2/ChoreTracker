@@ -5,6 +5,8 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import cz.dcervenka.choretracker.core.database.converter.StringListConverters
+import cz.dcervenka.choretracker.core.database.converter.WeekdaySetConverters
+import kotlinx.datetime.DayOfWeek
 import kotlin.time.Instant
 
 @Entity(tableName = "chores")
@@ -22,4 +24,8 @@ data class ChoreEntity(
     @field:TypeConverters(StringListConverters::class)
     val rotationMemberIds: List<String> = emptyList(),
     val rotationStartedAt: Instant? = null,
+    @ColumnInfo(defaultValue = "0")
+    @field:TypeConverters(WeekdaySetConverters::class)
+    val scheduleWeekdays: Set<DayOfWeek> = emptySet(),
+    val scheduleMonthDay: Int? = null,
 )

@@ -18,11 +18,12 @@ import cz.dcervenka.choretracker.core.domain.usecase.SendChoreRequestsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetChoreReminderMutedUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreCategoryUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreRotationUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreScheduleUseCase
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.chore.ChoreSchedule
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
@@ -84,7 +85,7 @@ class ChoresViewModelTest {
     lateinit var updateChoreCategoryUseCase: UpdateChoreCategoryUseCase
 
     @MockK
-    lateinit var updateChoreFrequencyUseCase: UpdateChoreFrequencyUseCase
+    lateinit var updateChoreScheduleUseCase: UpdateChoreScheduleUseCase
 
     @MockK
     lateinit var updateChoreActiveUseCase: UpdateChoreActiveUseCase
@@ -135,7 +136,7 @@ class ChoresViewModelTest {
         coEvery { addChoreUseCase(any(), any(), any(), any()) } returns AppResult.Success("chore-1")
         coEvery { updateChoreNameUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreCategoryUseCase(any(), any()) } returns AppResult.Success(Unit)
-        coEvery { updateChoreFrequencyUseCase(any(), any()) } returns AppResult.Success(Unit)
+        coEvery { updateChoreScheduleUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreActiveUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreRotationUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { deleteChoreUseCase(any()) } returns AppResult.Success(Unit)
@@ -200,7 +201,7 @@ class ChoresViewModelTest {
             )
             advanceUntilIdle()
 
-            coVerify { addChoreUseCase("household-1", "Vacuum", ChoreCategory.CLEANING, 7) }
+            coVerify { addChoreUseCase("household-1", "Vacuum", ChoreCategory.CLEANING, ChoreSchedule.EveryDays(7)) }
             coVerify(exactly = 0) { setChoreReminderMutedUseCase(any(), any()) }
             assertThat(awaitItem()).isEqualTo(ChoresUiEvent.ChoreAdded)
         }
@@ -270,7 +271,7 @@ class ChoresViewModelTest {
 
         coVerify { updateChoreNameUseCase("chore-1", "Kitchen deep clean") }
         coVerify(exactly = 0) { updateChoreCategoryUseCase(any(), any()) }
-        coVerify(exactly = 0) { updateChoreFrequencyUseCase(any(), any()) }
+        coVerify(exactly = 0) { updateChoreScheduleUseCase(any(), any()) }
         coVerify(exactly = 0) { updateChoreActiveUseCase(any(), any()) }
         coVerify(exactly = 0) { updateChoreRotationUseCase(any(), any()) }
         stateJob.cancel()
@@ -426,7 +427,7 @@ private fun ChoresViewModelTest.createViewModel() = ChoresViewModel(
     addChoreUseCase,
     updateChoreNameUseCase,
     updateChoreCategoryUseCase,
-    updateChoreFrequencyUseCase,
+    updateChoreScheduleUseCase,
     updateChoreActiveUseCase,
     updateChoreRotationUseCase,
     deleteChoreUseCase,
