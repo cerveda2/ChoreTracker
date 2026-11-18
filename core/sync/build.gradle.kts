@@ -14,6 +14,8 @@ dependencies {
     implementation(projects.core.model)
     implementation(projects.core.remoteContract)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
     implementation(libs.room.runtime)
     implementation(libs.timber)
 
@@ -22,4 +24,7 @@ dependencies {
     testImplementation(libs.google.truth)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.work.testing)
+    testImplementation(libs.androidx.test.ext.junit)
 }
