@@ -159,7 +159,9 @@ class LocalSyncRepository @Inject constructor(
     }.await()
 
     private suspend fun pushPendingOperations(): EmptyResult {
-        val authenticatedUser = (authRepository.authState.first() as? AuthState.Authenticated)?.user
+        // Initializing until Firebase restores the session, e.g. in a process WorkManager just started.
+        val authState = authRepository.authState.first { it !is AuthState.Initializing }
+        val authenticatedUser = (authState as? AuthState.Authenticated)?.user
         val shouldSkipSync = authenticatedUser == null || authenticatedUser.isPreview
         if (shouldSkipSync) {
             return AppResult.Success(Unit)
