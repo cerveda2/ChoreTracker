@@ -195,7 +195,7 @@ class ChoresViewModelTest {
                     householdId = "household-1",
                     name = "Vacuum",
                     category = ChoreCategory.CLEANING,
-                    frequencyDays = 7,
+                    schedule = ChoreSchedule.EveryDays(7),
                     reminderEnabled = true,
                 ),
             )
@@ -217,7 +217,7 @@ class ChoresViewModelTest {
                     householdId = "household-1",
                     name = "Vacuum",
                     category = ChoreCategory.CLEANING,
-                    frequencyDays = 7,
+                    schedule = ChoreSchedule.EveryDays(7),
                     reminderEnabled = false,
                 ),
             )
@@ -239,7 +239,7 @@ class ChoresViewModelTest {
                     householdId = "household-1",
                     name = "Vacuum",
                     category = ChoreCategory.CLEANING,
-                    frequencyDays = -1,
+                    schedule = ChoreSchedule.EveryDays(-1),
                     reminderEnabled = false,
                 ),
             )
@@ -263,7 +263,7 @@ class ChoresViewModelTest {
                 choreId = "chore-1",
                 name = "Kitchen deep clean",
                 category = sampleChore().category,
-                frequencyDays = sampleChore().frequencyDays,
+                schedule = sampleChore().schedule,
                 isActive = sampleChore().isActive,
             ),
         )
@@ -289,7 +289,7 @@ class ChoresViewModelTest {
                 choreId = "chore-1",
                 name = sampleChore().name,
                 category = sampleChore().category,
-                frequencyDays = sampleChore().frequencyDays,
+                schedule = sampleChore().schedule,
                 isActive = sampleChore().isActive,
                 rotationMemberIds = rotation,
             ),

@@ -21,10 +21,10 @@ import cz.dcervenka.choretracker.core.design.components.DoneButton
 import cz.dcervenka.choretracker.core.design.components.IconCircle
 import cz.dcervenka.choretracker.core.design.components.ListGroup
 import cz.dcervenka.choretracker.core.design.components.SectionHeader
+import cz.dcervenka.choretracker.core.design.components.choreScheduleLabel
 import cz.dcervenka.choretracker.core.design.components.choreTurnLabel
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
-import cz.dcervenka.choretracker.core.model.chore.ChoreSchedule
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.feature.dashboard.impl.contract.Nudge
 
@@ -80,9 +80,7 @@ private fun overdueSubtitle(stale: ChoreStaleness): String {
     val sinceLast = stale.daysSinceLastCompletion?.let { days ->
         pluralStringResource(R.plurals.dashboard_days_since_last, days, days)
     }
-    val frequency = (stale.schedule as? ChoreSchedule.EveryDays)?.days?.let { days ->
-        pluralStringResource(R.plurals.log_sheet_meta_frequency, days, days)
-    }
+    val frequency = stale.schedule?.let { choreScheduleLabel(it) }
     val turn = stale.turn?.let { choreTurnLabel(it) }
     return listOfNotNull(turn, sinceLast, frequency).joinToString(" · ")
 }

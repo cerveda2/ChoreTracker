@@ -6,24 +6,24 @@ import org.junit.Test
 class ChoreRowTest {
 
     @Test
-    fun `freshnessFraction is null without a frequency`() {
-        assertThat(freshnessFraction(daysSince = 10, frequencyDays = null)).isNull()
+    fun `freshnessFraction is null without a schedule`() {
+        assertThat(freshnessFraction(periodDays = null, dueInDays = null)).isNull()
     }
 
     @Test
     fun `freshnessFraction is null without a last completion`() {
-        assertThat(freshnessFraction(daysSince = null, frequencyDays = 7)).isNull()
+        assertThat(freshnessFraction(periodDays = 7, dueInDays = null)).isNull()
     }
 
     @Test
-    fun `freshnessFraction is null for a non-positive frequency`() {
-        assertThat(freshnessFraction(daysSince = 5, frequencyDays = 0)).isNull()
+    fun `freshnessFraction is null for a non-positive period`() {
+        assertThat(freshnessFraction(periodDays = 0, dueInDays = -5)).isNull()
     }
 
     @Test
-    fun `freshnessFraction divides days since by the frequency`() {
-        assertThat(freshnessFraction(daysSince = 3, frequencyDays = 6)).isEqualTo(0.5f)
-        assertThat(freshnessFraction(daysSince = 6, frequencyDays = 6)).isEqualTo(1f)
-        assertThat(freshnessFraction(daysSince = 12, frequencyDays = 6)).isEqualTo(2f)
+    fun `freshnessFraction is the share of the period that has passed`() {
+        assertThat(freshnessFraction(periodDays = 6, dueInDays = 3)).isEqualTo(0.5f)
+        assertThat(freshnessFraction(periodDays = 6, dueInDays = 0)).isEqualTo(1f)
+        assertThat(freshnessFraction(periodDays = 6, dueInDays = -6)).isEqualTo(2f)
     }
 }

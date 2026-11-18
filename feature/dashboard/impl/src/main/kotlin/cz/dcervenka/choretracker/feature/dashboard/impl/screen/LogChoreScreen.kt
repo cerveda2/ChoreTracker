@@ -188,7 +188,7 @@ fun LogChoreScreen(
             LogCompletionSheet(
                 choreName = selectedChore.name,
                 category = selectedChore.category,
-                frequencyDays = selectedChore.frequencyDays,
+                schedule = selectedChore.schedule,
                 daysSinceLastCompletion = staleByChoreId[choreId]?.daysSinceLastCompletion,
                 members = uiState.members,
                 selectedMemberIds = selectedMembers,

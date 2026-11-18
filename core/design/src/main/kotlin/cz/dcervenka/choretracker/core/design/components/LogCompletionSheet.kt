@@ -48,6 +48,7 @@ import cz.dcervenka.choretracker.core.design.rememberSaveableInstant
 import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.formatters.formatInstantForLocale
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.chore.ChoreSchedule
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.TimeZone
@@ -70,7 +71,7 @@ fun LogCompletionSheet(
     modifier: Modifier = Modifier,
     editMode: Boolean = false,
     category: ChoreCategory? = null,
-    frequencyDays: Int? = null,
+    schedule: ChoreSchedule? = null,
     daysSinceLastCompletion: Int? = null,
 ) {
     val spacing = LocalSpacing.current
@@ -153,7 +154,7 @@ fun LogCompletionSheet(
                     Text(text = choreName, style = MaterialTheme.typography.headlineSmall)
                     val meta = choreMetaLine(
                         category = category,
-                        frequencyDays = frequencyDays,
+                        schedule = schedule,
                         daysSinceLastCompletion = daysSinceLastCompletion,
                     )
                     if (meta != null) {
@@ -280,14 +281,12 @@ fun LogCompletionSheet(
 @Composable
 private fun choreMetaLine(
     category: ChoreCategory?,
-    frequencyDays: Int?,
+    schedule: ChoreSchedule?,
     daysSinceLastCompletion: Int?,
 ): String? {
     if (category == null) return null
     val categoryLabel = stringResource(category.toStringRes())
-    val frequency = frequencyDays?.let { days ->
-        pluralStringResource(R.plurals.log_sheet_meta_frequency, days, days)
-    }
+    val frequency = schedule?.let { choreScheduleLabel(it) }
     val lastDone = daysSinceLastCompletion?.let { days ->
         pluralStringResource(R.plurals.log_sheet_meta_last_done, days, days)
     } ?: stringResource(R.string.log_sheet_meta_never_done)
@@ -302,7 +301,7 @@ private fun LogCompletionSheetPreview() {
         LogCompletionSheet(
             choreName = PreviewData.chores.first().name,
             category = PreviewData.chores.first().category,
-            frequencyDays = 6,
+            schedule = ChoreSchedule.EveryDays(6),
             daysSinceLastCompletion = 9,
             members = PreviewData.members,
             selectedMemberIds = selectedMemberIds,

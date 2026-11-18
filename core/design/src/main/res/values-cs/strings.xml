@@ -315,6 +315,12 @@
     <string name="chores_editor_frequency_weekly">Týdně</string>
     <string name="chores_editor_frequency_custom">Vlastní</string>
     <string name="chores_editor_frequency_custom_hint">Dny mezi splněními</string>
+    <string name="chores_editor_frequency_weekdays">Dny v týdnu</string>
+    <string name="chores_editor_frequency_month_day">Měsíčně</string>
+    <string name="chores_editor_frequency_month_day_hint">Den v měsíci (1–31)</string>
+    <string name="chores_editor_frequency_month_day_short_months">V kratších měsících poslední den</string>
+    <string name="schedule_weekdays">každý týden: %1$s</string>
+    <string name="schedule_month_day">každý měsíc %1$d.</string>
     <string name="chores_editor_add_action">Přidat úkol</string>
     <string name="chores_editor_reminder_label">Připomenout, až bude na řadě</string>
     <string name="chores_editor_reminder_description">Jen pro vás</string>
