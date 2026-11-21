@@ -324,13 +324,20 @@ class HouseholdStatisticsCalculator @Inject constructor() {
             .filter { it.isActive && it.deletedAt == null }
             .sortedBy(Chore::name)
             .map { chore ->
-                val lastCompletion = completions
-                    .filter { it.choreId == chore.id }
-                    .maxByOrNull(ChoreCompletion::createdAt)
+                val choreCompletions = completions.filter { it.choreId == chore.id }
+                val lastCompletion = choreCompletions.maxByOrNull(ChoreCompletion::createdAt)
                 val lastCompletionDate = lastCompletion?.createdAt?.toLocalDateTime(timeZone)?.date
                 val daysSinceLastCompletion = lastCompletionDate?.daysUntil(today)
                 val schedule = chore.schedule
-                val period = lastCompletionDate?.let { schedule?.periodFor(it) }
+                // Which day a completion counts for depends on the one before it, so the latest period folds them all.
+                val period = schedule?.let {
+                    choreCompletions.map { completion -> completion.createdAt.toLocalDateTime(timeZone).date }
+                        .distinct()
+                        .sorted()
+                        .fold(null as SchedulePeriod?) { previous, date ->
+                            schedule.periodFor(date, previous?.start)
+                        }
+                }
                 val periodDays = period?.let { it.start.daysUntil(it.due) }
                 ChoreStaleness(
                     choreId = chore.id,
