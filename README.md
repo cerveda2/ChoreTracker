@@ -37,7 +37,7 @@ ChoreTracker is an offline-first Android chore tracker for couples and housemate
 - Push notifications when someone accepts your invite or asks you to do chores. Each can be turned off.
 
 ### Accounts and sync
-- Firebase Auth with email and password. Without Firebase configuration, preview mode runs with local-only data.
+- Firebase Auth with email and password, and a reset link by email for a forgotten password. Without Firebase configuration, preview mode runs with local-only data.
 - Create a household, or join one with an invite code typed in or scanned as a QR code. Signing in restores your household from Firestore.
 - Room is the source of truth: changes queue locally and upload in the background, and Firestore listeners keep members, chores, completions, invites and requests live on every device.
 - A removed member's device drops the household's data on its next sync.
@@ -48,7 +48,7 @@ Clean Architecture with an MVI presentation layer (`UiState`/`UiIntent`/`UiEffec
 
 ```
 app                       Navigation root, bottom tabs (Home, Chores, Insights, Settings)
-├── feature/auth          Sign in, sign up, preview mode
+├── feature/auth          Sign in, sign up, password reset, preview mode
 ├── feature/onboarding    Create or join a household, QR code scanner
 ├── feature/dashboard     Home, logging, completion history, requests
 ├── feature/chores        Chore list, editor, turns, Ask sheet

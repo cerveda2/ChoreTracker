@@ -11,8 +11,10 @@ data class AuthUiState(
     val authMode: AuthMode = AuthMode.SIGN_IN,
     val requiresConfiguration: Boolean = false,
     val isWorking: Boolean = false,
+    val isSendingPasswordReset: Boolean = false,
     val workingMessage: String? = null,
     val error: AppError? = null,
+    val passwordResetSentTo: String? = null,
 ) : UiState
 
 enum class AuthMode {
@@ -26,6 +28,7 @@ sealed interface AuthUiIntent : UiIntent {
     data class EmailChanged(val value: String) : AuthUiIntent
     data class PasswordChanged(val value: String) : AuthUiIntent
     data object SignInClicked : AuthUiIntent
+    data class ForgotPasswordClicked(val languageCode: String) : AuthUiIntent
     data object SignUpClicked : AuthUiIntent
     data object ContinuePreviewClicked : AuthUiIntent
 }

@@ -8,6 +8,8 @@ import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.functions.FirebaseFunctionsException
+import cz.dcervenka.choretracker.core.common.AppResult
+import cz.dcervenka.choretracker.core.common.EmptyResult
 import cz.dcervenka.choretracker.core.model.error.AppError
 import java.io.IOException
 
@@ -41,3 +43,8 @@ internal fun Throwable.toAppError(): AppError = when (this) {
     }
     else -> AppError.UNKNOWN
 }
+
+// An unknown address only fails without email enumeration protection. Reported like a sent link, so the
+// screen never tells whether an address has an account.
+internal fun Throwable.toPasswordResetResult(): EmptyResult =
+    if (this is FirebaseAuthInvalidUserException) AppResult.Success(Unit) else AppResult.Error(toAppError(), this)

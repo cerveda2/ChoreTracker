@@ -138,6 +138,20 @@ class FirebaseAuthDataSource @Inject constructor(
         } ?: AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
     }
 
+    override suspend fun sendPasswordResetEmail(email: String, languageCode: String): EmptyResult {
+        Timber.d("sendPasswordResetEmail: email=$email languageCode=$languageCode")
+        val auth = firebaseAuth ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
+        auth.setLanguageCode(languageCode)
+        return suspendCancellableCoroutine { continuation ->
+            auth.sendPasswordResetEmail(email)
+                .addOnSuccessListener { continuation.resume(AppResult.Success(Unit)) }
+                .addOnFailureListener { throwable ->
+                    Timber.e(throwable, "sendPasswordResetEmail: failed")
+                    continuation.resume(throwable.toPasswordResetResult())
+                }
+        }
+    }
+
     override suspend fun updateDisplayName(displayName: String): EmptyResult {
         val sanitizedName = displayName.trim()
         val user = firebaseAuth?.currentUser
