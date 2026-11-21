@@ -11,7 +11,7 @@ interface AuthRepository {
 
     suspend fun signUp(email: String, password: String, displayName: String): EmptyResult
 
-    suspend fun sendPasswordResetEmail(email: String): EmptyResult
+    suspend fun sendPasswordResetEmail(email: String, languageCode: String): EmptyResult
 
     suspend fun continueInPreviewMode(displayName: String): EmptyResult
 

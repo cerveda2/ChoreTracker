@@ -101,10 +101,10 @@ class AuthViewModel @Inject constructor(
                     execute = { signInUseCase(state.email, state.password) },
                 )
             }
-            AuthUiIntent.ForgotPasswordClicked -> submit { state ->
+            is AuthUiIntent.ForgotPasswordClicked -> submit(isPasswordReset = true) { state ->
                 PreparedSubmission(
                     workingMessage = application.getString(R.string.auth_sending_reset_link),
-                    execute = { sendPasswordReset(state.email) },
+                    execute = { sendPasswordReset(state.email.trim(), intent.languageCode) },
                 )
             }
             AuthUiIntent.SignUpClicked -> submit { state ->
@@ -132,13 +132,14 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    private fun submit(block: (AuthUiState) -> PreparedSubmission) {
+    private fun submit(isPasswordReset: Boolean = false, block: (AuthUiState) -> PreparedSubmission) {
         viewModelScope.launch {
             val currentState = mutableUiState.value
             val submission = block(currentState)
             mutableUiState.update { current ->
                 current.copy(
                     isWorking = true,
+                    isSendingPasswordReset = isPasswordReset,
                     error = null,
                     workingMessage = submission.workingMessage,
                     passwordResetSentTo = null,
@@ -153,16 +154,16 @@ class AuthViewModel @Inject constructor(
                 is AppResult.Success -> Unit
             }
             mutableUiState.update { current ->
-                current.copy(isWorking = false, workingMessage = null)
+                current.copy(isWorking = false, isSendingPasswordReset = false, workingMessage = null)
             }
         }
     }
 
-    private suspend fun sendPasswordReset(email: String): EmptyResult {
+    private suspend fun sendPasswordReset(email: String, languageCode: String): EmptyResult {
         if (email.isBlank()) return AppResult.Error(AppError.EMAIL_REQUIRED)
-        val result = sendPasswordResetEmailUseCase(email)
+        val result = sendPasswordResetEmailUseCase(email, languageCode)
         if (result is AppResult.Success) {
-            mutableUiState.update { it.copy(passwordResetSentTo = email) }
+            mutableUiState.update { if (it.email.trim() == email) it.copy(passwordResetSentTo = email) else it }
         }
         return result
     }

@@ -7,6 +7,6 @@ import javax.inject.Inject
 class SendPasswordResetEmailUseCase @Inject constructor(
     private val authRepository: AuthRepository,
 ) {
-    suspend operator fun invoke(email: String): EmptyResult =
-        authRepository.sendPasswordResetEmail(email)
+    suspend operator fun invoke(email: String, languageCode: String): EmptyResult =
+        authRepository.sendPasswordResetEmail(email, languageCode)
 }

@@ -3,7 +3,6 @@ package cz.dcervenka.choretracker.core.remote.firebase.datasource
 import android.content.Context
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.functions.FirebaseFunctions
 import cz.dcervenka.choretracker.core.common.AppResult
@@ -139,24 +138,16 @@ class FirebaseAuthDataSource @Inject constructor(
         } ?: AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
     }
 
-    override suspend fun sendPasswordResetEmail(email: String): EmptyResult {
-        Timber.d("sendPasswordResetEmail: email=$email")
+    override suspend fun sendPasswordResetEmail(email: String, languageCode: String): EmptyResult {
+        Timber.d("sendPasswordResetEmail: email=$email languageCode=$languageCode")
         val auth = firebaseAuth ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
-        // The email in the language the app shows, which can differ from the phone's.
-        auth.setLanguageCode(context.resources.configuration.locales[0].language)
+        auth.setLanguageCode(languageCode)
         return suspendCancellableCoroutine { continuation ->
             auth.sendPasswordResetEmail(email)
                 .addOnSuccessListener { continuation.resume(AppResult.Success(Unit)) }
                 .addOnFailureListener { throwable ->
                     Timber.e(throwable, "sendPasswordResetEmail: failed")
-                    // An unknown address only fails without email enumeration protection. Reported like a sent
-                    // link, so the screen never tells whether an address has an account.
-                    val result = if (throwable is FirebaseAuthInvalidUserException) {
-                        AppResult.Success(Unit)
-                    } else {
-                        AppResult.Error(throwable.toAppError(), throwable)
-                    }
-                    continuation.resume(result)
+                    continuation.resume(throwable.toPasswordResetResult())
                 }
         }
     }

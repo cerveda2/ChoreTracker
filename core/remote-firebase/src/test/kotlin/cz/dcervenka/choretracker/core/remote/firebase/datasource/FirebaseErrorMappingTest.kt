@@ -8,6 +8,7 @@ import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.firestore.FirebaseFirestoreException
+import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.model.error.AppError
 import org.junit.Test
 import java.io.IOException
@@ -55,6 +56,15 @@ class FirebaseErrorMappingTest {
         val weakPassword = FirebaseAuthWeakPasswordException("ERROR_WEAK_PASSWORD", "weak", "too short")
 
         assertThat(weakPassword.toAppError()).isEqualTo(AppError.WEAK_PASSWORD)
+    }
+
+    @Test
+    fun `a password reset for an unknown address reads as sent`() {
+        val unknownUser = FirebaseAuthInvalidUserException("ERROR_USER_NOT_FOUND", "missing")
+        val malformed = FirebaseAuthInvalidCredentialsException("ERROR_INVALID_EMAIL", "malformed")
+
+        assertThat(unknownUser.toPasswordResetResult()).isEqualTo(AppResult.Success(Unit))
+        assertThat(malformed.toPasswordResetResult()).isEqualTo(AppResult.Error(AppError.INVALID_EMAIL, malformed))
     }
 
     @Test

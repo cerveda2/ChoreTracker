@@ -38,8 +38,8 @@ class PreviewAwareAuthRepository @Inject constructor(
     override suspend fun signIn(email: String, password: String): EmptyResult =
         remoteAuthDataSource.signIn(email, password)
 
-    override suspend fun sendPasswordResetEmail(email: String): EmptyResult =
-        remoteAuthDataSource.sendPasswordResetEmail(email)
+    override suspend fun sendPasswordResetEmail(email: String, languageCode: String): EmptyResult =
+        remoteAuthDataSource.sendPasswordResetEmail(email, languageCode)
 
     override suspend fun signUp(email: String, password: String, displayName: String): EmptyResult =
         remoteAuthDataSource.signUp(email, password, displayName)
