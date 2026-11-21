@@ -10,7 +10,7 @@ class ScreenLoadTraceTest {
 
     @Test
     fun `ready content is reported once even when the screen later closes`() {
-        trace.start()
+        trace.start(isLoading = true)
         trace.ready()
         trace.ready()
         trace.cancel()
@@ -20,7 +20,7 @@ class ScreenLoadTraceTest {
 
     @Test
     fun `leaving during loading records cancellation instead of a completed load`() {
-        trace.start()
+        trace.start(isLoading = true)
         trace.cancel()
         trace.ready()
 
@@ -29,8 +29,8 @@ class ScreenLoadTraceTest {
 
     @Test
     fun `recomposition does not start another load trace`() {
-        trace.start()
-        trace.start()
+        trace.start(isLoading = true)
+        trace.start(isLoading = true)
 
         assertThat(monitor.traces).hasSize(1)
         assertThat(monitor.traces.single().name).isEqualTo(PerformanceTraceName.HOME_LOAD)
@@ -39,11 +39,21 @@ class ScreenLoadTraceTest {
 
     @Test
     fun `a finished load is not restarted by later data updates`() {
-        trace.start()
+        trace.start(isLoading = true)
         trace.ready()
-        trace.start()
+        trace.start(isLoading = true)
 
         assertThat(monitor.traces).hasSize(1)
         assertThat(monitor.traces.single().outcomes).containsExactly(PerformanceOutcome.SUCCESS)
+    }
+
+    @Test
+    fun `a screen that is already loaded when it appears records no trace`() {
+        trace.start(isLoading = false)
+        trace.ready()
+        trace.start(isLoading = true)
+        trace.cancel()
+
+        assertThat(monitor.traces).isEmpty()
     }
 }

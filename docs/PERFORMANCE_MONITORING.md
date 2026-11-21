@@ -17,7 +17,7 @@ Custom traces add the following measurements:
 | `sync_upload` | Draining a non-empty local sync queue, after acquiring the sync lock. |
 | `household_restore` | Fetching and applying a household snapshot. |
 
-Each trace has one fixed `outcome` attribute: `success`, `error`, or `cancelled`. Screen-load traces finish once per composition; recomposition and later data updates do not restart them. Leaving or backgrounding a screen before it is ready records cancellation. Filter to successful outcomes when comparing load times.
+Each trace has one fixed `outcome` attribute: `success`, `error`, or `cancelled`. Screen-load traces finish once per composition; recomposition and later data updates do not restart them. A screen that is already loaded when it appears, such as a tab you return to or a recreated activity, records no trace. Leaving or backgrounding a screen before it is ready records cancellation. Filter to successful outcomes when comparing load times.
 
 Sync traces include client processing and Room writes as well as network time. They are not HTTP traces. Firestore uses gRPC, which is outside the SDK's documented automatic HTTP instrumentation support; use the custom sync timings to investigate household transfers. Firebase's automatic HTTP metrics cover supported networking stacks only.
 

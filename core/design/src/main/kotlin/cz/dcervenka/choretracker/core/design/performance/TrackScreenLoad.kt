@@ -23,7 +23,7 @@ fun TrackScreenLoad(name: PerformanceTraceName, isLoading: Boolean) {
     val trace = remember(name, monitor) { ScreenLoadTrace(monitor, name) }
 
     DisposableEffect(trace) {
-        trace.start()
+        trace.start(isLoading)
         onDispose { trace.cancel() }
     }
 

@@ -7,9 +7,9 @@ class ScreenLoadTrace(
     private var trace: PerformanceTrace? = null
     private var finished = false
 
-    fun start() {
+    fun start(isLoading: Boolean) {
         if (trace == null && !finished) {
-            trace = monitor.startTrace(name)
+            if (isLoading) trace = monitor.startTrace(name) else finished = true
         }
     }
 
