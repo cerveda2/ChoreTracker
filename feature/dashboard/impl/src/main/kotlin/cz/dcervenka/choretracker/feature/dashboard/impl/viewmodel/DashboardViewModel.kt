@@ -18,6 +18,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveNotificationsBannerDismissedUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveRecentCompletionsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveRequestNotificationsEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RefreshHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
@@ -58,6 +59,7 @@ class DashboardViewModel @Inject constructor(
     observeNotificationsBannerDismissedUseCase: ObserveNotificationsBannerDismissedUseCase,
     observeReminderSettingsUseCase: ObserveReminderSettingsUseCase,
     observeInviteNotificationsEnabledUseCase: ObserveInviteNotificationsEnabledUseCase,
+    observeRequestNotificationsEnabledUseCase: ObserveRequestNotificationsEnabledUseCase,
     observeAuthStateUseCase: ObserveAuthStateUseCase,
     observeChoreRequestsUseCase: ObserveChoreRequestsUseCase,
     private val logCompletionUseCase: LogCompletionUseCase,
@@ -87,15 +89,16 @@ class DashboardViewModel @Inject constructor(
         systemNotificationsEnabled,
         observeNotificationsBannerDismissedUseCase(),
         observeReminderSettingsUseCase(),
-        observeInviteNotificationsEnabledUseCase(),
+        combine(observeInviteNotificationsEnabledUseCase(), observeRequestNotificationsEnabledUseCase(), ::Pair),
         observeAuthStateUseCase(),
-    ) { systemEnabled, dismissed, reminderSettings, inviteNotificationsEnabled, authState ->
+    ) { systemEnabled, dismissed, reminderSettings, (inviteNotificationsEnabled, requestNotificationsEnabled), authState ->
         NotificationsBannerInputs(
             blocked = systemEnabled == false &&
                 !dismissed &&
                 (authState as? AuthState.Authenticated)?.user?.isPreview != true,
             remindersEnabled = reminderSettings.enabled,
             inviteNotificationsEnabled = inviteNotificationsEnabled,
+            requestNotificationsEnabled = requestNotificationsEnabled,
         )
     }.onStart { emit(NotificationsBannerInputs()) }
 
@@ -132,10 +135,15 @@ class DashboardViewModel @Inject constructor(
         }
         .combine(notificationsBanner) { state, banner ->
             // Only for notifications this user would actually get: invite-accepted pushes go to whoever
-            // sent the invite, and only the owner and admins can.
+            // sent the invite, and only the owner and admins can. Requests come from any other linked member.
+            val canBeAsked = state.members.any { !it.isCurrentUser && it.userId != null && it.removedAt == null }
             state.copy(
                 showNotificationsBanner = banner.blocked &&
-                    (banner.remindersEnabled || (banner.inviteNotificationsEnabled && state.isManager)),
+                    (
+                        banner.remindersEnabled ||
+                            (banner.inviteNotificationsEnabled && state.isManager) ||
+                            (banner.requestNotificationsEnabled && canBeAsked)
+                        ),
             )
         }
         .combine(combine(networkAvailable, syncsRemotely, ::Pair)) { state, (online, syncsRemotely) ->
@@ -276,6 +284,7 @@ class DashboardViewModel @Inject constructor(
         val blocked: Boolean = false,
         val remindersEnabled: Boolean = false,
         val inviteNotificationsEnabled: Boolean = false,
+        val requestNotificationsEnabled: Boolean = false,
     )
 }
 
