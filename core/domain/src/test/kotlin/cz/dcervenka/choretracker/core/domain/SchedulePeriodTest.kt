@@ -40,6 +40,36 @@ class SchedulePeriodTest {
     }
 
     @Test
+    fun `an overdue chore done late counts for the missed day`() {
+        val lastCoveredTuesday = date(17)
+
+        assertThat(tuesdays.periodFor(date(28), previousStart = lastCoveredTuesday))
+            .isEqualTo(SchedulePeriod(start = date(24), due = date(31)))
+        assertThat(tuesdays.periodFor(date(28), previousStart = date(24)))
+            .isEqualTo(SchedulePeriod(start = date(31), due = LocalDate(2026, 4, 7)))
+    }
+
+    @Test
+    fun `an overdue chore done a day early counts for the next day`() {
+        assertThat(tuesdays.periodFor(date(30), previousStart = date(17)))
+            .isEqualTo(SchedulePeriod(start = date(31), due = LocalDate(2026, 4, 7)))
+    }
+
+    @Test
+    fun `a weekly chore done late is still due on its next day`() {
+        val bins = chore(scheduleWeekdays = setOf(DayOfWeek.TUESDAY), frequencyDays = 7)
+        val doneLate = listOf(
+            completion("2026-03-17T19:00:00Z"),
+            completion("2026-03-28T10:00:00Z").copy(id = "c2"),
+        )
+
+        val tuesday = staleness(bins, doneLate, today = date(31))
+
+        assertThat(tuesday.dueInDays).isEqualTo(0)
+        assertThat(tuesday.status).isEqualTo(ChoreStatus.NEEDS_ATTENTION)
+    }
+
+    @Test
     fun `a month day the month doesn't have falls on its last day`() {
         val thirtyFirst = ChoreSchedule.MonthDay(31)
 

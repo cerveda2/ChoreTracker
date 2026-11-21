@@ -13,12 +13,19 @@ private const val MAX_SCHEDULE_GAP_DAYS = 31
 internal data class SchedulePeriod(val start: LocalDate, val due: LocalDate)
 
 // For a calendar schedule, a completion counts for the scheduled day nearest to it, the upcoming one on a tie,
-// so doing a chore a little early or late still covers that day.
-internal fun ChoreSchedule.periodFor(completed: LocalDate): SchedulePeriod {
+// so doing a chore a little early or late still covers that day. When the previous completion (previousStart is
+// the day it counted for) left the last scheduled day uncovered, the chore is overdue, so a completion counts for
+// that missed day unless it's a day early for the next one - otherwise doing it late would skip the next due day.
+internal fun ChoreSchedule.periodFor(completed: LocalDate, previousStart: LocalDate? = null): SchedulePeriod {
     if (this is ChoreSchedule.EveryDays) return SchedulePeriod(completed, completed.plus(days, DateTimeUnit.DAY))
     val previous = scheduledDays(completed, step = -1).first()
     val next = scheduledDays(completed.plus(1, DateTimeUnit.DAY), step = 1).first()
-    val start = if (previous.daysUntil(completed) < completed.daysUntil(next)) previous else next
+    val missedPrevious = previousStart != null && previousStart < previous
+    val start = when {
+        previous.daysUntil(completed) < completed.daysUntil(next) -> previous
+        missedPrevious && completed.daysUntil(next) > 1 -> previous
+        else -> next
+    }
     return SchedulePeriod(start, scheduledDays(start.plus(1, DateTimeUnit.DAY), step = 1).first())
 }
 
