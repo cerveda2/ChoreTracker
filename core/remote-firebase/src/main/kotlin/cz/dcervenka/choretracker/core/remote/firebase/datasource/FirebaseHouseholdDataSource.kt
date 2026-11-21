@@ -167,9 +167,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             close()
             return@callbackFlow
         }
-        val registration = db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
-            .collection(REQUESTS_COLLECTION)
-            .whereGreaterThanOrEqualTo("createdAt", (Clock.System.now() - REQUEST_HISTORY).asTimestamp())
+        val registration = recentRequests(db, householdId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.e(error, "observeRequests: listen failed householdId=$householdId")
@@ -179,6 +177,11 @@ class FirebaseHouseholdDataSource @Inject constructor(
             }
         awaitClose { registration.remove() }
     }
+
+    private fun recentRequests(db: FirebaseFirestore, householdId: String) =
+        db.collection(HOUSEHOLDS_COLLECTION).document(householdId)
+            .collection(REQUESTS_COLLECTION)
+            .whereGreaterThanOrEqualTo("createdAt", (Clock.System.now() - REQUEST_HISTORY).asTimestamp())
 
     override suspend fun upsertHouseholdSnapshot(snapshot: HouseholdSnapshot, userId: String): EmptyResult {
         Timber.d(
@@ -577,6 +580,20 @@ class FirebaseHouseholdDataSource @Inject constructor(
             AppResult.Success(members)
         }.rethrowCancellation().getOrElse { error ->
             Timber.e(error, "fetchMembers: failed")
+            AppResult.Error(error.toAppError(), error)
+        }
+    }
+
+    // Server only, like fetchMembers: a cached answer could still hold the write that was just rejected.
+    override suspend fun fetchRequests(householdId: String): AppResult<List<ChoreRequest>> {
+        Timber.d("fetchRequests: householdId=$householdId")
+        val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
+        return runCatching {
+            val requests = awaitTask(recentRequests(db, householdId).get(Source.SERVER))
+                .documents.map { it.asRequest(householdId) }
+            AppResult.Success(requests)
+        }.rethrowCancellation().getOrElse { error ->
+            Timber.e(error, "fetchRequests: failed")
             AppResult.Error(error.toAppError(), error)
         }
     }

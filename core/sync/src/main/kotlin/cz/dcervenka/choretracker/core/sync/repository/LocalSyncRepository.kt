@@ -428,6 +428,9 @@ class LocalSyncRepository @Inject constructor(
                     Timber.w("syncPendingOperations: dropped rejected uploads $rejectedOperationIds, re-pulling")
                     restoreHouseholdForUser(authenticatedUser.id)
                 }
+                if (operations.any { it.id in rejectedOperationIds && it.entityType == "request" }) {
+                    resyncRequests(householdId)
+                }
                 error?.let { AppResult.Error(it) }
             }
         }
@@ -457,6 +460,15 @@ class LocalSyncRepository @Inject constructor(
         when (val result = remoteHouseholdDataSource.fetchMembers(householdId, userId)) {
             is AppResult.Error -> Timber.w("resyncMembers: fetch failed for household=$householdId - ${result.error}")
             is AppResult.Success -> realtimeSyncApplier.applyMembers(householdId, userId, result.value)
+        }
+    }
+
+    // The household restore doesn't include requests, and applyRequests skipped a rejected one while it was
+    // queued, so without this a send that never landed, or a cancel that lost to a decline, stays wrong locally.
+    private suspend fun resyncRequests(householdId: String) {
+        when (val result = remoteHouseholdDataSource.fetchRequests(householdId)) {
+            is AppResult.Error -> Timber.w("resyncRequests: fetch failed for household=$householdId - ${result.error}")
+            is AppResult.Success -> realtimeSyncApplier.applyRequests(householdId, result.value)
         }
     }
 
