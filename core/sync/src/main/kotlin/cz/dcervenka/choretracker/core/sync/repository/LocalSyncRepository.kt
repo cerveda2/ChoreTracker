@@ -2,6 +2,10 @@ package cz.dcervenka.choretracker.core.sync.repository
 
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.common.EmptyResult
+import cz.dcervenka.choretracker.core.common.performance.NoOpPerformanceMonitor
+import cz.dcervenka.choretracker.core.common.performance.PerformanceMonitor
+import cz.dcervenka.choretracker.core.common.performance.PerformanceTraceName
+import cz.dcervenka.choretracker.core.common.performance.measure
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.data.contract.SyncRepository
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
@@ -74,6 +78,7 @@ class LocalSyncRepository @Inject constructor(
     private val remoteHouseholdDataSource: RemoteHouseholdDataSource,
     private val database: ChoreTrackerDatabase,
     @SyncScope private val syncScope: CoroutineScope,
+    private val performanceMonitor: PerformanceMonitor = NoOpPerformanceMonitor,
 ) : SyncRepository {
 
     private var emailSyncedThisSession = false
@@ -183,49 +188,50 @@ class LocalSyncRepository @Inject constructor(
             }
         }
 
-        val syncError = if (operations.isEmpty()) {
-            null
+        return if (operations.isEmpty()) {
+            AppResult.Success(Unit)
         } else {
-            operationIdsByHouseholdId.entries.firstNotNullOfOrNull { (householdId, operationIds) ->
-                syncHousehold(householdId, operationIds, operations, authenticatedUser)
+            performanceMonitor.measure(PerformanceTraceName.SYNC_UPLOAD) {
+                operationIdsByHouseholdId.entries.firstNotNullOfOrNull { (householdId, operationIds) ->
+                    syncHousehold(householdId, operationIds, operations, authenticatedUser)
+                } ?: AppResult.Success(Unit)
             }
         }
-
-        return syncError ?: AppResult.Success(Unit)
     }
 
-    override suspend fun restoreHouseholdForUser(userId: String): AppResult<Boolean> {
-        Timber.d("restoreHouseholdForUser: userId=$userId")
-        return when (val result = remoteHouseholdDataSource.fetchHouseholdSnapshot(userId)) {
-            is AppResult.Error -> {
-                Timber.e("restoreHouseholdForUser: fetch failed - ${result.error}")
-                AppResult.Error(result.error, result.cause)
-            }
-            is AppResult.Success -> {
-                val snapshot = result.value
-                when {
-                    snapshot == null -> AppResult.Success(false).also {
-                        Timber.d("restoreHouseholdForUser: no remote snapshot found")
-                    }
-                    snapshot.members.none { it.userId == userId && it.removedAt == null } -> {
-                        // Not an active member of the fetched household (removed, or left). Never
-                        // applySnapshot here - the fetch returns an empty-members sentinel with a
-                        // blank name/ownerUserId on PERMISSION_DENIED, and writing that into Room
-                        // corrupts local state. Wipe local data if any is still present.
-                        Timber.w(
-                            "restoreHouseholdForUser: userId=$userId is not an active member of " +
-                                "household=${snapshot.household.id}",
-                        )
-                        if (householdDao.getCurrentHouseholdForUser(userId) != null) {
-                            database.clearAll()
+    override suspend fun restoreHouseholdForUser(userId: String): AppResult<Boolean> =
+        performanceMonitor.measure(PerformanceTraceName.HOUSEHOLD_RESTORE) {
+            Timber.d("restoreHouseholdForUser: userId=$userId")
+            when (val result = remoteHouseholdDataSource.fetchHouseholdSnapshot(userId)) {
+                is AppResult.Error -> {
+                    Timber.e("restoreHouseholdForUser: fetch failed - ${result.error}")
+                    AppResult.Error(result.error, result.cause)
+                }
+                is AppResult.Success -> {
+                    val snapshot = result.value
+                    when {
+                        snapshot == null -> AppResult.Success(false).also {
+                            Timber.d("restoreHouseholdForUser: no remote snapshot found")
                         }
-                        AppResult.Success(false)
+                        snapshot.members.none { it.userId == userId && it.removedAt == null } -> {
+                            // Not an active member of the fetched household (removed, or left). Never
+                            // applySnapshot here - the fetch returns an empty-members sentinel with a
+                            // blank name/ownerUserId on PERMISSION_DENIED, and writing that into Room
+                            // corrupts local state. Wipe local data if any is still present.
+                            Timber.w(
+                                "restoreHouseholdForUser: userId=$userId is not an active member of " +
+                                    "household=${snapshot.household.id}",
+                            )
+                            if (householdDao.getCurrentHouseholdForUser(userId) != null) {
+                                database.clearAll()
+                            }
+                            AppResult.Success(false)
+                        }
+                        else -> applySnapshot(snapshot)
                     }
-                    else -> applySnapshot(snapshot)
                 }
             }
         }
-    }
 
     private suspend fun applySnapshot(snapshot: HouseholdSnapshot): AppResult<Boolean> {
         householdDao.upsert(

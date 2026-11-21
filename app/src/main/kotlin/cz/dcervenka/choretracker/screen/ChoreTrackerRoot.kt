@@ -32,9 +32,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import cz.dcervenka.choretracker.core.common.performance.PerformanceTraceName
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
 import cz.dcervenka.choretracker.core.design.components.LoadingState
+import cz.dcervenka.choretracker.core.design.performance.TrackScreenLoad
 import cz.dcervenka.choretracker.core.model.settings.ThemeMode
 import cz.dcervenka.choretracker.core.notifications.ui.NotificationPermissionRequest
 import cz.dcervenka.choretracker.feature.auth.impl.navigation.authScreen
@@ -58,6 +60,7 @@ fun ChoreTrackerRoot(
     val rootDestination by viewModel.rootDestination.collectAsStateWithLifecycle()
     val themeSettings by viewModel.themeSettings.collectAsStateWithLifecycle()
     var notificationPromptSettled by remember { mutableStateOf(false) }
+    TrackScreenLoad(PerformanceTraceName.STARTUP_ROUTING, isLoading = rootDestination == RootDestination.Loading)
     // NavHost's startDestination must stay fixed for the life of this composition - feeding it a
     // changed value (keying this remember on rootDestination itself) makes NavHost rebuild its
     // whole graph on every Auth/Onboarding/Main transition, racing the LaunchedEffect below

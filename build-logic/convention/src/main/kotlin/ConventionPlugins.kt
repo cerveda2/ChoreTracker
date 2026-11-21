@@ -1,5 +1,7 @@
 import androidx.room.gradle.RoomExtension
+import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.dsl.CommonExtension
+import com.google.firebase.perf.plugin.FirebasePerfExtension
 import io.gitlab.arturbosch.detekt.Detekt
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
 import org.gradle.api.Plugin
@@ -75,9 +77,18 @@ class FirebaseConventionPlugin : Plugin<Project> {
         with(target) {
             pluginManager.withPlugin("com.android.application") {
                 pluginManager.apply("com.google.firebase.crashlytics")
+                pluginManager.apply("com.google.firebase.firebase-perf")
+                extensions.configure<ApplicationExtension> {
+                    buildTypes.named("debug") {
+                        extensions.configure<FirebasePerfExtension> {
+                            setInstrumentationEnabled(false)
+                        }
+                    }
+                }
                 dependencies {
                     add("implementation", platform(libsCatalog.findLibrary("firebase-bom").get()))
                     add("implementation", libsCatalog.findLibrary("firebase-crashlytics").get())
+                    add("implementation", libsCatalog.findLibrary("firebase-perf").get())
                 }
             }
         }
