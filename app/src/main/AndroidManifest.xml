@@ -29,8 +29,8 @@
         </activity>
 
         <!-- ChoreTrackerApplication supplies its own Configuration.Provider (HiltWorkerFactory)
-             for core/reminders' HiltWorker, so WorkManager's default startup initializer must be
-             disabled here. -->
+             for the HiltWorkers in core/reminders and core/sync, so WorkManager's default
+             startup initializer must be disabled here. -->
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"

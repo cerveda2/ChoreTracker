@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PendingSyncOperationDao {
@@ -22,4 +23,7 @@ interface PendingSyncOperationDao {
 
     @Query("SELECT COUNT(*) FROM pending_sync_operations")
     suspend fun pendingCount(): Int
+
+    @Query("SELECT COUNT(*) FROM pending_sync_operations")
+    fun observePendingCount(): Flow<Int>
 }
