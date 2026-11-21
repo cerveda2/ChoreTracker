@@ -2,7 +2,6 @@ package cz.dcervenka.choretracker.core.updates.viewmodel
 
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.play.core.appupdate.AppUpdateInfo
@@ -14,6 +13,8 @@ import com.google.android.play.core.install.model.InstallStatus
 import com.google.android.play.core.install.model.UpdateAvailability
 import com.google.android.play.core.ktx.requestAppUpdateInfo
 import com.google.android.play.core.ktx.requestCompleteUpdate
+import cz.dcervenka.choretracker.core.domain.usecase.GetLastOfferedUpdateVersionUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SetLastOfferedUpdateVersionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -23,12 +24,11 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
-private const val LAST_OFFERED_VERSION = "lastOfferedUpdateVersion"
-
 @HiltViewModel
 class InAppUpdateViewModel @Inject constructor(
     private val appUpdateManager: AppUpdateManager,
-    private val savedStateHandle: SavedStateHandle,
+    private val getLastOfferedUpdateVersionUseCase: GetLastOfferedUpdateVersionUseCase,
+    private val setLastOfferedUpdateVersionUseCase: SetLastOfferedUpdateVersionUseCase,
 ) : ViewModel() {
 
     private val mutableAvailableUpdate = MutableStateFlow<AppUpdateInfo?>(null)
@@ -39,6 +39,13 @@ class InAppUpdateViewModel @Inject constructor(
 
     private var checkJob: Job? = null
     private var isCompletingUpdate = false
+
+    // Set as soon as it's offered, so a check before the stored copy is written can't offer it again.
+    private var offeredVersion: Int? = null
+
+    // Until the app is next started, not just until the screen resumes.
+    var isRestartPromptDismissed = false
+        private set
 
     private val installListener = InstallStateUpdatedListener { state ->
         mutableUpdateDownloaded.value = state.installStatus() == InstallStatus.DOWNLOADED
@@ -53,7 +60,7 @@ class InAppUpdateViewModel @Inject constructor(
         if (checkJob?.isActive == true) return
         checkJob = viewModelScope.launch {
             runCatching { appUpdateManager.requestAppUpdateInfo() }
-                .onSuccess(::applyUpdateInfo)
+                .onSuccess { info -> applyUpdateInfo(info, offeredVersion ?: getLastOfferedUpdateVersionUseCase()) }
                 .onFailure { error ->
                     if (error is CancellationException) throw error
                     Timber.d(error, "In-app update check unavailable")
@@ -61,7 +68,8 @@ class InAppUpdateViewModel @Inject constructor(
         }
     }
 
-    private fun applyUpdateInfo(info: AppUpdateInfo) {
+    // A version is offered once: declining it, even on an earlier app start, isn't asked again.
+    private fun applyUpdateInfo(info: AppUpdateInfo, lastOfferedVersion: Int?) {
         when (info.installStatus()) {
             InstallStatus.DOWNLOADED -> {
                 mutableUpdateDownloaded.value = true
@@ -74,7 +82,7 @@ class InAppUpdateViewModel @Inject constructor(
                 !mutableUpdateDownloaded.value &&
                     it.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE &&
                     it.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE) &&
-                    it.availableVersionCode() != savedStateHandle.get<Int>(LAST_OFFERED_VERSION)
+                    it.availableVersionCode() != lastOfferedVersion
             }
         }
     }
@@ -82,7 +90,9 @@ class InAppUpdateViewModel @Inject constructor(
     fun startUpdate(launcher: ActivityResultLauncher<IntentSenderRequest>) {
         val info = mutableAvailableUpdate.value ?: return
         mutableAvailableUpdate.value = null
-        savedStateHandle[LAST_OFFERED_VERSION] = info.availableVersionCode()
+        val versionCode = info.availableVersionCode()
+        offeredVersion = versionCode
+        viewModelScope.launch { setLastOfferedUpdateVersionUseCase(versionCode) }
         runCatching {
             appUpdateManager.startUpdateFlowForResult(
                 info,
@@ -92,6 +102,10 @@ class InAppUpdateViewModel @Inject constructor(
         }.onFailure { error ->
             Timber.w(error, "Could not start in-app update")
         }
+    }
+
+    fun dismissRestartPrompt() {
+        isRestartPromptDismissed = true
     }
 
     suspend fun completeUpdate(): Boolean {

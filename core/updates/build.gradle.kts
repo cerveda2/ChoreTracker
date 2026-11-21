@@ -13,6 +13,7 @@ android {
 }
 
 dependencies {
+    implementation(projects.core.domain)
     implementation(libs.play.app.update)
     implementation(libs.play.app.update.ktx)
     implementation(libs.androidx.activity.compose)
@@ -21,6 +22,7 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.timber)
 
+    testImplementation(projects.core.dataContract)
     testImplementation(projects.core.test)
     testImplementation(libs.junit4)
     testImplementation(libs.google.truth)

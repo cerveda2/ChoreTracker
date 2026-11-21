@@ -6,13 +6,15 @@ import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityOptionsCompat
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
 import com.google.android.play.core.appupdate.testing.FakeAppUpdateManager
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallErrorCode
 import com.google.common.truth.Truth.assertThat
+import cz.dcervenka.choretracker.core.data.contract.UpdatePromptRepository
+import cz.dcervenka.choretracker.core.domain.usecase.GetLastOfferedUpdateVersionUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SetLastOfferedUpdateVersionUseCase
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -93,10 +95,10 @@ class InAppUpdateViewModelTest {
     }
 
     @Test
-    fun `declined update stays dismissed after recreation`() = runTest(coroutineRule.dispatcher) {
+    fun `declined update isn't offered again after the app restarts`() = runTest(coroutineRule.dispatcher) {
         manager.setUpdateAvailable(42)
-        val savedStateHandle = SavedStateHandle()
-        val viewModel = createViewModel(savedStateHandle)
+        val promptRepository = InMemoryUpdatePromptRepository()
+        val viewModel = createViewModel(promptRepository)
         viewModel.checkForUpdate()
         viewModel.startUpdate(launcher)
         manager.userRejectsUpdate()
@@ -105,11 +107,25 @@ class InAppUpdateViewModelTest {
         assertThat(viewModel.availableUpdate.value).isNull()
 
         viewModelStore.clear()
-        val recreated = createViewModel(savedStateHandle)
+        val recreated = createViewModel(promptRepository)
         recreated.checkForUpdate()
 
         assertThat(recreated.availableUpdate.value).isNull()
         assertThat(manager.isConfirmationDialogVisible).isFalse()
+    }
+
+    @Test
+    fun `dismissing the restart prompt keeps it hidden`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = startDownload()
+        manager.downloadCompletes()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertThat(viewModel.isRestartPromptDismissed).isFalse()
+
+        viewModel.dismissRestartPrompt()
+        viewModel.checkForUpdate()
+
+        assertThat(viewModel.isRestartPromptDismissed).isTrue()
+        assertThat(viewModel.isUpdateDownloaded.value).isTrue()
     }
 
     @Test
@@ -240,10 +256,15 @@ class InAppUpdateViewModelTest {
         assertThat(viewModel.isUpdateDownloaded.value).isFalse()
     }
 
-    private fun createViewModel(savedStateHandle: SavedStateHandle = SavedStateHandle()): InAppUpdateViewModel =
-        InAppUpdateViewModel(manager, savedStateHandle).also {
-            viewModelStore.put("updates-${nextViewModelId++}", it)
-        }
+    private fun createViewModel(
+        promptRepository: UpdatePromptRepository = InMemoryUpdatePromptRepository(),
+    ): InAppUpdateViewModel = InAppUpdateViewModel(
+        appUpdateManager = manager,
+        getLastOfferedUpdateVersionUseCase = GetLastOfferedUpdateVersionUseCase(promptRepository),
+        setLastOfferedUpdateVersionUseCase = SetLastOfferedUpdateVersionUseCase(promptRepository),
+    ).also {
+        viewModelStore.put("updates-${nextViewModelId++}", it)
+    }
 
     private fun startDownload(): InAppUpdateViewModel {
         manager.setUpdateAvailable(42)
@@ -254,5 +275,15 @@ class InAppUpdateViewModelTest {
         manager.downloadStarts()
         shadowOf(Looper.getMainLooper()).idle()
         return viewModel
+    }
+}
+
+private class InMemoryUpdatePromptRepository : UpdatePromptRepository {
+    private var lastOfferedVersion: Int? = null
+
+    override suspend fun getLastOfferedVersion(): Int? = lastOfferedVersion
+
+    override suspend fun setLastOfferedVersion(versionCode: Int) {
+        lastOfferedVersion = versionCode
     }
 }

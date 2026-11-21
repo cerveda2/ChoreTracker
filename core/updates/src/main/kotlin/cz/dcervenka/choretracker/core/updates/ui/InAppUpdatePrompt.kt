@@ -43,13 +43,14 @@ fun InAppUpdatePrompt(
         if (!isDownloaded) return@LaunchedEffect
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             var message = downloadedMessage
-            while (viewModel.isUpdateDownloaded.value) {
+            while (viewModel.isUpdateDownloaded.value && !viewModel.isRestartPromptDismissed) {
                 val result = snackbarHostState.showSnackbar(
                     message = message,
                     actionLabel = restartLabel,
                     withDismissAction = true,
                     duration = SnackbarDuration.Indefinite,
                 )
+                if (result != SnackbarResult.ActionPerformed) viewModel.dismissRestartPrompt()
                 if (result != SnackbarResult.ActionPerformed || viewModel.completeUpdate()) break
                 message = failedMessage
             }
