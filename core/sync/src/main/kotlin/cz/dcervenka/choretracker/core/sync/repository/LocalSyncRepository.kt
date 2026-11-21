@@ -356,7 +356,19 @@ class LocalSyncRepository @Inject constructor(
             it.id in operationIds && it.entityType == "member" && it.operationType == "join"
         }
         val householdWriteFields = householdWriteFields(operations, operationIds.toSet())
-        val result = performRemoteSync(householdId, isOwner, authenticatedUser, writeJoinRole, householdWriteFields)
+        // Only completions changed on this device: an older local copy of the rest would bring back
+        // ones deleted elsewhere and undo others' edits.
+        val queuedCompletionIds = operations
+            .filter { it.id in operationIds && it.entityType == "completion" && it.operationType != "delete" }
+            .mapTo(mutableSetOf()) { it.entityId }
+        val result = performRemoteSync(
+            householdId = householdId,
+            isOwner = isOwner,
+            authenticatedUser = authenticatedUser,
+            writeJoinRole = writeJoinRole,
+            householdWriteFields = householdWriteFields,
+            queuedCompletionIds = queuedCompletionIds,
+        )
         if (result == null) {
             // buildSnapshot/buildMemberSync found no local household or member row to sync from -
             // these operations can never succeed from this state, so discard them instead of
@@ -466,18 +478,20 @@ class LocalSyncRepository @Inject constructor(
         authenticatedUser: AppUser,
         writeJoinRole: Boolean,
         householdWriteFields: Set<String>,
+        queuedCompletionIds: Set<String>,
     ): EmptyResult? = if (isOwner) {
-        performOwnerSync(householdId, authenticatedUser, householdWriteFields)
+        performOwnerSync(householdId, authenticatedUser, householdWriteFields, queuedCompletionIds)
     } else {
-        performMemberSync(householdId, authenticatedUser, writeJoinRole)
+        performMemberSync(householdId, authenticatedUser, writeJoinRole, queuedCompletionIds)
     }
 
     private suspend fun performOwnerSync(
         householdId: String,
         authenticatedUser: AppUser,
         householdWriteFields: Set<String>,
+        queuedCompletionIds: Set<String>,
     ): EmptyResult? {
-        val snapshot = buildSnapshot(householdId, authenticatedUser.id, authenticatedUser.email)
+        val snapshot = buildSnapshot(householdId, authenticatedUser.id, authenticatedUser.email, queuedCompletionIds)
             ?: return null
         return remoteHouseholdDataSource.upsertHouseholdSnapshot(
             snapshot.copy(householdWriteFields = householdWriteFields),
@@ -489,8 +503,10 @@ class LocalSyncRepository @Inject constructor(
         householdId: String,
         authenticatedUser: AppUser,
         writeJoinRole: Boolean,
+        queuedCompletionIds: Set<String>,
     ): EmptyResult? {
-        val (member, completions) = buildMemberSync(householdId, authenticatedUser.id) ?: return null
+        val (member, completions) = buildMemberSync(householdId, authenticatedUser.id, queuedCompletionIds)
+            ?: return null
         return remoteHouseholdDataSource.upsertMemberSnapshot(
             householdId = householdId,
             member = member.copy(email = authenticatedUser.email),
@@ -620,7 +636,7 @@ class LocalSyncRepository @Inject constructor(
 
     private suspend fun ensureEmailSynced(userId: String, email: String) {
         val householdId = householdDao.getCurrentHouseholdForUser(userId)?.id ?: return
-        val (member, _) = buildMemberSync(householdId, userId) ?: return
+        val (member, _) = buildMemberSync(householdId, userId, completionIds = emptySet()) ?: return
         remoteHouseholdDataSource.upsertMemberSnapshot(
             householdId = householdId,
             member = member.copy(email = email),
@@ -800,6 +816,7 @@ class LocalSyncRepository @Inject constructor(
         householdId: String,
         currentUserId: String,
         currentUserEmail: String?,
+        completionIds: Set<String>,
     ): HouseholdSnapshot? {
         val household = householdDao.getHousehold(householdId) ?: return null
         val participants = completionParticipantDao.getParticipants(householdId)
@@ -819,19 +836,21 @@ class LocalSyncRepository @Inject constructor(
                 removedAt = member.removedAt,
             )
         }
-        val completions = completionDao.getCompletions(householdId).map { completion ->
-            ChoreCompletion(
-                id = completion.id,
-                householdId = completion.householdId,
-                choreId = completion.choreId,
-                createdAt = completion.createdAt,
-                createdByUserId = completion.createdByUserId,
-                note = completion.note,
-                participantMemberIds = participants
-                    .filter { it.completionId == completion.id }
-                    .map { it.memberId },
-            )
-        }
+        val completions = completionDao.getCompletions(householdId)
+            .filter { it.id in completionIds }
+            .map { completion ->
+                ChoreCompletion(
+                    id = completion.id,
+                    householdId = completion.householdId,
+                    choreId = completion.choreId,
+                    createdAt = completion.createdAt,
+                    createdByUserId = completion.createdByUserId,
+                    note = completion.note,
+                    participantMemberIds = participants
+                        .filter { it.completionId == completion.id }
+                        .map { it.memberId },
+                )
+            }
         return HouseholdSnapshot(
             household = Household(
                 id = household.id,
@@ -876,11 +895,12 @@ class LocalSyncRepository @Inject constructor(
     private suspend fun buildMemberSync(
         householdId: String,
         userId: String,
+        completionIds: Set<String>,
     ): Pair<HouseholdMember, List<ChoreCompletion>>? {
         val memberEntity = memberDao.findByUserId(householdId, userId) ?: return null
         val participants = completionParticipantDao.getParticipants(householdId)
         val ownCompletions = completionDao.getCompletions(householdId)
-            .filter { it.createdByUserId == userId }
+            .filter { it.createdByUserId == userId && it.id in completionIds }
             .map { completion ->
                 ChoreCompletion(
                     id = completion.id,
