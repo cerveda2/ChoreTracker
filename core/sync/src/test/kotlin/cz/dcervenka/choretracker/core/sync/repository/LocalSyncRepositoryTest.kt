@@ -301,6 +301,80 @@ class LocalSyncRepositoryTest {
         }
 
     @Test
+    fun `owner snapshot uploads only the completions changed on this device`() = runTest(coroutineRule.dispatcher) {
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(completionOperation("completion-new"))
+        coEvery { completionDao.getCompletion("completion-new") } returns completionEntity("completion-new", "user-1")
+        coEvery { householdDao.getHousehold("household-1") } returns householdEntity
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns memberEntity
+        coEvery { memberDao.getMembers("household-1") } returns listOf(memberEntity)
+        coEvery { completionParticipantDao.getParticipants("household-1") } returns emptyList()
+        coEvery { choreDao.getChores("household-1") } returns emptyList()
+        coEvery { inviteDao.getInvites("household-1") } returns emptyList()
+        coEvery { completionDao.getCompletions("household-1") } returns
+            listOf(completionEntity("completion-new", "user-1"), completionEntity("completion-old", "user-2"))
+        coEvery { remoteHouseholdDataSource.upsertHouseholdSnapshot(any(), any()) } returns AppResult.Success(Unit)
+        coEvery { pendingSyncOperationDao.delete(any()) } just Runs
+
+        val resultDeferred = async { repository.syncPendingOperations() }
+        advanceUntilIdle()
+
+        assertThat(resultDeferred.await()).isInstanceOf(AppResult.Success::class.java)
+        coVerify {
+            remoteHouseholdDataSource.upsertHouseholdSnapshot(
+                match { snapshot -> snapshot.completions.map { it.id } == listOf("completion-new") },
+                "user-1",
+            )
+        }
+    }
+
+    @Test
+    fun `member sync uploads only their own completions changed on this device`() = runTest(coroutineRule.dispatcher) {
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(completionOperation("completion-new"))
+        coEvery { completionDao.getCompletion("completion-new") } returns completionEntity("completion-new", "user-1")
+        coEvery { householdDao.getHousehold("household-1") } returns householdEntity
+        coEvery { memberDao.findByUserId("household-1", "user-1") } returns
+            memberEntity.copy(role = HouseholdRole.MEMBER.name)
+        coEvery { completionParticipantDao.getParticipants("household-1") } returns emptyList()
+        coEvery { completionDao.getCompletions("household-1") } returns
+            listOf(completionEntity("completion-new", "user-1"), completionEntity("completion-old", "user-1"))
+        coEvery { remoteHouseholdDataSource.upsertMemberSnapshot(any(), any(), any(), any(), any()) } returns
+            AppResult.Success(Unit)
+        coEvery { pendingSyncOperationDao.delete(any()) } just Runs
+
+        val resultDeferred = async { repository.syncPendingOperations() }
+        advanceUntilIdle()
+
+        assertThat(resultDeferred.await()).isInstanceOf(AppResult.Success::class.java)
+        coVerify {
+            remoteHouseholdDataSource.upsertMemberSnapshot(
+                householdId = "household-1",
+                member = any(),
+                completions = match { completions -> completions.map { it.id } == listOf("completion-new") },
+                userId = "user-1",
+                writeRole = false,
+            )
+        }
+    }
+
+    private fun completionOperation(completionId: String) = PendingSyncOperationEntity(
+        id = "op-$completionId",
+        entityType = "completion",
+        entityId = completionId,
+        operationType = "upsert",
+        payload = "",
+        createdAt = Instant.parse("2026-01-04T10:00:00Z"),
+    )
+
+    private fun completionEntity(id: String, createdByUserId: String) = CompletionEntity(
+        id = id,
+        householdId = "household-1",
+        choreId = "chore-1",
+        createdAt = Instant.parse("2026-01-03T10:00:00Z"),
+        createdByUserId = createdByUserId,
+        note = null,
+    )
+
+    @Test
     fun `admin rename uploads only the household name`() = runTest(coroutineRule.dispatcher) {
         val op = PendingSyncOperationEntity(
             id = "op-1",
