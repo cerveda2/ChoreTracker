@@ -213,6 +213,20 @@ class FcmTokenRegistrarTest {
         }
 
     @Test
+    fun `onIdRegistered waits for the session to be restored`() = runTest(coroutineRule.dispatcher) {
+        authState.value = AuthState.Initializing
+        createRegistrar()
+        advanceUntilIdle()
+
+        registrar.onIdRegistered("id-cold-start")
+        advanceUntilIdle()
+        authState.value = AuthState.Authenticated(AppUser(id = "user-1", email = "dana@example.com", displayName = "Dana"))
+        advanceUntilIdle()
+
+        coVerify { tokenWriter.writeToken("user-1", "id-cold-start", listOf("invite", "request")) }
+    }
+
+    @Test
     fun `onIdRegistered does nothing while signed out`() = runTest(coroutineRule.dispatcher) {
         createRegistrar()
         advanceUntilIdle()

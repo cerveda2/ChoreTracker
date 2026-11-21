@@ -63,6 +63,8 @@ class OfflineFirstHouseholdRepository @Inject constructor(
         flow {
             val user = (authState as? AuthState.Authenticated)?.user
             when {
+                // Not signed out, just not restored yet: wiping here would lose changes waiting to upload.
+                authState is AuthState.Initializing -> Unit
                 user == null -> {
                     database.clearAll()
                     // Muted reminders are personal - the next account on this device must not inherit them.

@@ -84,7 +84,8 @@ class FcmTokenRegistrar @Inject constructor(
      */
     fun onIdRegistered(installationId: String) {
         scope.launch {
-            val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
+            // FCM can deliver this to a process it just started, before Firebase restores the session.
+            val user = (authRepository.authState.first { it !is AuthState.Initializing } as? AuthState.Authenticated)?.user
             if (user == null || user.isPreview || user.id == signingOutUserId) return@launch
             tokenWriter.writeToken(
                 user.id,
