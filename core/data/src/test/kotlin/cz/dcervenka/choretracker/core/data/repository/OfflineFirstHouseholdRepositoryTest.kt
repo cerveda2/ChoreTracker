@@ -26,8 +26,10 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.just
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
@@ -129,6 +131,20 @@ class OfflineFirstHouseholdRepositoryTest {
         assertThat(repository.observeCurrentHousehold().first()).isNull()
         coVerify(exactly = 1) { database.clearAll() }
         coVerify(exactly = 1) { reminderSettingsRepository.clearMutedChoreIds() }
+    }
+
+    @Test
+    fun `observeCurrentHousehold waits for the session instead of clearing local data`() = runTest {
+        val signedIn = authState.value
+        authState.value = AuthState.Initializing
+
+        val household = async { repository.observeCurrentHousehold().first() }
+        advanceUntilIdle()
+        coVerify(exactly = 0) { database.clearAll() }
+
+        authState.value = signedIn
+        assertThat(household.await()?.id).isEqualTo("household-1")
+        coVerify(exactly = 0) { database.clearAll() }
     }
 
     @Test
