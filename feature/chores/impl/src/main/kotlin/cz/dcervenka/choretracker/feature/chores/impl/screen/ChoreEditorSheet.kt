@@ -110,7 +110,12 @@ internal fun ChoreEditorSheet(
     val schedule = when (scheduleKind) {
         ScheduleKind.PRESET -> presetFrequencyDays?.let(ChoreSchedule::EveryDays)
         ScheduleKind.CUSTOM -> customFrequencyInput.toIntOrNull()?.let(ChoreSchedule::EveryDays)
-        ScheduleKind.WEEKDAYS -> ChoreSchedule.Weekdays(weekdayNumbers.mapTo(mutableSetOf()) { DayOfWeek(it) })
+        // Every day of the week is the same as daily, which reads better on rows than all seven days.
+        ScheduleKind.WEEKDAYS -> if (weekdayNumbers.size == DayOfWeek.entries.size) {
+            ChoreSchedule.EveryDays(1)
+        } else {
+            ChoreSchedule.Weekdays(weekdayNumbers.mapTo(mutableSetOf()) { DayOfWeek(it) })
+        }
         ScheduleKind.MONTH_DAY -> monthDayInput.toIntOrNull()?.let(ChoreSchedule::MonthDay)
     }?.takeIf { it.isValid }
     // "None" is a preset with no days; every other kind needs a valid value before saving.
@@ -284,11 +289,12 @@ internal fun ChoreEditorSheet(
                     value = monthDayInput,
                     onValueChange = { monthDayInput = it.filter(Char::isDigit).take(2) },
                     label = { Text(stringResource(R.string.chores_editor_frequency_month_day_hint)) },
-                    supportingText = if ((monthDayInput.toIntOrNull() ?: 0) > SHORTEST_MONTH_DAYS) {
+                    supportingText = if (((schedule as? ChoreSchedule.MonthDay)?.day ?: 0) > SHORTEST_MONTH_DAYS) {
                         { Text(stringResource(R.string.chores_editor_frequency_month_day_short_months)) }
                     } else {
                         null
                     },
+                    isError = monthDayInput.isNotEmpty() && schedule == null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     enabled = canEdit,
                     singleLine = true,

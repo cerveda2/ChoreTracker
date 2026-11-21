@@ -1,5 +1,6 @@
 package cz.dcervenka.choretracker.core.design.components
 
+import android.content.res.Resources
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
@@ -25,9 +26,11 @@ fun choreScheduleLabel(schedule: ChoreSchedule): String = when (schedule) {
     is ChoreSchedule.MonthDay -> stringResource(R.string.schedule_month_day, schedule.day)
 }
 
-// Starting on the locale's first day of the week, e.g. Monday in Czech and Sunday in US English.
+// Starting on the region's first day of the week, e.g. Monday in Czechia and Sunday in the US. A language picked in
+// the app has no region ("en"), so the device's region decides then.
 fun weekdaysInOrder(locale: Locale): List<DayOfWeek> {
-    val first = WeekFields.of(locale).firstDayOfWeek.value
+    val regional = if (locale.country.isEmpty()) Resources.getSystem().configuration.locales[0] else locale
+    val first = WeekFields.of(regional).firstDayOfWeek.value
     return DayOfWeek.entries.sortedBy { (it.isoDayNumber - first + DAYS_IN_WEEK) % DAYS_IN_WEEK }
 }
 
