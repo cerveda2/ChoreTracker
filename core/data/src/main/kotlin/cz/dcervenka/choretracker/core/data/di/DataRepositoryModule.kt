@@ -17,11 +17,13 @@ import cz.dcervenka.choretracker.core.data.contract.ReminderSettingsRepository
 import cz.dcervenka.choretracker.core.data.contract.RequestNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.data.contract.StatsRepository
 import cz.dcervenka.choretracker.core.data.contract.ThemeSettingsRepository
+import cz.dcervenka.choretracker.core.data.contract.UpdatePromptRepository
 import cz.dcervenka.choretracker.core.data.repository.DataStoreInviteNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.DataStoreNotificationsBannerRepository
 import cz.dcervenka.choretracker.core.data.repository.DataStoreReminderSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.DataStoreRequestNotificationSettingsRepository
 import cz.dcervenka.choretracker.core.data.repository.DataStoreThemeSettingsRepository
+import cz.dcervenka.choretracker.core.data.repository.DataStoreUpdatePromptRepository
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstChoreCompletionRepository
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstChoreRepository
 import cz.dcervenka.choretracker.core.data.repository.OfflineFirstChoreRequestRepository
@@ -57,6 +59,10 @@ annotation class ThemeSettingsDataStore
 @Qualifier
 @Retention(AnnotationRetention.RUNTIME)
 annotation class NotificationsBannerDataStore
+
+@Qualifier
+@Retention(AnnotationRetention.RUNTIME)
+annotation class UpdatePromptDataStore
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -104,6 +110,9 @@ abstract class DataRepositoryModule {
         impl: DataStoreNotificationsBannerRepository,
     ): NotificationsBannerRepository
 
+    @Binds
+    abstract fun bindUpdatePromptRepository(impl: DataStoreUpdatePromptRepository): UpdatePromptRepository
+
     // Bound by core/notifications; optional so that module stays removable on its own.
     @BindsOptionalOf
     abstract fun optionalPushTokenRepository(): PushTokenRepository
@@ -150,6 +159,14 @@ abstract class DataRepositoryModule {
         fun provideNotificationsBannerDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
             PreferenceDataStoreFactory.create(
                 produceFile = { context.preferencesDataStoreFile("notifications_banner") },
+            )
+
+        @Provides
+        @Singleton
+        @UpdatePromptDataStore
+        fun provideUpdatePromptDataStore(@ApplicationContext context: Context): DataStore<Preferences> =
+            PreferenceDataStoreFactory.create(
+                produceFile = { context.preferencesDataStoreFile("update_prompt") },
             )
     }
 }
