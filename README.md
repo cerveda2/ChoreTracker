@@ -65,6 +65,7 @@ app                       Navigation root, bottom tabs (Home, Chores, Insights, 
 ├── core/sync             LocalSyncRepository, upload queue, real-time listeners
 ├── core/notifications    FCM token registration and push notifications
 ├── core/reminders        Daily chore reminder (WorkManager)
+├── core/performance      Firebase performance reporting
 ├── core/design           Material 3 theme, Compose components, strings
 ├── core/formatters       Date/time locale formatting
 ├── core/test             Test utilities, sample data generators
@@ -79,6 +80,7 @@ Feature code lives in each feature's `impl` module (`feature/<name>/impl`).
 - **Navigation:** Navigation Compose with four bottom tabs.
 - **Database:** Room (schema version 13) with a pending sync queue and soft-deleted chores. Every schema bump ships a migration, tested from the oldest shipped schema.
 - **Remote:** Firebase Auth, Firestore, Cloud Functions, Cloud Messaging and Crashlytics, with emulator support in debug builds.
+- **Performance:** Release-only Firebase startup, network and activity rendering metrics, plus fixed-name screen-load and sync traces. See [monitoring and release checks](docs/PERFORMANCE_MONITORING.md).
 - **Testing:** JUnit 4, MockK, Turbine, Truth and Robolectric. `functions/test/` runs the Cloud Functions and `firestore.rules` against the Firebase emulators.
 
 ## Build

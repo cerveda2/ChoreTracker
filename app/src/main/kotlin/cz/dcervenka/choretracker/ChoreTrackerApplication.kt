@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.notifications.repository.FcmTokenRegistrar
 import cz.dcervenka.choretracker.core.notifications.service.NotificationChannels
 import cz.dcervenka.choretracker.core.reminders.notification.ReminderNotificationChannels
 import cz.dcervenka.choretracker.core.reminders.scheduler.ChoreReminderScheduler
+import cz.dcervenka.choretracker.core.sync.scheduler.PendingSyncScheduler
 import dagger.Lazy
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -33,14 +34,17 @@ class ChoreTrackerApplication : Application(), Configuration.Provider {
     lateinit var fcmTokenRegistrar: FcmTokenRegistrar
 
     // dagger.Lazy, not an eagerly-injected field like fcmTokenRegistrar above: constructing
-    // ChoreReminderScheduler resolves a WorkManager (see RemindersModule), which triggers
+    // ChoreReminderScheduler resolves a WorkManager (see SyncModule), which triggers
     // WorkManager's on-demand init. get() is called explicitly at the end of onCreate() below
     // so reminder scheduling starts only after the notification channel it posts into exists.
     // To fully remove chore reminders, delete this field, the
-    // ReminderNotificationChannels.ensureCreated() call, the WorkManager <provider> override in
-    // AndroidManifest.xml, and core/reminders itself.
+    // ReminderNotificationChannels.ensureCreated() call, and core/reminders itself.
     @Inject
     lateinit var choreReminderScheduler: Lazy<ChoreReminderScheduler>
+
+    // Lazy for the same WorkManager reason as choreReminderScheduler.
+    @Inject
+    lateinit var pendingSyncScheduler: Lazy<PendingSyncScheduler>
 
     // Resolved via EntryPoint rather than a member-injected lateinit field: WorkManager's
     // on-demand init can read workManagerConfiguration at any point - including before Hilt
@@ -65,6 +69,7 @@ class ChoreTrackerApplication : Application(), Configuration.Provider {
         NotificationChannels.ensureCreated(this)
         ReminderNotificationChannels.ensureCreated(this)
         choreReminderScheduler.get()
+        pendingSyncScheduler.get()
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }

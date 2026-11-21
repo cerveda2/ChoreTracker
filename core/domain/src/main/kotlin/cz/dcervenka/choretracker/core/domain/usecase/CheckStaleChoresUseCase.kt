@@ -23,7 +23,7 @@ class CheckStaleChoresUseCase @Inject constructor(
     private val clock: Clock,
 ) {
     suspend operator fun invoke(): List<ChoreStaleness> {
-        val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
+        val user = (authRepository.authState.first { it !is AuthState.Initializing } as? AuthState.Authenticated)?.user
         if (user == null || user.isPreview) return emptyList()
 
         // Errors are intentionally ignored here - staleness still gets computed from whatever

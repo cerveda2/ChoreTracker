@@ -1,6 +1,6 @@
 # Play Console: App content answers
 
-Answers for Play Console → **Policy and programs → App content**, matching the app as of v0.3.0.
+Answers for Play Console → **Policy and programs → App content**, including the planned Performance Monitoring integration after v0.3.0.
 Keep this in sync with the privacy policy (`site/privacy/`) whenever data collection changes.
 
 ## Privacy policy
@@ -70,8 +70,19 @@ Play's definition.
 | App activity → **Other user-generated content** | App functionality | Household name, chores, completions (who, when and optional completion notes), invite codes. |
 | Messages → **Other in-app messages** | App functionality | Chore requests addressed to another household member, including the requested chores and optional request notes. Collection is optional. |
 | App info and performance → **Crash logs** | Analytics | Crashlytics stack traces. |
-| App info and performance → **Diagnostics** | Analytics | The device model, Android version and app state sent with a crash report. |
-| Device or other IDs → **Device or other IDs** | App functionality, Analytics | Firebase installation ID, Crashlytics installation UUID, and the push notification (FCM) token. |
+| App info and performance → **Diagnostics** | Analytics | Crash metadata; startup, screen-load, rendering and sync performance; network timings and sizes; device/resource metadata. |
+| Location → **Approximate location** | Analytics | Performance Monitoring groups performance events by IP-derived country. No GPS or precise location is requested. |
+| App activity → **App interactions** | Analytics | Fixed screen-load trace names and outcomes identify which main screen's load time is being measured. No taps, search text or household content are attached. |
+| Device or other IDs → **Device or other IDs** | App functionality, Analytics | Firebase installation and session IDs, Crashlytics installation UUID, and the push notification (FCM) token. |
+
+Performance Monitoring is enabled in release builds and disabled in debug builds. These diagnostics do not add the
+Google Analytics SDK or advertising identifiers. Performance Monitoring includes Remote Config
+internally to regulate reporting and Firebase Sessions for its timelines.
+
+Before releasing this integration, publish the updated privacy policy and update the live Data
+safety form for approximate location, app interactions, diagnostics and identifiers. See
+[Firebase's SDK disclosure](https://firebase.google.com/docs/android/play-data-disclosure#performance-monitoring)
+and the [monitoring guide](../PERFORMANCE_MONITORING.md). These repository notes do not change the live form.
 
 ### Notification data flow
 
@@ -91,11 +102,11 @@ Update the live Data safety form to include this optional category when this doc
 
 ### Not collected
 
-Location, financial info, health and fitness, email/SMS/MMS messages, photos and videos, audio, files and docs,
-calendar, contacts, app interactions, in-app search history, installed apps, other actions, web
+Precise location, financial info, health and fitness, email/SMS/MMS messages, photos and videos, audio, files and docs,
+calendar, contacts, in-app search history, installed apps, other actions, web
 browsing.
 
 - **Photos and videos:** the camera is used only to scan invite QR codes. Frames are processed on
   the device and never leave it, so this isn't "collected".
-- **Location:** Firebase Authentication and Cloud Functions see the caller's IP address to run the
-  request and to prevent abuse, but the app doesn't derive or store a location from it.
+- **Location:** Firebase Performance Monitoring uses IP addresses to group performance events by
+  country. This is disclosed as approximate location. The app does not request precise location.

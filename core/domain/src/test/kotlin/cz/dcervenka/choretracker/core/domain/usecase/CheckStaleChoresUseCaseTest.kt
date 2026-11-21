@@ -24,8 +24,10 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -122,6 +124,19 @@ class CheckStaleChoresUseCaseTest {
 
         assertThat(result).isEmpty()
         coVerify(exactly = 0) { refreshHouseholdUseCase() }
+    }
+
+    @Test
+    fun `waits for the session to be restored instead of skipping the reminder`() = runTest {
+        authStateFlow.value = AuthState.Initializing
+        every { statisticsCalculator.buildStaleness(any(), any(), any(), any(), expectedToday) } returns
+            listOf(staleness("chore-1", ChoreStatus.NEEDS_ATTENTION))
+
+        val result = async { useCase() }
+        runCurrent()
+        authStateFlow.value = sampleAuthenticatedState()
+
+        assertThat(result.await()).hasSize(1)
     }
 
     @Test

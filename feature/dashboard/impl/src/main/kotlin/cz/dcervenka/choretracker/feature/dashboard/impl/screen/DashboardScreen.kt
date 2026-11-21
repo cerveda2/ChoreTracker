@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import cz.dcervenka.choretracker.core.common.performance.PerformanceTraceName
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.LocalMemberPalette
 import cz.dcervenka.choretracker.core.design.LocalSpacing
@@ -52,6 +53,7 @@ import cz.dcervenka.choretracker.core.design.components.NotificationsOffBanner
 import cz.dcervenka.choretracker.core.design.components.OutOfTurnDialog
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.TopLevelBottomBarSpacer
+import cz.dcervenka.choretracker.core.design.performance.TrackScreenLoad
 import cz.dcervenka.choretracker.core.design.rememberSaveableStringList
 import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.formatters.formatInstantForLocale
@@ -79,6 +81,7 @@ fun DashboardScreen(
     notificationPromptSettled: Boolean,
 ) {
     val spacing = LocalSpacing.current
+    TrackScreenLoad(PerformanceTraceName.HOME_LOAD, isLoading = uiState.snapshot == null)
     val snackbarHostState = remember { SnackbarHostState() }
     val undoLabel = stringResource(R.string.common_undo)
     val loggedMessage = stringResource(R.string.dashboard_logged_snackbar)
