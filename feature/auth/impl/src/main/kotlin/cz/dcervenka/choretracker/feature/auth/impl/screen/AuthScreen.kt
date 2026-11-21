@@ -29,8 +29,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -180,6 +184,22 @@ fun AuthScreen(
                 },
                 modifier = Modifier.fillMaxWidth(),
             )
+            if (uiState.authMode == AuthMode.SIGN_IN) {
+                val resetEmailLanguage = stringResource(R.string.auth_password_reset_language)
+                TextButton(
+                    onClick = { onIntent(AuthUiIntent.ForgotPasswordClicked(resetEmailLanguage)) },
+                    modifier = Modifier.align(Alignment.End),
+                    enabled = !uiState.isWorking,
+                ) {
+                    Text(text = stringResource(R.string.auth_forgot_password))
+                }
+                uiState.passwordResetSentTo?.let { email ->
+                    Text(
+                        text = stringResource(R.string.auth_password_reset_sent, email),
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
+            }
             PrimaryButton(
                 text = if (uiState.authMode == AuthMode.SIGN_IN) {
                     stringResource(R.string.auth_sign_in)
@@ -196,7 +216,7 @@ fun AuthScreen(
                     )
                 },
                 enabled = !uiState.isWorking,
-                loading = uiState.isWorking,
+                loading = uiState.isWorking && !uiState.isSendingPasswordReset,
             )
             TextButton(
                 onClick = { onIntent(AuthUiIntent.ContinuePreviewClicked) },

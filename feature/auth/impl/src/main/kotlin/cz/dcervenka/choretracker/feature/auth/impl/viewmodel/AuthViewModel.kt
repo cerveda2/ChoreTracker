@@ -9,6 +9,7 @@ import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.domain.usecase.ClearPreviewModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ContinueInPreviewModeUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.SendPasswordResetEmailUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignInUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SignUpUseCase
 import cz.dcervenka.choretracker.core.model.auth.AuthState
@@ -37,6 +38,7 @@ class AuthViewModel @Inject constructor(
     observeAuthStateUseCase: ObserveAuthStateUseCase,
     private val signInUseCase: SignInUseCase,
     private val signUpUseCase: SignUpUseCase,
+    private val sendPasswordResetEmailUseCase: SendPasswordResetEmailUseCase,
     private val continueInPreviewModeUseCase: ContinueInPreviewModeUseCase,
     private val clearPreviewModeUseCase: ClearPreviewModeUseCase,
 ) : ViewModel() {
@@ -71,13 +73,18 @@ class AuthViewModel @Inject constructor(
     fun dispatch(intent: AuthUiIntent) {
         when (intent) {
             is AuthUiIntent.AuthModeChanged -> mutableUiState.update { current ->
-                current.copy(authMode = intent.value, error = null, workingMessage = null)
+                current.copy(
+                    authMode = intent.value,
+                    error = null,
+                    workingMessage = null,
+                    passwordResetSentTo = null,
+                )
             }
             is AuthUiIntent.DisplayNameChanged -> mutableUiState.update { current ->
                 current.copy(displayName = intent.value, error = null, workingMessage = null)
             }
             is AuthUiIntent.EmailChanged -> mutableUiState.update { current ->
-                current.copy(email = intent.value, error = null, workingMessage = null)
+                current.copy(email = intent.value, error = null, workingMessage = null, passwordResetSentTo = null)
             }
             is AuthUiIntent.PasswordChanged -> mutableUiState.update { current ->
                 current.copy(password = intent.value, error = null, workingMessage = null)
@@ -92,6 +99,12 @@ class AuthViewModel @Inject constructor(
                 PreparedSubmission(
                     workingMessage = application.getString(R.string.auth_signing_in),
                     execute = { signInUseCase(state.email, state.password) },
+                )
+            }
+            is AuthUiIntent.ForgotPasswordClicked -> submit(isPasswordReset = true) { state ->
+                PreparedSubmission(
+                    workingMessage = application.getString(R.string.auth_sending_reset_link),
+                    execute = { sendPasswordReset(state.email.trim(), intent.languageCode) },
                 )
             }
             AuthUiIntent.SignUpClicked -> submit { state ->
@@ -119,15 +132,17 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    private fun submit(block: (AuthUiState) -> PreparedSubmission) {
+    private fun submit(isPasswordReset: Boolean = false, block: (AuthUiState) -> PreparedSubmission) {
         viewModelScope.launch {
             val currentState = mutableUiState.value
             val submission = block(currentState)
             mutableUiState.update { current ->
                 current.copy(
                     isWorking = true,
+                    isSendingPasswordReset = isPasswordReset,
                     error = null,
                     workingMessage = submission.workingMessage,
+                    passwordResetSentTo = null,
                 )
             }
             when (val result = submission.execute()) {
@@ -139,9 +154,18 @@ class AuthViewModel @Inject constructor(
                 is AppResult.Success -> Unit
             }
             mutableUiState.update { current ->
-                current.copy(isWorking = false, workingMessage = null)
+                current.copy(isWorking = false, isSendingPasswordReset = false, workingMessage = null)
             }
         }
+    }
+
+    private suspend fun sendPasswordReset(email: String, languageCode: String): EmptyResult {
+        if (email.isBlank()) return AppResult.Error(AppError.EMAIL_REQUIRED)
+        val result = sendPasswordResetEmailUseCase(email, languageCode)
+        if (result is AppResult.Success) {
+            mutableUiState.update { if (it.email.trim() == email) it.copy(passwordResetSentTo = email) else it }
+        }
+        return result
     }
 
     private fun validateSignIn(state: AuthUiState): EmptyResult? = when {
