@@ -67,6 +67,14 @@ Tester ideas from the 0.1.4 feedback that we've decided to do later. They aren't
 - **Personal chores**: chores a member keeps for themselves, separate from the household. Defer together with support for multiple households, since both change the "one user, one household" assumption behind `users/{uid}.householdId` and the membership-scoped sync.
 - **Data import/export**: export to JSON or CSV is cheap and would also close the data-export item in release readiness. Importing into a live, synced household is not cheap: it needs ID remapping, duplicate handling and rules for who may import.
 
+### Ideas
+
+From a tester (not a developer) on 2026-11-21: with many chores, the Chores tab gets hard to read and easy to get lost in. The three ideas below are their suggestions for that one problem, so design them together. Not planned yet.
+
+- **Turn-based badge**: mark rotating chores in the Chores list so they stand out from regular ones. Today the only sign is the turn text at the end of the row's subtitle (`choreRowSubtitle` in `ChoreRow`), which is easy to miss. UI only.
+- **Chore groups**: put similar chores in a group the list shows collapsed and expands on tap, e.g. trash plus glass, paper and plastic recycling. Today the list is only split by the fixed `ChoreCategory` sections, plus search and the All/Overdue/Due soon/Paused chips. A user-made group is shared household data (Room migration, Firestore field, `firestore.rules`, older builds ignoring it). Decide what a collapsed group shows, e.g. the most overdue chore or a due count.
+- **Personal chores**: asked for again (see Deferred). The tester wants them hidden from other members, so a client-side filter isn't enough: they need storage the household can't read, such as a `users/{uid}` subcollection or local-only.
+
 ---
 
 ## Release Readiness
