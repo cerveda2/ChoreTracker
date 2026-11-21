@@ -17,6 +17,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveNotificationsBannerDismissedUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveRecentCompletionsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveRequestNotificationsEnabledUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveSyncStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RefreshHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.RetryPendingSyncUseCase
@@ -89,6 +90,9 @@ class DashboardViewModelTest {
     lateinit var observeInviteNotificationsEnabledUseCase: ObserveInviteNotificationsEnabledUseCase
 
     @MockK
+    lateinit var observeRequestNotificationsEnabledUseCase: ObserveRequestNotificationsEnabledUseCase
+
+    @MockK
     lateinit var observeAuthStateUseCase: ObserveAuthStateUseCase
 
     @MockK
@@ -131,6 +135,7 @@ class DashboardViewModelTest {
     private val bannerDismissedFlow = MutableStateFlow(false)
     private val reminderSettingsFlow = MutableStateFlow(ReminderSettings())
     private val inviteNotificationsEnabledFlow = MutableStateFlow(true)
+    private val requestNotificationsEnabledFlow = MutableStateFlow(true)
     private val authStateFlow = MutableStateFlow<AuthState>(AuthState.Authenticated(sampleUser()))
 
     @Before
@@ -142,6 +147,7 @@ class DashboardViewModelTest {
         bannerDismissedFlow.value = false
         reminderSettingsFlow.value = ReminderSettings()
         inviteNotificationsEnabledFlow.value = true
+        requestNotificationsEnabledFlow.value = true
         authStateFlow.value = AuthState.Authenticated(sampleUser())
         every { observeCurrentDashboardUseCase() } returns dashboardFlow
         every { observeCurrentHouseholdUseCase() } returns householdFlow
@@ -151,6 +157,7 @@ class DashboardViewModelTest {
         every { observeNotificationsBannerDismissedUseCase() } returns bannerDismissedFlow
         every { observeReminderSettingsUseCase() } returns reminderSettingsFlow
         every { observeInviteNotificationsEnabledUseCase() } returns inviteNotificationsEnabledFlow
+        every { observeRequestNotificationsEnabledUseCase() } returns requestNotificationsEnabledFlow
         every { observeAuthStateUseCase() } returns authStateFlow
         coEvery { logCompletionUseCase(any(), any(), any(), any()) } returns AppResult.Success("completion-id")
         coEvery { updateCompletionUseCase(any(), any(), any()) } returns AppResult.Success(Unit)
@@ -473,8 +480,9 @@ class DashboardViewModelTest {
     fun `notifications banner only shows for notifications the user would get`() =
         runTest(coroutineRule.dispatcher) {
             householdFlow.value = sampleHousehold()
-            // Invite-accepted pushes only go to the owner, so a member with reminders off gets nothing.
+            // Invite-accepted pushes only go to the owner, so a member with reminders and requests off gets nothing.
             membersFlow.value = sampleMembers().map { it.copy(isCurrentUser = it.id == "member-2") }
+            requestNotificationsEnabledFlow.value = false
             val viewModel = createViewModel()
             backgroundScope.launch { viewModel.uiState.collect {} }
             viewModel.dispatch(DashboardUiIntent.SystemNotificationsChanged(enabled = false))
@@ -484,6 +492,28 @@ class DashboardViewModelTest {
             reminderSettingsFlow.value = ReminderSettings(enabled = true)
             advanceUntilIdle()
             assertThat(viewModel.uiState.value.showNotificationsBanner).isTrue()
+        }
+
+    @Test
+    fun `notifications banner counts request pushes once another member can ask`() =
+        runTest(coroutineRule.dispatcher) {
+            householdFlow.value = sampleHousehold()
+            val member = sampleMembers().map { it.copy(isCurrentUser = it.id == "member-2") }
+            // Alone apart from a placeholder: nobody can ask, so request pushes can't arrive.
+            membersFlow.value = member.map { if (it.id == "member-1") it.copy(userId = null) else it }
+            val viewModel = createViewModel()
+            backgroundScope.launch { viewModel.uiState.collect {} }
+            viewModel.dispatch(DashboardUiIntent.SystemNotificationsChanged(enabled = false))
+            advanceUntilIdle()
+            assertThat(viewModel.uiState.value.showNotificationsBanner).isFalse()
+
+            membersFlow.value = member
+            advanceUntilIdle()
+            assertThat(viewModel.uiState.value.showNotificationsBanner).isTrue()
+
+            requestNotificationsEnabledFlow.value = false
+            advanceUntilIdle()
+            assertThat(viewModel.uiState.value.showNotificationsBanner).isFalse()
         }
 
     @Test
@@ -586,6 +616,7 @@ private fun DashboardViewModelTest.createViewModel() = DashboardViewModel(
     observeNotificationsBannerDismissedUseCase = observeNotificationsBannerDismissedUseCase,
     observeReminderSettingsUseCase = observeReminderSettingsUseCase,
     observeInviteNotificationsEnabledUseCase = observeInviteNotificationsEnabledUseCase,
+    observeRequestNotificationsEnabledUseCase = observeRequestNotificationsEnabledUseCase,
     observeAuthStateUseCase = observeAuthStateUseCase,
     observeChoreRequestsUseCase = observeChoreRequestsUseCase,
     logCompletionUseCase = logCompletionUseCase,
