@@ -18,10 +18,11 @@ import cz.dcervenka.choretracker.core.domain.usecase.SendChoreRequestsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetChoreReminderMutedUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreCategoryUseCase
-import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreFrequencyUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreRotationUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreScheduleUseCase
 import cz.dcervenka.choretracker.core.model.chore.Chore
+import cz.dcervenka.choretracker.core.model.chore.ChoreSchedule
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
@@ -60,7 +61,7 @@ class ChoresViewModel @Inject constructor(
     private val addChoreUseCase: AddChoreUseCase,
     private val updateChoreNameUseCase: UpdateChoreNameUseCase,
     private val updateChoreCategoryUseCase: UpdateChoreCategoryUseCase,
-    private val updateChoreFrequencyUseCase: UpdateChoreFrequencyUseCase,
+    private val updateChoreScheduleUseCase: UpdateChoreScheduleUseCase,
     private val updateChoreActiveUseCase: UpdateChoreActiveUseCase,
     private val updateChoreRotationUseCase: UpdateChoreRotationUseCase,
     private val deleteChoreUseCase: DeleteChoreUseCase,
@@ -169,7 +170,7 @@ class ChoresViewModel @Inject constructor(
                 householdId = intent.householdId,
                 name = intent.name,
                 category = intent.category,
-                frequencyDays = intent.frequencyDays,
+                schedule = intent.frequencyDays?.let(ChoreSchedule::EveryDays),
                 rotationMemberIds = intent.rotationMemberIds,
             )
             if (result is AppResult.Success) {
@@ -198,7 +199,7 @@ class ChoresViewModel @Inject constructor(
                     add(updateChoreCategoryUseCase(intent.choreId, intent.category))
                 }
                 if (current.frequencyDays != intent.frequencyDays) {
-                    add(updateChoreFrequencyUseCase(intent.choreId, intent.frequencyDays))
+                    add(updateChoreScheduleUseCase(intent.choreId, intent.frequencyDays?.let(ChoreSchedule::EveryDays)))
                 }
                 if (current.isActive != intent.isActive) {
                     add(updateChoreActiveUseCase(intent.choreId, intent.isActive))

@@ -214,6 +214,11 @@ fun LogChoreScreen(
 
 private fun ChoreStaleness.urgencyScore(): Double {
     val days = daysSinceLastCompletion ?: return Double.MAX_VALUE
-    val freq = frequencyDays
-    return if (freq != null && freq > 0) days.toDouble() / freq else days.toDouble() / DEFAULT_ATTENTION_DAYS
+    val period = periodDays
+    val dueIn = dueInDays
+    return if (period != null && period > 0 && dueIn != null) {
+        (period - dueIn).toDouble() / period
+    } else {
+        days.toDouble() / DEFAULT_ATTENTION_DAYS
+    }
 }

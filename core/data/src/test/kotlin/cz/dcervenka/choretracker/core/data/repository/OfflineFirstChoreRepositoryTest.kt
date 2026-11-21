@@ -15,6 +15,7 @@ import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.chore.ChoreSchedule
 import cz.dcervenka.choretracker.core.model.error.AppError
 import io.mockk.MockKAnnotations
 import io.mockk.Runs
@@ -29,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.DayOfWeek
 import org.junit.Before
 import org.junit.Test
 import kotlin.time.Instant
@@ -62,7 +64,7 @@ class OfflineFirstChoreRepositoryTest {
         coEvery { choreDao.markDeleted(any(), any()) } just Runs
         coEvery { choreDao.updateActive(any(), any()) } just Runs
         coEvery { choreDao.updateName(any(), any()) } just Runs
-        coEvery { choreDao.updateFrequencyDays(any(), any()) } just Runs
+        coEvery { choreDao.updateSchedule(any(), any(), any(), any()) } just Runs
         coEvery { choreDao.updateCategory(any(), any()) } just Runs
         coEvery { choreDao.updateRotation(any(), any(), any()) } just Runs
         coEvery { choreDao.getChore(any()) } returns ChoreEntity(
@@ -117,13 +119,27 @@ class OfflineFirstChoreRepositoryTest {
     }
 
     @Test
-    fun `addChore passes frequencyDays through to the entity`() = runTest {
+    fun `addChore passes an interval through to the entity`() = runTest {
         val slot = slot<ChoreEntity>()
         coEvery { choreDao.upsert(capture(slot)) } just Runs
 
-        repository.addChore("household-1", "Kitchen", ChoreCategory.COOKING, frequencyDays = 6)
+        repository.addChore("household-1", "Kitchen", ChoreCategory.COOKING, ChoreSchedule.EveryDays(6))
 
         assertThat(slot.captured.frequencyDays).isEqualTo(6)
+        assertThat(slot.captured.scheduleWeekdays).isEmpty()
+        assertThat(slot.captured.scheduleMonthDay).isNull()
+    }
+
+    @Test
+    fun `addChore stores weekdays with the interval older versions use`() = runTest {
+        val slot = slot<ChoreEntity>()
+        coEvery { choreDao.upsert(capture(slot)) } just Runs
+        val days = setOf(DayOfWeek.TUESDAY, DayOfWeek.FRIDAY)
+
+        repository.addChore("household-1", "Bins", ChoreCategory.OTHER, ChoreSchedule.Weekdays(days))
+
+        assertThat(slot.captured.scheduleWeekdays).isEqualTo(days)
+        assertThat(slot.captured.frequencyDays).isEqualTo(4)
     }
 
     @Test
@@ -288,27 +304,25 @@ class OfflineFirstChoreRepositoryTest {
         assertThat(opSlot.captured.operationType).isEqualTo("rename")
     }
 
-    // updateChoreFrequencyDays
+    // updateChoreSchedule
 
     @Test
-    fun `updateChoreFrequencyDays stores empty string payload for null frequency`() = runTest {
+    fun `updateChoreSchedule clears every schedule field and queues an update`() = runTest {
         val slot = slot<PendingSyncOperationEntity>()
         coEvery { pendingSyncOperationDao.upsert(capture(slot)) } just Runs
 
-        repository.updateChoreFrequencyDays("chore-1", null)
+        repository.updateChoreSchedule("chore-1", null)
 
-        assertThat(slot.captured.operationType).isEqualTo("update_frequency")
+        coVerify { choreDao.updateSchedule("chore-1", null, emptySet(), null) }
+        assertThat(slot.captured.operationType).isEqualTo("update_schedule")
         assertThat(slot.captured.payload).isEmpty()
     }
 
     @Test
-    fun `updateChoreFrequencyDays stores frequency as string payload`() = runTest {
-        val slot = slot<PendingSyncOperationEntity>()
-        coEvery { pendingSyncOperationDao.upsert(capture(slot)) } just Runs
+    fun `updateChoreSchedule stores a month day with the interval older versions use`() = runTest {
+        repository.updateChoreSchedule("chore-1", ChoreSchedule.MonthDay(1))
 
-        repository.updateChoreFrequencyDays("chore-1", 7)
-
-        assertThat(slot.captured.payload).isEqualTo("7")
+        coVerify { choreDao.updateSchedule("chore-1", 30, emptySet(), 1) }
     }
 
     // updateChoreCategory

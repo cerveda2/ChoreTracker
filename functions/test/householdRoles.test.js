@@ -28,6 +28,7 @@ async function signUp(name) {
 function value(input) {
   if (input === null) return { nullValue: null };
   if (typeof input === "boolean") return { booleanValue: input };
+  if (Number.isInteger(input)) return { integerValue: String(input) };
   if (Array.isArray(input)) return { arrayValue: { values: input.map(value) } };
   return { stringValue: String(input) };
 }
@@ -103,6 +104,24 @@ describe("household roles", () => {
     assert.equal(await writeAs(admin, own, { ...rotation, rotationMemberIds: [] }, mask), 200);
     assert.equal(await writeAs(member, others, rotation, mask), 403);
     assert.equal(await writeAs(outsider, own, rotation, mask), 403);
+  });
+
+  it("lets whoever can edit a chore give it a calendar schedule", async () => {
+    const { admin, member, outsider } = await seed();
+    const own = "households/home/chores/chore-1";
+    const others = "households/home/chores/chore-2";
+    assert.equal(await writeAs(member, own, {
+      id: "chore-1", householdId: "home", name: "Bins", createdByUserId: member.uid, frequencyDays: 7,
+    }), 200);
+    assert.equal(await writeAs(admin, others, {
+      id: "chore-2", householdId: "home", name: "Rent", createdByUserId: admin.uid,
+    }), 200);
+    const weekly = { frequencyDays: 4, scheduleWeekdays: [2, 5], scheduleMonthDay: null };
+    const mask = Object.keys(weekly);
+    assert.equal(await writeAs(member, own, weekly, mask), 200);
+    assert.equal(await writeAs(admin, own, { frequencyDays: 30, scheduleWeekdays: [], scheduleMonthDay: 1 }, mask), 200);
+    assert.equal(await writeAs(member, others, weekly, mask), 403);
+    assert.equal(await writeAs(outsider, own, weekly, mask), 403);
   });
 
   it("grants admin management without ownership or role changes", async () => {

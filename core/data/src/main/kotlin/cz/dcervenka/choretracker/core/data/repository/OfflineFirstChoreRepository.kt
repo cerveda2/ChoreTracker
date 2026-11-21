@@ -16,6 +16,8 @@ import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.chore.ChoreSchedule
+import cz.dcervenka.choretracker.core.model.chore.frequencyDays
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import kotlinx.coroutines.CoroutineScope
@@ -55,10 +57,10 @@ class OfflineFirstChoreRepository @Inject constructor(
         householdId: String,
         name: String,
         category: ChoreCategory,
-        frequencyDays: Int?,
+        schedule: ChoreSchedule?,
         rotationMemberIds: List<String>,
     ): AppResult<String> {
-        Timber.d("addChore: householdId=$householdId name=$name category=$category frequencyDays=$frequencyDays")
+        Timber.d("addChore: householdId=$householdId name=$name category=$category schedule=$schedule")
         val userId = currentUserId() ?: return AppResult.Error(AppError.NOT_SIGNED_IN)
         val membership = memberDao.findByUserId(householdId, userId)
             ?: return AppResult.Error(AppError.OWN_MEMBERSHIP_NOT_FOUND)
@@ -73,11 +75,13 @@ class OfflineFirstChoreRepository @Inject constructor(
                 isActive = true,
                 createdAt = now,
                 deletedAt = null,
-                frequencyDays = frequencyDays,
+                frequencyDays = schedule?.frequencyDays,
                 category = category.name,
                 createdByUserId = userId,
                 rotationMemberIds = rotationMemberIds,
                 rotationStartedAt = now.takeIf { rotationMemberIds.isNotEmpty() },
+                scheduleWeekdays = (schedule as? ChoreSchedule.Weekdays)?.days.orEmpty(),
+                scheduleMonthDay = (schedule as? ChoreSchedule.MonthDay)?.day,
             ),
         )
         pendingSyncOperationDao.upsert(
@@ -149,17 +153,22 @@ class OfflineFirstChoreRepository @Inject constructor(
         return AppResult.Success(Unit)
     }
 
-    override suspend fun updateChoreFrequencyDays(choreId: String, frequencyDays: Int?): EmptyResult {
-        Timber.d("updateChoreFrequencyDays: choreId=$choreId frequencyDays=$frequencyDays")
+    override suspend fun updateChoreSchedule(choreId: String, schedule: ChoreSchedule?): EmptyResult {
+        Timber.d("updateChoreSchedule: choreId=$choreId schedule=$schedule")
         editError(choreId)?.let { return AppResult.Error(it) }
-        choreDao.updateFrequencyDays(choreId, frequencyDays)
+        choreDao.updateSchedule(
+            choreId = choreId,
+            frequencyDays = schedule?.frequencyDays,
+            weekdays = (schedule as? ChoreSchedule.Weekdays)?.days.orEmpty(),
+            monthDay = (schedule as? ChoreSchedule.MonthDay)?.day,
+        )
         pendingSyncOperationDao.upsert(
             PendingSyncOperationEntity(
                 id = UUID.randomUUID().toString(),
                 entityType = "chore",
                 entityId = choreId,
-                operationType = "update_frequency",
-                payload = frequencyDays?.toString().orEmpty(),
+                operationType = "update_schedule",
+                payload = schedule?.toString().orEmpty(),
                 createdAt = Clock.System.now(),
             ),
         )

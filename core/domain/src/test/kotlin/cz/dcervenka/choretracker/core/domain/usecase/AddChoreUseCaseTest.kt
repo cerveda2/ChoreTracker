@@ -4,11 +4,13 @@ import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.data.contract.ChoreRepository
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.chore.ChoreSchedule
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.DayOfWeek
 import org.junit.Before
 import org.junit.Test
 
@@ -27,7 +29,7 @@ class AddChoreUseCaseTest {
     }
 
     @Test
-    fun `delegates to repository with no frequency by default`() = runTest {
+    fun `delegates to repository with no schedule by default`() = runTest {
         useCase("household-1", "Kitchen", ChoreCategory.COOKING)
 
         coVerify {
@@ -35,21 +37,23 @@ class AddChoreUseCaseTest {
                 householdId = "household-1",
                 name = "Kitchen",
                 category = ChoreCategory.COOKING,
-                frequencyDays = null,
+                schedule = null,
             )
         }
     }
 
     @Test
-    fun `delegates positive frequency to repository`() = runTest {
-        useCase("household-1", "Kitchen", ChoreCategory.COOKING, 6)
+    fun `delegates a valid schedule to repository`() = runTest {
+        val schedule = ChoreSchedule.Weekdays(setOf(DayOfWeek.TUESDAY, DayOfWeek.FRIDAY))
+
+        useCase("household-1", "Bins", ChoreCategory.OTHER, schedule)
 
         coVerify {
             choreRepository.addChore(
                 householdId = "household-1",
-                name = "Kitchen",
-                category = ChoreCategory.COOKING,
-                frequencyDays = 6,
+                name = "Bins",
+                category = ChoreCategory.OTHER,
+                schedule = schedule,
             )
         }
     }
@@ -62,16 +66,8 @@ class AddChoreUseCaseTest {
     }
 
     @Test
-    fun `returns error for zero frequency`() = runTest {
-        val result = useCase("household-1", "Kitchen", ChoreCategory.COOKING, 0)
-
-        assertThat(result).isInstanceOf(AppResult.Error::class.java)
-        coVerify(exactly = 0) { choreRepository.addChore(any(), any(), any(), any()) }
-    }
-
-    @Test
-    fun `returns error for negative frequency`() = runTest {
-        val result = useCase("household-1", "Kitchen", ChoreCategory.COOKING, -3)
+    fun `returns error for an invalid schedule`() = runTest {
+        val result = useCase("household-1", "Kitchen", ChoreCategory.COOKING, ChoreSchedule.EveryDays(0))
 
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
         coVerify(exactly = 0) { choreRepository.addChore(any(), any(), any(), any()) }

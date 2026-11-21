@@ -13,6 +13,7 @@ import androidx.work.testing.TestListenableWorkerBuilder
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.data.contract.ReminderSettingsRepository
 import cz.dcervenka.choretracker.core.domain.usecase.CheckStaleChoresUseCase
+import cz.dcervenka.choretracker.core.model.chore.ChoreSchedule
 import cz.dcervenka.choretracker.core.model.settings.ReminderSettings
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 import cz.dcervenka.choretracker.core.model.stats.ChoreStatus
@@ -99,7 +100,7 @@ class ChoreReminderWorkerTest {
                 choreName = "Kitchen",
                 lastCompletedDate = null,
                 daysSinceLastCompletion = 10,
-                frequencyDays = 7,
+                schedule = ChoreSchedule.EveryDays(7),
                 status = ChoreStatus.NEEDS_ATTENTION,
             ),
         )
@@ -133,7 +134,7 @@ class ChoreReminderWorkerTest {
                 choreName = "Kitchen",
                 lastCompletedDate = null,
                 daysSinceLastCompletion = 10,
-                frequencyDays = 7,
+                schedule = ChoreSchedule.EveryDays(7),
                 status = ChoreStatus.NEEDS_ATTENTION,
             ),
         )
@@ -205,6 +206,6 @@ private fun staleChore(choreId: String, choreName: String) = ChoreStaleness(
     choreName = choreName,
     lastCompletedDate = null,
     daysSinceLastCompletion = 10,
-    frequencyDays = 7,
+    schedule = ChoreSchedule.EveryDays(7),
     status = ChoreStatus.NEEDS_ATTENTION,
 )
