@@ -1,0 +1,5 @@
+<resources>
+    <string name="update_downloaded">Update downloaded. Restart to use the latest version.</string>
+    <string name="update_restart">Restart</string>
+    <string name="update_install_failed">Couldn’t install the update. You can try again.</string>
+</resources>

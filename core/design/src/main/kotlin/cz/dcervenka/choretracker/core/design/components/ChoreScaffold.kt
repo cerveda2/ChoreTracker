@@ -35,6 +35,7 @@ val ExtendedFabReservedHeight = 72.dp
 fun ChoreScaffold(
     modifier: Modifier = Modifier,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    snackbarHostModifier: Modifier = Modifier,
     contentWindowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
     topBar: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
@@ -50,7 +51,7 @@ fun ChoreScaffold(
         bottomBar = bottomBar,
         floatingActionButton = floatingActionButton,
         contentWindowInsets = contentWindowInsets,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState, modifier = snackbarHostModifier) },
         containerColor = MaterialTheme.colorScheme.background,
         content = content,
     )

@@ -7,11 +7,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,13 +34,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import cz.dcervenka.choretracker.BuildConfig
 import cz.dcervenka.choretracker.core.common.performance.PerformanceTraceName
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
+import cz.dcervenka.choretracker.core.design.components.ExtendedFabReservedHeight
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.performance.TrackScreenLoad
 import cz.dcervenka.choretracker.core.model.settings.ThemeMode
 import cz.dcervenka.choretracker.core.notifications.ui.NotificationPermissionRequest
+import cz.dcervenka.choretracker.core.updates.ui.InAppUpdatePrompt
 import cz.dcervenka.choretracker.feature.auth.impl.navigation.authScreen
 import cz.dcervenka.choretracker.feature.chores.impl.navigation.ChoresDestination
 import cz.dcervenka.choretracker.feature.chores.impl.navigation.choresScreen
@@ -57,6 +62,7 @@ fun ChoreTrackerRoot(
     viewModel: AppViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
+    val updateSnackbarHostState = remember { SnackbarHostState() }
     val rootDestination by viewModel.rootDestination.collectAsStateWithLifecycle()
     val themeSettings by viewModel.themeSettings.collectAsStateWithLifecycle()
     var notificationPromptSettled by remember { mutableStateOf(false) }
@@ -137,6 +143,8 @@ fun ChoreTrackerRoot(
 
     ChoreTrackerTheme(darkTheme = darkTheme, useDynamicColor = themeSettings.dynamicColor) {
         ChoreScaffold(
+            snackbarHostState = updateSnackbarHostState,
+            snackbarHostModifier = Modifier.padding(bottom = ExtendedFabReservedHeight),
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 AnimatedVisibility(
@@ -194,6 +202,9 @@ fun ChoreTrackerRoot(
                 }
                 if (rootDestination == RootDestination.Main) {
                     NotificationPermissionRequest(onSettled = { notificationPromptSettled = true })
+                    if (!BuildConfig.DEBUG && notificationPromptSettled && showBottomBar) {
+                        InAppUpdatePrompt(snackbarHostState = updateSnackbarHostState)
+                    }
                 }
             }
         }

@@ -1,0 +1,5 @@
+<resources>
+    <string name="update_downloaded">Aktualizace je stažená. Restartujte aplikaci a začněte používat novou verzi.</string>
+    <string name="update_restart">Restartovat</string>
+    <string name="update_install_failed">Aktualizaci se nepodařilo nainstalovat. Zkuste to znovu.</string>
+</resources>
