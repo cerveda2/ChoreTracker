@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retry
 import timber.log.Timber
@@ -50,15 +49,12 @@ class PendingSyncScheduler @Inject constructor(
             .filterNot { it is AuthState.Initializing }
             .flatMapLatest { authState ->
                 val user = (authState as? AuthState.Authenticated)?.user
-                if (user == null || user.isPreview) {
-                    flowOf(false)
-                } else {
-                    pendingSyncOperationDao.observePendingCount().map { it > 0 }
-                }
+                if (user == null || user.isPreview) flowOf(0) else pendingSyncOperationDao.observePendingCount()
             }
             .distinctUntilChanged()
-            .onEach { hasPendingOperations ->
-                if (hasPendingOperations) enqueue() else workManager.cancelUniqueWork(UNIQUE_WORK_NAME)
+            // Every change asks again, not just the first: a run can end while changes still wait.
+            .onEach { pendingCount ->
+                if (pendingCount > 0) enqueue() else workManager.cancelUniqueWork(UNIQUE_WORK_NAME)
             }
             .retry { error ->
                 Timber.e(error, "PendingSyncScheduler: pending operations subscription failed, retrying")
@@ -68,7 +64,8 @@ class PendingSyncScheduler @Inject constructor(
             .launchIn(scope)
     }
 
-    // KEEP: work already waiting for the network, or running, stays as it is.
+    // KEEP: work already waiting for the network, or running, stays as it is. Work that has
+    // finished (succeeded, or gave up) is replaced.
     private fun enqueue() {
         val request = OneTimeWorkRequestBuilder<SyncWorker>()
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())

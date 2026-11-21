@@ -79,7 +79,7 @@ class PendingSyncSchedulerTest {
         }
 
     @Test
-    fun `enqueues once while the queue stays non-empty and cancels when it drains`() =
+    fun `asks again with KEEP on every change to a waiting queue and cancels when it drains`() =
         runTest(coroutineRule.dispatcher) {
             pendingCount.value = 1
             createScheduler()
@@ -90,7 +90,7 @@ class PendingSyncSchedulerTest {
             pendingCount.value = 0
             advanceUntilIdle()
 
-            verify(exactly = 1) {
+            verify(exactly = 2) {
                 workManager.enqueueUniqueWork(UNIQUE_WORK_NAME, ExistingWorkPolicy.KEEP, any<OneTimeWorkRequest>())
             }
             verify(exactly = 1) { workManager.cancelUniqueWork(UNIQUE_WORK_NAME) }
