@@ -6,6 +6,7 @@ import cz.dcervenka.choretracker.core.data.contract.StatsRepository
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.chore.ChoreRequest
 import cz.dcervenka.choretracker.core.model.chore.ChoreRequestState
+import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.stats.HouseholdStatsInput
 import cz.dcervenka.choretracker.core.test.clock.FixedClock
 import cz.dcervenka.choretracker.core.test.mock.sampleChore
@@ -44,13 +45,17 @@ class ObserveChoreRequestsUseCaseTest {
         resolvedAt = resolvedAt,
     )
 
-    private fun observe(requests: List<ChoreRequest>, completions: List<ChoreCompletion> = emptyList()) = run {
+    private fun observe(
+        requests: List<ChoreRequest>,
+        completions: List<ChoreCompletion> = emptyList(),
+        members: List<HouseholdMember> = sampleMembers(),
+    ) = run {
         val repository = mockk<ChoreRequestRepository> {
             every { observeRequests("household-1") } returns flowOf(requests)
         }
         val stats = mockk<StatsRepository> {
             every { observeHouseholdStatsInput("household-1") } returns flowOf(
-                HouseholdStatsInput(sampleHousehold(), sampleMembers(), listOf(sampleChore()), completions),
+                HouseholdStatsInput(sampleHousehold(), members, listOf(sampleChore()), completions),
             )
         }
         ObserveChoreRequestsUseCase(repository, stats, FixedClock(now))("household-1")
@@ -112,5 +117,18 @@ class ObserveChoreRequestsUseCaseTest {
 
         assertThat(result.waitingOn.map { it.id to it.declined }).containsExactly("fresh" to true)
         assertThat(result.askedOfMe).isEmpty()
+    }
+
+    @Test
+    fun `requests from or to a member who has left drop out`() = runTest {
+        val alexLeft = sampleMembers().map { if (it.id == "member-2") it.copy(removedAt = now) else it }
+
+        val result = observe(
+            listOf(request("in"), request("out", from = "member-1", to = "member-2")),
+            members = alexLeft,
+        ).first()
+
+        assertThat(result.askedOfMe).isEmpty()
+        assertThat(result.waitingOn).isEmpty()
     }
 }

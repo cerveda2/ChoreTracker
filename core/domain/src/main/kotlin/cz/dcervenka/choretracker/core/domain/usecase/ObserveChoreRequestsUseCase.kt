@@ -13,7 +13,8 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
 // A request is done once anyone logs its chore after it was sent, so done ones drop out here rather
-// than being stored. A decline stays visible to the sender for a day, so they find out.
+// than being stored. A decline stays visible to the sender for a day, so they find out. Requests from or
+// to a member who has left drop out too, since nobody is left to do or cancel them.
 class ObserveChoreRequestsUseCase @Inject constructor(
     private val choreRequestRepository: ChoreRequestRepository,
     private val statsRepository: StatsRepository,
@@ -26,10 +27,12 @@ class ObserveChoreRequestsUseCase @Inject constructor(
         val me = input.members.find { it.isCurrentUser }
         val chores = input.chores.filter { it.deletedAt == null }.associateBy { it.id }
         val names = input.members.associate { it.id to it.displayName }
+        val activeMemberIds = input.members.filter { it.removedAt == null }.map { it.id }.toSet()
         val declinedSince = clock.now() - 1.days
         val shown = requests.filter { request ->
             val done = input.completions.any { it.choreId == request.choreId && it.createdAt > request.createdAt }
-            request.choreId in chores && !done && when (request.state) {
+            val membersActive = request.fromMemberId in activeMemberIds && request.toMemberId in activeMemberIds
+            request.choreId in chores && !done && membersActive && when (request.state) {
                 ChoreRequestState.OPEN -> true
                 ChoreRequestState.DECLINED -> request.resolvedAt?.let { it > declinedSince } == true
                 ChoreRequestState.CANCELLED, ChoreRequestState.UNKNOWN -> false
