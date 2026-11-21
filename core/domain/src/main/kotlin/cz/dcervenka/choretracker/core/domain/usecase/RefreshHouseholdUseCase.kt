@@ -17,7 +17,7 @@ class RefreshHouseholdUseCase @Inject constructor(
         // whatever the rest of the household changed. The push failure itself is still reported
         // below, unless the pull also fails, in which case that failure takes precedence.
         val pushResult = syncRepository.syncPendingOperations()
-        val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
+        val user = (authRepository.authState.first { it !is AuthState.Initializing } as? AuthState.Authenticated)?.user
         if (user == null || user.isPreview) return pushResult
         return when (val pullResult = syncRepository.restoreHouseholdForUser(user.id)) {
             is AppResult.Error -> AppResult.Error(pullResult.error, pullResult.cause)
