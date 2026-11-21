@@ -1,6 +1,7 @@
 package cz.dcervenka.choretracker.core.notifications.service
 
 import android.Manifest
+import android.app.PendingIntent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
@@ -51,8 +52,15 @@ class InviteAcceptedMessagingService : FirebaseMessagingService() {
             .setSmallIcon(R.drawable.ic_notification)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(launchAppIntent())
 
         NotificationManagerCompat.from(this).notify(System.currentTimeMillis().toInt(), builder.build())
+    }
+
+    // Opens the app like the notifications FCM shows while it's in the background.
+    private fun launchAppIntent(): PendingIntent? {
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName) ?: return null
+        return PendingIntent.getActivity(this, 0, launchIntent, PendingIntent.FLAG_IMMUTABLE)
     }
 
     private fun inviteAcceptedNotification(notification: RemoteMessage.Notification): NotificationCompat.Builder {
