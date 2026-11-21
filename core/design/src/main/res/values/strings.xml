@@ -301,6 +301,12 @@
     <string name="chores_editor_frequency_weekly">Weekly</string>
     <string name="chores_editor_frequency_custom">Custom</string>
     <string name="chores_editor_frequency_custom_hint">Days between completions</string>
+    <string name="chores_editor_frequency_weekdays">Days of the week</string>
+    <string name="chores_editor_frequency_month_day">Monthly</string>
+    <string name="chores_editor_frequency_month_day_hint">Day of the month (1–31)</string>
+    <string name="chores_editor_frequency_month_day_short_months">In shorter months, on the last day</string>
+    <string name="schedule_weekdays">every %1$s</string>
+    <string name="schedule_month_day">monthly on day %1$d</string>
     <string name="chores_editor_add_action">Add chore</string>
     <string name="chores_editor_reminder_label">Remind me when it\'s due</string>
     <string name="chores_editor_reminder_description">Only for you</string>

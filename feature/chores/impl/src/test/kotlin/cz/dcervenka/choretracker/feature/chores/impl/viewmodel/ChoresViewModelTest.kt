@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.DayOfWeek
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -195,7 +196,7 @@ class ChoresViewModelTest {
                     householdId = "household-1",
                     name = "Vacuum",
                     category = ChoreCategory.CLEANING,
-                    frequencyDays = 7,
+                    schedule = ChoreSchedule.EveryDays(7),
                     reminderEnabled = true,
                 ),
             )
@@ -217,7 +218,7 @@ class ChoresViewModelTest {
                     householdId = "household-1",
                     name = "Vacuum",
                     category = ChoreCategory.CLEANING,
-                    frequencyDays = 7,
+                    schedule = ChoreSchedule.EveryDays(7),
                     reminderEnabled = false,
                 ),
             )
@@ -239,7 +240,7 @@ class ChoresViewModelTest {
                     householdId = "household-1",
                     name = "Vacuum",
                     category = ChoreCategory.CLEANING,
-                    frequencyDays = -1,
+                    schedule = ChoreSchedule.EveryDays(-1),
                     reminderEnabled = false,
                 ),
             )
@@ -263,7 +264,7 @@ class ChoresViewModelTest {
                 choreId = "chore-1",
                 name = "Kitchen deep clean",
                 category = sampleChore().category,
-                frequencyDays = sampleChore().frequencyDays,
+                schedule = sampleChore().schedule,
                 isActive = sampleChore().isActive,
             ),
         )
@@ -289,7 +290,7 @@ class ChoresViewModelTest {
                 choreId = "chore-1",
                 name = sampleChore().name,
                 category = sampleChore().category,
-                frequencyDays = sampleChore().frequencyDays,
+                schedule = sampleChore().schedule,
                 isActive = sampleChore().isActive,
                 rotationMemberIds = rotation,
             ),
@@ -302,6 +303,39 @@ class ChoresViewModelTest {
         update(listOf("member-1", "member-2", "member-3"))
         advanceUntilIdle()
         coVerify { updateChoreRotationUseCase("chore-1", listOf("member-1", "member-2", "member-3")) }
+        stateJob.cancel()
+    }
+
+    @Test
+    fun `updateChore saves a schedule change that keeps frequencyDays`() = runTest(coroutineRule.dispatcher) {
+        householdFlow.value = sampleHousehold()
+        // Tuesdays store frequencyDays = 7 for older versions, the same as the Weekly preset.
+        val tuesdays = ChoreSchedule.Weekdays(setOf(DayOfWeek.TUESDAY))
+        choresFlow.value = listOf(sampleChore().copy(frequencyDays = 7, scheduleWeekdays = tuesdays.days))
+        val viewModel = createViewModel()
+        val stateJob = launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+        fun update(schedule: ChoreSchedule?) = viewModel.dispatch(
+            ChoresUiIntent.UpdateChore(
+                choreId = "chore-1",
+                name = sampleChore().name,
+                category = sampleChore().category,
+                schedule = schedule,
+                isActive = sampleChore().isActive,
+            ),
+        )
+
+        update(tuesdays)
+        advanceUntilIdle()
+        coVerify(exactly = 0) { updateChoreScheduleUseCase(any(), any()) }
+
+        update(ChoreSchedule.EveryDays(7))
+        update(ChoreSchedule.MonthDay(1))
+        update(null)
+        advanceUntilIdle()
+        coVerify { updateChoreScheduleUseCase("chore-1", ChoreSchedule.EveryDays(7)) }
+        coVerify { updateChoreScheduleUseCase("chore-1", ChoreSchedule.MonthDay(1)) }
+        coVerify { updateChoreScheduleUseCase("chore-1", null) }
         stateJob.cancel()
     }
 

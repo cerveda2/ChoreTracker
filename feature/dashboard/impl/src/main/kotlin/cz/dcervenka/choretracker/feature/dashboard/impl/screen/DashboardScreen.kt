@@ -350,7 +350,7 @@ fun DashboardScreen(
             LogCompletionSheet(
                 choreName = selectedChore.name,
                 category = selectedChore.category,
-                frequencyDays = selectedChore.frequencyDays,
+                schedule = selectedChore.schedule,
                 daysSinceLastCompletion = staleness?.daysSinceLastCompletion,
                 members = uiState.members,
                 selectedMemberIds = selectedMembers,

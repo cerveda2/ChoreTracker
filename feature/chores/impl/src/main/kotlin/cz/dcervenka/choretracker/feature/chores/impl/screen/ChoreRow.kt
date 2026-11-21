@@ -15,16 +15,17 @@ import cz.dcervenka.choretracker.core.design.components.DoneButton
 import cz.dcervenka.choretracker.core.design.components.FreshnessBar
 import cz.dcervenka.choretracker.core.design.components.IconCircle
 import cz.dcervenka.choretracker.core.design.components.ReminderOffLabel
+import cz.dcervenka.choretracker.core.design.components.choreScheduleLabel
 import cz.dcervenka.choretracker.core.design.components.choreTurnLabel
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
 
-// daysSince / frequencyDays, the fraction of a chore's cycle that has elapsed since it was last
-// done. Null without a frequency (there is no cycle to measure against) or a last completion.
-internal fun freshnessFraction(daysSince: Int?, frequencyDays: Int?): Float? {
-    if (daysSince == null || frequencyDays == null || frequencyDays <= 0) return null
-    return daysSince.toFloat() / frequencyDays.toFloat()
+// The fraction of a chore's period that has elapsed, 1 on the day it's due. Null without a schedule
+// (there is no period to measure against) or a last completion.
+internal fun freshnessFraction(periodDays: Int?, dueInDays: Int?): Float? {
+    if (periodDays == null || dueInDays == null || periodDays <= 0) return null
+    return (periodDays - dueInDays).toFloat() / periodDays.toFloat()
 }
 
 @Composable
@@ -40,7 +41,7 @@ internal fun ChoreRow(
     // no fraction at all means no freshness bar, no tertiary tint, and an outlined (not filled)
     // done button below.
     val fraction = if (chore.isActive) {
-        freshnessFraction(staleness?.daysSinceLastCompletion, chore.frequencyDays)
+        freshnessFraction(staleness?.periodDays, staleness?.dueInDays)
     } else {
         null
     }
@@ -91,12 +92,12 @@ internal fun ChoreRow(
 @Composable
 private fun choreRowSubtitle(chore: Chore, staleness: ChoreStaleness?): String {
     if (!chore.isActive) return stringResource(R.string.chores_filter_paused)
-    val frequencyDays = chore.frequencyDays
-    val frequency = frequencyDays?.let { pluralStringResource(R.plurals.log_sheet_meta_frequency, it, it) }
+    val schedule = chore.schedule
+    val frequency = schedule?.let { choreScheduleLabel(it) }
     val daysSince = staleness?.daysSinceLastCompletion
     val sinceLast = when {
         daysSince != null -> pluralStringResource(R.plurals.dashboard_days_since_last, daysSince, daysSince)
-        frequencyDays != null -> stringResource(R.string.dashboard_not_done_yet)
+        schedule != null -> stringResource(R.string.dashboard_not_done_yet)
         else -> null
     }
     val turn = staleness?.turn?.let { choreTurnLabel(it) }

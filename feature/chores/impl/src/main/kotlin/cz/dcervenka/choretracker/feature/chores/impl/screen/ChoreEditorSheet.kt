@@ -27,6 +27,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -36,14 +37,30 @@ import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreChip
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
+import cz.dcervenka.choretracker.core.design.components.shortName
+import cz.dcervenka.choretracker.core.design.components.weekdaysInOrder
 import cz.dcervenka.choretracker.core.design.suggestions
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.design.toStringRes
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.chore.ChoreSchedule
+import cz.dcervenka.choretracker.core.model.chore.isValid
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.isoDayNumber
 
 private val PRESET_FREQUENCY_DAYS = listOf(1, 2, 3, 7)
+private const val SHORTEST_MONTH_DAYS = 28
+
+private enum class ScheduleKind { PRESET, CUSTOM, WEEKDAYS, MONTH_DAY }
+
+private fun ChoreSchedule?.toKind(): ScheduleKind = when (this) {
+    null -> ScheduleKind.PRESET
+    is ChoreSchedule.EveryDays -> if (days in PRESET_FREQUENCY_DAYS) ScheduleKind.PRESET else ScheduleKind.CUSTOM
+    is ChoreSchedule.Weekdays -> ScheduleKind.WEEKDAYS
+    is ChoreSchedule.MonthDay -> ScheduleKind.MONTH_DAY
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +73,7 @@ internal fun ChoreEditorSheet(
     onSave: (
         name: String,
         category: ChoreCategory,
-        frequencyDays: Int?,
+        schedule: ChoreSchedule?,
         isActive: Boolean,
         rotationMemberIds: List<String>,
     ) -> Unit,
@@ -68,14 +85,20 @@ internal fun ChoreEditorSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var name by rememberSaveable(chore?.id) { mutableStateOf(chore?.name.orEmpty()) }
     var category by rememberSaveable(chore?.id) { mutableStateOf(chore?.category ?: ChoreCategory.OTHER) }
+    val initialSchedule = chore?.schedule
+    val initialDays = (initialSchedule as? ChoreSchedule.EveryDays)?.days
+    var scheduleKind by rememberSaveable(chore?.id) { mutableStateOf(initialSchedule.toKind()) }
     var presetFrequencyDays by rememberSaveable(chore?.id) {
-        mutableStateOf(chore?.frequencyDays?.takeIf { it in PRESET_FREQUENCY_DAYS })
-    }
-    var customSelected by rememberSaveable(chore?.id) {
-        mutableStateOf(chore?.frequencyDays != null && chore.frequencyDays !in PRESET_FREQUENCY_DAYS)
+        mutableStateOf(initialDays?.takeIf { it in PRESET_FREQUENCY_DAYS })
     }
     var customFrequencyInput by rememberSaveable(chore?.id) {
-        mutableStateOf(chore?.frequencyDays?.takeIf { it !in PRESET_FREQUENCY_DAYS }?.toString().orEmpty())
+        mutableStateOf(initialDays?.takeIf { it !in PRESET_FREQUENCY_DAYS }?.toString().orEmpty())
+    }
+    var weekdayNumbers by rememberSaveable(chore?.id) {
+        mutableStateOf(ArrayList((initialSchedule as? ChoreSchedule.Weekdays)?.days.orEmpty().map { it.isoDayNumber }))
+    }
+    var monthDayInput by rememberSaveable(chore?.id) {
+        mutableStateOf((initialSchedule as? ChoreSchedule.MonthDay)?.day?.toString().orEmpty())
     }
     var isActive by rememberSaveable(chore?.id) { mutableStateOf(chore?.isActive ?: true) }
     // Existing members first in their stored order, newly picked ones after them in tap order. Removed
@@ -84,7 +107,19 @@ internal fun ChoreEditorSheet(
         mutableStateOf(ArrayList(chore?.rotationMemberIds.orEmpty()))
     }
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
-    val frequencyDays = if (customSelected) customFrequencyInput.toIntOrNull()?.takeIf { it > 0 } else presetFrequencyDays
+    val schedule = when (scheduleKind) {
+        ScheduleKind.PRESET -> presetFrequencyDays?.let(ChoreSchedule::EveryDays)
+        ScheduleKind.CUSTOM -> customFrequencyInput.toIntOrNull()?.let(ChoreSchedule::EveryDays)
+        // Every day of the week is the same as daily, which reads better on rows than all seven days.
+        ScheduleKind.WEEKDAYS -> if (weekdayNumbers.size == DayOfWeek.entries.size) {
+            ChoreSchedule.EveryDays(1)
+        } else {
+            ChoreSchedule.Weekdays(weekdayNumbers.mapTo(mutableSetOf()) { DayOfWeek(it) })
+        }
+        ScheduleKind.MONTH_DAY -> monthDayInput.toIntOrNull()?.let(ChoreSchedule::MonthDay)
+    }?.takeIf { it.isValid }
+    // "None" is a preset with no days; every other kind needs a valid value before saving.
+    val scheduleComplete = scheduleKind == ScheduleKind.PRESET || schedule != null
 
     if (showDeleteConfirm) {
         AlertDialog(
@@ -177,52 +212,89 @@ internal fun ChoreEditorSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             val selectPreset: (Int?) -> Unit = { days ->
-                customSelected = false
+                scheduleKind = ScheduleKind.PRESET
                 presetFrequencyDays = days
             }
+            val isPreset = scheduleKind == ScheduleKind.PRESET
             FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.small)) {
                 ChoreChip(
-                    selected = !customSelected && presetFrequencyDays == null,
+                    selected = isPreset && presetFrequencyDays == null,
                     onClick = { selectPreset(null) },
                     label = stringResource(R.string.chores_editor_frequency_none),
                     enabled = canEdit,
                 )
                 ChoreChip(
-                    selected = !customSelected && presetFrequencyDays == 1,
+                    selected = isPreset && presetFrequencyDays == 1,
                     onClick = { selectPreset(1) },
                     label = stringResource(R.string.chores_editor_frequency_daily),
                     enabled = canEdit,
                 )
                 ChoreChip(
-                    selected = !customSelected && presetFrequencyDays == 2,
+                    selected = isPreset && presetFrequencyDays == 2,
                     onClick = { selectPreset(2) },
                     label = pluralStringResource(R.plurals.log_sheet_meta_frequency, 2, 2),
                     enabled = canEdit,
                 )
                 ChoreChip(
-                    selected = !customSelected && presetFrequencyDays == 3,
+                    selected = isPreset && presetFrequencyDays == 3,
                     onClick = { selectPreset(3) },
                     label = pluralStringResource(R.plurals.log_sheet_meta_frequency, 3, 3),
                     enabled = canEdit,
                 )
                 ChoreChip(
-                    selected = !customSelected && presetFrequencyDays == 7,
+                    selected = isPreset && presetFrequencyDays == 7,
                     onClick = { selectPreset(7) },
                     label = stringResource(R.string.chores_editor_frequency_weekly),
                     enabled = canEdit,
                 )
                 ChoreChip(
-                    selected = customSelected,
-                    onClick = { customSelected = true },
+                    selected = scheduleKind == ScheduleKind.CUSTOM,
+                    onClick = { scheduleKind = ScheduleKind.CUSTOM },
                     label = stringResource(R.string.chores_editor_frequency_custom),
                     enabled = canEdit,
                 )
+                ChoreChip(
+                    selected = scheduleKind == ScheduleKind.WEEKDAYS,
+                    onClick = { scheduleKind = ScheduleKind.WEEKDAYS },
+                    label = stringResource(R.string.chores_editor_frequency_weekdays),
+                    enabled = canEdit,
+                )
+                ChoreChip(
+                    selected = scheduleKind == ScheduleKind.MONTH_DAY,
+                    onClick = { scheduleKind = ScheduleKind.MONTH_DAY },
+                    label = stringResource(R.string.chores_editor_frequency_month_day),
+                    enabled = canEdit,
+                )
             }
-            if (customSelected) {
-                OutlinedTextField(
+            when (scheduleKind) {
+                ScheduleKind.PRESET -> Unit
+                ScheduleKind.CUSTOM -> OutlinedTextField(
                     value = customFrequencyInput,
                     onValueChange = { customFrequencyInput = it.filter(Char::isDigit) },
                     label = { Text(stringResource(R.string.chores_editor_frequency_custom_hint)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    enabled = canEdit,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                ScheduleKind.WEEKDAYS -> WeekdayChips(
+                    selected = weekdayNumbers,
+                    onToggle = { day ->
+                        val toggled = if (day in weekdayNumbers) weekdayNumbers - day else weekdayNumbers + day
+                        weekdayNumbers = ArrayList(toggled)
+                    },
+                    enabled = canEdit,
+                )
+                ScheduleKind.MONTH_DAY -> OutlinedTextField(
+                    value = monthDayInput,
+                    onValueChange = { monthDayInput = it.filter(Char::isDigit).take(2) },
+                    label = { Text(stringResource(R.string.chores_editor_frequency_month_day_hint)) },
+                    supportingText = if (((schedule as? ChoreSchedule.MonthDay)?.day ?: 0) > SHORTEST_MONTH_DAYS) {
+                        { Text(stringResource(R.string.chores_editor_frequency_month_day_short_months)) }
+                    } else {
+                        null
+                    },
+                    isError = monthDayInput.isNotEmpty() && schedule == null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     enabled = canEdit,
                     singleLine = true,
@@ -312,9 +384,9 @@ internal fun ChoreEditorSheet(
                             val rotationMemberIds = rotation.toList()
                                 .takeIf { ids -> members.any { it.id in ids } }
                                 .orEmpty()
-                            onSave(name.trim(), category, frequencyDays, isActive, rotationMemberIds)
+                            onSave(name.trim(), category, schedule, isActive, rotationMemberIds)
                         },
-                        enabled = name.isNotBlank() && (!customSelected || frequencyDays != null),
+                        enabled = name.isNotBlank() && scheduleComplete,
                     )
                     if (chore != null && canDelete && onDelete != null) {
                         TextButton(
@@ -339,6 +411,21 @@ internal fun ChoreEditorSheet(
                     Text(stringResource(R.string.common_close))
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun WeekdayChips(selected: List<Int>, onToggle: (Int) -> Unit, enabled: Boolean) {
+    val locale = LocalConfiguration.current.locales[0]
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(LocalSpacing.current.small)) {
+        weekdaysInOrder(locale).forEach { day ->
+            ChoreChip(
+                selected = day.isoDayNumber in selected,
+                onClick = { onToggle(day.isoDayNumber) },
+                label = day.shortName(locale).replaceFirstChar { it.titlecase(locale) },
+                enabled = enabled,
+            )
         }
     }
 }

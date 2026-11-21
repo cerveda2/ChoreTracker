@@ -22,7 +22,6 @@ import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreRotationUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreScheduleUseCase
 import cz.dcervenka.choretracker.core.model.chore.Chore
-import cz.dcervenka.choretracker.core.model.chore.ChoreSchedule
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
@@ -170,7 +169,7 @@ class ChoresViewModel @Inject constructor(
                 householdId = intent.householdId,
                 name = intent.name,
                 category = intent.category,
-                schedule = intent.frequencyDays?.let(ChoreSchedule::EveryDays),
+                schedule = intent.schedule,
                 rotationMemberIds = intent.rotationMemberIds,
             )
             if (result is AppResult.Success) {
@@ -198,8 +197,8 @@ class ChoresViewModel @Inject constructor(
                 if (current.category != intent.category) {
                     add(updateChoreCategoryUseCase(intent.choreId, intent.category))
                 }
-                if (current.frequencyDays != intent.frequencyDays) {
-                    add(updateChoreScheduleUseCase(intent.choreId, intent.frequencyDays?.let(ChoreSchedule::EveryDays)))
+                if (current.schedule != intent.schedule) {
+                    add(updateChoreScheduleUseCase(intent.choreId, intent.schedule))
                 }
                 if (current.isActive != intent.isActive) {
                     add(updateChoreActiveUseCase(intent.choreId, intent.isActive))

@@ -289,13 +289,13 @@ fun ChoresScreen(
                     ),
             members = activeMembers,
             onDismiss = { editingChoreId = null },
-            onSave = { name, category, frequencyDays, isActive, rotationMemberIds ->
+            onSave = { name, category, schedule, isActive, rotationMemberIds ->
                 onIntent(
                     ChoresUiIntent.UpdateChore(
                         choreId = editingChore.id,
                         name = name,
                         category = category,
-                        frequencyDays = frequencyDays,
+                        schedule = schedule,
                         isActive = isActive,
                         rotationMemberIds = rotationMemberIds,
                     ),
@@ -319,13 +319,13 @@ fun ChoresScreen(
             canEdit = true,
             members = activeMembers,
             onDismiss = { showNewChoreSheet = false },
-            onSave = { name, category, frequencyDays, _, rotationMemberIds ->
+            onSave = { name, category, schedule, _, rotationMemberIds ->
                 onIntent(
                     ChoresUiIntent.AddChore(
                         householdId = householdId,
                         name = name,
                         category = category,
-                        frequencyDays = frequencyDays,
+                        schedule = schedule,
                         reminderEnabled = newChoreReminderEnabled,
                         rotationMemberIds = rotationMemberIds,
                     ),
@@ -371,7 +371,7 @@ fun ChoresScreen(
             LogCompletionSheet(
                 choreName = loggingChore.name,
                 category = loggingChore.category,
-                frequencyDays = loggingChore.frequencyDays,
+                schedule = loggingChore.schedule,
                 daysSinceLastCompletion = uiState.staleness[loggingChoreId]?.daysSinceLastCompletion,
                 members = uiState.members,
                 selectedMemberIds = logMembers,

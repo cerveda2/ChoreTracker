@@ -15,7 +15,7 @@ ChoreTracker is an offline-first Android chore tracker for couples and housemate
 
 ### Chores
 - Search, filter by Overdue, Due soon or Paused, and mark a chore done from the list.
-- Add or edit a chore: name (with suggestions), category, and frequency (none, daily, weekly or every N days). Pause or delete it.
+- Add or edit a chore: name (with suggestions), category, and schedule (none, daily, weekly, every N days, chosen days of the week, or a day of the month). Pause or delete it.
 - **Take turns**: rotate a chore between members. Whoever has done it least since the rotation started is up next.
 - **Remind me when it's due**: turn the daily reminder off for one chore, just for you.
 - **Ask**: ask another member to do one or more chores, with an optional note.

@@ -2,6 +2,7 @@ package cz.dcervenka.choretracker.feature.chores.impl.contract
 
 import cz.dcervenka.choretracker.core.common.UiIntent
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
+import cz.dcervenka.choretracker.core.model.chore.ChoreSchedule
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import kotlin.time.Instant
 
@@ -12,7 +13,7 @@ sealed interface ChoresUiIntent : UiIntent {
         val householdId: String,
         val name: String,
         val category: ChoreCategory,
-        val frequencyDays: Int?,
+        val schedule: ChoreSchedule?,
         val reminderEnabled: Boolean,
         val rotationMemberIds: List<String> = emptyList(),
     ) : ChoresUiIntent
@@ -20,7 +21,7 @@ sealed interface ChoresUiIntent : UiIntent {
         val choreId: String,
         val name: String,
         val category: ChoreCategory,
-        val frequencyDays: Int?,
+        val schedule: ChoreSchedule?,
         val isActive: Boolean,
         val rotationMemberIds: List<String> = emptyList(),
     ) : ChoresUiIntent
