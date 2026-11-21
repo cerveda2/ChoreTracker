@@ -77,6 +77,8 @@ interface RemoteHouseholdDataSource {
 
     suspend fun fetchMembers(householdId: String, currentUserId: String): AppResult<List<HouseholdMember>>
 
+    suspend fun fetchRequests(householdId: String): AppResult<List<ChoreRequest>>
+
     suspend fun markInviteConsumed(householdId: String, inviteId: String, consumedAt: Instant, consumedByMemberId: String): EmptyResult
 
     suspend fun deleteCompletion(householdId: String, completionId: String): EmptyResult

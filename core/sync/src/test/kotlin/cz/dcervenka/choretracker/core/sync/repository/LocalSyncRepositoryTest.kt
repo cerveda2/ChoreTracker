@@ -531,6 +531,34 @@ class LocalSyncRepositoryTest {
         coVerify { pendingSyncOperationDao.delete("op-1") }
     }
 
+    @Test
+    fun `a rejected request cancel re-reads requests from the server`() = runTest(coroutineRule.dispatcher) {
+        val op = requestOperation("op-1", "request-2", "resolve")
+        stubMemberSyncWithQueued(op)
+        // Still queued during the push, gone once it's dropped.
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(op) andThen emptyList()
+        coEvery { choreRequestDao.getRequest("request-2") } returns requestEntity("request-2", "batch-1")
+            .copy(state = "CANCELLED", resolvedAt = Instant.parse("2026-01-05T10:00:00Z"))
+        coEvery { remoteHouseholdDataSource.upsertRequests(any()) } returns AppResult.Error(AppError.PERMISSION_DENIED)
+        coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(null)
+        val declined = requestEntity("request-2", "batch-1")
+            .copy(state = "DECLINED", resolvedAt = Instant.parse("2026-01-05T09:00:00Z"))
+            .asRequestModel()
+        coEvery { remoteHouseholdDataSource.fetchRequests("household-1") } returns AppResult.Success(listOf(declined))
+        coEvery { pendingSyncOperationDao.delete("op-1") } just Runs
+
+        val resultDeferred = async { repository.syncPendingOperations() }
+        advanceUntilIdle()
+
+        assertThat(resultDeferred.await()).isInstanceOf(AppResult.Success::class.java)
+        coVerify { pendingSyncOperationDao.delete("op-1") }
+        coVerify {
+            choreRequestDao.upsertAll(
+                match { requests -> requests.single().let { it.id == "request-2" && it.state == "DECLINED" } },
+            )
+        }
+    }
+
     private fun requestOperation(id: String, entityId: String, operationType: String) = PendingSyncOperationEntity(
         id = id,
         entityType = "request",
