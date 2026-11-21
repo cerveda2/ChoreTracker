@@ -19,6 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -99,11 +100,20 @@ fun LogCompletionSheet(
         // local midnight - passing it straight through as an Instant (or reading one straight
         // back into it) shifts the completion to the wrong local day for any timezone behind UTC.
         // Re-anchor through the local calendar date on both sides of the picker instead.
+        // Days after today aren't selectable: a completion in the future would count as done until then.
+        val latestSelectableMillis = today.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = (completedAt ?: Clock.System.now())
                 .toLocalDateTime(timeZone).date
                 .atStartOfDayIn(TimeZone.UTC)
                 .toEpochMilliseconds(),
+            selectableDates = remember(latestSelectableMillis) {
+                object : SelectableDates {
+                    override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis <= latestSelectableMillis
+
+                    override fun isSelectableYear(year: Int) = year <= today.year
+                }
+            },
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
