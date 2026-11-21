@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -37,6 +38,7 @@ import cz.dcervenka.choretracker.BuildConfig
 import cz.dcervenka.choretracker.core.common.performance.PerformanceTraceName
 import cz.dcervenka.choretracker.core.design.ChoreTrackerTheme
 import cz.dcervenka.choretracker.core.design.components.ChoreScaffold
+import cz.dcervenka.choretracker.core.design.components.ExtendedFabReservedHeight
 import cz.dcervenka.choretracker.core.design.components.LoadingState
 import cz.dcervenka.choretracker.core.design.performance.TrackScreenLoad
 import cz.dcervenka.choretracker.core.model.settings.ThemeMode
@@ -142,6 +144,7 @@ fun ChoreTrackerRoot(
     ChoreTrackerTheme(darkTheme = darkTheme, useDynamicColor = themeSettings.dynamicColor) {
         ChoreScaffold(
             snackbarHostState = updateSnackbarHostState,
+            snackbarHostModifier = Modifier.padding(bottom = ExtendedFabReservedHeight),
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 AnimatedVisibility(
