@@ -20,6 +20,8 @@ data class Chore(
     // Calendar schedule fields, read through schedule.
     val scheduleWeekdays: Set<DayOfWeek> = emptySet(),
     val scheduleMonthDay: Int? = null,
+    // Chores sharing a group name are listed together under it; null when not in a group.
+    val groupName: String? = null,
 ) {
     val schedule: ChoreSchedule?
         get() {

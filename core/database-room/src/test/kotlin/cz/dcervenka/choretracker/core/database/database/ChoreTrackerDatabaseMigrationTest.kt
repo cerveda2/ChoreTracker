@@ -85,6 +85,7 @@ class ChoreTrackerDatabaseMigrationTest {
         assertThat(legacyChore?.rotationStartedAt).isNull()
         assertThat(legacyChore?.scheduleWeekdays).isEmpty()
         assertThat(legacyChore?.scheduleMonthDay).isNull()
+        assertThat(legacyChore?.groupName).isNull()
         assertThat(requests).isEmpty()
     }
 }

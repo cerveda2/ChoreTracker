@@ -125,6 +125,11 @@ fun ChoresScreen(
         logNote = ""
     }
 
+    val expandedGroups = rememberSaveableStringList()
+    // Searching or filtering opens every group, so a match is never hidden inside a folded one.
+    val expandAllGroups = uiState.query.isNotBlank() || uiState.filter != ChoreFilter.ALL
+    val groupNames = uiState.chores.mapNotNull { it.groupName }.distinct().sorted()
+
     var outOfTurnChoreId by rememberSaveable { mutableStateOf<String?>(null) }
     val logNow: (Chore) -> Unit = { chore ->
         val householdId = uiState.householdId
@@ -244,26 +249,58 @@ fun ChoresScreen(
                         ),
                         verticalArrangement = Arrangement.spacedBy(spacing.large),
                     ) {
-                        groups.forEach { (category, chores) ->
+                        groups.forEach { (category, entries) ->
                             item(key = "group-${category.name}") {
                                 Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
                                     SectionHeader(title = stringResource(category.toStringRes()))
                                     ListGroup {
-                                        chores.forEachIndexed { index, chore ->
+                                        @Composable
+                                        fun Item(chore: Chore, modifier: Modifier = Modifier) = ChoreRow(
+                                            chore = chore,
+                                            staleness = uiState.staleness[chore.id],
+                                            onQuickLog = { quickLog(chore) },
+                                            onOpenSheet = { editingChoreId = chore.id },
+                                            modifier = modifier,
+                                            reminderMuted = uiState.remindersEnabled &&
+                                                chore.isActive &&
+                                                chore.id in uiState.mutedReminderChoreIds,
+                                        )
+                                        entries.forEachIndexed { index, entry ->
                                             if (index > 0) {
                                                 HorizontalDivider(
                                                     modifier = Modifier.padding(horizontal = spacing.medium),
                                                 )
                                             }
-                                            ChoreRow(
-                                                chore = chore,
-                                                staleness = uiState.staleness[chore.id],
-                                                onQuickLog = { quickLog(chore) },
-                                                onOpenSheet = { editingChoreId = chore.id },
-                                                reminderMuted = uiState.remindersEnabled &&
-                                                    chore.isActive &&
-                                                    chore.id in uiState.mutedReminderChoreIds,
-                                            )
+                                            when (entry) {
+                                                is ChoreListEntry.Single -> Item(entry.chore)
+                                                is ChoreListEntry.Group -> {
+                                                    val expanded = expandAllGroups || entry.name in expandedGroups
+                                                    ChoreGroupRow(
+                                                        name = entry.name,
+                                                        chores = entry.chores,
+                                                        staleness = uiState.staleness,
+                                                        expanded = expanded,
+                                                        onToggle = {
+                                                            if (entry.name in expandedGroups) {
+                                                                expandedGroups.remove(entry.name)
+                                                            } else {
+                                                                expandedGroups.add(entry.name)
+                                                            }
+                                                        },
+                                                    )
+                                                    if (expanded) {
+                                                        entry.chores.forEach { chore ->
+                                                            HorizontalDivider(
+                                                                modifier = Modifier.padding(
+                                                                    start = spacing.xLarge,
+                                                                    end = spacing.medium,
+                                                                ),
+                                                            )
+                                                            Item(chore, Modifier.padding(start = spacing.large))
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -288,8 +325,9 @@ fun ChoresScreen(
                         editingChore.id !in uiState.completedChoreIds
                     ),
             members = activeMembers,
+            groupNames = groupNames,
             onDismiss = { editingChoreId = null },
-            onSave = { name, category, schedule, isActive, rotationMemberIds ->
+            onSave = { name, category, schedule, isActive, rotationMemberIds, groupName ->
                 onIntent(
                     ChoresUiIntent.UpdateChore(
                         choreId = editingChore.id,
@@ -298,6 +336,7 @@ fun ChoresScreen(
                         schedule = schedule,
                         isActive = isActive,
                         rotationMemberIds = rotationMemberIds,
+                        groupName = groupName,
                     ),
                 )
                 editingChoreId = null
@@ -318,8 +357,9 @@ fun ChoresScreen(
             chore = null,
             canEdit = true,
             members = activeMembers,
+            groupNames = groupNames,
             onDismiss = { showNewChoreSheet = false },
-            onSave = { name, category, schedule, _, rotationMemberIds ->
+            onSave = { name, category, schedule, _, rotationMemberIds, groupName ->
                 onIntent(
                     ChoresUiIntent.AddChore(
                         householdId = householdId,
@@ -328,6 +368,7 @@ fun ChoresScreen(
                         schedule = schedule,
                         reminderEnabled = newChoreReminderEnabled,
                         rotationMemberIds = rotationMemberIds,
+                        groupName = groupName,
                     ),
                 )
                 showNewChoreSheet = false
@@ -434,7 +475,19 @@ private fun ChoreFilterRow(
     }
 }
 
-private fun groupChores(uiState: ChoresUiState): List<Pair<ChoreCategory, List<Chore>>> {
+private sealed interface ChoreListEntry {
+    val sortName: String
+
+    data class Single(val chore: Chore) : ChoreListEntry {
+        override val sortName get() = chore.name
+    }
+
+    data class Group(val name: String, val chores: List<Chore>) : ChoreListEntry {
+        override val sortName get() = name
+    }
+}
+
+private fun groupChores(uiState: ChoresUiState): List<Pair<ChoreCategory, List<ChoreListEntry>>> {
     val base = if (uiState.query.isBlank()) {
         uiState.chores
     } else {
@@ -451,8 +504,21 @@ private fun groupChores(uiState: ChoresUiState): List<Pair<ChoreCategory, List<C
         }
         ChoreFilter.PAUSED -> base.filter { !it.isActive }
     }
-    return filtered
-        .groupBy { it.category }
+    // A group sits in the section most of its chores belong to, counting the ones filtered out too, so
+    // filtering doesn't move it.
+    val groupCategories = uiState.chores.byGroup().mapValues { (_, chores) ->
+        val counts = chores.groupingBy { it.category }.eachCount()
+        ChoreCategory.entries.maxBy { counts[it] ?: 0 }
+    }
+    val singles = filtered.filter { it.groupName == null }
+        .map { it.category to ChoreListEntry.Single(it) }
+    val groups = filtered.byGroup()
+        .map { (name, chores) -> groupCategories.getValue(name) to ChoreListEntry.Group(name, chores.sortedBy { it.name }) }
+    return (singles + groups)
+        .groupBy({ it.first }, { it.second })
         .toSortedMap(compareBy { it.ordinal })
-        .map { (category, chores) -> category to chores.sortedBy { it.name } }
+        .map { (category, entries) -> category to entries.sortedBy { it.sortName } }
 }
+
+private fun List<Chore>.byGroup(): Map<String, List<Chore>> =
+    mapNotNull { chore -> chore.groupName?.let { it to chore } }.groupBy({ it.first }, { it.second })

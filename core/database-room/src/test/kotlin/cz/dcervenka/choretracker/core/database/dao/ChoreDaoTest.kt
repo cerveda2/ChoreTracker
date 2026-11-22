@@ -119,6 +119,19 @@ class ChoreDaoTest {
     }
 
     @Test
+    fun `updateGroup sets and clears the group of the targeted chore`() = runTest {
+        dao.upsert(choreEntity("chore-1"))
+        dao.upsert(choreEntity("chore-2"))
+
+        dao.updateGroup("chore-1", "Trash")
+        assertThat(dao.getChore("chore-1")?.groupName).isEqualTo("Trash")
+        assertThat(dao.getChore("chore-2")?.groupName).isNull()
+
+        dao.updateGroup("chore-1", null)
+        assertThat(dao.getChore("chore-1")?.groupName).isNull()
+    }
+
+    @Test
     fun `updateCategory only touches the targeted chore`() = runTest {
         dao.upsert(choreEntity("chore-1", category = "OTHER"))
         dao.upsert(choreEntity("chore-2", category = "OTHER"))

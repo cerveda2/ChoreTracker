@@ -51,6 +51,7 @@ internal fun ChoreEntity.asModel(): Chore = Chore(
     rotationStartedAt = rotationStartedAt,
     scheduleWeekdays = scheduleWeekdays,
     scheduleMonthDay = scheduleMonthDay,
+    groupName = groupName,
 )
 
 internal fun InviteEntity.asModel(): Invite = Invite(

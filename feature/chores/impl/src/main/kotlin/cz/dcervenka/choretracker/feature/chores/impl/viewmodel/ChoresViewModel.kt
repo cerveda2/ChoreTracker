@@ -18,6 +18,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.SendChoreRequestsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetChoreReminderMutedUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreCategoryUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreGroupUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreRotationUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreScheduleUseCase
@@ -63,6 +64,7 @@ class ChoresViewModel @Inject constructor(
     private val updateChoreScheduleUseCase: UpdateChoreScheduleUseCase,
     private val updateChoreActiveUseCase: UpdateChoreActiveUseCase,
     private val updateChoreRotationUseCase: UpdateChoreRotationUseCase,
+    private val updateChoreGroupUseCase: UpdateChoreGroupUseCase,
     private val deleteChoreUseCase: DeleteChoreUseCase,
     private val logCompletionUseCase: LogCompletionUseCase,
     private val deleteCompletionUseCase: DeleteCompletionUseCase,
@@ -171,6 +173,7 @@ class ChoresViewModel @Inject constructor(
                 category = intent.category,
                 schedule = intent.schedule,
                 rotationMemberIds = intent.rotationMemberIds,
+                groupName = intent.groupName,
             )
             if (result is AppResult.Success) {
                 // The chore is already saved - don't let leaving the screen skip its mute.
@@ -206,6 +209,9 @@ class ChoresViewModel @Inject constructor(
                 // Compared as sets: reordering alone shouldn't restart whose-turn counting.
                 if (current.rotationMemberIds.toSet() != intent.rotationMemberIds.toSet()) {
                     add(updateChoreRotationUseCase(intent.choreId, intent.rotationMemberIds))
+                }
+                if (current.groupName != intent.groupName) {
+                    add(updateChoreGroupUseCase(intent.choreId, intent.groupName))
                 }
             }
             val failure = results.filterIsInstance<AppResult.Error>().firstOrNull()

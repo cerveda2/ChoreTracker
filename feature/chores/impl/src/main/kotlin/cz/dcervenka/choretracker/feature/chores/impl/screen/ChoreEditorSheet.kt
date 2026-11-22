@@ -70,12 +70,14 @@ internal fun ChoreEditorSheet(
     canDelete: Boolean = false,
     onDismiss: () -> Unit,
     members: List<HouseholdMember>,
+    groupNames: List<String>,
     onSave: (
         name: String,
         category: ChoreCategory,
         schedule: ChoreSchedule?,
         isActive: Boolean,
         rotationMemberIds: List<String>,
+        groupName: String?,
     ) -> Unit,
     onDelete: (() -> Unit)? = null,
     reminderEnabled: Boolean? = null,
@@ -106,6 +108,11 @@ internal fun ChoreEditorSheet(
     var rotation by rememberSaveable(chore?.id) {
         mutableStateOf(ArrayList(chore?.rotationMemberIds.orEmpty()))
     }
+    var groupInput by rememberSaveable(chore?.id) { mutableStateOf(chore?.groupName.orEmpty()) }
+    var newGroup by rememberSaveable(chore?.id) { mutableStateOf(false) }
+    // A typed name that only differs in case from an existing group joins that group.
+    val groupName = groupInput.trim().takeIf { it.isNotEmpty() }
+        ?.let { typed -> groupNames.firstOrNull { it.equals(typed, ignoreCase = true) } ?: typed }
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     val schedule = when (scheduleKind) {
         ScheduleKind.PRESET -> presetFrequencyDays?.let(ChoreSchedule::EveryDays)
@@ -205,6 +212,59 @@ internal fun ChoreEditorSheet(
                     }
                 }
             }
+
+            Text(
+                text = stringResource(R.string.chores_editor_group_label),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.small)) {
+                ChoreChip(
+                    selected = !newGroup && groupName == null,
+                    onClick = {
+                        newGroup = false
+                        groupInput = ""
+                    },
+                    label = stringResource(R.string.chores_editor_group_none),
+                    enabled = canEdit,
+                )
+                groupNames.forEach { existing ->
+                    ChoreChip(
+                        selected = !newGroup && groupName == existing,
+                        onClick = {
+                            newGroup = false
+                            groupInput = existing
+                        },
+                        label = existing,
+                        enabled = canEdit,
+                    )
+                }
+                ChoreChip(
+                    selected = newGroup,
+                    onClick = {
+                        newGroup = true
+                        groupInput = ""
+                    },
+                    label = stringResource(R.string.chores_editor_group_new),
+                    enabled = canEdit,
+                )
+            }
+            if (newGroup) {
+                OutlinedTextField(
+                    value = groupInput,
+                    onValueChange = { groupInput = it },
+                    label = { Text(stringResource(R.string.chores_editor_group_name_hint)) },
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    enabled = canEdit,
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            Text(
+                text = stringResource(R.string.chores_editor_group_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
 
             Text(
                 text = stringResource(R.string.chores_editor_frequency_label),
@@ -384,7 +444,7 @@ internal fun ChoreEditorSheet(
                             val rotationMemberIds = rotation.toList()
                                 .takeIf { ids -> members.any { it.id in ids } }
                                 .orEmpty()
-                            onSave(name.trim(), category, schedule, isActive, rotationMemberIds)
+                            onSave(name.trim(), category, schedule, isActive, rotationMemberIds, groupName)
                         },
                         enabled = name.isNotBlank() && scheduleComplete,
                     )
