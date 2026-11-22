@@ -336,6 +336,9 @@
     <string name="chores_editor_group_new">New group</string>
     <string name="chores_editor_group_name_hint">Group name</string>
     <string name="chores_editor_group_description">Chores in a group are folded under its name in the list.</string>
+    <string name="chores_editor_personal_label">Only me</string>
+    <string name="chores_editor_personal_description">Nobody else in the household sees it, and it doesn\'t count toward Insights. You can\'t change this later.</string>
+    <string name="chore_personal_label">Only you</string>
     <string name="chores_group_expand">Show the chores in %1$s</string>
     <string name="chores_group_collapse">Hide the chores in %1$s</string>
     <plurals name="chores_group_count">

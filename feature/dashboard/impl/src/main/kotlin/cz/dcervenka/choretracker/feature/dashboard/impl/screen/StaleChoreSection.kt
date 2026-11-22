@@ -20,6 +20,7 @@ import cz.dcervenka.choretracker.core.design.components.CountBadge
 import cz.dcervenka.choretracker.core.design.components.DoneButton
 import cz.dcervenka.choretracker.core.design.components.IconCircle
 import cz.dcervenka.choretracker.core.design.components.ListGroup
+import cz.dcervenka.choretracker.core.design.components.PersonalChoreLabel
 import cz.dcervenka.choretracker.core.design.components.SectionHeader
 import cz.dcervenka.choretracker.core.design.components.choreScheduleLabel
 import cz.dcervenka.choretracker.core.design.components.choreTurnLabel
@@ -36,6 +37,7 @@ internal fun OverdueSection(
     onOpenSheet: (String) -> Unit,
     nudges: Map<String, Nudge>,
     onRemind: (String) -> Unit,
+    personalChoreIds: Set<String>,
 ) {
     if (items.isEmpty()) return
     val spacing = LocalSpacing.current
@@ -64,9 +66,13 @@ internal fun OverdueSection(
                     },
                     onClick = { onQuickLog(stale.choreId) },
                     onLongClick = { onOpenSheet(stale.choreId) },
-                    belowSubtitle = nudges[stale.choreId]?.let { nudge ->
-                        {
-                            NudgeAction(nudge = nudge, onRemind = { onRemind(stale.choreId) })
+                    belowSubtitle = if (stale.choreId in personalChoreIds) {
+                        { PersonalChoreLabel() }
+                    } else {
+                        nudges[stale.choreId]?.let { nudge ->
+                            {
+                                NudgeAction(nudge = nudge, onRemind = { onRemind(stale.choreId) })
+                            }
                         }
                     },
                 )
@@ -93,6 +99,7 @@ internal fun DueSoonSection(
     onOpenSheet: (String) -> Unit,
     nudges: Map<String, Nudge>,
     onRemind: (String) -> Unit,
+    personalChoreIds: Set<String>,
 ) {
     if (items.isEmpty()) return
     val spacing = LocalSpacing.current
@@ -118,9 +125,13 @@ internal fun DueSoonSection(
                     },
                     onClick = { onQuickLog(stale.choreId) },
                     onLongClick = { onOpenSheet(stale.choreId) },
-                    belowSubtitle = nudges[stale.choreId]?.let { nudge ->
-                        {
-                            NudgeAction(nudge = nudge, onRemind = { onRemind(stale.choreId) })
+                    belowSubtitle = if (stale.choreId in personalChoreIds) {
+                        { PersonalChoreLabel() }
+                    } else {
+                        nudges[stale.choreId]?.let { nudge ->
+                            {
+                                NudgeAction(nudge = nudge, onRemind = { onRemind(stale.choreId) })
+                            }
                         }
                     },
                 )

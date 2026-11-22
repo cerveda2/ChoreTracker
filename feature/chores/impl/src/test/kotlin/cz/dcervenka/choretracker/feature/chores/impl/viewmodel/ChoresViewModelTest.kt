@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.AddChoreUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.AddPersonalChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
@@ -12,6 +13,8 @@ import cz.dcervenka.choretracker.core.domain.usecase.ObserveCompletedChoreIdsUse
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMutedReminderChoresUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObservePersonalChoresUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObservePersonalStaleChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveStaleChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SendChoreRequestsUseCase
@@ -78,6 +81,15 @@ class ChoresViewModelTest {
     lateinit var observeMutedReminderChoresUseCase: ObserveMutedReminderChoresUseCase
 
     @MockK
+    lateinit var observePersonalChoresUseCase: ObservePersonalChoresUseCase
+
+    @MockK
+    lateinit var observePersonalStaleChoresUseCase: ObservePersonalStaleChoresUseCase
+
+    @MockK
+    lateinit var addPersonalChoreUseCase: AddPersonalChoreUseCase
+
+    @MockK
     lateinit var addChoreUseCase: AddChoreUseCase
 
     @MockK
@@ -120,6 +132,7 @@ class ChoresViewModelTest {
     private val staleChoresFlow = MutableStateFlow(emptyList<ChoreStaleness>())
     private val reminderSettingsFlow = MutableStateFlow(ReminderSettings())
     private val mutedReminderChoreIdsFlow = MutableStateFlow(emptySet<String>())
+    private val personalChoresFlow = MutableStateFlow(emptyList<Chore>())
 
     @Before
     fun setUp() {
@@ -138,6 +151,10 @@ class ChoresViewModelTest {
         every { observeStaleChoresUseCase() } returns staleChoresFlow
         every { observeReminderSettingsUseCase() } returns reminderSettingsFlow
         every { observeMutedReminderChoresUseCase() } returns mutedReminderChoreIdsFlow
+        personalChoresFlow.value = emptyList()
+        every { observePersonalChoresUseCase() } returns personalChoresFlow
+        every { observePersonalStaleChoresUseCase() } returns MutableStateFlow(emptyList())
+        coEvery { addPersonalChoreUseCase(any(), any(), any()) } returns AppResult.Success("personal-1")
         coEvery { addChoreUseCase(any(), any(), any(), any()) } returns AppResult.Success("chore-1")
         coEvery { updateChoreNameUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreCategoryUseCase(any(), any()) } returns AppResult.Success(Unit)
@@ -210,6 +227,42 @@ class ChoresViewModelTest {
             coVerify { addChoreUseCase("household-1", "Vacuum", ChoreCategory.CLEANING, ChoreSchedule.EveryDays(7)) }
             coVerify(exactly = 0) { setChoreReminderMutedUseCase(any(), any()) }
             assertThat(awaitItem()).isEqualTo(ChoresUiEvent.ChoreAdded)
+        }
+    }
+
+    @Test
+    fun `addChore for only me creates a personal chore, not a household one`() = runTest(coroutineRule.dispatcher) {
+        val viewModel = createViewModel()
+
+        viewModel.events.test {
+            viewModel.dispatch(
+                ChoresUiIntent.AddChore(
+                    householdId = "household-1",
+                    name = "Gym",
+                    category = ChoreCategory.OTHER,
+                    schedule = ChoreSchedule.EveryDays(2),
+                    reminderEnabled = true,
+                    personal = true,
+                ),
+            )
+            advanceUntilIdle()
+
+            coVerify { addPersonalChoreUseCase("Gym", ChoreCategory.OTHER, ChoreSchedule.EveryDays(2)) }
+            coVerify(exactly = 0) { addChoreUseCase(any(), any(), any(), any()) }
+            assertThat(awaitItem()).isEqualTo(ChoresUiEvent.ChoreAdded)
+        }
+    }
+
+    @Test
+    fun `personal chores are listed with the household's`() = runTest(coroutineRule.dispatcher) {
+        householdFlow.value = sampleHousehold()
+        choresFlow.value = listOf(sampleChore())
+        personalChoresFlow.value = listOf(sampleChore().copy(id = "personal-1", householdId = "", isPersonal = true))
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            advanceUntilIdle()
+            assertThat(expectMostRecentItem().chores.map { it.id }).containsExactly("chore-1", "personal-1")
         }
     }
 
@@ -496,7 +549,10 @@ private fun ChoresViewModelTest.createViewModel() = ChoresViewModel(
     observeStaleChoresUseCase,
     observeReminderSettingsUseCase,
     observeMutedReminderChoresUseCase,
+    observePersonalChoresUseCase,
+    observePersonalStaleChoresUseCase,
     addChoreUseCase,
+    addPersonalChoreUseCase,
     updateChoreNameUseCase,
     updateChoreCategoryUseCase,
     updateChoreScheduleUseCase,

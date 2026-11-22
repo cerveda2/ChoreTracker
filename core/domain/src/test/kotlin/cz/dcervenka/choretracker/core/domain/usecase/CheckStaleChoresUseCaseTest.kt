@@ -71,6 +71,9 @@ class CheckStaleChoresUseCaseTest {
     @MockK
     lateinit var observeChoreRequestsUseCase: ObserveChoreRequestsUseCase
 
+    @MockK
+    lateinit var observePersonalStaleChoresUseCase: ObservePersonalStaleChoresUseCase
+
     private val authStateFlow = MutableStateFlow<AuthState>(sampleAuthenticatedState())
 
     // A FixedClock lets the injected `today` be asserted exactly, derived the same way
@@ -91,6 +94,7 @@ class CheckStaleChoresUseCaseTest {
         coEvery { statsRepository.getHouseholdStatsInput(any()) } returns emptyStatsInput
         every { statisticsCalculator.buildStaleness(any(), any(), any(), any(), expectedToday) } returns emptyList()
         every { observeChoreRequestsUseCase(any()) } returns flowOf(ChoreRequests())
+        every { observePersonalStaleChoresUseCase() } returns flowOf(emptyList())
         useCase = CheckStaleChoresUseCase(
             authRepository,
             refreshHouseholdUseCase,
@@ -98,6 +102,7 @@ class CheckStaleChoresUseCaseTest {
             statsRepository,
             statisticsCalculator,
             observeChoreRequestsUseCase,
+            observePersonalStaleChoresUseCase,
             clock,
         )
     }
@@ -176,6 +181,18 @@ class CheckStaleChoresUseCaseTest {
         val result = useCase()
 
         assertThat(result.map(ChoreStaleness::choreId)).containsExactly("chore-1")
+    }
+
+    @Test
+    fun `includes your overdue personal chores, even without a household`() = runTest {
+        coEvery { householdRepository.getCurrentHousehold() } returns null
+        every { observePersonalStaleChoresUseCase() } returns flowOf(
+            listOf(staleness("gym", ChoreStatus.NEEDS_ATTENTION), staleness("meds", ChoreStatus.SOON)),
+        )
+
+        val result = useCase()
+
+        assertThat(result.map(ChoreStaleness::choreId)).containsExactly("gym")
     }
 
     @Test

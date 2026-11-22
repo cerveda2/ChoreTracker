@@ -177,43 +177,46 @@ fun LogCompletionSheet(
                 }
             }
 
-            Text(
-                text = stringResource(R.string.log_sheet_who),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(spacing.small),
-                verticalArrangement = Arrangement.spacedBy(spacing.small),
-            ) {
-                members.forEachIndexed { index, member ->
-                    MemberToggle(
-                        label = member.displayName,
-                        avatarColor = memberPalette.color(index),
-                        selected = member.id in selectedMemberIds,
-                        onClick = {
-                            if (member.id in selectedMemberIds) {
-                                selectedMemberIds.remove(member.id)
-                            } else {
-                                selectedMemberIds.add(member.id)
-                            }
-                        },
-                    )
-                }
-                if (members.size > 1) {
-                    val allSelected = members.all { it.id in selectedMemberIds }
-                    MemberToggle(
-                        label = stringResource(R.string.log_sheet_everyone),
-                        selected = allSelected,
-                        onClick = {
-                            if (allSelected) {
-                                selectedMemberIds.clear()
-                            } else {
-                                selectedMemberIds.clear()
-                                selectedMemberIds.addAll(members.map { it.id })
-                            }
-                        },
-                    )
+            // No members means there's nobody to pick: a personal chore is always the user's own.
+            if (members.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.log_sheet_who),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(spacing.small),
+                    verticalArrangement = Arrangement.spacedBy(spacing.small),
+                ) {
+                    members.forEachIndexed { index, member ->
+                        MemberToggle(
+                            label = member.displayName,
+                            avatarColor = memberPalette.color(index),
+                            selected = member.id in selectedMemberIds,
+                            onClick = {
+                                if (member.id in selectedMemberIds) {
+                                    selectedMemberIds.remove(member.id)
+                                } else {
+                                    selectedMemberIds.add(member.id)
+                                }
+                            },
+                        )
+                    }
+                    if (members.size > 1) {
+                        val allSelected = members.all { it.id in selectedMemberIds }
+                        MemberToggle(
+                            label = stringResource(R.string.log_sheet_everyone),
+                            selected = allSelected,
+                            onClick = {
+                                if (allSelected) {
+                                    selectedMemberIds.clear()
+                                } else {
+                                    selectedMemberIds.clear()
+                                    selectedMemberIds.addAll(members.map { it.id })
+                                }
+                            },
+                        )
+                    }
                 }
             }
 
@@ -273,7 +276,7 @@ fun LogCompletionSheet(
                         stringResource(R.string.log_sheet_submit, choreName)
                     },
                     onClick = { onConfirm(completedAt) },
-                    enabled = selectedMemberIds.isNotEmpty(),
+                    enabled = members.isEmpty() || selectedMemberIds.isNotEmpty(),
                 )
                 TextButton(
                     onClick = onDismiss,

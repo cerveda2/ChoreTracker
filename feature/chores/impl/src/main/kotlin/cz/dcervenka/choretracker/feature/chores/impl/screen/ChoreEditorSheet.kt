@@ -36,6 +36,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreChip
+import cz.dcervenka.choretracker.core.design.components.PersonalChoreLabel
 import cz.dcervenka.choretracker.core.design.components.PrimaryButton
 import cz.dcervenka.choretracker.core.design.components.shortName
 import cz.dcervenka.choretracker.core.design.components.weekdaysInOrder
@@ -78,6 +79,7 @@ internal fun ChoreEditorSheet(
         isActive: Boolean,
         rotationMemberIds: List<String>,
         groupName: String?,
+        personal: Boolean,
     ) -> Unit,
     onDelete: (() -> Unit)? = null,
     reminderEnabled: Boolean? = null,
@@ -108,6 +110,8 @@ internal fun ChoreEditorSheet(
     var rotation by rememberSaveable(chore?.id) {
         mutableStateOf(ArrayList(chore?.rotationMemberIds.orEmpty()))
     }
+    // Fixed once the chore exists: switching would show its history to, or hide it from, everyone else.
+    var personal by rememberSaveable(chore?.id) { mutableStateOf(chore?.isPersonal ?: false) }
     var groupInput by rememberSaveable(chore?.id) { mutableStateOf(chore?.groupName.orEmpty()) }
     var newGroup by rememberSaveable(chore?.id) { mutableStateOf(false) }
     // A typed name that only differs in case from an existing group joins that group. An exact match wins, so
@@ -182,6 +186,31 @@ internal fun ChoreEditorSheet(
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            if (chore == null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .toggleable(value = personal, role = Role.Switch, onValueChange = { personal = it }),
+                    horizontalArrangement = Arrangement.spacedBy(spacing.medium),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.chores_editor_personal_label),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = stringResource(R.string.chores_editor_personal_description),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = personal, onCheckedChange = null)
+                }
+            } else if (personal) {
+                PersonalChoreLabel()
+            }
+
             Text(
                 text = stringResource(R.string.chores_editor_category_label),
                 style = MaterialTheme.typography.labelSmall,
@@ -215,58 +244,60 @@ internal fun ChoreEditorSheet(
                 }
             }
 
-            Text(
-                text = stringResource(R.string.chores_editor_group_label),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.small)) {
-                ChoreChip(
-                    selected = !newGroup && groupName == null,
-                    onClick = {
-                        newGroup = false
-                        groupInput = ""
-                    },
-                    label = stringResource(R.string.chores_editor_group_none),
-                    enabled = canEdit,
+            if (!personal) {
+                Text(
+                    text = stringResource(R.string.chores_editor_group_label),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                groupNames.forEach { existing ->
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(spacing.small)) {
                     ChoreChip(
-                        selected = !newGroup && groupName == existing,
+                        selected = !newGroup && groupName == null,
                         onClick = {
                             newGroup = false
-                            groupInput = existing
+                            groupInput = ""
                         },
-                        label = existing,
+                        label = stringResource(R.string.chores_editor_group_none),
+                        enabled = canEdit,
+                    )
+                    groupNames.forEach { existing ->
+                        ChoreChip(
+                            selected = !newGroup && groupName == existing,
+                            onClick = {
+                                newGroup = false
+                                groupInput = existing
+                            },
+                            label = existing,
+                            enabled = canEdit,
+                        )
+                    }
+                    ChoreChip(
+                        selected = newGroup,
+                        onClick = {
+                            newGroup = true
+                            groupInput = ""
+                        },
+                        label = stringResource(R.string.chores_editor_group_new),
                         enabled = canEdit,
                     )
                 }
-                ChoreChip(
-                    selected = newGroup,
-                    onClick = {
-                        newGroup = true
-                        groupInput = ""
-                    },
-                    label = stringResource(R.string.chores_editor_group_new),
-                    enabled = canEdit,
+                if (newGroup) {
+                    OutlinedTextField(
+                        value = groupInput,
+                        onValueChange = { groupInput = it },
+                        label = { Text(stringResource(R.string.chores_editor_group_name_hint)) },
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                        enabled = canEdit,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.chores_editor_group_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (newGroup) {
-                OutlinedTextField(
-                    value = groupInput,
-                    onValueChange = { groupInput = it },
-                    label = { Text(stringResource(R.string.chores_editor_group_name_hint)) },
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                    enabled = canEdit,
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            Text(
-                text = stringResource(R.string.chores_editor_group_description),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
 
             Text(
                 text = stringResource(R.string.chores_editor_frequency_label),
@@ -364,7 +395,7 @@ internal fun ChoreEditorSheet(
                 )
             }
 
-            if (members.size > 1) {
+            if (members.size > 1 && !personal) {
                 Text(
                     text = stringResource(R.string.chores_editor_turns_label),
                     style = MaterialTheme.typography.labelSmall,
@@ -446,7 +477,15 @@ internal fun ChoreEditorSheet(
                             val rotationMemberIds = rotation.toList()
                                 .takeIf { ids -> members.any { it.id in ids } }
                                 .orEmpty()
-                            onSave(name.trim(), category, schedule, isActive, rotationMemberIds, groupName)
+                            onSave(
+                                name.trim(),
+                                category,
+                                schedule,
+                                isActive,
+                                rotationMemberIds.takeUnless { personal }.orEmpty(),
+                                groupName.takeUnless { personal },
+                                personal,
+                            )
                         },
                         enabled = name.isNotBlank() && scheduleComplete,
                     )

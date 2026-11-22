@@ -20,6 +20,7 @@ class CheckStaleChoresUseCase @Inject constructor(
     private val statsRepository: StatsRepository,
     private val statisticsCalculator: HouseholdStatisticsCalculator,
     private val observeChoreRequestsUseCase: ObserveChoreRequestsUseCase,
+    private val observePersonalStaleChoresUseCase: ObservePersonalStaleChoresUseCase,
     private val clock: Clock,
 ) {
     suspend operator fun invoke(): List<ChoreStaleness> {
@@ -31,7 +32,8 @@ class CheckStaleChoresUseCase @Inject constructor(
         refreshHouseholdUseCase()
 
         val household = householdRepository.getCurrentHousehold()
-        return if (household == null) {
+        val personal = observePersonalStaleChoresUseCase().first().filter { it.status == ChoreStatus.NEEDS_ATTENTION }
+        return personal + if (household == null) {
             emptyList()
         } else {
             val input = statsRepository.getHouseholdStatsInput(household.id)
