@@ -11,12 +11,12 @@ import androidx.compose.ui.res.stringResource
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreListRow
+import cz.dcervenka.choretracker.core.design.components.ChoreTurnLine
 import cz.dcervenka.choretracker.core.design.components.DoneButton
 import cz.dcervenka.choretracker.core.design.components.FreshnessBar
 import cz.dcervenka.choretracker.core.design.components.IconCircle
 import cz.dcervenka.choretracker.core.design.components.ReminderOffLabel
 import cz.dcervenka.choretracker.core.design.components.choreScheduleLabel
-import cz.dcervenka.choretracker.core.design.components.choreTurnLabel
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
@@ -56,6 +56,7 @@ internal fun ChoreRow(
         }
         value to color
     }
+    val turn = staleness?.turn?.takeIf { chore.isActive }
 
     ChoreListRow(
         modifier = modifier,
@@ -76,10 +77,11 @@ internal fun ChoreRow(
             )
         },
         onClick = onOpenSheet,
-        belowSubtitle = if (freshness != null || reminderMuted) {
+        belowSubtitle = if (freshness != null || turn != null || reminderMuted) {
             {
                 Column(verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.xSmall)) {
                     freshness?.let { (value, color) -> FreshnessBar(fraction = value, color = color) }
+                    turn?.let { ChoreTurnLine(turn = it) }
                     if (reminderMuted) ReminderOffLabel()
                 }
             }
@@ -100,7 +102,6 @@ private fun choreRowSubtitle(chore: Chore, staleness: ChoreStaleness?): String {
         schedule != null -> stringResource(R.string.dashboard_not_done_yet)
         else -> null
     }
-    val turn = staleness?.turn?.let { choreTurnLabel(it) }
-    return listOfNotNull(frequency, sinceLast, turn).joinToString(" · ")
+    return listOfNotNull(frequency, sinceLast).joinToString(" · ")
         .ifBlank { stringResource(R.string.chores_no_schedule) }
 }
