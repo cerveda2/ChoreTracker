@@ -18,6 +18,7 @@ interface ChoreRepository {
         category: ChoreCategory,
         schedule: ChoreSchedule? = null,
         rotationMemberIds: List<String> = emptyList(),
+        groupName: String? = null,
     ): AppResult<String>
 
     suspend fun deleteChore(choreId: String): EmptyResult
@@ -29,6 +30,9 @@ interface ChoreRepository {
     suspend fun updateChoreSchedule(choreId: String, schedule: ChoreSchedule?): EmptyResult
 
     suspend fun updateChoreCategory(choreId: String, category: ChoreCategory): EmptyResult
+
+    // A blank name takes the chore out of its group.
+    suspend fun updateChoreGroup(choreId: String, groupName: String?): EmptyResult
 
     // Restarts whose-turn counting from now, so a member added later doesn't owe every past turn.
     suspend fun updateChoreRotation(choreId: String, memberIds: List<String>): EmptyResult

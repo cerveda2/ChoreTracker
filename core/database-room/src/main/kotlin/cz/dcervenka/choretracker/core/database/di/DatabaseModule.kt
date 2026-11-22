@@ -78,6 +78,12 @@ private val MIGRATION_13_14 = object : Migration(13, 14) {
     }
 }
 
+private val MIGRATION_14_15 = object : Migration(14, 15) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE chores ADD COLUMN groupName TEXT DEFAULT NULL")
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -98,6 +104,7 @@ object DatabaseModule {
         MIGRATION_11_12,
         MIGRATION_12_13,
         MIGRATION_13_14,
+        MIGRATION_14_15,
     )
         .build()
 

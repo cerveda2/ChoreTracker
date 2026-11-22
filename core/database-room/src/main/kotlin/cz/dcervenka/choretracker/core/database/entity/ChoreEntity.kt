@@ -28,4 +28,5 @@ data class ChoreEntity(
     @field:TypeConverters(WeekdaySetConverters::class)
     val scheduleWeekdays: Set<DayOfWeek> = emptySet(),
     val scheduleMonthDay: Int? = null,
+    val groupName: String? = null,
 )

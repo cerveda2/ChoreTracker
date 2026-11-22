@@ -52,6 +52,13 @@ interface ChoreDao {
     )
     suspend fun updateCategory(choreId: String, category: String)
 
+    @Query(
+        "UPDATE chores " +
+            "SET groupName = :groupName " +
+            "WHERE id = :choreId",
+    )
+    suspend fun updateGroup(choreId: String, groupName: String?)
+
     // Read-modify-write instead of an UPDATE query, which would expand a List parameter into IN (...).
     @Transaction
     suspend fun updateRotation(choreId: String, memberIds: List<String>, startedAt: Instant?) {

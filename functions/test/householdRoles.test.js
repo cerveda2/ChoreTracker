@@ -124,6 +124,24 @@ describe("household roles", () => {
     assert.equal(await writeAs(outsider, own, weekly, mask), 403);
   });
 
+  it("lets whoever can edit a chore put it in a group", async () => {
+    const { admin, member, outsider } = await seed();
+    const own = "households/home/chores/chore-1";
+    const others = "households/home/chores/chore-2";
+    assert.equal(await writeAs(member, own, {
+      id: "chore-1", householdId: "home", name: "Glass", createdByUserId: member.uid,
+    }), 200);
+    assert.equal(await writeAs(admin, others, {
+      id: "chore-2", householdId: "home", name: "Paper", createdByUserId: admin.uid,
+    }), 200);
+    const grouped = { groupName: "Trash" };
+    const mask = Object.keys(grouped);
+    assert.equal(await writeAs(member, own, grouped, mask), 200);
+    assert.equal(await writeAs(admin, own, { groupName: null }, mask), 200);
+    assert.equal(await writeAs(member, others, grouped, mask), 403);
+    assert.equal(await writeAs(outsider, own, grouped, mask), 403);
+  });
+
   it("grants admin management without ownership or role changes", async () => {
     const { owner, admin, member } = await seed();
     assert.equal(await writeAs(admin, "households/home", { name: "New home" }, ["name"]), 200);

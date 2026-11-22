@@ -17,6 +17,7 @@ class AddChoreUseCase @Inject constructor(
         category: ChoreCategory,
         schedule: ChoreSchedule? = null,
         rotationMemberIds: List<String> = emptyList(),
+        groupName: String? = null,
     ): AppResult<String> {
         if (schedule != null && !schedule.isValid) {
             return AppResult.Error(AppError.INVALID_FREQUENCY)
@@ -27,6 +28,7 @@ class AddChoreUseCase @Inject constructor(
             category = category,
             schedule = schedule,
             rotationMemberIds = rotationMemberIds,
+            groupName = groupName,
         )
     }
 }

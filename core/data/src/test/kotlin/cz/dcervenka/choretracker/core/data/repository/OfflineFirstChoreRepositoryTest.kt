@@ -66,6 +66,7 @@ class OfflineFirstChoreRepositoryTest {
         coEvery { choreDao.updateName(any(), any()) } just Runs
         coEvery { choreDao.updateSchedule(any(), any(), any(), any()) } just Runs
         coEvery { choreDao.updateCategory(any(), any()) } just Runs
+        coEvery { choreDao.updateGroup(any(), any()) } just Runs
         coEvery { choreDao.updateRotation(any(), any(), any()) } just Runs
         coEvery { choreDao.getChore(any()) } returns ChoreEntity(
             id = "chore-1",
@@ -336,6 +337,37 @@ class OfflineFirstChoreRepositoryTest {
 
         assertThat(slot.captured.operationType).isEqualTo("update_category")
         assertThat(slot.captured.payload).isEqualTo(ChoreCategory.CLEANING.name)
+    }
+
+    // group
+
+    @Test
+    fun `addChore stores a trimmed group name`() = runTest {
+        val slot = slot<ChoreEntity>()
+        coEvery { choreDao.upsert(capture(slot)) } just Runs
+
+        repository.addChore("household-1", "Glass", ChoreCategory.OTHER, groupName = "  Trash  ")
+
+        assertThat(slot.captured.groupName).isEqualTo("Trash")
+    }
+
+    @Test
+    fun `updateChoreGroup trims the name and queues an update`() = runTest {
+        val slot = slot<PendingSyncOperationEntity>()
+        coEvery { pendingSyncOperationDao.upsert(capture(slot)) } just Runs
+
+        repository.updateChoreGroup("chore-1", "  Trash ")
+
+        coVerify { choreDao.updateGroup("chore-1", "Trash") }
+        assertThat(slot.captured.operationType).isEqualTo("update_group")
+        assertThat(slot.captured.payload).isEqualTo("Trash")
+    }
+
+    @Test
+    fun `updateChoreGroup with a blank name takes the chore out of its group`() = runTest {
+        repository.updateChoreGroup("chore-1", "   ")
+
+        coVerify { choreDao.updateGroup("chore-1", null) }
     }
 
     // rotation

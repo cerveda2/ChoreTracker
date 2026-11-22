@@ -356,6 +356,15 @@ class RealtimeSyncApplierTest {
     }
 
     @Test
+    fun `applyChores keeps a chore's group`() = runTest {
+        val chore = sampleChore().copy(groupName = "Trash")
+
+        applier.applyChores(listOf(chore))
+
+        coVerify { choreDao.upsert(match { it.id == chore.id && it.groupName == "Trash" }) }
+    }
+
+    @Test
     fun `applyRequests leaves unsent and unresolved requests alone and prunes the rest`() = runTest {
         fun request(id: String, batchId: String) = ChoreRequest(
             id = id,

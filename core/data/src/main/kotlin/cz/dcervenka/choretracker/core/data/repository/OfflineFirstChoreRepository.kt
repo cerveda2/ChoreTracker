@@ -59,6 +59,7 @@ class OfflineFirstChoreRepository @Inject constructor(
         category: ChoreCategory,
         schedule: ChoreSchedule?,
         rotationMemberIds: List<String>,
+        groupName: String?,
     ): AppResult<String> {
         Timber.d("addChore: householdId=$householdId name=$name category=$category schedule=$schedule")
         val userId = currentUserId() ?: return AppResult.Error(AppError.NOT_SIGNED_IN)
@@ -82,6 +83,7 @@ class OfflineFirstChoreRepository @Inject constructor(
                 rotationStartedAt = now.takeIf { rotationMemberIds.isNotEmpty() },
                 scheduleWeekdays = (schedule as? ChoreSchedule.Weekdays)?.days.orEmpty(),
                 scheduleMonthDay = (schedule as? ChoreSchedule.MonthDay)?.day,
+                groupName = groupName.normalizedGroupName(),
             ),
         )
         pendingSyncOperationDao.upsert(
@@ -194,6 +196,25 @@ class OfflineFirstChoreRepository @Inject constructor(
         return AppResult.Success(Unit)
     }
 
+    override suspend fun updateChoreGroup(choreId: String, groupName: String?): EmptyResult {
+        Timber.d("updateChoreGroup: choreId=$choreId groupName=$groupName")
+        editError(choreId)?.let { return AppResult.Error(it) }
+        val normalized = groupName.normalizedGroupName()
+        choreDao.updateGroup(choreId, normalized)
+        pendingSyncOperationDao.upsert(
+            PendingSyncOperationEntity(
+                id = UUID.randomUUID().toString(),
+                entityType = "chore",
+                entityId = choreId,
+                operationType = "update_group",
+                payload = normalized.orEmpty(),
+                createdAt = Clock.System.now(),
+            ),
+        )
+        scope.launch { syncRepository.syncPendingOperations() }
+        return AppResult.Success(Unit)
+    }
+
     override suspend fun updateChoreRotation(choreId: String, memberIds: List<String>): EmptyResult {
         Timber.d("updateChoreRotation: choreId=$choreId memberIds=$memberIds")
         editError(choreId)?.let { return AppResult.Error(it) }
@@ -211,6 +232,8 @@ class OfflineFirstChoreRepository @Inject constructor(
         scope.launch { syncRepository.syncPendingOperations() }
         return AppResult.Success(Unit)
     }
+
+    private fun String?.normalizedGroupName(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
 
     private suspend fun currentUserId(): String? =
         (authRepository.authState.first() as? AuthState.Authenticated)?.user?.id

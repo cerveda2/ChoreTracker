@@ -232,7 +232,7 @@ service cloud.firestore {
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly([
               'name', 'category', 'frequencyDays', 'isActive', 'deletedAt', 'rotationMemberIds', 'rotationStartedAt',
-              'scheduleWeekdays', 'scheduleMonthDay'
+              'scheduleWeekdays', 'scheduleMonthDay', 'groupName'
             ]);
         allow delete: if isHouseholdManager(householdId);
       }

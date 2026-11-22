@@ -392,6 +392,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             put("rotationStartedAt", chore.rotationStartedAt?.asTimestamp())
             put("scheduleWeekdays", chore.scheduleWeekdays.map { it.isoDayNumber }.sorted())
             put("scheduleMonthDay", chore.scheduleMonthDay)
+            put("groupName", chore.groupName)
         }
         awaitTask(
             db.collection(HOUSEHOLDS_COLLECTION).document(chore.householdId)
@@ -880,6 +881,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             .orEmpty()
             .mapTo(mutableSetOf()) { DayOfWeek(it) },
         scheduleMonthDay = getLong("scheduleMonthDay")?.toInt(),
+        groupName = getString("groupName")?.takeIf { it.isNotBlank() },
     )
 
     private fun DocumentSnapshot.asCompletion(householdId: String): ChoreCompletion = ChoreCompletion(

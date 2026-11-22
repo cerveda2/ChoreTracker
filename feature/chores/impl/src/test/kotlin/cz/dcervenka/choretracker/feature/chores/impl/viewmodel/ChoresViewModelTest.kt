@@ -18,6 +18,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.SendChoreRequestsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SetChoreReminderMutedUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreActiveUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreCategoryUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreGroupUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreRotationUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreScheduleUseCase
@@ -95,6 +96,9 @@ class ChoresViewModelTest {
     lateinit var updateChoreRotationUseCase: UpdateChoreRotationUseCase
 
     @MockK
+    lateinit var updateChoreGroupUseCase: UpdateChoreGroupUseCase
+
+    @MockK
     lateinit var deleteChoreUseCase: DeleteChoreUseCase
 
     @MockK
@@ -140,6 +144,7 @@ class ChoresViewModelTest {
         coEvery { updateChoreScheduleUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreActiveUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { updateChoreRotationUseCase(any(), any()) } returns AppResult.Success(Unit)
+        coEvery { updateChoreGroupUseCase(any(), any()) } returns AppResult.Success(Unit)
         coEvery { deleteChoreUseCase(any()) } returns AppResult.Success(Unit)
         coEvery { logCompletionUseCase(any(), any(), any(), any(), any()) } returns AppResult.Success("completion-1")
         coEvery { deleteCompletionUseCase(any()) } returns AppResult.Success(Unit)
@@ -275,6 +280,39 @@ class ChoresViewModelTest {
         coVerify(exactly = 0) { updateChoreScheduleUseCase(any(), any()) }
         coVerify(exactly = 0) { updateChoreActiveUseCase(any(), any()) }
         coVerify(exactly = 0) { updateChoreRotationUseCase(any(), any()) }
+        coVerify(exactly = 0) { updateChoreGroupUseCase(any(), any()) }
+        stateJob.cancel()
+    }
+
+    @Test
+    fun `updateChore moves the chore to another group or out of it`() = runTest(coroutineRule.dispatcher) {
+        householdFlow.value = sampleHousehold()
+        choresFlow.value = listOf(sampleChore().copy(groupName = "Trash"))
+        val viewModel = createViewModel()
+        val stateJob = launch { viewModel.uiState.collect {} }
+        advanceUntilIdle()
+        fun update(groupName: String?) = viewModel.dispatch(
+            ChoresUiIntent.UpdateChore(
+                choreId = "chore-1",
+                name = sampleChore().name,
+                category = sampleChore().category,
+                schedule = sampleChore().schedule,
+                isActive = sampleChore().isActive,
+                groupName = groupName,
+            ),
+        )
+
+        update("Trash")
+        advanceUntilIdle()
+        coVerify(exactly = 0) { updateChoreGroupUseCase(any(), any()) }
+
+        update("Recycling")
+        advanceUntilIdle()
+        coVerify { updateChoreGroupUseCase("chore-1", "Recycling") }
+
+        update(null)
+        advanceUntilIdle()
+        coVerify { updateChoreGroupUseCase("chore-1", null) }
         stateJob.cancel()
     }
 
@@ -464,6 +502,7 @@ private fun ChoresViewModelTest.createViewModel() = ChoresViewModel(
     updateChoreScheduleUseCase,
     updateChoreActiveUseCase,
     updateChoreRotationUseCase,
+    updateChoreGroupUseCase,
     deleteChoreUseCase,
     logCompletionUseCase,
     deleteCompletionUseCase,
