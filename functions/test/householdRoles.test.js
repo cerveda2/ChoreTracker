@@ -270,3 +270,24 @@ describe("0.1.4 uploads", () => {
     assert.equal((await db.doc(path).get()).get("createdByUserId"), member.uid);
   });
 });
+
+describe("personal chores", () => {
+  async function readAs(user, path) {
+    return (await fetch(`${documents}/${path}`, { headers: { authorization: `Bearer ${user.token}` } })).status;
+  }
+
+  it("are readable and writable only by their owner, not even the household owner", async () => {
+    const { owner, member, outsider } = await seed();
+    const chore = `users/${member.uid}/chores/personal-1`;
+    const completion = `users/${member.uid}/completions/personal-completion-1`;
+    assert.equal(await writeAs(member, chore, { id: "personal-1", name: "Gym", isActive: true }), 200);
+    assert.equal(await writeAs(member, completion, { id: "personal-completion-1", choreId: "personal-1" }), 200);
+    assert.equal(await readAs(member, chore), 200);
+    assert.equal(await deleteAs(member, completion), 200);
+    for (const other of [owner, outsider]) {
+      assert.equal(await readAs(other, chore), 403);
+      assert.equal(await writeAs(other, chore, { name: "Hijacked" }, ["name"]), 403);
+      assert.equal(await writeAs(other, completion, { choreId: "personal-1" }), 403);
+    }
+  });
+});

@@ -7,11 +7,13 @@ import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.dao.PersonalChoreDao
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
+import cz.dcervenka.choretracker.core.database.entity.PersonalCompletionEntity
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.chore.ChoreRequest
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
@@ -53,6 +55,9 @@ class RealtimeSyncApplierTest {
     @MockK
     lateinit var pendingSyncOperationDao: PendingSyncOperationDao
 
+    @MockK(relaxed = true)
+    lateinit var personalChoreDao: PersonalChoreDao
+
     @MockK
     lateinit var database: ChoreTrackerDatabase
 
@@ -92,6 +97,7 @@ class RealtimeSyncApplierTest {
             inviteDao = inviteDao,
             choreRequestDao = choreRequestDao,
             pendingSyncOperationDao = pendingSyncOperationDao,
+            personalChoreDao = personalChoreDao,
             database = database,
         )
     }
@@ -362,6 +368,32 @@ class RealtimeSyncApplierTest {
         applier.applyChores(listOf(chore))
 
         coVerify { choreDao.upsert(match { it.id == chore.id && it.groupName == "Trash" }) }
+    }
+
+    @Test
+    fun `applyPersonalCompletions prunes ones deleted elsewhere but keeps ones waiting to upload`() = runTest {
+        val createdAt = Instant.parse("2026-01-01T00:00:00Z")
+        fun local(id: String) = PersonalCompletionEntity(id, "user-1", "personal-1", createdAt, note = null)
+        coEvery { pendingSyncOperationDao.getAll() } returns listOf(
+            PendingSyncOperationEntity("op-1", "personal_completion", "queued", "upsert", "", createdAt),
+        )
+        coEvery { personalChoreDao.getCompletions("user-1") } returns listOf(local("kept"), local("gone"), local("queued"))
+        val remote = ChoreCompletion(
+            id = "kept",
+            householdId = "",
+            choreId = "personal-1",
+            createdAt = createdAt,
+            createdByUserId = "user-1",
+            note = null,
+            participantMemberIds = emptyList(),
+        )
+
+        applier.applyPersonalCompletions("user-1", listOf(remote))
+
+        coVerify { personalChoreDao.upsertCompletion(match { it.id == "kept" && it.ownerUserId == "user-1" }) }
+        coVerify { personalChoreDao.deleteCompletion("gone") }
+        coVerify(exactly = 0) { personalChoreDao.deleteCompletion("queued") }
+        coVerify(exactly = 0) { personalChoreDao.deleteCompletion("kept") }
     }
 
     @Test

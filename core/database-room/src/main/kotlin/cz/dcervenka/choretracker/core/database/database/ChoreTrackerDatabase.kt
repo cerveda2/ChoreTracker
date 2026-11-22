@@ -12,6 +12,7 @@ import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.dao.PersonalChoreDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.ChoreRequestEntity
@@ -21,6 +22,8 @@ import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
 import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
+import cz.dcervenka.choretracker.core.database.entity.PersonalChoreEntity
+import cz.dcervenka.choretracker.core.database.entity.PersonalCompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.SyncStateEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -36,8 +39,10 @@ import kotlinx.coroutines.withContext
         PendingSyncOperationEntity::class,
         SyncStateEntity::class,
         ChoreRequestEntity::class,
+        PersonalChoreEntity::class,
+        PersonalCompletionEntity::class,
     ],
-    version = 15,
+    version = 16,
     exportSchema = true,
 )
 @TypeConverters(InstantConverters::class)
@@ -51,6 +56,7 @@ abstract class ChoreTrackerDatabase : RoomDatabase() {
     abstract fun pendingSyncOperationDao(): PendingSyncOperationDao
     abstract fun syncStateDao(): SyncStateDao
     abstract fun choreRequestDao(): ChoreRequestDao
+    abstract fun personalChoreDao(): PersonalChoreDao
 
     suspend fun clearAll() = withContext(Dispatchers.IO) { clearAllTables() }
 }

@@ -77,6 +77,7 @@ class ChoreTrackerDatabaseMigrationTest {
         val pending = database.pendingSyncOperationDao().getAll()
         val legacyChore = database.choreDao().getChore("chore-1")
         val requests = database.choreRequestDao().getRequests("household-1")
+        val personalChores = database.personalChoreDao().getChores("user-1")
         database.close()
 
         assertThat(pending.map { it.id }).containsExactly("op-1")
@@ -87,5 +88,6 @@ class ChoreTrackerDatabaseMigrationTest {
         assertThat(legacyChore?.scheduleMonthDay).isNull()
         assertThat(legacyChore?.groupName).isNull()
         assertThat(requests).isEmpty()
+        assertThat(personalChores).isEmpty()
     }
 }

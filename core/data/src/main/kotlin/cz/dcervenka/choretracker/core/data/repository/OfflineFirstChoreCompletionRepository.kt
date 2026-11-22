@@ -11,17 +11,25 @@ import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.dao.PersonalChoreDao
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
+import cz.dcervenka.choretracker.core.database.entity.PersonalCompletionEntity
+import cz.dcervenka.choretracker.core.database.mapper.asModel
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.stats.RecentCompletion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.UUID
@@ -37,6 +45,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
     private val choreDao: ChoreDao,
     private val memberDao: MemberDao,
     private val pendingSyncOperationDao: PendingSyncOperationDao,
+    private val personalChoreDao: PersonalChoreDao,
     private val authRepository: AuthRepository,
     private val syncRepository: SyncRepository,
     @ApplicationScope private val scope: CoroutineScope,
@@ -92,6 +101,20 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
             }
         }
 
+    override fun observePersonalCompletions(): Flow<List<ChoreCompletion>> = authRepository.authState
+        .map { (it as? AuthState.Authenticated)?.user?.id }
+        .distinctUntilChanged()
+        .flatMapLatest { userId ->
+            if (userId == null) {
+                flowOf(emptyList())
+            } else {
+                personalChoreDao.observeCompletions(userId).map { completions ->
+                    completions.map(PersonalCompletionEntity::asModel)
+                }
+            }
+        }
+
+    @Suppress("ReturnCount")
     override suspend fun logCompletion(
         householdId: String,
         choreId: String,
@@ -108,6 +131,19 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
                 Timber.w("logCompletion failed: user not authenticated")
             }
         val completionId = UUID.randomUUID().toString()
+        if (personalChoreDao.getChore(choreId) != null) {
+            personalChoreDao.upsertCompletion(
+                PersonalCompletionEntity(
+                    id = completionId,
+                    ownerUserId = currentUserId,
+                    choreId = choreId,
+                    createdAt = completedAt ?: Clock.System.now(),
+                    note = note?.takeIf(String::isNotBlank),
+                ),
+            )
+            queuePersonalCompletion(completionId, operationType = "upsert")
+            return AppResult.Success(completionId)
+        }
         completionDao.upsert(
             CompletionEntity(
                 id = completionId,
@@ -181,6 +217,12 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
 
     override suspend fun deleteCompletion(completionId: String): EmptyResult {
         Timber.d("deleteCompletion: completionId=$completionId")
+        if (personalChoreDao.getCompletion(completionId) != null) {
+            personalChoreDao.deleteCompletion(completionId)
+            pendingSyncOperationDao.deleteByEntityId(completionId)
+            queuePersonalCompletion(completionId, operationType = "delete")
+            return AppResult.Success(Unit)
+        }
         val existing = completionDao.getCompletion(completionId)
         val currentUserId = (authRepository.authState.first() as? AuthState.Authenticated)?.user?.id
         return when {
@@ -215,5 +257,19 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
         if (completion.createdByUserId == currentUserId) return true
         return memberDao.findByUserId(completion.householdId, currentUserId)?.role in
             setOf(HouseholdRole.OWNER.name, HouseholdRole.ADMIN.name)
+    }
+
+    private suspend fun queuePersonalCompletion(completionId: String, operationType: String) {
+        pendingSyncOperationDao.upsert(
+            PendingSyncOperationEntity(
+                id = UUID.randomUUID().toString(),
+                entityType = "personal_completion",
+                entityId = completionId,
+                operationType = operationType,
+                payload = "",
+                createdAt = Clock.System.now(),
+            ),
+        )
+        scope.launch { syncRepository.syncPendingOperations() }
     }
 }

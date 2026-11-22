@@ -22,6 +22,8 @@ data class Chore(
     val scheduleMonthDay: Int? = null,
     // Chores sharing a group name are listed together under it; null when not in a group.
     val groupName: String? = null,
+    // Only its owner (createdByUserId) sees it. It belongs to no household, so householdId is empty.
+    val isPersonal: Boolean = false,
 ) {
     val schedule: ChoreSchedule?
         get() {

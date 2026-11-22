@@ -9,9 +9,13 @@ import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.dao.PersonalChoreDao
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
+import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
+import cz.dcervenka.choretracker.core.database.entity.PersonalChoreEntity
+import cz.dcervenka.choretracker.core.database.entity.PersonalCompletionEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import io.mockk.MockKAnnotations
@@ -48,6 +52,9 @@ class OfflineFirstChoreCompletionRepositoryTest {
     lateinit var pendingSyncOperationDao: PendingSyncOperationDao
 
     @MockK
+    lateinit var personalChoreDao: PersonalChoreDao
+
+    @MockK
     lateinit var authRepository: AuthRepository
 
     @MockK
@@ -64,6 +71,8 @@ class OfflineFirstChoreCompletionRepositoryTest {
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
+        coEvery { personalChoreDao.getChore(any()) } returns null
+        coEvery { personalChoreDao.getCompletion(any()) } returns null
         every { authRepository.authState } returns authState
         coEvery { memberDao.findByUserId(any(), any()) } returns MemberEntity(
             id = "member-1",
@@ -83,6 +92,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
             choreDao = choreDao,
             memberDao = memberDao,
             pendingSyncOperationDao = pendingSyncOperationDao,
+            personalChoreDao = personalChoreDao,
             authRepository = authRepository,
             syncRepository = syncRepository,
             scope = CoroutineScope(Dispatchers.Unconfined),
@@ -263,5 +273,53 @@ class OfflineFirstChoreCompletionRepositoryTest {
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
         coVerify(exactly = 0) { completionDao.deleteById(any()) }
         coVerify(exactly = 0) { syncRepository.syncPendingOperations() }
+    }
+
+    // personal chores
+
+    @Test
+    fun `logCompletion on a personal chore stores a personal completion, not a household one`() = runTest {
+        val completion = slot<PersonalCompletionEntity>()
+        val op = slot<PendingSyncOperationEntity>()
+        coEvery { personalChoreDao.getChore("personal-1") } returns PersonalChoreEntity(
+            id = "personal-1",
+            ownerUserId = "user-1",
+            name = "Gym",
+            isActive = true,
+            createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+            deletedAt = null,
+        )
+        coEvery { personalChoreDao.upsertCompletion(capture(completion)) } just Runs
+        coEvery { pendingSyncOperationDao.upsert(capture(op)) } just Runs
+
+        repository.logCompletion("household-1", "personal-1", listOf("member-1"), note = " ")
+
+        assertThat(completion.captured.ownerUserId).isEqualTo("user-1")
+        assertThat(completion.captured.note).isNull()
+        assertThat(op.captured.entityType).isEqualTo("personal_completion")
+        coVerify(exactly = 0) { completionDao.upsert(any()) }
+        coVerify(exactly = 0) { participantDao.insertAll(any()) }
+    }
+
+    @Test
+    fun `deleteCompletion of a personal completion queues a personal delete`() = runTest {
+        val op = slot<PendingSyncOperationEntity>()
+        coEvery { personalChoreDao.getCompletion("personal-completion-1") } returns PersonalCompletionEntity(
+            id = "personal-completion-1",
+            ownerUserId = "user-1",
+            choreId = "personal-1",
+            createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+            note = null,
+        )
+        coEvery { personalChoreDao.deleteCompletion(any()) } just Runs
+        coEvery { pendingSyncOperationDao.deleteByEntityId(any()) } just Runs
+        coEvery { pendingSyncOperationDao.upsert(capture(op)) } just Runs
+
+        repository.deleteCompletion("personal-completion-1")
+
+        coVerify { personalChoreDao.deleteCompletion("personal-completion-1") }
+        assertThat(op.captured.entityType).isEqualTo("personal_completion")
+        assertThat(op.captured.operationType).isEqualTo("delete")
+        coVerify(exactly = 0) { completionDao.deleteById(any()) }
     }
 }

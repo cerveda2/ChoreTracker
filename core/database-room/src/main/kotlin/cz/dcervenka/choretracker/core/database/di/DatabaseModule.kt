@@ -12,6 +12,7 @@ import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.dao.PersonalChoreDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import dagger.Module
@@ -84,6 +85,21 @@ private val MIGRATION_14_15 = object : Migration(14, 15) {
     }
 }
 
+private val MIGRATION_15_16 = object : Migration(15, 16) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `personal_chores` (`id` TEXT NOT NULL, `ownerUserId` TEXT NOT NULL, " +
+                "`name` TEXT NOT NULL, `isActive` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `deletedAt` INTEGER, " +
+                "`frequencyDays` INTEGER, `category` TEXT NOT NULL, `scheduleWeekdays` INTEGER NOT NULL DEFAULT 0, " +
+                "`scheduleMonthDay` INTEGER, PRIMARY KEY(`id`))",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `personal_completions` (`id` TEXT NOT NULL, `ownerUserId` TEXT NOT NULL, " +
+                "`choreId` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `note` TEXT, PRIMARY KEY(`id`))",
+        )
+    }
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -105,6 +121,7 @@ object DatabaseModule {
         MIGRATION_12_13,
         MIGRATION_13_14,
         MIGRATION_14_15,
+        MIGRATION_15_16,
     )
         .build()
 
@@ -119,6 +136,9 @@ object DatabaseModule {
 
     @Provides
     fun provideChoreRequestDao(database: ChoreTrackerDatabase): ChoreRequestDao = database.choreRequestDao()
+
+    @Provides
+    fun providePersonalChoreDao(database: ChoreTrackerDatabase): PersonalChoreDao = database.personalChoreDao()
 
     @Provides
     fun provideCompletionDao(database: ChoreTrackerDatabase): CompletionDao = database.completionDao()

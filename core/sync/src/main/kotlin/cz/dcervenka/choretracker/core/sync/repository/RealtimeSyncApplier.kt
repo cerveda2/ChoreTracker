@@ -7,12 +7,14 @@ import cz.dcervenka.choretracker.core.database.dao.CompletionParticipantDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.dao.PersonalChoreDao
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionParticipantEntity
 import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
+import cz.dcervenka.choretracker.core.database.mapper.asPersonalEntity
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.chore.ChoreRequest
@@ -36,6 +38,7 @@ internal class RealtimeSyncApplier(
     private val inviteDao: InviteDao,
     private val choreRequestDao: ChoreRequestDao,
     private val pendingSyncOperationDao: PendingSyncOperationDao,
+    private val personalChoreDao: PersonalChoreDao,
     private val database: ChoreTrackerDatabase,
 ) {
 
@@ -129,6 +132,26 @@ internal class RealtimeSyncApplier(
             .filter { it.id !in completionIds && it.id !in pendingCompletionIds }
             .forEach { completionDao.deleteById(it.id) }
     }
+
+    // Personal chores are soft-deleted like household ones, so they're never pruned.
+    suspend fun applyPersonalChores(userId: String, chores: List<Chore>) = mutex.withLock {
+        val pendingChoreIds = pendingEntityIds("personal_chore")
+        chores.filterNot { it.id in pendingChoreIds }
+            .forEach { personalChoreDao.upsertChore(it.asPersonalEntity(userId)) }
+    }
+
+    suspend fun applyPersonalCompletions(userId: String, completions: List<ChoreCompletion>) = mutex.withLock {
+        val pendingCompletionIds = pendingEntityIds("personal_completion")
+        completions.filterNot { it.id in pendingCompletionIds }
+            .forEach { personalChoreDao.upsertCompletion(it.asPersonalEntity(userId)) }
+        val completionIds = completions.map { it.id }.toSet()
+        personalChoreDao.getCompletions(userId)
+            .filter { it.id !in completionIds && it.id !in pendingCompletionIds }
+            .forEach { personalChoreDao.deleteCompletion(it.id) }
+    }
+
+    private suspend fun pendingEntityIds(entityType: String): Set<String> =
+        pendingSyncOperationDao.getAll().filter { it.entityType == entityType }.mapTo(mutableSetOf()) { it.entityId }
 
     suspend fun applyInvites(householdId: String, invites: List<Invite>) = mutex.withLock {
         invites.forEach { invite ->

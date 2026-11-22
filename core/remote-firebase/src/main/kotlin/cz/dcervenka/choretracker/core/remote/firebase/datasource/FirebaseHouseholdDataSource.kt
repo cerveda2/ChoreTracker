@@ -25,6 +25,7 @@ import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.household.Invite
 import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
+import cz.dcervenka.choretracker.core.model.sync.PersonalSnapshot
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import cz.dcervenka.choretracker.core.remote.firebase.runtime.FIREBASE_FUNCTIONS_REGION
 import cz.dcervenka.choretracker.core.remote.firebase.runtime.FirebaseRuntimeConfigurator
@@ -859,6 +860,109 @@ class FirebaseHouseholdDataSource @Inject constructor(
         joinedViaInviteId = getString("joinedViaInviteId"),
         removedAt = getTimestamp("removedAt")?.asInstant(),
     )
+
+    override fun observePersonalChores(userId: String): Flow<List<Chore>> = callbackFlow {
+        val db = firestore
+        if (db == null) {
+            close()
+            return@callbackFlow
+        }
+        val registration = personalCollection(db, userId, CHORES_COLLECTION)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Timber.e(error, "observePersonalChores: listen failed")
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.documents?.map { it.asPersonalChore(userId) }.orEmpty())
+            }
+        awaitClose { registration.remove() }
+    }
+
+    override fun observePersonalCompletions(userId: String): Flow<List<ChoreCompletion>> = callbackFlow {
+        val db = firestore
+        if (db == null) {
+            close()
+            return@callbackFlow
+        }
+        val registration = personalCollection(db, userId, COMPLETIONS_COLLECTION)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Timber.e(error, "observePersonalCompletions: listen failed")
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.documents?.map { it.asPersonalCompletion(userId) }.orEmpty())
+            }
+        awaitClose { registration.remove() }
+    }
+
+    override suspend fun fetchPersonalSnapshot(userId: String): AppResult<PersonalSnapshot> {
+        val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
+        return runCatching {
+            val chores = awaitTask(personalCollection(db, userId, CHORES_COLLECTION).get()).documents
+            val completions = awaitTask(personalCollection(db, userId, COMPLETIONS_COLLECTION).get()).documents
+            AppResult.Success(
+                PersonalSnapshot(
+                    chores = chores.map { it.asPersonalChore(userId) },
+                    completions = completions.map { it.asPersonalCompletion(userId) },
+                ),
+            )
+        }.rethrowCancellation().getOrElse { error ->
+            Timber.e(error, "fetchPersonalSnapshot: failed")
+            AppResult.Error(error.toAppError(), error)
+        }
+    }
+
+    override suspend fun upsertPersonalChore(userId: String, chore: Chore): EmptyResult = remoteWrite(
+        "upsertPersonalChore",
+    ) { db ->
+        awaitTask(
+            personalCollection(db, userId, CHORES_COLLECTION).document(chore.id).set(
+                mapOf(
+                    "id" to chore.id,
+                    "name" to chore.name,
+                    "isActive" to chore.isActive,
+                    "createdAt" to chore.createdAt.asTimestamp(),
+                    "deletedAt" to chore.deletedAt?.asTimestamp(),
+                    "frequencyDays" to chore.frequencyDays,
+                    "category" to chore.category.name,
+                    "scheduleWeekdays" to chore.scheduleWeekdays.map { it.isoDayNumber }.sorted(),
+                    "scheduleMonthDay" to chore.scheduleMonthDay,
+                ),
+                SetOptions.merge(),
+            ),
+        )
+    }
+
+    override suspend fun upsertPersonalCompletion(userId: String, completion: ChoreCompletion): EmptyResult = remoteWrite(
+        "upsertPersonalCompletion",
+    ) { db ->
+        awaitTask(
+            personalCollection(db, userId, COMPLETIONS_COLLECTION).document(completion.id).set(
+                mapOf(
+                    "id" to completion.id,
+                    "choreId" to completion.choreId,
+                    "createdAt" to completion.createdAt.asTimestamp(),
+                    "note" to completion.note,
+                ),
+                SetOptions.merge(),
+            ),
+        )
+    }
+
+    override suspend fun deletePersonalCompletion(userId: String, completionId: String): EmptyResult = remoteWrite(
+        "deletePersonalCompletion",
+    ) { db ->
+        awaitTask(personalCollection(db, userId, COMPLETIONS_COLLECTION).document(completionId).delete())
+    }
+
+    private fun personalCollection(db: FirebaseFirestore, userId: String, collection: String) =
+        db.collection(USERS_COLLECTION).document(userId).collection(collection)
+
+    private fun DocumentSnapshot.asPersonalChore(userId: String): Chore =
+        asChore(householdId = "").copy(householdId = "", createdByUserId = userId, isPersonal = true)
+
+    private fun DocumentSnapshot.asPersonalCompletion(userId: String): ChoreCompletion =
+        asCompletion(householdId = "").copy(householdId = "", createdByUserId = userId)
 
     private fun DocumentSnapshot.asChore(householdId: String): Chore = Chore(
         id = getString("id") ?: id,

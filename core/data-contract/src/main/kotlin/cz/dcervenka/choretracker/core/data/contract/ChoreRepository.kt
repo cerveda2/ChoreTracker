@@ -12,6 +12,12 @@ interface ChoreRepository {
 
     fun observeCompletedChoreIds(householdId: String): Flow<Set<String>>
 
+    // The signed-in user's personal chores, which nobody else sees. The update and delete calls below take their
+    // IDs too; rotation and groups are household-only.
+    fun observePersonalChores(): Flow<List<Chore>>
+
+    suspend fun addPersonalChore(name: String, category: ChoreCategory, schedule: ChoreSchedule?): AppResult<String>
+
     suspend fun addChore(
         householdId: String,
         name: String,

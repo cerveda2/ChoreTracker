@@ -16,6 +16,7 @@ import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.dao.PersonalChoreDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
@@ -27,6 +28,7 @@ import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.database.entity.SyncStateEntity
+import cz.dcervenka.choretracker.core.database.mapper.asModel
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.Chore
@@ -74,6 +76,7 @@ class LocalSyncRepository @Inject constructor(
     private val inviteDao: InviteDao,
     private val choreRequestDao: ChoreRequestDao,
     private val pendingSyncOperationDao: PendingSyncOperationDao,
+    private val personalChoreDao: PersonalChoreDao,
     private val syncStateDao: SyncStateDao,
     private val remoteHouseholdDataSource: RemoteHouseholdDataSource,
     private val database: ChoreTrackerDatabase,
@@ -93,6 +96,7 @@ class LocalSyncRepository @Inject constructor(
         inviteDao = inviteDao,
         choreRequestDao = choreRequestDao,
         pendingSyncOperationDao = pendingSyncOperationDao,
+        personalChoreDao = personalChoreDao,
         database = database,
     )
 
@@ -135,6 +139,10 @@ class LocalSyncRepository @Inject constructor(
             .onEach { realtimeSyncApplier.applyChores(it) },
         remoteHouseholdDataSource.observeRequests(householdId)
             .onEach { realtimeSyncApplier.applyRequests(householdId, it) },
+        remoteHouseholdDataSource.observePersonalChores(userId)
+            .onEach { realtimeSyncApplier.applyPersonalChores(userId, it) },
+        remoteHouseholdDataSource.observePersonalCompletions(userId)
+            .onEach { realtimeSyncApplier.applyPersonalCompletions(userId, it) },
     ).map { }
 
     override fun observeSyncState(householdId: String): Flow<SyncState?> =
@@ -192,11 +200,37 @@ class LocalSyncRepository @Inject constructor(
             AppResult.Success(Unit)
         } else {
             performanceMonitor.measure(PerformanceTraceName.SYNC_UPLOAD) {
+                val personalError = pushPersonalOperations(operations, authenticatedUser.id)
                 operationIdsByHouseholdId.entries.firstNotNullOfOrNull { (householdId, operationIds) ->
                     syncHousehold(householdId, operationIds, operations, authenticatedUser)
-                } ?: AppResult.Success(Unit)
+                } ?: personalError ?: AppResult.Success(Unit)
             }
         }
+    }
+
+    // Personal chores belong to the user, not a household, so they go straight to users/{uid} and never ride the
+    // household sync. A change the rules reject can't succeed on a retry, so it's dropped like a household one.
+    private suspend fun pushPersonalOperations(
+        operations: List<PendingSyncOperationEntity>,
+        userId: String,
+    ): AppResult.Error? {
+        var failure: AppResult.Error? = null
+        for (op in operations.filter { it.entityType == "personal_chore" || it.entityType == "personal_completion" }) {
+            val result = when {
+                op.entityType == "personal_chore" -> personalChoreDao.getChore(op.entityId)
+                    ?.let { remoteHouseholdDataSource.upsertPersonalChore(userId, it.asModel()) }
+                op.operationType == "delete" -> remoteHouseholdDataSource.deletePersonalCompletion(userId, op.entityId)
+                // Gone locally means it was deleted after being queued, and that delete is queued too.
+                else -> personalChoreDao.getCompletion(op.entityId)
+                    ?.let { remoteHouseholdDataSource.upsertPersonalCompletion(userId, it.asModel()) }
+            }
+            if (result is AppResult.Error && result.error != AppError.PERMISSION_DENIED) {
+                failure = failure ?: result
+            } else {
+                pendingSyncOperationDao.delete(op.id)
+            }
+        }
+        return failure
     }
 
     override suspend fun restoreHouseholdForUser(userId: String): AppResult<Boolean> =
@@ -230,8 +264,20 @@ class LocalSyncRepository @Inject constructor(
                         else -> applySnapshot(snapshot)
                     }
                 }
+            }.also { restorePersonalChores(userId) }
+        }
+
+    // Not tied to the household, so it runs whatever the household restore found; a failure only leaves the local
+    // copy as it was.
+    private suspend fun restorePersonalChores(userId: String) {
+        when (val result = remoteHouseholdDataSource.fetchPersonalSnapshot(userId)) {
+            is AppResult.Error -> Timber.w("restorePersonalChores: fetch failed - ${result.error}")
+            is AppResult.Success -> {
+                realtimeSyncApplier.applyPersonalChores(userId, result.value.chores)
+                realtimeSyncApplier.applyPersonalCompletions(userId, result.value.completions)
             }
         }
+    }
 
     private suspend fun applySnapshot(snapshot: HouseholdSnapshot): AppResult<Boolean> {
         householdDao.upsert(

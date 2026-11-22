@@ -1,6 +1,7 @@
 package cz.dcervenka.choretracker.core.sync.repository
 
 import com.google.common.truth.Truth.assertThat
+import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.data.contract.AuthRepository
 import cz.dcervenka.choretracker.core.database.dao.ChoreDao
 import cz.dcervenka.choretracker.core.database.dao.ChoreRequestDao
@@ -10,12 +11,14 @@ import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.dao.PersonalChoreDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.SyncStateEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.error.AppError
+import cz.dcervenka.choretracker.core.model.sync.PersonalSnapshot
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import io.mockk.MockKAnnotations
@@ -69,6 +72,9 @@ class LocalSyncRepositorySyncStateTest {
     @MockK
     lateinit var pendingSyncOperationDao: PendingSyncOperationDao
 
+    @MockK(relaxed = true)
+    lateinit var personalChoreDao: PersonalChoreDao
+
     @MockK
     lateinit var syncStateDao: SyncStateDao
 
@@ -89,6 +95,8 @@ class LocalSyncRepositorySyncStateTest {
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
+        coEvery { remoteHouseholdDataSource.fetchPersonalSnapshot(any()) } returns
+            AppResult.Success(PersonalSnapshot(emptyList(), emptyList()))
         every { authRepository.authState } returns authState
         coEvery { householdDao.getCurrentHouseholdForUser(any()) } returns null
         every { householdDao.observeHouseholdForUser(any()) } returns MutableStateFlow(null)
@@ -102,6 +110,7 @@ class LocalSyncRepositorySyncStateTest {
             inviteDao = inviteDao,
             choreRequestDao = choreRequestDao,
             pendingSyncOperationDao = pendingSyncOperationDao,
+            personalChoreDao = personalChoreDao,
             syncStateDao = syncStateDao,
             remoteHouseholdDataSource = remoteHouseholdDataSource,
             database = database,

@@ -11,6 +11,7 @@ import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.dao.PersonalChoreDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
@@ -20,13 +21,17 @@ import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
 import cz.dcervenka.choretracker.core.database.entity.InviteEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
+import cz.dcervenka.choretracker.core.database.entity.PersonalChoreEntity
+import cz.dcervenka.choretracker.core.database.entity.PersonalCompletionEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCompletion
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
+import cz.dcervenka.choretracker.core.model.sync.PersonalSnapshot
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import cz.dcervenka.choretracker.core.test.mock.sampleChore
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
@@ -85,6 +90,9 @@ class LocalSyncRepositoryTest {
     @MockK
     lateinit var pendingSyncOperationDao: PendingSyncOperationDao
 
+    @MockK(relaxed = true)
+    lateinit var personalChoreDao: PersonalChoreDao
+
     @MockK
     lateinit var syncStateDao: SyncStateDao
 
@@ -131,6 +139,8 @@ class LocalSyncRepositoryTest {
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
+        coEvery { remoteHouseholdDataSource.fetchPersonalSnapshot(any()) } returns
+            AppResult.Success(PersonalSnapshot(emptyList(), emptyList()))
         every { authRepository.authState } returns authState
         coEvery { pendingSyncOperationDao.getAll() } returns emptyList()
         coEvery { syncStateDao.upsert(any()) } just Runs
@@ -152,6 +162,8 @@ class LocalSyncRepositoryTest {
         every { remoteHouseholdDataSource.observeInvites(any()) } returns MutableStateFlow(emptyList())
         every { remoteHouseholdDataSource.observeChores(any()) } returns MutableStateFlow(emptyList())
         every { remoteHouseholdDataSource.observeRequests(any()) } returns MutableStateFlow(emptyList())
+        every { remoteHouseholdDataSource.observePersonalChores(any()) } returns MutableStateFlow(emptyList())
+        every { remoteHouseholdDataSource.observePersonalCompletions(any()) } returns MutableStateFlow(emptyList())
         coEvery { remoteHouseholdDataSource.fetchMembers(any(), any()) } returns AppResult.Success(sampleMembers())
         coEvery { remoteHouseholdDataSource.upsertChore(any()) } returns AppResult.Success(Unit)
         // ensureEmailSynced runs on first authenticated sync; return null so it exits early
@@ -171,6 +183,7 @@ class LocalSyncRepositoryTest {
             inviteDao = inviteDao,
             choreRequestDao = choreRequestDao,
             pendingSyncOperationDao = pendingSyncOperationDao,
+            personalChoreDao = personalChoreDao,
             syncStateDao = syncStateDao,
             remoteHouseholdDataSource = remoteHouseholdDataSource,
             database = database,
@@ -653,6 +666,68 @@ class LocalSyncRepositoryTest {
         coVerify(exactly = 0) { pendingSyncOperationDao.delete(any()) }
         coVerify(exactly = 0) { remoteHouseholdDataSource.fetchHouseholdSnapshot(any()) }
     }
+
+    @Test
+    fun `personal changes upload to the user's own collections, dropping rejected ones and keeping failed ones`() =
+        runTest(coroutineRule.dispatcher) {
+            fun op(id: String, entityType: String, entityId: String, operationType: String = "upsert") =
+                PendingSyncOperationEntity(
+                    id = id,
+                    entityType = entityType,
+                    entityId = entityId,
+                    operationType = operationType,
+                    payload = "",
+                    createdAt = Instant.parse("2026-01-04T10:00:00Z"),
+                )
+            val createdAt = Instant.parse("2026-01-01T00:00:00Z")
+            coEvery { pendingSyncOperationDao.getAll() } returns listOf(
+                op("op-chore", "personal_chore", "personal-1"),
+                op("op-completion", "personal_completion", "personal-completion-1"),
+                op("op-delete", "personal_completion", "personal-completion-2", operationType = "delete"),
+            )
+            coEvery { personalChoreDao.getChore("personal-1") } returns
+                PersonalChoreEntity("personal-1", "user-1", "Gym", isActive = true, createdAt = createdAt, deletedAt = null)
+            coEvery { personalChoreDao.getCompletion("personal-completion-1") } returns
+                PersonalCompletionEntity("personal-completion-1", "user-1", "personal-1", createdAt, note = null)
+            coEvery { remoteHouseholdDataSource.upsertPersonalChore("user-1", any()) } returns AppResult.Success(Unit)
+            coEvery { remoteHouseholdDataSource.upsertPersonalCompletion("user-1", any()) } returns
+                AppResult.Error(AppError.PERMISSION_DENIED)
+            coEvery { remoteHouseholdDataSource.deletePersonalCompletion("user-1", "personal-completion-2") } returns
+                AppResult.Error(AppError.NETWORK)
+            coEvery { pendingSyncOperationDao.delete(any()) } just Runs
+
+            val resultDeferred = async { repository.syncPendingOperations() }
+            advanceUntilIdle()
+
+            assertThat(resultDeferred.await()).isEqualTo(AppResult.Error(AppError.NETWORK))
+            coVerify {
+                remoteHouseholdDataSource.upsertPersonalChore("user-1", match { it.isPersonal && it.name == "Gym" })
+            }
+            coVerify { pendingSyncOperationDao.delete("op-chore") }
+            coVerify { pendingSyncOperationDao.delete("op-completion") }
+            coVerify(exactly = 0) { pendingSyncOperationDao.delete("op-delete") }
+            coVerify(exactly = 0) { remoteHouseholdDataSource.upsertMemberSnapshot(any(), any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun `restoreHouseholdForUser also restores personal chores when there's no household`() =
+        runTest(coroutineRule.dispatcher) {
+            val chore = Chore(
+                id = "personal-1",
+                householdId = "",
+                name = "Gym",
+                isActive = true,
+                createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+                isPersonal = true,
+            )
+            coEvery { remoteHouseholdDataSource.fetchHouseholdSnapshot("user-1") } returns AppResult.Success(null)
+            coEvery { remoteHouseholdDataSource.fetchPersonalSnapshot("user-1") } returns
+                AppResult.Success(PersonalSnapshot(listOf(chore), emptyList()))
+
+            repository.restoreHouseholdForUser("user-1")
+
+            coVerify { personalChoreDao.upsertChore(match { it.id == "personal-1" && it.ownerUserId == "user-1" }) }
+        }
 
     @Test
     fun `syncPendingOperations includes joinedViaInviteId in the owner's pushed snapshot`() =

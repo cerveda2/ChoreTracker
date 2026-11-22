@@ -11,8 +11,11 @@ import cz.dcervenka.choretracker.core.database.dao.ChoreDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.dao.PersonalChoreDao
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
+import cz.dcervenka.choretracker.core.database.entity.PersonalChoreEntity
+import cz.dcervenka.choretracker.core.database.mapper.asModel
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
@@ -22,7 +25,10 @@ import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -32,13 +38,14 @@ import javax.inject.Singleton
 import kotlin.time.Clock
 
 @Singleton
-@Suppress("ReturnCount")
+@Suppress("ReturnCount", "TooManyFunctions")
 class OfflineFirstChoreRepository @Inject constructor(
     private val choreDao: ChoreDao,
     private val completionDao: CompletionDao,
     private val memberDao: MemberDao,
     private val authRepository: AuthRepository,
     private val pendingSyncOperationDao: PendingSyncOperationDao,
+    private val personalChoreDao: PersonalChoreDao,
     private val syncRepository: SyncRepository,
     @ApplicationScope private val scope: CoroutineScope,
 ) : ChoreRepository {
@@ -52,6 +59,41 @@ class OfflineFirstChoreRepository @Inject constructor(
         completionDao.observeCompletions(householdId).map { completions ->
             completions.map { it.choreId }.toSet()
         }
+
+    override fun observePersonalChores(): Flow<List<Chore>> = authRepository.authState
+        .map { (it as? AuthState.Authenticated)?.user?.id }
+        .distinctUntilChanged()
+        .flatMapLatest { userId ->
+            if (userId == null) {
+                flowOf(emptyList())
+            } else {
+                personalChoreDao.observeChores(userId).map { chores -> chores.map(PersonalChoreEntity::asModel) }
+            }
+        }
+
+    override suspend fun addPersonalChore(name: String, category: ChoreCategory, schedule: ChoreSchedule?): AppResult<String> {
+        Timber.d("addPersonalChore: name=$name category=$category schedule=$schedule")
+        val user = (authRepository.authState.first() as? AuthState.Authenticated)?.user
+            ?: return AppResult.Error(AppError.NOT_SIGNED_IN)
+        if (user.isPreview) return AppResult.Error(AppError.PREVIEW_MODE_RESTRICTED)
+        val choreId = UUID.randomUUID().toString()
+        personalChoreDao.upsertChore(
+            PersonalChoreEntity(
+                id = choreId,
+                ownerUserId = user.id,
+                name = name,
+                isActive = true,
+                createdAt = Clock.System.now(),
+                deletedAt = null,
+                frequencyDays = schedule?.frequencyDays,
+                category = category.name,
+                scheduleWeekdays = (schedule as? ChoreSchedule.Weekdays)?.days.orEmpty(),
+                scheduleMonthDay = (schedule as? ChoreSchedule.MonthDay)?.day,
+            ),
+        )
+        queuePersonalChore(choreId)
+        return AppResult.Success(choreId)
+    }
 
     override suspend fun addChore(
         householdId: String,
@@ -102,6 +144,7 @@ class OfflineFirstChoreRepository @Inject constructor(
 
     override suspend fun deleteChore(choreId: String): EmptyResult {
         Timber.d("deleteChore: choreId=$choreId")
+        updatePersonalChore(choreId) { it.copy(isActive = false, deletedAt = Clock.System.now()) }?.let { return it }
         val chore = choreDao.getChore(choreId) ?: return AppResult.Error(AppError.CHORE_DELETE_FORBIDDEN)
         permissionError(chore, deleting = true)?.let { return AppResult.Error(it) }
         choreDao.markDeleted(choreId, Clock.System.now())
@@ -121,6 +164,7 @@ class OfflineFirstChoreRepository @Inject constructor(
 
     override suspend fun updateChoreActive(choreId: String, isActive: Boolean): EmptyResult {
         Timber.d("updateChoreActive: choreId=$choreId isActive=$isActive")
+        updatePersonalChore(choreId) { it.copy(isActive = isActive) }?.let { return it }
         editError(choreId)?.let { return AppResult.Error(it) }
         choreDao.updateActive(choreId, isActive)
         pendingSyncOperationDao.upsert(
@@ -139,6 +183,7 @@ class OfflineFirstChoreRepository @Inject constructor(
 
     override suspend fun updateChoreName(choreId: String, name: String): EmptyResult {
         Timber.d("updateChoreName: choreId=$choreId name=$name")
+        updatePersonalChore(choreId) { it.copy(name = name.trim()) }?.let { return it }
         editError(choreId)?.let { return AppResult.Error(it) }
         choreDao.updateName(choreId, name.trim())
         pendingSyncOperationDao.upsert(
@@ -157,6 +202,13 @@ class OfflineFirstChoreRepository @Inject constructor(
 
     override suspend fun updateChoreSchedule(choreId: String, schedule: ChoreSchedule?): EmptyResult {
         Timber.d("updateChoreSchedule: choreId=$choreId schedule=$schedule")
+        updatePersonalChore(choreId) {
+            it.copy(
+                frequencyDays = schedule?.frequencyDays,
+                scheduleWeekdays = (schedule as? ChoreSchedule.Weekdays)?.days.orEmpty(),
+                scheduleMonthDay = (schedule as? ChoreSchedule.MonthDay)?.day,
+            )
+        }?.let { return it }
         editError(choreId)?.let { return AppResult.Error(it) }
         choreDao.updateSchedule(
             choreId = choreId,
@@ -180,6 +232,7 @@ class OfflineFirstChoreRepository @Inject constructor(
 
     override suspend fun updateChoreCategory(choreId: String, category: ChoreCategory): EmptyResult {
         Timber.d("updateChoreCategory: choreId=$choreId category=$category")
+        updatePersonalChore(choreId) { it.copy(category = category.name) }?.let { return it }
         editError(choreId)?.let { return AppResult.Error(it) }
         choreDao.updateCategory(choreId, category.name)
         pendingSyncOperationDao.upsert(
@@ -231,6 +284,32 @@ class OfflineFirstChoreRepository @Inject constructor(
         )
         scope.launch { syncRepository.syncPendingOperations() }
         return AppResult.Success(Unit)
+    }
+
+    // Null when choreId isn't a personal chore. A personal chore only ever belongs to the signed-in user, so there's
+    // no permission check.
+    private suspend fun updatePersonalChore(
+        choreId: String,
+        change: (PersonalChoreEntity) -> PersonalChoreEntity,
+    ): EmptyResult? {
+        val chore = personalChoreDao.getChore(choreId) ?: return null
+        personalChoreDao.upsertChore(change(chore))
+        queuePersonalChore(choreId)
+        return AppResult.Success(Unit)
+    }
+
+    private suspend fun queuePersonalChore(choreId: String) {
+        pendingSyncOperationDao.upsert(
+            PendingSyncOperationEntity(
+                id = UUID.randomUUID().toString(),
+                entityType = "personal_chore",
+                entityId = choreId,
+                operationType = "upsert",
+                payload = "",
+                createdAt = Clock.System.now(),
+            ),
+        )
+        scope.launch { syncRepository.syncPendingOperations() }
     }
 
     private fun String?.normalizedGroupName(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
