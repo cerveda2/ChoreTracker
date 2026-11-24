@@ -286,13 +286,13 @@ class OfflineFirstChoreRepository @Inject constructor(
         return AppResult.Success(Unit)
     }
 
-    // Null when choreId isn't a personal chore. A personal chore only ever belongs to the signed-in user, so there's
-    // no permission check.
+    // Null when choreId isn't the signed-in user's personal chore. Its owner may change it, so there's no permission
+    // check.
     private suspend fun updatePersonalChore(
         choreId: String,
         change: (PersonalChoreEntity) -> PersonalChoreEntity,
     ): EmptyResult? {
-        val chore = personalChoreDao.getChore(choreId) ?: return null
+        val chore = currentUserId()?.let { personalChoreDao.getChore(choreId, it) } ?: return null
         personalChoreDao.upsertChore(change(chore))
         queuePersonalChore(choreId)
         return AppResult.Success(Unit)

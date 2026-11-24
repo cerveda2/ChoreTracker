@@ -22,8 +22,8 @@ interface PersonalChoreDao {
     )
     suspend fun getChores(ownerUserId: String): List<PersonalChoreEntity>
 
-    @Query("SELECT * FROM personal_chores WHERE id = :choreId LIMIT 1")
-    suspend fun getChore(choreId: String): PersonalChoreEntity?
+    @Query("SELECT * FROM personal_chores WHERE id = :choreId AND ownerUserId = :ownerUserId LIMIT 1")
+    suspend fun getChore(choreId: String, ownerUserId: String): PersonalChoreEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertChore(entity: PersonalChoreEntity)
@@ -34,8 +34,8 @@ interface PersonalChoreDao {
     @Query("SELECT * FROM personal_completions WHERE ownerUserId = :ownerUserId ORDER BY createdAt DESC")
     suspend fun getCompletions(ownerUserId: String): List<PersonalCompletionEntity>
 
-    @Query("SELECT * FROM personal_completions WHERE id = :completionId LIMIT 1")
-    suspend fun getCompletion(completionId: String): PersonalCompletionEntity?
+    @Query("SELECT * FROM personal_completions WHERE id = :completionId AND ownerUserId = :ownerUserId LIMIT 1")
+    suspend fun getCompletion(completionId: String, ownerUserId: String): PersonalCompletionEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertCompletion(entity: PersonalCompletionEntity)

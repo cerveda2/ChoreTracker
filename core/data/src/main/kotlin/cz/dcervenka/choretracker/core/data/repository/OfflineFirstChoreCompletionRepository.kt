@@ -131,7 +131,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
                 Timber.w("logCompletion failed: user not authenticated")
             }
         val completionId = UUID.randomUUID().toString()
-        if (personalChoreDao.getChore(choreId) != null) {
+        if (personalChoreDao.getChore(choreId, currentUserId) != null) {
             personalChoreDao.upsertCompletion(
                 PersonalCompletionEntity(
                     id = completionId,
@@ -184,6 +184,11 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
         Timber.d("updateCompletion: completionId=$completionId participants=${participantMemberIds.size}")
         val existing = completionDao.getCompletion(completionId)
         val currentUserId = (authRepository.authState.first() as? AuthState.Authenticated)?.user?.id
+        currentUserId?.let { personalChoreDao.getCompletion(completionId, it) }?.let { personal ->
+            personalChoreDao.upsertCompletion(personal.copy(note = note?.takeIf(String::isNotBlank)))
+            queuePersonalCompletion(completionId, operationType = "upsert")
+            return AppResult.Success(Unit)
+        }
         return when {
             existing == null -> AppResult.Error(AppError.COMPLETION_NOT_FOUND)
             currentUserId == null -> AppResult.Error(AppError.NOT_SIGNED_IN)
@@ -217,14 +222,14 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
 
     override suspend fun deleteCompletion(completionId: String): EmptyResult {
         Timber.d("deleteCompletion: completionId=$completionId")
-        if (personalChoreDao.getCompletion(completionId) != null) {
+        val currentUserId = (authRepository.authState.first() as? AuthState.Authenticated)?.user?.id
+        if (currentUserId != null && personalChoreDao.getCompletion(completionId, currentUserId) != null) {
             personalChoreDao.deleteCompletion(completionId)
             pendingSyncOperationDao.deleteByEntityId(completionId)
             queuePersonalCompletion(completionId, operationType = "delete")
             return AppResult.Success(Unit)
         }
         val existing = completionDao.getCompletion(completionId)
-        val currentUserId = (authRepository.authState.first() as? AuthState.Authenticated)?.user?.id
         return when {
             existing == null -> AppResult.Success(Unit)
             currentUserId == null -> AppResult.Error(AppError.NOT_SIGNED_IN)

@@ -56,6 +56,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retry
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
@@ -200,37 +201,72 @@ class LocalSyncRepository @Inject constructor(
             AppResult.Success(Unit)
         } else {
             performanceMonitor.measure(PerformanceTraceName.SYNC_UPLOAD) {
-                val personalError = pushPersonalOperations(operations, authenticatedUser.id)
-                operationIdsByHouseholdId.entries.firstNotNullOfOrNull { (householdId, operationIds) ->
-                    syncHousehold(householdId, operationIds, operations, authenticatedUser)
-                } ?: personalError ?: AppResult.Success(Unit)
+                val personalOperations = operations.filter { it.isPersonal() }
+                val personalError = pushPersonalOperations(personalOperations, authenticatedUser.id)
+                val householdError = operationIdsByHouseholdId.entries.firstNotNullOfOrNull { (householdId, opIds) ->
+                    syncHousehold(householdId, opIds, operations, authenticatedUser)
+                }
+                // After syncHousehold, which writes the same row and would hide a personal failure.
+                recordPersonalSyncState(
+                    userId = authenticatedUser.id,
+                    attempted = personalOperations.isNotEmpty(),
+                    householdSynced = operationIdsByHouseholdId.isNotEmpty(),
+                    error = personalError,
+                )
+                householdError ?: personalError ?: AppResult.Success(Unit)
             }
         }
     }
 
     // Personal chores belong to the user, not a household, so they go straight to users/{uid} and never ride the
-    // household sync. A change the rules reject can't succeed on a retry, so it's dropped like a household one.
+    // household sync. A change the rules reject can't succeed on a retry, so it's dropped like a household one. Each
+    // chore or completion uploads once however many changes are queued for it, and the first failure stops the rest,
+    // since offline every upload would wait out the task timeout.
     private suspend fun pushPersonalOperations(
         operations: List<PendingSyncOperationEntity>,
         userId: String,
     ): AppResult.Error? {
-        var failure: AppResult.Error? = null
-        for (op in operations.filter { it.entityType == "personal_chore" || it.entityType == "personal_completion" }) {
+        for ((key, queued) in operations.groupBy { it.entityType to it.entityId }) {
+            val (entityType, entityId) = key
             val result = when {
-                op.entityType == "personal_chore" -> personalChoreDao.getChore(op.entityId)
+                entityType == "personal_chore" -> personalChoreDao.getChore(entityId, userId)
                     ?.let { remoteHouseholdDataSource.upsertPersonalChore(userId, it.asModel()) }
-                op.operationType == "delete" -> remoteHouseholdDataSource.deletePersonalCompletion(userId, op.entityId)
-                // Gone locally means it was deleted after being queued, and that delete is queued too.
-                else -> personalChoreDao.getCompletion(op.entityId)
+                queued.any { it.operationType == "delete" } ->
+                    remoteHouseholdDataSource.deletePersonalCompletion(userId, entityId)
+                // Gone locally means it was deleted after being queued, and that delete is queued too. Another
+                // account's row is never uploaded here, so its change is dropped.
+                else -> personalChoreDao.getCompletion(entityId, userId)
                     ?.let { remoteHouseholdDataSource.upsertPersonalCompletion(userId, it.asModel()) }
             }
-            if (result is AppResult.Error && result.error != AppError.PERMISSION_DENIED) {
-                failure = failure ?: result
-            } else {
-                pendingSyncOperationDao.delete(op.id)
-            }
+            if (result is AppResult.Error && result.error != AppError.PERMISSION_DENIED) return result
+            queued.forEach { pendingSyncOperationDao.delete(it.id) }
         }
-        return failure
+        return null
+    }
+
+    private fun PendingSyncOperationEntity.isPersonal() =
+        entityType == "personal_chore" || entityType == "personal_completion"
+
+    // Personal changes have no household of their own, so they show on the current one's sync status, or a stuck
+    // upload would read as everything synced. A household sync in the same run has already written it otherwise.
+    private suspend fun recordPersonalSyncState(
+        userId: String,
+        attempted: Boolean,
+        householdSynced: Boolean,
+        error: AppResult.Error?,
+    ) {
+        if (error == null && (!attempted || householdSynced)) return
+        val householdId = householdDao.getCurrentHouseholdForUser(userId)?.id ?: return
+        val now = Clock.System.now()
+        syncStateDao.upsert(
+            SyncStateEntity(
+                householdId = householdId,
+                lastSyncedAt = now.takeIf { error == null },
+                lastSyncAttemptAt = now,
+                pendingOperations = pendingSyncOperationDao.getAll().size,
+                lastErrorMessage = error?.error?.name,
+            ),
+        )
     }
 
     override suspend fun restoreHouseholdForUser(userId: String): AppResult<Boolean> =
@@ -257,18 +293,18 @@ class LocalSyncRepository @Inject constructor(
                                     "household=${snapshot.household.id}",
                             )
                             if (householdDao.getCurrentHouseholdForUser(userId) != null) {
-                                database.clearAll()
+                                database.clearHouseholdData()
                             }
                             AppResult.Success(false)
                         }
                         else -> applySnapshot(snapshot)
                     }
                 }
-            }.also { restorePersonalChores(userId) }
-        }
+            }
+        }.also { syncScope.launch { restorePersonalChores(userId) } }
 
-    // Not tied to the household, so it runs whatever the household restore found; a failure only leaves the local
-    // copy as it was.
+    // Not tied to the household, so it runs whatever the household restore found, and nothing waits for it; a failure
+    // only leaves the local copy as it was.
     private suspend fun restorePersonalChores(userId: String) {
         when (val result = remoteHouseholdDataSource.fetchPersonalSnapshot(userId)) {
             is AppResult.Error -> Timber.w("restorePersonalChores: fetch failed - ${result.error}")
@@ -773,7 +809,7 @@ class LocalSyncRepository @Inject constructor(
                 // Same wipe-and-redirect path a removed member takes (PR #80): clearing the
                 // tables makes observeHouseholdForUser emit null -> ObserveStartupDestinationUseCase
                 // -> ONBOARDING.
-                database.clearAll()
+                database.clearHouseholdData()
                 AppResult.Success(Unit)
             }
         }
@@ -787,7 +823,7 @@ class LocalSyncRepository @Inject constructor(
             when (val result = remoteHouseholdDataSource.deleteHousehold(householdId)) {
                 is AppResult.Error -> result
                 is AppResult.Success -> {
-                    database.clearAll()
+                    database.clearHouseholdData()
                     AppResult.Success(Unit)
                 }
             }

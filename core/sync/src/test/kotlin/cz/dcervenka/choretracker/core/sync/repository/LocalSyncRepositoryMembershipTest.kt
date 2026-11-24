@@ -119,7 +119,7 @@ class LocalSyncRepositoryMembershipTest {
         coEvery { remoteHouseholdDataSource.fetchMembers(any(), any()) } returns AppResult.Success(sampleMembers())
         coEvery { householdDao.getCurrentHouseholdForUser(any()) } returns null
         every { householdDao.observeHouseholdForUser(any()) } returns MutableStateFlow(null)
-        coEvery { database.clearAll() } just Runs
+        coEvery { database.clearHouseholdData() } just Runs
         repository = LocalSyncRepository(
             authRepository = authRepository,
             householdDao = householdDao,
@@ -145,7 +145,7 @@ class LocalSyncRepositoryMembershipTest {
         val result = repository.leaveHousehold("household-1", "user-1")
 
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
-        coVerify { database.clearAll() }
+        coVerify { database.clearHouseholdData() }
     }
 
     @Test
@@ -155,7 +155,7 @@ class LocalSyncRepositoryMembershipTest {
         val result = repository.leaveHousehold("household-1", "user-1")
 
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
-        coVerify(exactly = 0) { database.clearAll() }
+        coVerify(exactly = 0) { database.clearHouseholdData() }
     }
 
     @Test
@@ -165,7 +165,7 @@ class LocalSyncRepositoryMembershipTest {
         val result = repository.deleteHousehold("household-1")
 
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
-        coVerify { database.clearAll() }
+        coVerify { database.clearHouseholdData() }
     }
 
     @Test
@@ -175,7 +175,7 @@ class LocalSyncRepositoryMembershipTest {
         val result = repository.deleteHousehold("household-1")
 
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
-        coVerify(exactly = 0) { database.clearAll() }
+        coVerify(exactly = 0) { database.clearHouseholdData() }
     }
 
     @Test
@@ -212,7 +212,7 @@ class LocalSyncRepositoryMembershipTest {
             remoteDelete.complete(AppResult.Success(Unit))
             advanceUntilIdle()
 
-            coVerify { database.clearAll() }
+            coVerify { database.clearHouseholdData() }
         }
 
     @Test

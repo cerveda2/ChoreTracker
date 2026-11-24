@@ -59,4 +59,26 @@ abstract class ChoreTrackerDatabase : RoomDatabase() {
     abstract fun personalChoreDao(): PersonalChoreDao
 
     suspend fun clearAll() = withContext(Dispatchers.IO) { clearAllTables() }
+
+    // Leaving or losing a household: personal chores and their queued uploads belong to the user, so they stay.
+    suspend fun clearHouseholdData() = withContext(Dispatchers.IO) {
+        runInTransaction {
+            val db = openHelper.writableDatabase
+            HOUSEHOLD_TABLES.forEach { db.execSQL("DELETE FROM `$it`") }
+            db.execSQL(
+                "DELETE FROM pending_sync_operations WHERE entityType NOT IN ('personal_chore', 'personal_completion')",
+            )
+        }
+    }
 }
+
+internal val HOUSEHOLD_TABLES = listOf(
+    "completion_participants",
+    "completions",
+    "chores",
+    "chore_requests",
+    "invites",
+    "members",
+    "households",
+    "sync_states",
+)

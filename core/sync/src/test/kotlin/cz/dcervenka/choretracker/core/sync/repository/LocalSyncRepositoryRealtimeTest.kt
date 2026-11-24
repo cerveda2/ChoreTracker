@@ -116,7 +116,7 @@ class LocalSyncRepositoryRealtimeTest {
         every { remoteHouseholdDataSource.observePersonalCompletions(any()) } returns MutableStateFlow(emptyList())
         coEvery { householdDao.getCurrentHouseholdForUser(any()) } returns null
         every { householdDao.observeHouseholdForUser(any()) } returns MutableStateFlow(null)
-        coEvery { database.clearAll() } just Runs
+        coEvery { database.clearHouseholdData() } just Runs
         LocalSyncRepository(
             authRepository = authRepository,
             householdDao = householdDao,

@@ -65,8 +65,8 @@ class OfflineFirstChoreRepositoryTest {
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
-        coEvery { personalChoreDao.getChore(any()) } returns null
-        coEvery { personalChoreDao.getCompletion(any()) } returns null
+        coEvery { personalChoreDao.getChore(any(), any()) } returns null
+        coEvery { personalChoreDao.getCompletion(any(), any()) } returns null
         coEvery { choreDao.upsert(any()) } just Runs
         coEvery { choreDao.markDeleted(any(), any()) } just Runs
         coEvery { choreDao.updateActive(any(), any()) } just Runs
@@ -451,7 +451,7 @@ class OfflineFirstChoreRepositoryTest {
     @Test
     fun `edits and deletes of a personal chore stay in the personal table`() = runTest {
         val saved = mutableListOf<PersonalChoreEntity>()
-        coEvery { personalChoreDao.getChore("personal-1") } returns personalChore
+        coEvery { personalChoreDao.getChore("personal-1", "user-1") } returns personalChore
         coEvery { personalChoreDao.upsertChore(capture(saved)) } just Runs
 
         repository.updateChoreName("personal-1", "  Swim ")

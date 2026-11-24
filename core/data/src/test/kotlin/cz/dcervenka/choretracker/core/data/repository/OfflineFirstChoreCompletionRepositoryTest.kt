@@ -71,8 +71,8 @@ class OfflineFirstChoreCompletionRepositoryTest {
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
-        coEvery { personalChoreDao.getChore(any()) } returns null
-        coEvery { personalChoreDao.getCompletion(any()) } returns null
+        coEvery { personalChoreDao.getChore(any(), any()) } returns null
+        coEvery { personalChoreDao.getCompletion(any(), any()) } returns null
         every { authRepository.authState } returns authState
         coEvery { memberDao.findByUserId(any(), any()) } returns MemberEntity(
             id = "member-1",
@@ -281,7 +281,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
     fun `logCompletion on a personal chore stores a personal completion, not a household one`() = runTest {
         val completion = slot<PersonalCompletionEntity>()
         val op = slot<PendingSyncOperationEntity>()
-        coEvery { personalChoreDao.getChore("personal-1") } returns PersonalChoreEntity(
+        coEvery { personalChoreDao.getChore("personal-1", "user-1") } returns PersonalChoreEntity(
             id = "personal-1",
             ownerUserId = "user-1",
             name = "Gym",
@@ -304,7 +304,7 @@ class OfflineFirstChoreCompletionRepositoryTest {
     @Test
     fun `deleteCompletion of a personal completion queues a personal delete`() = runTest {
         val op = slot<PendingSyncOperationEntity>()
-        coEvery { personalChoreDao.getCompletion("personal-completion-1") } returns PersonalCompletionEntity(
+        coEvery { personalChoreDao.getCompletion("personal-completion-1", "user-1") } returns PersonalCompletionEntity(
             id = "personal-completion-1",
             ownerUserId = "user-1",
             choreId = "personal-1",
@@ -321,5 +321,28 @@ class OfflineFirstChoreCompletionRepositoryTest {
         assertThat(op.captured.entityType).isEqualTo("personal_completion")
         assertThat(op.captured.operationType).isEqualTo("delete")
         coVerify(exactly = 0) { completionDao.deleteById(any()) }
+    }
+
+    @Test
+    fun `updateCompletion of a personal completion changes its note and queues a personal upsert`() = runTest {
+        val completion = slot<PersonalCompletionEntity>()
+        val op = slot<PendingSyncOperationEntity>()
+        coEvery { completionDao.getCompletion("personal-completion-1") } returns null
+        coEvery { personalChoreDao.getCompletion("personal-completion-1", "user-1") } returns PersonalCompletionEntity(
+            id = "personal-completion-1",
+            ownerUserId = "user-1",
+            choreId = "personal-1",
+            createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+            note = null,
+        )
+        coEvery { personalChoreDao.upsertCompletion(capture(completion)) } just Runs
+        coEvery { pendingSyncOperationDao.upsert(capture(op)) } just Runs
+
+        val result = repository.updateCompletion("personal-completion-1", "Legs", participantMemberIds = emptyList())
+
+        assertThat(result).isEqualTo(AppResult.Success(Unit))
+        assertThat(completion.captured.note).isEqualTo("Legs")
+        assertThat(op.captured.entityType).isEqualTo("personal_completion")
+        coVerify(exactly = 0) { completionDao.upsert(any()) }
     }
 }

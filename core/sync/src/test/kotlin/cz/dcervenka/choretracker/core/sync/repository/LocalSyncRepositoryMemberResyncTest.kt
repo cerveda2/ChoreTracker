@@ -175,7 +175,7 @@ class LocalSyncRepositoryMemberResyncTest {
         coEvery { choreDao.getChores("household-1") } returns emptyList()
         coEvery { inviteDao.getInvites("household-1") } returns emptyList()
         coEvery { syncStateDao.upsert(any()) } just Runs
-        coEvery { database.clearAll() } just Runs
+        coEvery { database.clearHouseholdData() } just Runs
         every { remoteHouseholdDataSource.observeMembers("household-1", "user-1") } returns remoteMembers
         every { remoteHouseholdDataSource.observeCompletions(any()) } returns emptyFlow()
         every { remoteHouseholdDataSource.observeInvites(any()) } returns emptyFlow()

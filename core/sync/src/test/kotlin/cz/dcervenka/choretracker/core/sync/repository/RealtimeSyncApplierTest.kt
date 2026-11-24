@@ -88,7 +88,7 @@ class RealtimeSyncApplierTest {
         coEvery { inviteDao.getInvites(any()) } returns emptyList()
         coEvery { inviteDao.deleteById(any()) } just Runs
         coEvery { pendingSyncOperationDao.getAll() } returns emptyList()
-        coEvery { database.clearAll() } just Runs
+        coEvery { database.clearHouseholdData() } just Runs
         applier = RealtimeSyncApplier(
             memberDao = memberDao,
             choreDao = choreDao,
@@ -205,7 +205,7 @@ class RealtimeSyncApplierTest {
     fun `applyMembers clears local data when current user missing from remote members`() = runTest {
         applier.applyMembers("household-1", "user-1", listOf(sampleMembers()[1]))
 
-        coVerify { database.clearAll() }
+        coVerify { database.clearHouseholdData() }
         coVerify(exactly = 0) { memberDao.upsert(any()) }
     }
 
@@ -215,7 +215,7 @@ class RealtimeSyncApplierTest {
 
         applier.applyMembers("household-1", "user-1", listOf(removedSelf, sampleMembers()[1]))
 
-        coVerify { database.clearAll() }
+        coVerify { database.clearHouseholdData() }
         coVerify(exactly = 0) { memberDao.upsert(any()) }
     }
 

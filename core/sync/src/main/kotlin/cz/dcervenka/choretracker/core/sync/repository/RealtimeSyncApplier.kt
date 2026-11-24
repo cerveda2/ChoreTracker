@@ -44,7 +44,7 @@ internal class RealtimeSyncApplier(
 
     // observeRealtimeUpdates' merge() collects all four remote listeners concurrently, so these
     // methods can be invoked from different coroutines at the same time - e.g. a members update
-    // triggering clearAll() while a completions update is mid-upsert. Serializing them avoids
+    // triggering clearHouseholdData() while a completions update is mid-upsert. Serializing them avoids
     // applying a partial write after (or racing) a full local wipe.
     private val mutex = Mutex()
 
@@ -58,7 +58,7 @@ internal class RealtimeSyncApplier(
                     "applyMembers: userId=$userId no longer an active member of household=$householdId - " +
                         "clearing local data",
                 )
-                database.clearAll()
+                database.clearHouseholdData()
                 return@withLock
             }
             // Pending member operations are keyed by householdId, not their own member id (see

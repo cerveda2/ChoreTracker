@@ -4,6 +4,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
+import cz.dcervenka.choretracker.core.database.database.HOUSEHOLD_TABLES
+import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
 import cz.dcervenka.choretracker.core.database.entity.PersonalChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.PersonalCompletionEntity
 import kotlinx.coroutines.test.runTest
@@ -43,7 +45,8 @@ class PersonalChoreDaoTest {
         dao.upsertChore(chore("other", ownerUserId = "user-2"))
 
         assertThat(dao.getChores("user-1").map { it.id }).containsExactly("gym")
-        assertThat(dao.getChore("meds")).isNotNull()
+        assertThat(dao.getChore("meds", "user-1")).isNotNull()
+        assertThat(dao.getChore("gym", "user-2")).isNull()
     }
 
     @Test
@@ -67,6 +70,45 @@ class PersonalChoreDaoTest {
         assertThat(dao.getChores("user-1")).isEmpty()
         assertThat(dao.getCompletions("user-1")).isEmpty()
     }
+
+    @Test
+    fun `clearHouseholdData keeps personal chores and their queued uploads`() = runTest {
+        dao.upsertChore(chore("gym", ownerUserId = "user-1"))
+        dao.upsertCompletion(completion("c-1", ownerUserId = "user-1"))
+        database.pendingSyncOperationDao().upsert(operation("op-personal", "personal_chore"))
+        database.pendingSyncOperationDao().upsert(operation("op-household", "chore"))
+
+        database.clearHouseholdData()
+
+        assertThat(dao.getChores("user-1").map { it.id }).containsExactly("gym")
+        assertThat(dao.getCompletions("user-1").map { it.id }).containsExactly("c-1")
+        assertThat(database.pendingSyncOperationDao().getAll().map { it.id }).containsExactly("op-personal")
+    }
+
+    @Test
+    fun `clearHouseholdData wipes every table but the personal ones and the sync queue`() {
+        val tables = database.openHelper.readableDatabase
+            .query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+            .use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.getString(0)) } }
+        val kept = setOf(
+            "android_metadata",
+            "room_master_table",
+            "personal_chores",
+            "personal_completions",
+            "pending_sync_operations",
+        )
+
+        assertThat(tables - kept).containsExactlyElementsIn(HOUSEHOLD_TABLES)
+    }
+
+    private fun operation(id: String, entityType: String) = PendingSyncOperationEntity(
+        id = id,
+        entityType = entityType,
+        entityId = id,
+        operationType = "upsert",
+        payload = "",
+        createdAt = Instant.fromEpochMilliseconds(0),
+    )
 
     private fun chore(id: String, ownerUserId: String, deletedAt: Instant? = null) = PersonalChoreEntity(
         id = id,

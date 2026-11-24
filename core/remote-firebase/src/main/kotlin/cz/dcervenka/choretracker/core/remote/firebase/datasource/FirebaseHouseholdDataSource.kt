@@ -895,11 +895,13 @@ class FirebaseHouseholdDataSource @Inject constructor(
         awaitClose { registration.remove() }
     }
 
+    // Server only, like fetchMembers: the restore prunes completions missing here, and a cached answer can miss some.
     override suspend fun fetchPersonalSnapshot(userId: String): AppResult<PersonalSnapshot> {
         val db = firestore ?: return AppResult.Error(AppError.FIREBASE_NOT_CONFIGURED)
         return runCatching {
-            val chores = awaitTask(personalCollection(db, userId, CHORES_COLLECTION).get()).documents
-            val completions = awaitTask(personalCollection(db, userId, COMPLETIONS_COLLECTION).get()).documents
+            val chores = awaitTask(personalCollection(db, userId, CHORES_COLLECTION).get(Source.SERVER)).documents
+            val completions =
+                awaitTask(personalCollection(db, userId, COMPLETIONS_COLLECTION).get(Source.SERVER)).documents
             AppResult.Success(
                 PersonalSnapshot(
                     chores = chores.map { it.asPersonalChore(userId) },
