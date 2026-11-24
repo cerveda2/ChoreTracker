@@ -72,7 +72,7 @@ Tester ideas from the 0.1.4 feedback that we've decided to do later. They aren't
 
 ### Ideas
 
-From a tester (not a developer) on 2026-11-21: with many chores, the Chores tab gets hard to read and easy to get lost in. The three ideas below are their suggestions for that one problem, so design them together. Not planned yet.
+From a tester (not a developer) on 2026-11-21: with many chores, the Chores tab gets hard to read and easy to get lost in. The three ideas below are their suggestions for that one problem, so design them together. The first is done; the other two aren't planned yet.
 
 - ~~**Turn-based badge**~~: done. Active rotating chores on the Chores tab show `ChoreTurnLine` (`core/design`: a rotation icon and "Your turn"/"{name}'s turn", primary when it's yours) on its own line under the subtitle instead of at the end of it. Home rows are unchanged.
 - **Chore groups**: put similar chores in a group the list shows collapsed and expands on tap, e.g. trash plus glass, paper and plastic recycling. Today the list is only split by the fixed `ChoreCategory` sections, plus search and the All/Overdue/Due soon/Paused chips. A user-made group is shared household data (Room migration, Firestore field, `firestore.rules`, older builds ignoring it). Decide what a collapsed group shows, e.g. the most overdue chore or a due count.
