@@ -20,12 +20,12 @@ import androidx.compose.ui.unit.dp
 import cz.dcervenka.choretracker.core.design.LocalSpacing
 import cz.dcervenka.choretracker.core.design.R
 import cz.dcervenka.choretracker.core.design.components.ChoreListRow
+import cz.dcervenka.choretracker.core.design.components.ChoreTurnLine
 import cz.dcervenka.choretracker.core.design.components.DoneButton
 import cz.dcervenka.choretracker.core.design.components.FreshnessBar
 import cz.dcervenka.choretracker.core.design.components.IconCircle
 import cz.dcervenka.choretracker.core.design.components.ReminderOffLabel
 import cz.dcervenka.choretracker.core.design.components.choreScheduleLabel
-import cz.dcervenka.choretracker.core.design.components.choreTurnLabel
 import cz.dcervenka.choretracker.core.design.toIcon
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
@@ -59,6 +59,7 @@ internal fun ChoreRow(
     // rather than the two separately-nullable locals a plain `if` would smart-cast awkwardly
     // through a deferred composable lambda.
     val freshness: Pair<Float, Color>? = fraction?.let { value -> value to freshnessColor(value) }
+    val turn = staleness?.turn?.takeIf { chore.isActive }
 
     ChoreListRow(
         modifier = modifier,
@@ -79,10 +80,11 @@ internal fun ChoreRow(
             )
         },
         onClick = onOpenSheet,
-        belowSubtitle = if (freshness != null || reminderMuted) {
+        belowSubtitle = if (freshness != null || turn != null || reminderMuted) {
             {
                 Column(verticalArrangement = Arrangement.spacedBy(LocalSpacing.current.xSmall)) {
                     freshness?.let { (value, color) -> FreshnessBar(fraction = value, color = color) }
+                    turn?.let { ChoreTurnLine(turn = it) }
                     if (reminderMuted) ReminderOffLabel()
                 }
             }
@@ -106,7 +108,8 @@ internal fun ChoreGroupRow(
     chores: List<Chore>,
     staleness: Map<String, ChoreStaleness>,
     expanded: Boolean,
-    onToggle: () -> Unit,
+    // Null while a search or filter holds every group open.
+    onToggle: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val active = chores.filter { it.isActive }
@@ -127,14 +130,16 @@ internal fun ChoreGroupRow(
         trailing = {
             // Done buttons' width, so the chevron and freshness bar line up with the chore rows.
             Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                    contentDescription = stringResource(
-                        if (expanded) R.string.chores_group_collapse else R.string.chores_group_expand,
-                        name,
-                    ),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (onToggle != null) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                        contentDescription = stringResource(
+                            if (expanded) R.string.chores_group_collapse else R.string.chores_group_expand,
+                            name,
+                        ),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         },
         onClick = onToggle,
@@ -153,7 +158,6 @@ private fun choreRowSubtitle(chore: Chore, staleness: ChoreStaleness?): String {
         schedule != null -> stringResource(R.string.dashboard_not_done_yet)
         else -> null
     }
-    val turn = staleness?.turn?.let { choreTurnLabel(it) }
-    return listOfNotNull(frequency, sinceLast, turn).joinToString(" · ")
+    return listOfNotNull(frequency, sinceLast).joinToString(" · ")
         .ifBlank { stringResource(R.string.chores_no_schedule) }
 }

@@ -280,11 +280,15 @@ fun ChoresScreen(
                                                         chores = entry.chores,
                                                         staleness = uiState.staleness,
                                                         expanded = expanded,
-                                                        onToggle = {
-                                                            if (entry.name in expandedGroups) {
-                                                                expandedGroups.remove(entry.name)
-                                                            } else {
-                                                                expandedGroups.add(entry.name)
+                                                        onToggle = if (expandAllGroups) {
+                                                            null
+                                                        } else {
+                                                            {
+                                                                if (entry.name in expandedGroups) {
+                                                                    expandedGroups.remove(entry.name)
+                                                                } else {
+                                                                    expandedGroups.add(entry.name)
+                                                                }
                                                             }
                                                         },
                                                     )
