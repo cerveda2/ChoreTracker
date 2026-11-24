@@ -15,6 +15,7 @@ data class ChoresUiState(
     val completedChoreIds: Set<String> = emptySet(),
     val remindersEnabled: Boolean = false,
     val mutedReminderChoreIds: Set<String> = emptySet(),
+    val isPreview: Boolean = false,
     val filter: ChoreFilter = ChoreFilter.ALL,
     val query: String = "",
 ) : UiState

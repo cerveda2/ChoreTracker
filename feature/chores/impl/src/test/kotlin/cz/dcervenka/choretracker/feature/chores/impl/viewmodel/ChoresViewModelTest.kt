@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.AddPersonalChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCompletedChoreIdsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
@@ -25,6 +26,8 @@ import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreGroupUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreRotationUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreScheduleUseCase
+import cz.dcervenka.choretracker.core.model.auth.AppUser
+import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
 import cz.dcervenka.choretracker.core.model.chore.ChoreSchedule
@@ -33,6 +36,7 @@ import cz.dcervenka.choretracker.core.model.household.Household
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.settings.ReminderSettings
 import cz.dcervenka.choretracker.core.model.stats.ChoreStaleness
+import cz.dcervenka.choretracker.core.test.mock.sampleAuthenticatedState
 import cz.dcervenka.choretracker.core.test.mock.sampleChore
 import cz.dcervenka.choretracker.core.test.mock.sampleHousehold
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
@@ -90,6 +94,9 @@ class ChoresViewModelTest {
     lateinit var addPersonalChoreUseCase: AddPersonalChoreUseCase
 
     @MockK
+    lateinit var observeAuthStateUseCase: ObserveAuthStateUseCase
+
+    @MockK
     lateinit var addChoreUseCase: AddChoreUseCase
 
     @MockK
@@ -133,6 +140,7 @@ class ChoresViewModelTest {
     private val reminderSettingsFlow = MutableStateFlow(ReminderSettings())
     private val mutedReminderChoreIdsFlow = MutableStateFlow(emptySet<String>())
     private val personalChoresFlow = MutableStateFlow(emptyList<Chore>())
+    private val authStateFlow = MutableStateFlow<AuthState>(sampleAuthenticatedState())
 
     @Before
     fun setUp() {
@@ -154,6 +162,8 @@ class ChoresViewModelTest {
         personalChoresFlow.value = emptyList()
         every { observePersonalChoresUseCase() } returns personalChoresFlow
         every { observePersonalStaleChoresUseCase() } returns MutableStateFlow(emptyList())
+        authStateFlow.value = sampleAuthenticatedState()
+        every { observeAuthStateUseCase() } returns authStateFlow
         coEvery { addPersonalChoreUseCase(any(), any(), any()) } returns AppResult.Success("personal-1")
         coEvery { addChoreUseCase(any(), any(), any(), any()) } returns AppResult.Success("chore-1")
         coEvery { updateChoreNameUseCase(any(), any()) } returns AppResult.Success(Unit)
@@ -513,6 +523,20 @@ class ChoresViewModelTest {
     }
 
     @Test
+    fun `ui state marks preview mode, which can't keep personal chores`() = runTest(coroutineRule.dispatcher) {
+        householdFlow.value = sampleHousehold()
+        authStateFlow.value = AuthState.Authenticated(
+            AppUser(id = "preview-user", email = null, displayName = "Preview User", isPreview = true),
+        )
+        val viewModel = createViewModel()
+
+        viewModel.uiState.test {
+            advanceUntilIdle()
+            assertThat(expectMostRecentItem().isPreview).isTrue()
+        }
+    }
+
+    @Test
     fun `sendRequests asks the chosen member and confirms with their name`() = runTest(coroutineRule.dispatcher) {
         val viewModel = createViewModel()
         val events = mutableListOf<ChoresUiEvent>()
@@ -551,6 +575,7 @@ private fun ChoresViewModelTest.createViewModel() = ChoresViewModel(
     observeMutedReminderChoresUseCase,
     observePersonalChoresUseCase,
     observePersonalStaleChoresUseCase,
+    observeAuthStateUseCase,
     addChoreUseCase,
     addPersonalChoreUseCase,
     updateChoreNameUseCase,

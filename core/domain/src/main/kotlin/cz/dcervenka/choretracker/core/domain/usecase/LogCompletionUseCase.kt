@@ -2,7 +2,6 @@ package cz.dcervenka.choretracker.core.domain.usecase
 
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.data.contract.ChoreCompletionRepository
-import cz.dcervenka.choretracker.core.model.error.AppError
 import javax.inject.Inject
 import kotlin.time.Instant
 
@@ -15,16 +14,12 @@ class LogCompletionUseCase @Inject constructor(
         participantMemberIds: List<String>,
         note: String?,
         completedAt: Instant? = null,
-    ): AppResult<String> {
-        if (participantMemberIds.isEmpty()) {
-            return AppResult.Error(AppError.PARTICIPANT_REQUIRED)
-        }
-        return choreCompletionRepository.logCompletion(
+    ): AppResult<String> =
+        choreCompletionRepository.logCompletion(
             householdId = householdId,
             choreId = choreId,
             participantMemberIds = participantMemberIds,
             note = note,
             completedAt = completedAt,
         )
-    }
 }

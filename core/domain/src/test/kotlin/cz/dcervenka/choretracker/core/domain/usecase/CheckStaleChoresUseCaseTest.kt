@@ -184,8 +184,7 @@ class CheckStaleChoresUseCaseTest {
     }
 
     @Test
-    fun `includes your overdue personal chores, even without a household`() = runTest {
-        coEvery { householdRepository.getCurrentHousehold() } returns null
+    fun `includes your overdue personal chores`() = runTest {
         every { observePersonalStaleChoresUseCase() } returns flowOf(
             listOf(staleness("gym", ChoreStatus.NEEDS_ATTENTION), staleness("meds", ChoreStatus.SOON)),
         )
@@ -193,6 +192,18 @@ class CheckStaleChoresUseCaseTest {
         val result = useCase()
 
         assertThat(result.map(ChoreStaleness::choreId)).containsExactly("gym")
+    }
+
+    @Test
+    fun `leaves out personal chores without a household, since they can't be opened`() = runTest {
+        coEvery { householdRepository.getCurrentHousehold() } returns null
+        every { observePersonalStaleChoresUseCase() } returns flowOf(
+            listOf(staleness("gym", ChoreStatus.NEEDS_ATTENTION)),
+        )
+
+        val result = useCase()
+
+        assertThat(result).isEmpty()
     }
 
     @Test

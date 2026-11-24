@@ -74,6 +74,7 @@ fun LogCompletionSheet(
     category: ChoreCategory? = null,
     schedule: ChoreSchedule? = null,
     daysSinceLastCompletion: Int? = null,
+    personal: Boolean = false,
 ) {
     val spacing = LocalSpacing.current
     val memberPalette = LocalMemberPalette.current
@@ -177,8 +178,8 @@ fun LogCompletionSheet(
                 }
             }
 
-            // No members means there's nobody to pick: a personal chore is always the user's own.
-            if (members.isNotEmpty()) {
+            // There's nobody to pick for a personal chore: it's always the user's own.
+            if (!personal) {
                 Text(
                     text = stringResource(R.string.log_sheet_who),
                     style = MaterialTheme.typography.labelSmall,
@@ -276,7 +277,7 @@ fun LogCompletionSheet(
                         stringResource(R.string.log_sheet_submit, choreName)
                     },
                     onClick = { onConfirm(completedAt) },
-                    enabled = members.isEmpty() || selectedMemberIds.isNotEmpty(),
+                    enabled = personal || selectedMemberIds.isNotEmpty(),
                 )
                 TextButton(
                     onClick = onDismiss,

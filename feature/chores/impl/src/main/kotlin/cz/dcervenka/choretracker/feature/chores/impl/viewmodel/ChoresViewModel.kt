@@ -8,6 +8,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.AddPersonalChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCompletedChoreIdsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
@@ -25,6 +26,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreGroupUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreRotationUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreScheduleUseCase
+import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
@@ -63,6 +65,7 @@ class ChoresViewModel @Inject constructor(
     observeMutedReminderChoresUseCase: ObserveMutedReminderChoresUseCase,
     observePersonalChoresUseCase: ObservePersonalChoresUseCase,
     observePersonalStaleChoresUseCase: ObservePersonalStaleChoresUseCase,
+    observeAuthStateUseCase: ObserveAuthStateUseCase,
     private val addChoreUseCase: AddChoreUseCase,
     private val addPersonalChoreUseCase: AddPersonalChoreUseCase,
     private val updateChoreNameUseCase: UpdateChoreNameUseCase,
@@ -103,9 +106,15 @@ class ChoresViewModel @Inject constructor(
                 combine(observeStaleChoresUseCase(), observePersonalStaleChoresUseCase()) { household, personal ->
                     household + personal
                 },
-                observeReminderSettingsUseCase().map { it.enabled }.distinctUntilChanged(),
+                combine(
+                    observeReminderSettingsUseCase().map { it.enabled }.distinctUntilChanged(),
+                    observeAuthStateUseCase()
+                        .map { (it as? AuthState.Authenticated)?.user?.isPreview == true }
+                        .distinctUntilChanged(),
+                    ::Pair,
+                ),
                 observeMutedReminderChoresUseCase().distinctUntilChanged(),
-            ) { (chores, completedChoreIds), members, staleChores, remindersEnabled, mutedReminderChoreIds ->
+            ) { (chores, completedChoreIds), members, staleChores, (remindersEnabled, isPreview), mutedReminderChoreIds ->
                 ChoresBaseData(
                     householdId = household.id,
                     chores = chores.filter { it.deletedAt == null },
@@ -118,6 +127,7 @@ class ChoresViewModel @Inject constructor(
                     completedChoreIds = completedChoreIds,
                     remindersEnabled = remindersEnabled,
                     mutedReminderChoreIds = mutedReminderChoreIds,
+                    isPreview = isPreview,
                 )
             }
         }
@@ -133,6 +143,7 @@ class ChoresViewModel @Inject constructor(
                 completedChoreIds = base.completedChoreIds,
                 remindersEnabled = base.remindersEnabled,
                 mutedReminderChoreIds = base.mutedReminderChoreIds,
+                isPreview = base.isPreview,
                 filter = currentFilter,
                 query = currentQuery,
             )
@@ -285,5 +296,6 @@ class ChoresViewModel @Inject constructor(
         val completedChoreIds: Set<String>,
         val remindersEnabled: Boolean,
         val mutedReminderChoreIds: Set<String>,
+        val isPreview: Boolean,
     )
 }

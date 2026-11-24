@@ -381,6 +381,8 @@ fun ChoresScreen(
             },
             reminderEnabled = newChoreReminderEnabled.takeIf { uiState.remindersEnabled },
             onReminderChange = { newChoreReminderEnabled = it },
+            // Personal chores are stored under the signed-in account, which preview mode doesn't have.
+            personalAvailable = !uiState.isPreview,
         )
     }
 
@@ -420,7 +422,8 @@ fun ChoresScreen(
                 category = loggingChore.category,
                 schedule = loggingChore.schedule,
                 daysSinceLastCompletion = uiState.staleness[loggingChoreId]?.daysSinceLastCompletion,
-                members = if (loggingChore.isPersonal) emptyList() else uiState.members,
+                members = uiState.members,
+                personal = loggingChore.isPersonal,
                 selectedMemberIds = logMembers,
                 note = logNote,
                 onNoteChange = { logNote = it },

@@ -84,6 +84,7 @@ internal fun ChoreEditorSheet(
     onDelete: (() -> Unit)? = null,
     reminderEnabled: Boolean? = null,
     onReminderChange: (Boolean) -> Unit = {},
+    personalAvailable: Boolean = false,
 ) {
     val spacing = LocalSpacing.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -186,7 +187,7 @@ internal fun ChoreEditorSheet(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            if (chore == null) {
+            if (chore == null && personalAvailable) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

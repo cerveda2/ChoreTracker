@@ -13,7 +13,7 @@ interface ChoreCompletionRepository {
     fun observeCompletionsByChore(householdId: String, choreId: String): Flow<List<RecentCompletion>>
 
     // The signed-in user's personal completions. logCompletion, updateCompletion and deleteCompletion handle a personal
-    // chore's too.
+    // chore's too, which ignore participants; logging a household chore needs at least one.
     fun observePersonalCompletions(): Flow<List<ChoreCompletion>>
 
     suspend fun logCompletion(
