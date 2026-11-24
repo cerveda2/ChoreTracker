@@ -144,6 +144,7 @@ class OfflineFirstChoreCompletionRepository @Inject constructor(
             queuePersonalCompletion(completionId, operationType = "upsert")
             return AppResult.Success(completionId)
         }
+        if (participantMemberIds.isEmpty()) return AppResult.Error(AppError.PARTICIPANT_REQUIRED)
         completionDao.upsert(
             CompletionEntity(
                 id = completionId,

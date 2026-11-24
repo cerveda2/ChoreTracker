@@ -18,6 +18,7 @@ import cz.dcervenka.choretracker.core.database.entity.PersonalChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.PersonalCompletionEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
+import cz.dcervenka.choretracker.core.model.error.AppError
 import io.mockk.MockKAnnotations
 import io.mockk.Runs
 import io.mockk.coEvery
@@ -166,6 +167,20 @@ class OfflineFirstChoreCompletionRepositoryTest {
     }
 
     @Test
+    fun `logCompletion rejects a household completion with no participants`() = runTest {
+        val result = repository.logCompletion(
+            householdId = "household-1",
+            choreId = "chore-1",
+            participantMemberIds = emptyList(),
+            note = null,
+            completedAt = null,
+        )
+
+        assertThat(result).isEqualTo(AppResult.Error(AppError.PARTICIPANT_REQUIRED))
+        coVerify(exactly = 0) { completionDao.upsert(any()) }
+    }
+
+    @Test
     fun `logCompletion queues pending sync operation and triggers sync`() = runTest {
         repository.logCompletion(
             householdId = "household-1",
@@ -292,8 +307,9 @@ class OfflineFirstChoreCompletionRepositoryTest {
         coEvery { personalChoreDao.upsertCompletion(capture(completion)) } just Runs
         coEvery { pendingSyncOperationDao.upsert(capture(op)) } just Runs
 
-        repository.logCompletion("household-1", "personal-1", listOf("member-1"), note = " ")
+        val result = repository.logCompletion("household-1", "personal-1", emptyList(), note = " ")
 
+        assertThat(result).isInstanceOf(AppResult.Success::class.java)
         assertThat(completion.captured.ownerUserId).isEqualTo("user-1")
         assertThat(completion.captured.note).isNull()
         assertThat(op.captured.entityType).isEqualTo("personal_completion")

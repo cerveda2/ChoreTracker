@@ -191,6 +191,7 @@ fun LogChoreScreen(
                 schedule = selectedChore.schedule,
                 daysSinceLastCompletion = staleByChoreId[choreId]?.daysSinceLastCompletion,
                 members = uiState.members,
+                personal = selectedChore.isPersonal,
                 selectedMemberIds = selectedMembers,
                 note = selectedNote,
                 onNoteChange = { selectedNote = it },

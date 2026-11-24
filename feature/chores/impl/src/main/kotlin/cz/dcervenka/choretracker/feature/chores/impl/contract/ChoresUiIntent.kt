@@ -17,6 +17,7 @@ sealed interface ChoresUiIntent : UiIntent {
         val reminderEnabled: Boolean,
         val rotationMemberIds: List<String> = emptyList(),
         val groupName: String? = null,
+        val personal: Boolean = false,
     ) : ChoresUiIntent
     data class UpdateChore(
         val choreId: String,

@@ -162,7 +162,7 @@ fun ChoresScreen(
             ChoreTopAppBar(
                 title = stringResource(R.string.chores_title),
                 actions = {
-                    if (askableMembers.isNotEmpty() && uiState.chores.any { it.isActive }) {
+                    if (askableMembers.isNotEmpty() && uiState.chores.any { it.isActive && !it.isPersonal }) {
                         TextButton(onClick = { showAskSheet = true }) {
                             Text(stringResource(R.string.chores_ask_action))
                         }
@@ -250,9 +250,10 @@ fun ChoresScreen(
                         verticalArrangement = Arrangement.spacedBy(spacing.large),
                     ) {
                         groups.forEach { (category, entries) ->
-                            item(key = "group-${category.name}") {
+                            item(key = "group-${category?.name ?: "personal"}") {
                                 Column(verticalArrangement = Arrangement.spacedBy(spacing.small)) {
-                                    SectionHeader(title = stringResource(category.toStringRes()))
+                                    val title = category?.toStringRes() ?: R.string.chore_personal_label
+                                    SectionHeader(title = stringResource(title))
                                     ListGroup {
                                         @Composable
                                         fun Item(chore: Chore, modifier: Modifier = Modifier) = ChoreRow(
@@ -331,7 +332,7 @@ fun ChoresScreen(
             members = activeMembers,
             groupNames = groupNames,
             onDismiss = { editingChoreId = null },
-            onSave = { name, category, schedule, isActive, rotationMemberIds, groupName ->
+            onSave = { name, category, schedule, isActive, rotationMemberIds, groupName, _ ->
                 onIntent(
                     ChoresUiIntent.UpdateChore(
                         choreId = editingChore.id,
@@ -363,7 +364,7 @@ fun ChoresScreen(
             members = activeMembers,
             groupNames = groupNames,
             onDismiss = { showNewChoreSheet = false },
-            onSave = { name, category, schedule, _, rotationMemberIds, groupName ->
+            onSave = { name, category, schedule, _, rotationMemberIds, groupName, personal ->
                 onIntent(
                     ChoresUiIntent.AddChore(
                         householdId = householdId,
@@ -373,12 +374,15 @@ fun ChoresScreen(
                         reminderEnabled = newChoreReminderEnabled,
                         rotationMemberIds = rotationMemberIds,
                         groupName = groupName,
+                        personal = personal,
                     ),
                 )
                 showNewChoreSheet = false
             },
             reminderEnabled = newChoreReminderEnabled.takeIf { uiState.remindersEnabled },
             onReminderChange = { newChoreReminderEnabled = it },
+            // Personal chores are stored under the signed-in account, which preview mode doesn't have.
+            personalAvailable = !uiState.isPreview,
         )
     }
 
@@ -398,7 +402,7 @@ fun ChoresScreen(
     if (showAskSheet && householdId != null) {
         AskSheet(
             members = askableMembers,
-            chores = uiState.chores.filter { it.isActive },
+            chores = uiState.chores.filter { it.isActive && !it.isPersonal },
             onDismiss = { showAskSheet = false },
             onSend = { toMemberId, choreIds, note ->
                 askableMembers.find { it.id == toMemberId }?.let { member ->
@@ -419,6 +423,7 @@ fun ChoresScreen(
                 schedule = loggingChore.schedule,
                 daysSinceLastCompletion = uiState.staleness[loggingChoreId]?.daysSinceLastCompletion,
                 members = uiState.members,
+                personal = loggingChore.isPersonal,
                 selectedMemberIds = logMembers,
                 note = logNote,
                 onNoteChange = { logNote = it },
@@ -491,7 +496,8 @@ private sealed interface ChoreListEntry {
     }
 }
 
-private fun groupChores(uiState: ChoresUiState): List<Pair<ChoreCategory, List<ChoreListEntry>>> {
+// A null category is the section of the user's personal chores, listed first.
+private fun groupChores(uiState: ChoresUiState): List<Pair<ChoreCategory?, List<ChoreListEntry>>> {
     val base = if (uiState.query.isBlank()) {
         uiState.chores
     } else {
@@ -514,14 +520,20 @@ private fun groupChores(uiState: ChoresUiState): List<Pair<ChoreCategory, List<C
         val counts = chores.groupingBy { it.category }.eachCount()
         ChoreCategory.entries.maxBy { counts[it] ?: 0 }
     }
-    val singles = filtered.filter { it.groupName == null }
+    val (personal, household) = filtered.partition { it.isPersonal }
+    val singles = household.filter { it.groupName == null }
         .map { it.category to ChoreListEntry.Single(it) }
-    val groups = filtered.byGroup()
+    val groups = household.byGroup()
         .map { (name, chores) -> groupCategories.getValue(name) to ChoreListEntry.Group(name, chores.sortedBy { it.name }) }
-    return (singles + groups)
+    val sections = (singles + groups)
         .groupBy({ it.first }, { it.second })
         .toSortedMap(compareBy { it.ordinal })
         .map { (category, entries) -> category to entries.sortedBy { it.sortName } }
+    return if (personal.isEmpty()) {
+        sections
+    } else {
+        listOf(null to personal.sortedBy { it.name }.map(ChoreListEntry::Single)) + sections
+    }
 }
 
 private fun List<Chore>.byGroup(): Map<String, List<Chore>> =

@@ -4,14 +4,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cz.dcervenka.choretracker.core.common.AppResult
 import cz.dcervenka.choretracker.core.domain.usecase.AddChoreUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.AddPersonalChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteChoreUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.DeleteCompletionUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.LogCompletionUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObserveAuthStateUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCompletedChoreIdsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveCurrentHouseholdUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMembersUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveMutedReminderChoresUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObservePersonalChoresUseCase
+import cz.dcervenka.choretracker.core.domain.usecase.ObservePersonalStaleChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveReminderSettingsUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.ObserveStaleChoresUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.SendChoreRequestsUseCase
@@ -22,6 +26,7 @@ import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreGroupUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreNameUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreRotationUseCase
 import cz.dcervenka.choretracker.core.domain.usecase.UpdateChoreScheduleUseCase
+import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.Chore
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
@@ -58,7 +63,11 @@ class ChoresViewModel @Inject constructor(
     observeStaleChoresUseCase: ObserveStaleChoresUseCase,
     observeReminderSettingsUseCase: ObserveReminderSettingsUseCase,
     observeMutedReminderChoresUseCase: ObserveMutedReminderChoresUseCase,
+    observePersonalChoresUseCase: ObservePersonalChoresUseCase,
+    observePersonalStaleChoresUseCase: ObservePersonalStaleChoresUseCase,
+    observeAuthStateUseCase: ObserveAuthStateUseCase,
     private val addChoreUseCase: AddChoreUseCase,
+    private val addPersonalChoreUseCase: AddPersonalChoreUseCase,
     private val updateChoreNameUseCase: UpdateChoreNameUseCase,
     private val updateChoreCategoryUseCase: UpdateChoreCategoryUseCase,
     private val updateChoreScheduleUseCase: UpdateChoreScheduleUseCase,
@@ -90,14 +99,22 @@ class ChoresViewModel @Inject constructor(
             combine(
                 combine(
                     observeChoresUseCase(household.id),
+                    observePersonalChoresUseCase(),
                     observeCompletedChoreIdsUseCase(household.id),
+                ) { chores, personalChores, completedChoreIds -> (chores + personalChores) to completedChoreIds },
+                observeMembersUseCase(household.id),
+                combine(observeStaleChoresUseCase(), observePersonalStaleChoresUseCase()) { household, personal ->
+                    household + personal
+                },
+                combine(
+                    observeReminderSettingsUseCase().map { it.enabled }.distinctUntilChanged(),
+                    observeAuthStateUseCase()
+                        .map { (it as? AuthState.Authenticated)?.user?.isPreview == true }
+                        .distinctUntilChanged(),
                     ::Pair,
                 ),
-                observeMembersUseCase(household.id),
-                observeStaleChoresUseCase(),
-                observeReminderSettingsUseCase().map { it.enabled }.distinctUntilChanged(),
                 observeMutedReminderChoresUseCase().distinctUntilChanged(),
-            ) { (chores, completedChoreIds), members, staleChores, remindersEnabled, mutedReminderChoreIds ->
+            ) { (chores, completedChoreIds), members, staleChores, (remindersEnabled, isPreview), mutedReminderChoreIds ->
                 ChoresBaseData(
                     householdId = household.id,
                     chores = chores.filter { it.deletedAt == null },
@@ -110,6 +127,7 @@ class ChoresViewModel @Inject constructor(
                     completedChoreIds = completedChoreIds,
                     remindersEnabled = remindersEnabled,
                     mutedReminderChoreIds = mutedReminderChoreIds,
+                    isPreview = isPreview,
                 )
             }
         }
@@ -125,6 +143,7 @@ class ChoresViewModel @Inject constructor(
                 completedChoreIds = base.completedChoreIds,
                 remindersEnabled = base.remindersEnabled,
                 mutedReminderChoreIds = base.mutedReminderChoreIds,
+                isPreview = base.isPreview,
                 filter = currentFilter,
                 query = currentQuery,
             )
@@ -167,14 +186,18 @@ class ChoresViewModel @Inject constructor(
 
     private fun addChore(intent: ChoresUiIntent.AddChore) {
         viewModelScope.launch {
-            val result = addChoreUseCase(
-                householdId = intent.householdId,
-                name = intent.name,
-                category = intent.category,
-                schedule = intent.schedule,
-                rotationMemberIds = intent.rotationMemberIds,
-                groupName = intent.groupName,
-            )
+            val result = if (intent.personal) {
+                addPersonalChoreUseCase(name = intent.name, category = intent.category, schedule = intent.schedule)
+            } else {
+                addChoreUseCase(
+                    householdId = intent.householdId,
+                    name = intent.name,
+                    category = intent.category,
+                    schedule = intent.schedule,
+                    rotationMemberIds = intent.rotationMemberIds,
+                    groupName = intent.groupName,
+                )
+            }
             if (result is AppResult.Success) {
                 // The chore is already saved - don't let leaving the screen skip its mute.
                 if (!intent.reminderEnabled) {
@@ -273,5 +296,6 @@ class ChoresViewModel @Inject constructor(
         val completedChoreIds: Set<String>,
         val remindersEnabled: Boolean,
         val mutedReminderChoreIds: Set<String>,
+        val isPreview: Boolean,
     )
 }

@@ -162,6 +162,7 @@ fun DashboardScreen(
         LoadingState(message = stringResource(R.string.dashboard_loading))
     } else {
         val categoryByChoreId = snapshot.activeChores.associate { it.id to it.category }
+        val personalChoreIds = snapshot.activeChores.filter { it.isPersonal }.mapTo(mutableSetOf()) { it.id }
         val overdueItems = snapshot.staleChores.filter { it.status == ChoreStatus.NEEDS_ATTENTION }
         val dueSoonItems = snapshot.staleChores.filter {
             it.status == ChoreStatus.SOON || it.status == ChoreStatus.NEVER
@@ -294,6 +295,7 @@ fun DashboardScreen(
                                 onOpenSheet = openLogSheet,
                                 nudges = uiState.nudges,
                                 onRemind = { onIntent(DashboardUiIntent.Remind(it)) },
+                                personalChoreIds = personalChoreIds,
                             )
                         }
                         item {
@@ -304,6 +306,7 @@ fun DashboardScreen(
                                 onOpenSheet = openLogSheet,
                                 nudges = uiState.nudges,
                                 onRemind = { onIntent(DashboardUiIntent.Remind(it)) },
+                                personalChoreIds = personalChoreIds,
                             )
                         }
                     }
@@ -353,6 +356,7 @@ fun DashboardScreen(
                 schedule = selectedChore.schedule,
                 daysSinceLastCompletion = staleness?.daysSinceLastCompletion,
                 members = uiState.members,
+                personal = selectedChore.isPersonal,
                 selectedMemberIds = selectedMembers,
                 note = selectedNote,
                 onNoteChange = { selectedNote = it },

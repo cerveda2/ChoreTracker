@@ -20,6 +20,7 @@ class CheckStaleChoresUseCase @Inject constructor(
     private val statsRepository: StatsRepository,
     private val statisticsCalculator: HouseholdStatisticsCalculator,
     private val observeChoreRequestsUseCase: ObserveChoreRequestsUseCase,
+    private val observePersonalStaleChoresUseCase: ObservePersonalStaleChoresUseCase,
     private val clock: Clock,
 ) {
     suspend operator fun invoke(): List<ChoreStaleness> {
@@ -31,16 +32,18 @@ class CheckStaleChoresUseCase @Inject constructor(
         refreshHouseholdUseCase()
 
         val household = householdRepository.getCurrentHousehold()
+        // Without a household the app only shows onboarding, so personal chores couldn't be opened from the reminder.
         return if (household == null) {
             emptyList()
         } else {
+            val personal = observePersonalStaleChoresUseCase().first().filter { it.status == ChoreStatus.NEEDS_ATTENTION }
             val input = statsRepository.getHouseholdStatsInput(household.id)
             // A chore someone asked you to do is included even before it's overdue, and one you've asked
             // someone else to do is left to them.
             val requests = observeChoreRequestsUseCase(household.id).first()
             val askedOfMe = requests.askedOfMe.map { it.choreId }.toSet()
             val askedOfOthers = requests.waitingOn.filterNot { it.declined }.map { it.choreId }.toSet()
-            statisticsCalculator.buildStaleness(
+            personal + statisticsCalculator.buildStaleness(
                 chores = input.chores,
                 completions = input.completions,
                 members = input.members,
