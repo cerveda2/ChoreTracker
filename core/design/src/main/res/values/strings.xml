@@ -331,6 +331,21 @@
     <string name="dashboard_request_cancel">Cancel the request for %1$s</string>
     <string name="chores_editor_turns_description">Whoever has done it least is up next.</string>
     <string name="chores_editor_turns_restart">Changing who takes turns starts the count over.</string>
+    <string name="chores_editor_group_label">Group</string>
+    <string name="chores_editor_group_none">None</string>
+    <string name="chores_editor_group_new">New group</string>
+    <string name="chores_editor_group_name_hint">Group name</string>
+    <string name="chores_editor_group_description">Chores in a group are folded under its name in the list.</string>
+    <string name="chores_group_expand">Show the chores in %1$s</string>
+    <string name="chores_group_collapse">Hide the chores in %1$s</string>
+    <plurals name="chores_group_count">
+        <item quantity="one">%1$d chore</item>
+        <item quantity="other">%1$d chores</item>
+    </plurals>
+    <plurals name="chores_group_overdue">
+        <item quantity="one">%1$d overdue</item>
+        <item quantity="other">%1$d overdue</item>
+    </plurals>
     <string name="chore_turn_yours">Your turn</string>
     <string name="chore_turn_member">%1$s\'s turn</string>
     <string name="chore_out_of_turn_title">It\'s %1$s\'s turn</string>

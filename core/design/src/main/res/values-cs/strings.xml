@@ -349,6 +349,25 @@
     <string name="dashboard_request_cancel">Zrušit žádost: %1$s</string>
     <string name="chores_editor_turns_description">Na řadě je vždy ten, kdo to dělal nejméně.</string>
     <string name="chores_editor_turns_restart">Když změníte, kdo se střídá, začne se počítat znovu.</string>
+    <string name="chores_editor_group_label">Skupina</string>
+    <string name="chores_editor_group_none">Žádná</string>
+    <string name="chores_editor_group_new">Nová skupina</string>
+    <string name="chores_editor_group_name_hint">Název skupiny</string>
+    <string name="chores_editor_group_description">Úkoly ve skupině jsou v seznamu složené pod jejím názvem.</string>
+    <string name="chores_group_expand">Zobrazit úkoly ve skupině %1$s</string>
+    <string name="chores_group_collapse">Skrýt úkoly ve skupině %1$s</string>
+    <plurals name="chores_group_count">
+        <item quantity="one">%1$d úkol</item>
+        <item quantity="few">%1$d úkoly</item>
+        <item quantity="many">%1$d úkolu</item>
+        <item quantity="other">%1$d úkolů</item>
+    </plurals>
+    <plurals name="chores_group_overdue">
+        <item quantity="one">%1$d po termínu</item>
+        <item quantity="few">%1$d po termínu</item>
+        <item quantity="many">%1$d po termínu</item>
+        <item quantity="other">%1$d po termínu</item>
+    </plurals>
     <string name="chore_turn_yours">Jste na řadě</string>
     <string name="chore_turn_member">Na řadě: %1$s</string>
     <string name="chore_out_of_turn_title">Na řadě je %1$s</string>

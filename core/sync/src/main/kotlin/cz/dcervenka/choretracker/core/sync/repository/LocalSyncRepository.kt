@@ -286,6 +286,7 @@ class LocalSyncRepository @Inject constructor(
                     rotationStartedAt = chore.rotationStartedAt,
                     scheduleWeekdays = chore.scheduleWeekdays,
                     scheduleMonthDay = chore.scheduleMonthDay,
+                    groupName = chore.groupName,
                 ),
             )
         }
@@ -622,6 +623,7 @@ class LocalSyncRepository @Inject constructor(
         rotationStartedAt = rotationStartedAt,
         scheduleWeekdays = scheduleWeekdays,
         scheduleMonthDay = scheduleMonthDay,
+        groupName = groupName,
     )
 
     private fun InviteEntity.asInviteModel(): Invite = Invite(
@@ -887,6 +889,7 @@ class LocalSyncRepository @Inject constructor(
                     rotationStartedAt = chore.rotationStartedAt,
                     scheduleWeekdays = chore.scheduleWeekdays,
                     scheduleMonthDay = chore.scheduleMonthDay,
+                    groupName = chore.groupName,
                 )
             },
             completions = completions,
