@@ -146,6 +146,15 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, delete: if isUserDocument(userId);
       allow create, update: if canManageUserDocument(userId);
+
+      // Personal chores and their completions: only their owner, never the household.
+      match /chores/{choreId} {
+        allow read, write: if isUserDocument(userId);
+      }
+
+      match /completions/{completionId} {
+        allow read, write: if isUserDocument(userId);
+      }
     }
 
     // Required for collectionGroup("members") queries in resolveHouseholdId.

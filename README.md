@@ -82,7 +82,7 @@ Feature code lives in each feature's `impl` module (`feature/<name>/impl`).
 - **DI:** Hilt, including `HiltWorkerFactory` for WorkManager.
 - **State:** `StateFlow<UiState>` collected with `collectAsStateWithLifecycle()`.
 - **Navigation:** Navigation Compose with four bottom tabs.
-- **Database:** Room (schema version 15) with a pending sync queue and soft-deleted chores. Every schema bump ships a migration, tested from the oldest shipped schema.
+- **Database:** Room (schema version 16) with a pending sync queue and soft-deleted chores. Every schema bump ships a migration, tested from the oldest shipped schema.
 - **Remote:** Firebase Auth, Firestore, Cloud Functions, Cloud Messaging and Crashlytics, with emulator support in debug builds.
 - **Performance:** Release-only Firebase startup, network and activity rendering metrics, plus fixed-name screen-load and sync traces. See [monitoring and release checks](docs/PERFORMANCE_MONITORING.md).
 - **Testing:** JUnit 4, MockK, Turbine, Truth and Robolectric. `functions/test/` runs the Cloud Functions and `firestore.rules` against the Firebase emulators.

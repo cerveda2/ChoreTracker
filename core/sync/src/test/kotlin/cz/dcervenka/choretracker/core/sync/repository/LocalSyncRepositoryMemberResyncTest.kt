@@ -11,6 +11,7 @@ import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.dao.PersonalChoreDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
@@ -21,6 +22,7 @@ import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
+import cz.dcervenka.choretracker.core.model.sync.PersonalSnapshot
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
 import io.mockk.MockKAnnotations
@@ -80,6 +82,9 @@ class LocalSyncRepositoryMemberResyncTest {
 
     @MockK
     lateinit var pendingSyncOperationDao: PendingSyncOperationDao
+
+    @MockK(relaxed = true)
+    lateinit var personalChoreDao: PersonalChoreDao
 
     @MockK
     lateinit var syncStateDao: SyncStateDao
@@ -150,6 +155,8 @@ class LocalSyncRepositoryMemberResyncTest {
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
+        coEvery { remoteHouseholdDataSource.fetchPersonalSnapshot(any()) } returns
+            AppResult.Success(PersonalSnapshot(emptyList(), emptyList()))
         listOf(owner, alex).forEach { memberRows[it.id] = it }
         every { authRepository.authState } returns authState
         every { householdDao.observeHouseholdForUser("user-1") } returns MutableStateFlow(householdEntity)
@@ -168,12 +175,14 @@ class LocalSyncRepositoryMemberResyncTest {
         coEvery { choreDao.getChores("household-1") } returns emptyList()
         coEvery { inviteDao.getInvites("household-1") } returns emptyList()
         coEvery { syncStateDao.upsert(any()) } just Runs
-        coEvery { database.clearAll() } just Runs
+        coEvery { database.clearHouseholdData() } just Runs
         every { remoteHouseholdDataSource.observeMembers("household-1", "user-1") } returns remoteMembers
         every { remoteHouseholdDataSource.observeCompletions(any()) } returns emptyFlow()
         every { remoteHouseholdDataSource.observeInvites(any()) } returns emptyFlow()
         every { remoteHouseholdDataSource.observeChores(any()) } returns emptyFlow()
         every { remoteHouseholdDataSource.observeRequests(any()) } returns emptyFlow()
+        every { remoteHouseholdDataSource.observePersonalChores(any()) } returns emptyFlow()
+        every { remoteHouseholdDataSource.observePersonalCompletions(any()) } returns emptyFlow()
         coEvery { remoteHouseholdDataSource.upsertHouseholdSnapshot(any(), "user-1") } returns AppResult.Success(Unit)
         coEvery { remoteHouseholdDataSource.fetchMembers("household-1", "user-1") } answers {
             AppResult.Success(serverMembers)
@@ -188,6 +197,7 @@ class LocalSyncRepositoryMemberResyncTest {
             inviteDao = inviteDao,
             choreRequestDao = choreRequestDao,
             pendingSyncOperationDao = pendingSyncOperationDao,
+            personalChoreDao = personalChoreDao,
             syncStateDao = syncStateDao,
             remoteHouseholdDataSource = remoteHouseholdDataSource,
             database = database,

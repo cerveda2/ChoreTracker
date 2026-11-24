@@ -223,9 +223,10 @@ export const deleteAccount = onCall({ region: "europe-west1" }, async (request) 
     }
   }
 
-  // Admin SDK bypasses security rules, so no users/{uid} rule change is needed. Auth user goes
-  // LAST: a Firestore failure above leaves the account intact and the whole call retryable.
-  await userRef.delete();
+  // Admin SDK bypasses security rules, so no users/{uid} rule change is needed. Recursive, so the
+  // personal chores and completions under it go too. Auth user goes LAST: a Firestore failure above
+  // leaves the account intact and the whole call retryable.
+  await db.recursiveDelete(userRef);
   await getAuth().deleteUser(uid);
   logger.info("deleteAccount: account removed", { uid, hadHousehold: householdId != null });
 });

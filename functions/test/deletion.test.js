@@ -251,4 +251,20 @@ describe("deleteAccount", () => {
     assert.ok(departed.get("removedAt"));
     assert.ok(!(await exists(`users/${member.uid}`)));
   });
+
+  it("deletes the user's personal chores and completions too", async () => {
+    const owner = await signUp("owner");
+    const member = await signUp("member");
+    await seedHousehold("household-1", owner, [member]);
+    await db.doc(`users/${member.uid}/chores/personal-1`).set({ name: "Gym" });
+    await db.doc(`users/${member.uid}/completions/personal-completion-1`).set({ choreId: "personal-1" });
+    await db.doc(`users/${owner.uid}/chores/personal-2`).set({ name: "Meds" });
+
+    const result = await call("deleteAccount", member, {});
+
+    assert.equal(result.error, undefined);
+    assert.equal((await db.collection(`users/${member.uid}/chores`).get()).size, 0);
+    assert.equal((await db.collection(`users/${member.uid}/completions`).get()).size, 0);
+    assert.ok(await exists(`users/${owner.uid}/chores/personal-2`));
+  });
 });

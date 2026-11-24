@@ -11,6 +11,7 @@ import cz.dcervenka.choretracker.core.database.dao.HouseholdDao
 import cz.dcervenka.choretracker.core.database.dao.InviteDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.dao.PersonalChoreDao
 import cz.dcervenka.choretracker.core.database.dao.SyncStateDao
 import cz.dcervenka.choretracker.core.database.database.ChoreTrackerDatabase
 import cz.dcervenka.choretracker.core.database.entity.HouseholdEntity
@@ -20,6 +21,7 @@ import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.error.AppError
 import cz.dcervenka.choretracker.core.model.household.HouseholdRole
+import cz.dcervenka.choretracker.core.model.sync.PersonalSnapshot
 import cz.dcervenka.choretracker.core.remote.contract.RemoteHouseholdDataSource
 import cz.dcervenka.choretracker.core.test.mock.sampleMembers
 import cz.dcervenka.choretracker.core.test.rule.TestCoroutineRule
@@ -80,6 +82,9 @@ class LocalSyncRepositoryMembershipTest {
     @MockK
     lateinit var pendingSyncOperationDao: PendingSyncOperationDao
 
+    @MockK(relaxed = true)
+    lateinit var personalChoreDao: PersonalChoreDao
+
     @MockK
     lateinit var syncStateDao: SyncStateDao
 
@@ -100,6 +105,8 @@ class LocalSyncRepositoryMembershipTest {
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
+        coEvery { remoteHouseholdDataSource.fetchPersonalSnapshot(any()) } returns
+            AppResult.Success(PersonalSnapshot(emptyList(), emptyList()))
         every { authRepository.authState } returns authState
         coEvery { pendingSyncOperationDao.getAll() } returns emptyList()
         every { remoteHouseholdDataSource.observeMembers(any(), any()) } returns MutableStateFlow(emptyList())
@@ -107,10 +114,12 @@ class LocalSyncRepositoryMembershipTest {
         every { remoteHouseholdDataSource.observeInvites(any()) } returns MutableStateFlow(emptyList())
         every { remoteHouseholdDataSource.observeChores(any()) } returns MutableStateFlow(emptyList())
         every { remoteHouseholdDataSource.observeRequests(any()) } returns MutableStateFlow(emptyList())
+        every { remoteHouseholdDataSource.observePersonalChores(any()) } returns MutableStateFlow(emptyList())
+        every { remoteHouseholdDataSource.observePersonalCompletions(any()) } returns MutableStateFlow(emptyList())
         coEvery { remoteHouseholdDataSource.fetchMembers(any(), any()) } returns AppResult.Success(sampleMembers())
         coEvery { householdDao.getCurrentHouseholdForUser(any()) } returns null
         every { householdDao.observeHouseholdForUser(any()) } returns MutableStateFlow(null)
-        coEvery { database.clearAll() } just Runs
+        coEvery { database.clearHouseholdData() } just Runs
         repository = LocalSyncRepository(
             authRepository = authRepository,
             householdDao = householdDao,
@@ -121,6 +130,7 @@ class LocalSyncRepositoryMembershipTest {
             inviteDao = inviteDao,
             choreRequestDao = choreRequestDao,
             pendingSyncOperationDao = pendingSyncOperationDao,
+            personalChoreDao = personalChoreDao,
             syncStateDao = syncStateDao,
             remoteHouseholdDataSource = remoteHouseholdDataSource,
             database = database,
@@ -135,7 +145,7 @@ class LocalSyncRepositoryMembershipTest {
         val result = repository.leaveHousehold("household-1", "user-1")
 
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
-        coVerify { database.clearAll() }
+        coVerify { database.clearHouseholdData() }
     }
 
     @Test
@@ -145,7 +155,7 @@ class LocalSyncRepositoryMembershipTest {
         val result = repository.leaveHousehold("household-1", "user-1")
 
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
-        coVerify(exactly = 0) { database.clearAll() }
+        coVerify(exactly = 0) { database.clearHouseholdData() }
     }
 
     @Test
@@ -155,7 +165,7 @@ class LocalSyncRepositoryMembershipTest {
         val result = repository.deleteHousehold("household-1")
 
         assertThat(result).isInstanceOf(AppResult.Success::class.java)
-        coVerify { database.clearAll() }
+        coVerify { database.clearHouseholdData() }
     }
 
     @Test
@@ -165,7 +175,7 @@ class LocalSyncRepositoryMembershipTest {
         val result = repository.deleteHousehold("household-1")
 
         assertThat(result).isInstanceOf(AppResult.Error::class.java)
-        coVerify(exactly = 0) { database.clearAll() }
+        coVerify(exactly = 0) { database.clearHouseholdData() }
     }
 
     @Test
@@ -202,7 +212,7 @@ class LocalSyncRepositoryMembershipTest {
             remoteDelete.complete(AppResult.Success(Unit))
             advanceUntilIdle()
 
-            coVerify { database.clearAll() }
+            coVerify { database.clearHouseholdData() }
         }
 
     @Test

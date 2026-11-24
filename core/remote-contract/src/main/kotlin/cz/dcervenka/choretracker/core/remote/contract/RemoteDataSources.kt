@@ -9,6 +9,7 @@ import cz.dcervenka.choretracker.core.model.chore.ChoreRequest
 import cz.dcervenka.choretracker.core.model.household.HouseholdMember
 import cz.dcervenka.choretracker.core.model.household.Invite
 import cz.dcervenka.choretracker.core.model.sync.HouseholdSnapshot
+import cz.dcervenka.choretracker.core.model.sync.PersonalSnapshot
 import kotlinx.coroutines.flow.Flow
 import kotlin.time.Instant
 
@@ -93,4 +94,16 @@ interface RemoteHouseholdDataSource {
     suspend fun leaveHousehold(householdId: String, selfMemberDocId: String): EmptyResult
 
     suspend fun deleteHousehold(householdId: String): EmptyResult
+
+    fun observePersonalChores(userId: String): Flow<List<Chore>>
+
+    fun observePersonalCompletions(userId: String): Flow<List<ChoreCompletion>>
+
+    suspend fun fetchPersonalSnapshot(userId: String): AppResult<PersonalSnapshot>
+
+    suspend fun upsertPersonalChore(userId: String, chore: Chore): EmptyResult
+
+    suspend fun upsertPersonalCompletion(userId: String, completion: ChoreCompletion): EmptyResult
+
+    suspend fun deletePersonalCompletion(userId: String, completionId: String): EmptyResult
 }

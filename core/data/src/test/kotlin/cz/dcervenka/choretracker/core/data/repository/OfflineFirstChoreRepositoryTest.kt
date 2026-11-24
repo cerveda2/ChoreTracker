@@ -8,10 +8,12 @@ import cz.dcervenka.choretracker.core.database.dao.ChoreDao
 import cz.dcervenka.choretracker.core.database.dao.CompletionDao
 import cz.dcervenka.choretracker.core.database.dao.MemberDao
 import cz.dcervenka.choretracker.core.database.dao.PendingSyncOperationDao
+import cz.dcervenka.choretracker.core.database.dao.PersonalChoreDao
 import cz.dcervenka.choretracker.core.database.entity.ChoreEntity
 import cz.dcervenka.choretracker.core.database.entity.CompletionEntity
 import cz.dcervenka.choretracker.core.database.entity.MemberEntity
 import cz.dcervenka.choretracker.core.database.entity.PendingSyncOperationEntity
+import cz.dcervenka.choretracker.core.database.entity.PersonalChoreEntity
 import cz.dcervenka.choretracker.core.model.auth.AppUser
 import cz.dcervenka.choretracker.core.model.auth.AuthState
 import cz.dcervenka.choretracker.core.model.chore.ChoreCategory
@@ -53,6 +55,9 @@ class OfflineFirstChoreRepositoryTest {
     lateinit var pendingSyncOperationDao: PendingSyncOperationDao
 
     @MockK
+    lateinit var personalChoreDao: PersonalChoreDao
+
+    @MockK
     lateinit var syncRepository: SyncRepository
 
     private lateinit var repository: OfflineFirstChoreRepository
@@ -60,6 +65,8 @@ class OfflineFirstChoreRepositoryTest {
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
+        coEvery { personalChoreDao.getChore(any(), any()) } returns null
+        coEvery { personalChoreDao.getCompletion(any(), any()) } returns null
         coEvery { choreDao.upsert(any()) } just Runs
         coEvery { choreDao.markDeleted(any(), any()) } just Runs
         coEvery { choreDao.updateActive(any(), any()) } just Runs
@@ -95,6 +102,7 @@ class OfflineFirstChoreRepositoryTest {
             memberDao = memberDao,
             authRepository = authRepository,
             pendingSyncOperationDao = pendingSyncOperationDao,
+            personalChoreDao = personalChoreDao,
             syncRepository = syncRepository,
             scope = CoroutineScope(Dispatchers.Unconfined),
         )
@@ -400,5 +408,60 @@ class OfflineFirstChoreRepositoryTest {
         repository.updateChoreRotation("chore-1", emptyList())
 
         coVerify { choreDao.updateRotation("chore-1", emptyList(), null) }
+    }
+
+    // personal chores
+
+    private val personalChore = PersonalChoreEntity(
+        id = "personal-1",
+        ownerUserId = "user-1",
+        name = "Gym",
+        isActive = true,
+        createdAt = Instant.parse("2026-01-01T00:00:00Z"),
+        deletedAt = null,
+    )
+
+    @Test
+    fun `addPersonalChore stores it for the signed-in user and queues it apart from the household`() = runTest {
+        val chore = slot<PersonalChoreEntity>()
+        val op = slot<PendingSyncOperationEntity>()
+        coEvery { personalChoreDao.upsertChore(capture(chore)) } just Runs
+        coEvery { pendingSyncOperationDao.upsert(capture(op)) } just Runs
+
+        val result = repository.addPersonalChore("Gym", ChoreCategory.OTHER, ChoreSchedule.EveryDays(2))
+
+        assertThat((result as AppResult.Success).value).isEqualTo(chore.captured.id)
+        assertThat(chore.captured.ownerUserId).isEqualTo("user-1")
+        assertThat(chore.captured.frequencyDays).isEqualTo(2)
+        assertThat(op.captured.entityType).isEqualTo("personal_chore")
+        coVerify(exactly = 0) { choreDao.upsert(any()) }
+    }
+
+    @Test
+    fun `addPersonalChore is refused in preview mode`() = runTest {
+        every { authRepository.authState } returns MutableStateFlow(
+            AuthState.Authenticated(AppUser("preview-user", null, "Preview", isPreview = true)),
+        )
+
+        val result = repository.addPersonalChore("Gym", ChoreCategory.OTHER, null)
+
+        assertThat((result as AppResult.Error).error).isEqualTo(AppError.PREVIEW_MODE_RESTRICTED)
+    }
+
+    @Test
+    fun `edits and deletes of a personal chore stay in the personal table`() = runTest {
+        val saved = mutableListOf<PersonalChoreEntity>()
+        coEvery { personalChoreDao.getChore("personal-1", "user-1") } returns personalChore
+        coEvery { personalChoreDao.upsertChore(capture(saved)) } just Runs
+
+        repository.updateChoreName("personal-1", "  Swim ")
+        repository.deleteChore("personal-1")
+
+        assertThat(saved[0].name).isEqualTo("Swim")
+        assertThat(saved[1].deletedAt).isNotNull()
+        assertThat(saved[1].isActive).isFalse()
+        coVerify(exactly = 0) { choreDao.updateName(any(), any()) }
+        coVerify(exactly = 0) { choreDao.markDeleted(any(), any()) }
+        coVerify(exactly = 2) { pendingSyncOperationDao.upsert(match { it.entityType == "personal_chore" }) }
     }
 }
