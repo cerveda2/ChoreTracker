@@ -881,7 +881,7 @@ class FirebaseHouseholdDataSource @Inject constructor(
             .orEmpty()
             .mapTo(mutableSetOf()) { DayOfWeek(it) },
         scheduleMonthDay = getLong("scheduleMonthDay")?.toInt(),
-        groupName = getString("groupName")?.takeIf { it.isNotBlank() },
+        groupName = (get("groupName") as? String)?.takeIf { it.isNotBlank() },
     )
 
     private fun DocumentSnapshot.asCompletion(householdId: String): ChoreCompletion = ChoreCompletion(

@@ -108,7 +108,8 @@ internal fun ChoreGroupRow(
     chores: List<Chore>,
     staleness: Map<String, ChoreStaleness>,
     expanded: Boolean,
-    onToggle: () -> Unit,
+    // Null while a search or filter holds every group open.
+    onToggle: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val active = chores.filter { it.isActive }
@@ -129,14 +130,16 @@ internal fun ChoreGroupRow(
         trailing = {
             // Done buttons' width, so the chevron and freshness bar line up with the chore rows.
             Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                    contentDescription = stringResource(
-                        if (expanded) R.string.chores_group_collapse else R.string.chores_group_expand,
-                        name,
-                    ),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (onToggle != null) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                        contentDescription = stringResource(
+                            if (expanded) R.string.chores_group_collapse else R.string.chores_group_expand,
+                            name,
+                        ),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         },
         onClick = onToggle,

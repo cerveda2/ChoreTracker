@@ -110,9 +110,11 @@ internal fun ChoreEditorSheet(
     }
     var groupInput by rememberSaveable(chore?.id) { mutableStateOf(chore?.groupName.orEmpty()) }
     var newGroup by rememberSaveable(chore?.id) { mutableStateOf(false) }
-    // A typed name that only differs in case from an existing group joins that group.
-    val groupName = groupInput.trim().takeIf { it.isNotEmpty() }
-        ?.let { typed -> groupNames.firstOrNull { it.equals(typed, ignoreCase = true) } ?: typed }
+    // A typed name that only differs in case from an existing group joins that group. An exact match wins, so
+    // saving doesn't move a chore between two groups that differ only in case.
+    val groupName = groupInput.trim().takeIf { it.isNotEmpty() }?.let { typed ->
+        typed.takeIf { it in groupNames } ?: groupNames.firstOrNull { it.equals(typed, ignoreCase = true) } ?: typed
+    }
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     val schedule = when (scheduleKind) {
         ScheduleKind.PRESET -> presetFrequencyDays?.let(ChoreSchedule::EveryDays)

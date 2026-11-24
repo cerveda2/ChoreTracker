@@ -46,6 +46,10 @@ service cloud.firestore {
       return isHouseholdOwner(householdId) || isHouseholdAdmin(householdId);
     }
 
+    function hasValidGroupName(chore) {
+      return chore.get('groupName', null) == null || chore.groupName is string;
+    }
+
     // A linked member's doc is keyed by their uid; a placeholder's by its own id, with no userId.
     function isActiveLinkedMember(householdId, uid, memberId) {
       return uid is string &&
@@ -221,11 +225,11 @@ service cloud.firestore {
 
       match /chores/{choreId} {
         allow read: if isHouseholdMember(householdId);
-        allow create: if isHouseholdManager(householdId) ||
+        allow create: if hasValidGroupName(request.resource.data) && (isHouseholdManager(householdId) ||
           (isHouseholdMember(householdId) &&
             request.resource.data.createdByUserId == request.auth.uid &&
             request.resource.data.householdId == householdId &&
-            request.resource.data.id == choreId);
+            request.resource.data.id == choreId));
         allow update: if (isHouseholdManager(householdId) ||
           (isHouseholdMember(householdId) &&
             resource.data.get('createdByUserId', null) == request.auth.uid)) &&
@@ -233,7 +237,8 @@ service cloud.firestore {
             .hasOnly([
               'name', 'category', 'frequencyDays', 'isActive', 'deletedAt', 'rotationMemberIds', 'rotationStartedAt',
               'scheduleWeekdays', 'scheduleMonthDay', 'groupName'
-            ]);
+            ]) &&
+          hasValidGroupName(request.resource.data);
         allow delete: if isHouseholdManager(householdId);
       }
 
